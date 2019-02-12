@@ -92,12 +92,17 @@ class BehavioralPlanningFacade(DmModule):
 
             MetricLogger.get_logger().report()
 
+        except StateHasNotArrivedYet:
+            self.logger.warning("StateHasNotArrivedYet was raised. skipping planning.")
+
         except MsgDeserializationError as e:
             self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
                                 "turn on debug logging level for more details.%s" % (traceback.format_exc()))
             self.logger.debug(str(e))
+
         except BehavioralPlanningException as e:
             self.logger.warning(e)
+            
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: %s. Trace: %s" %
                                  (e, traceback.format_exc()))

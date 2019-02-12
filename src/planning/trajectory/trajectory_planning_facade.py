@@ -127,6 +127,9 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
             MetricLogger.get_logger().report()
 
+        except StateHasNotArrivedYet:
+            self.logger.warning("StateHasNotArrivedYet was raised. skipping planning.")
+
         except MsgDeserializationError:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
                               traceback.format_exc())
