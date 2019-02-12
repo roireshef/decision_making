@@ -90,7 +90,7 @@ class RoutePlanningFacade(DmModule):
 
         final_route_plan = RoutePlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0) , \
                                 s_Data = s_Data) 
-        print("final_route_plan",s_Data.a_Cnt_num_lane_segments,s_Data.a_i_road_segment_ids,s_Data.as_route_plan_lane_segments, "\n")
+        #print("final_route_plan",s_Data.a_Cnt_num_lane_segments,s_Data.a_i_road_segment_ids,s_Data.as_route_plan_lane_segments, "\n")
         # final_route_plan.serialize()
         self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], final_route_plan.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_ROUTE_PLANNER_OUTPUT, final_route_plan))

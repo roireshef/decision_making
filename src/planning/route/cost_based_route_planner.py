@@ -111,9 +111,9 @@ class CostBasedRoutePlanner(RoutePlanner):
                 #print("CurrRoutePlanLaneSegment",CurrRoutePlanLaneSegment)
                 AllRouteLanesInThisRoadSeg.append(CurrRoutePlanLaneSegment)
             # NewRoutePlan.e_Cnt_num_road_segments = reverseroadsegidx
-            a_i_road_segment_ids.append(roadsegID)
-            a_Cnt_num_lane_segments.append(lanesegidx+1)
-            as_route_plan_lane_segments.append(AllRouteLanesInThisRoadSeg)
+            a_i_road_segment_ids.insert(0,roadsegID)
+            a_Cnt_num_lane_segments.insert(0,lanesegidx+1)
+            as_route_plan_lane_segments.insert(0,AllRouteLanesInThisRoadSeg)
 
 
             #print("AllRouteLanesInThisRoadSeg ")
