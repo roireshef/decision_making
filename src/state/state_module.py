@@ -66,7 +66,7 @@ class StateModule(DmModule):
 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
-                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state.serialize())
+                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"], state.serialize())
 
         except ObjectHasNegativeVelocityError as e:
             self.logger.error(e)
