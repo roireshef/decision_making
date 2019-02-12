@@ -107,7 +107,12 @@ class BehavioralGridState(BehavioralState):
         # calculate objects' segment map_states
         object_map_states = [obj.map_state for obj in dynamic_objects]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
+        # TODO (for split projections) : add to 'objects_segment_ids' the matching overlap segment_lane_ids  that are
+        #  in the intersection. This can be determined from SceneRoadSegment.SceneRoadIntersection.a_i_lane_overlaps
 
+
+        # TODO: This structure can overwrite the rel_lane in case of multiple rel_lanes
+        # (should be changed when dealing with merges)
         # for objects on non-adjacent lane set relative_lanes[i] = None
         rel_lanes_per_obj = np.full(len(dynamic_objects), None)
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
@@ -115,6 +120,8 @@ class BehavioralGridState(BehavioralState):
             # find all dynamic objects that belong to the current unified frame
             relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
             rel_lanes_per_obj[relevant_objects] = rel_lane
+
+        # TODO (for split projections): Modify/add to object_maps_states to reflect the change in the dynamic_objects
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
@@ -196,7 +203,7 @@ class BehavioralGridState(BehavioralState):
         extended_lane_frames = {}
         for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
             try:
-                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
+                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, navigation_plan=nav_plan)
             except MappingException:
