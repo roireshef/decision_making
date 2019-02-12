@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum, Enum
 
 class MapLaneType(Enum):
 
@@ -162,14 +162,14 @@ class NominalPathPoint(Enum):
     
     
     
-class RoutePlanLaneSegmentAttr(Enum):
+class RoutePlanLaneSegmentAttr(IntEnum):
     CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus = 0
     CeSYS_e_RoutePlanLaneSegmentAttr_GMFA = 1
     CeSYS_e_RoutePlanLaneSegmentAttr_Construction = 2
     CeSYS_e_RoutePlanLaneSegmentAttr_Direction = 3
 
 
-class LaneMappingStatusType(Enum):
+class LaneMappingStatusType(IntEnum):
     CeSYS_e_LaneMappingStatusType_NotMapped = 0
     CeSYS_e_LaneMappingStatusType_HDMap = 1
     CeSYS_e_LaneMappingStatusType_MDMap = 2
@@ -180,7 +180,7 @@ class LaneMappingStatusType(Enum):
     CeSYS_e_LaneMappingStatusType_Obsolete = 128
     
 
-class MapLaneDirection(Enum):
+class MapLaneDirection(IntEnum):
     CeSYS_e_MapLaneDirection_SameAs_HostVehicle = 0
     CeSYS_e_MapLaneDirection_OppositeTo_HostVehicle = 1
     CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle = 2
@@ -188,7 +188,7 @@ class MapLaneDirection(Enum):
     CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle = 4
     CeSYS_e_MapLaneDirection_Right_AwayFrom_HostVehicle = 5
     
-class GMAuthorityType(Enum):
+class GMAuthorityType(IntEnum):
     CeSYS_e_GMAuthorityType_None = 0
     CeSYS_e_GMAuthorityType_RoadConstruction = 1
     CeSYS_e_GMAuthorityType_BadRoadCondition = 2
@@ -202,7 +202,7 @@ class GMAuthorityType(Enum):
     CeSYS_e_GMAuthorityType_Unknown = 10
 
 
-class LaneConstructionType(Enum):
+class LaneConstructionType(IntEnum):
     CeSYS_e_LaneConstructionType_Normal = 0
     CeSYS_e_LaneConstructionType_Blocked = 1
     CeSYS_e_LaneConstructionType_HalfBlocked = 2
