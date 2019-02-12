@@ -23,6 +23,7 @@ class CostBasedRoutePlanner(RoutePlanner):
     
     @staticmethod    
     def ConstructionZoneAttrBsdOccCost(ConstructionZoneAttr:LaneConstructionType): # Normalized cost (0 to 1). Current implementation is binary cost. 
+        #print("ConstructionZoneAttr ",ConstructionZoneAttr)
         if((ConstructionZoneAttr==LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or 
            (ConstructionZoneAttr==LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
             return 0
@@ -30,6 +31,7 @@ class CostBasedRoutePlanner(RoutePlanner):
     
     @staticmethod
     def LaneRouteDirAttrBsdOccCost(LaneRouteDirAttr:MapLaneDirection): # Normalized cost (0 to 1). Current implementation is binary cost. 
+        #print("LaneRouteDirAttr ",LaneRouteDirAttr)
         if((LaneRouteDirAttr==MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or 
            (LaneRouteDirAttr==MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
             (LaneRouteDirAttr==MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
@@ -38,19 +40,28 @@ class CostBasedRoutePlanner(RoutePlanner):
     
     @staticmethod
     def GMAuthorityAttrBsdOccCost(GMAuthorityAttr:GMAuthorityType): # Normalized cost (0 to 1). Current implementation is binary cost. 
+        #print("GMAuthorityAttr ",GMAuthorityAttr)
         if(GMAuthorityAttr==GMAuthorityType.CeSYS_e_GMAuthorityType_None):
             return 0
         return 1
     
     @staticmethod
-    def LaneAttrBsdOccCost(EnumIdx:int,LaneAttr:int): # Equivalent of a switch-case logic 
-        switcher = { 
-        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus: CostBasedRoutePlanner.MappingStatusAttrBsdOccCost(LaneAttr) , 
-        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA: CostBasedRoutePlanner.GMAuthorityAttrBsdOccCost(LaneAttr), 
-        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction: CostBasedRoutePlanner.ConstructionZoneAttrBsdOccCost(LaneAttr), 
-        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction: CostBasedRoutePlanner.LaneRouteDirAttrBsdOccCost(LaneAttr),
-        } 
-        return switcher[RoutePlanLaneSegmentAttr(EnumIdx)]
+    def LaneAttrBsdOccCost(EnumIdx:int,LaneAttr:int): # if else logic 
+        if(EnumIdx==RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus):
+            return CostBasedRoutePlanner.MappingStatusAttrBsdOccCost(LaneAttr)
+        elif(EnumIdx==RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA):
+            return CostBasedRoutePlanner.GMAuthorityAttrBsdOccCost(LaneAttr)
+        elif(EnumIdx==RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction):
+            return CostBasedRoutePlanner.ConstructionZoneAttrBsdOccCost(LaneAttr)
+        elif(EnumIdx==RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction):
+            return CostBasedRoutePlanner.LaneRouteDirAttrBsdOccCost(LaneAttr)
+        else:
+           print("Error EnumIdx not supported ",EnumIdx)
+           return 0
+        
+
+    
+
 
     def plan(self, RouteData: RoutePlannerInputData) -> DataRoutePlan: # TODO: Set function annotaion
         """Add comments"""
@@ -79,13 +90,18 @@ class CostBasedRoutePlanner(RoutePlanner):
                     LaneAttrConf = lanesegData.a_cmp_lane_attribute_confidences[LaneAttrIdx]
                     if (LaneAttrConf<0.7):
                         continue
-                    LaneOccCost = LaneOccCost + CostBasedRoutePlanner.LaneAttrBsdOccCost(LaneAttrIdx,LaneAttr)
+                    LaneAttrOccCost = CostBasedRoutePlanner.LaneAttrBsdOccCost(LaneAttrIdx,LaneAttr)
+                    #print("LaneAttrConf ",LaneAttrConf," LaneAttrIdx",LaneAttrIdx," LaneAttr ",LaneAttr," LaneAttrOccCost ",LaneAttrOccCost)
+                    LaneOccCost = LaneOccCost + LaneAttrOccCost
                 # Normalize to the [0, 1] range
                 LaneOccCost = max(min(LaneOccCost,1),0)
+                
                 
                 # -------------------------------------------
                 # Calculate lane end costs
                 # -------------------------------------------
+                
+                
                 if (reverseroadsegidx==0) : # the last road segment in the route; put all endcosts to 0
                     LaneEndCost = 0
                 elif (LaneOccCost==1):
@@ -94,10 +110,11 @@ class CostBasedRoutePlanner(RoutePlanner):
                     # as we don't know the next segment. 
                     MinDwnStreamLaneOccCost = 1
                     # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
-                    # At this point assign the end cost of current lane = Min occ costs of all downstream lanes
+                    # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
                     for Idx in range(lanesegData.e_Cnt_downstream_lane_count): # search through all downstream lanes to to current lane
                         DownStreamlanesegID = lanesegData.as_downstream_lanes[Idx]
-                        NextRoadSegLanes = RouteData.route_lanesegments[reverseroadsegidx-1] # All lane IDs in next roadsegment in route
+                        NextRoadSegLanes = RouteData.route_lanesegments[prev_roadsegID] # All lane IDs in downstream roadsegment in route to the 
+                        #currently indexed roadsegment in the loop
                         if DownStreamlanesegID in NextRoadSegLanes: # verify if the downstream lane is in the route
                             DownStreamlanesegIdx = NextRoadSegLanes.index(DownStreamlanesegID)
                             DownStreamLaneOccCost = as_route_plan_lane_segments[reverseroadsegidx-1][DownStreamlanesegIdx].e_cst_lane_occupancy_cost
@@ -105,6 +122,7 @@ class CostBasedRoutePlanner(RoutePlanner):
                             # confirm -> roadsegidx+1 in the RoutPlan == reverseroadsegidx-1 in the reversed RoutePlan
                             MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost,DownStreamLaneOccCost)
                     LaneEndCost = MinDwnStreamLaneOccCost
+                prev_roadsegID = roadsegID
                             
                 CurrRoutePlanLaneSegment = RoutePlanLaneSegment(e_i_lane_segment_id= lanesegID, \
                     e_cst_lane_occupancy_cost = LaneOccCost,e_cst_lane_end_cost = LaneEndCost)
