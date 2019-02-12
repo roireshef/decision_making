@@ -131,7 +131,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.warning("StateHasNotArrivedYet was raised. skipping planning.")
 
         except MsgDeserializationError:
-            self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
+            self.logger.warning("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
                               traceback.format_exc())
 
         # TODO - we need to handle this as an emergency.
