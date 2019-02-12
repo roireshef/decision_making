@@ -102,7 +102,7 @@ class BehavioralPlanningFacade(DmModule):
 
         except BehavioralPlanningException as e:
             self.logger.warning(e)
-            
+
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: %s. Trace: %s" %
                                  (e, traceback.format_exc()))
