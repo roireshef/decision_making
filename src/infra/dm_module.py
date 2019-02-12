@@ -12,11 +12,11 @@ class DmModule:
     """
     def __init__(self, pubsub, logger):
         # type: (PubSub, Logger) -> None
-        self.pubsub = pubsub
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging interface.
         """
+        self.pubsub = pubsub
         self.logger = logger
         self.logger.info("initializing module: " + self.__class__.__name__)
 
