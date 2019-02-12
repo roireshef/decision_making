@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, EPS, LAT_ACC_LIMITS, BP_ACTION_T_LIMITS, \
-    DX_OFFSET_MIN, DX_OFFSET_MAX
+    DX_OFFSET_MIN, DX_OFFSET_MAX, SAFETY_T_D_GRID_SIZE
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLongitudinalPosition, RelativeLane
@@ -126,10 +126,6 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
     """
     This filter checks full safety (by RSS) toward the followed vehicle
     """
-    def __init__(self):
-        self.time_sum = 0
-        self.time_num = 0
-
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[ActionSpec]:
         """
         This filter checks for each action_spec if it's trajectory is safe w.r.t. the followed vehicle.
@@ -137,14 +133,7 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean array of size len(action_specs)
         """
-        import time
-        st = time.time()
         safe_specs = FilterUnsafeExpectedTrajectory._check_actions_safety(action_specs, behavioral_state)
-        if (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT) in behavioral_state.road_occupancy_grid:
-            self.time_sum += time.time() - st
-            self.time_num += 1
-            if self.time_num % 10 == 1:
-                print('safety time: %f' % (self.time_sum/self.time_num))
         return [spec if safe_specs[i] else None for i, spec in enumerate(action_specs)]
 
     @staticmethod
@@ -187,19 +176,19 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
 
             # duplicate initial frenet states and create target frenet states based on the specifications
             zeros = np.zeros_like(specs_t)
-            init_fstates = np.tile(ego_init_fstate, len(specs_t)).reshape(-1, 6)
+            init_fstates = np.tile(ego_init_fstate, len(specs_t)).reshape(-1, len(ego_init_fstate))
             goal_fstates = np.c_[specs_s, specs_v, zeros, zeros, zeros, zeros]
 
             # calculate A_inv_d as a concatenation of inverse matrices for maximal T_d (= T_s) and for minimal T_d
             A_inv_s = QuinticPoly1D.inverse_time_constraints_tensor(specs_t)
-            T_d_num = 3
+            T_d_num = SAFETY_T_D_GRID_SIZE
             T_d_arr = FilterUnsafeExpectedTrajectory._calc_T_d_grid(ego_init_fstate[FS_DX:], specs_t, T_d_num)
             A_inv_d = QuinticPoly1D.inverse_time_constraints_tensor(T_d_arr)
 
             # create ftrajectories_s and duplicated ftrajectories_d (for max_T_d and min_T_d)
             constraints_s = np.concatenate((init_fstates[:, :FS_DX], goal_fstates[:, :FS_DX]), axis=1)
             constraints_d = np.concatenate((init_fstates[:, FS_DX:], goal_fstates[:, FS_DX:]), axis=1)
-            duplicated_constraints_d = np.tile(constraints_d, T_d_num).reshape(-1, 6)
+            duplicated_constraints_d = np.tile(constraints_d, T_d_num).reshape(-1, init_fstates.shape[-1])
             poly_coefs_s = QuinticPoly1D.zip_solve(A_inv_s, constraints_s)
             poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, duplicated_constraints_d)
             time_points = np.arange(0, np.max(specs_t) + EPS, TRAJECTORY_TIME_RESOLUTION)
