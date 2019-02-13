@@ -32,6 +32,7 @@ def get_logger_for_testing():
 
 @pytest.fixture
 def rm_logfile():
+
     try:
         os.remove(get_log_file())
     except OSError:
@@ -39,9 +40,12 @@ def rm_logfile():
 
 
 def checkFile():
+
     print('log_file:' + str(Path(get_log_file()).exists()))
 
+
 def print_log_content():
+
     print('*********LOG*********')
     with open(get_log_file(),'r') as lf:
         for l in lf:
@@ -49,15 +53,16 @@ def print_log_content():
     print('********END-LOG*********')
 
 
-
 def get_loglines():
+
     sleep(1)  # waiting for logger to end
-    #print_log_content()
+    # print_log_content()
     with open(get_log_file(), 'r') as log_file_recs:
-        return [eval(ll.replace('"','').split('data:')[1].rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST') !=-1 and ll.find('data') !=-1]
+        return [eval(ll.replace('"', '').split('data:')[1].rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST') != -1 and ll.find('data') != -1]
 
 
 def test_MetricLogger_simpleoutput_OutputsToLogFile():
+
     simple_message = 'TEST Just a simple message'
     try:
         logger = get_logger_for_testing()
@@ -71,12 +76,16 @@ def test_MetricLogger_simpleoutput_OutputsToLogFile():
 
 
 def test_MetricLogger_withAutobinding_correctReport():
+
     binded_message = 'TEST Message with args: %d and binded data'
+
     try:
         logger = get_logger_for_testing()
         logger.report(binded_message, 3, a='arg1', b='arg2')
+
     except:
         pytest.fail("Exception was thrown")
+
     assert get_loglines()[0]['message'] == binded_message % 3
     assert get_loglines()[0]['TEST_a'] == 'arg1'
     assert get_loglines()[0]['TEST_b'] == 'arg2'
@@ -85,25 +94,32 @@ def test_MetricLogger_withAutobinding_correctReport():
 
 
 def test_MetricLogger_simpleBinding_correctReport():
+
     try:
+
         logger = get_logger_for_testing()
         logger.bind(data={'x': 10})
         logger.report()
+
     except:
         pytest.fail("Exception was thrown")
+
     assert get_loglines()[0]['TEST_data'] == {'x': 10}
     AV_Logger.shutdown_logger()
     sleep(1)
 
 
 def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
+
     try:
         logger = get_logger_for_testing()
         logger.bind(a=1, b=2)
         logger.report('TEST just a message')
         logger.report('TEST just another message 1')
+
     except:
         pytest.fail("Exception was thrown")
+
     assert get_loglines()[0]['message'] == 'TEST just a message'
     assert get_loglines()[0]['TEST_a'] == 1
     assert get_loglines()[0]['TEST_b'] == 2
@@ -117,6 +133,7 @@ def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
 
 
 def test_MetricLogger_unbinding():
+
     try:
         logger = get_logger_for_testing()
         logger.bind(a='a', b='b')
@@ -124,6 +141,7 @@ def test_MetricLogger_unbinding():
         logger.report('TEST message with binding')
         logger.unbind('a', 'b')
         logger.report('TEST without binding')
+
     except:
         pytest.fail("Exception was thrown")
 
