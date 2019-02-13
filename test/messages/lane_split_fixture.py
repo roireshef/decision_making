@@ -183,8 +183,7 @@ def scene_static_straight():
                                                   e_Cnt_right_boundary_points_count=1,
                                                   as_right_boundary_points=[right_boundary_point],
                                                   e_i_downstream_road_intersection_id=0,
-                                                  e_Cnt_lane_coupling_count=0,
-                                                  as_lane_coupling=[])
+                                                  e_Cnt_lane_coupling_count=0)
             scene_lane_segments.append(scene_lane_segment)    
             lane_seg_idx += 1
 
@@ -320,8 +319,7 @@ def add_lane_split(scene_static: SceneStatic, road_seg_split_idx: int):
                                               e_Cnt_right_boundary_points_count=1,
                                               as_right_boundary_points=[right_boundary_point],
                                               e_i_downstream_road_intersection_id=0,
-                                              e_Cnt_lane_coupling_count=0,
-                                              as_lane_coupling=[])
+                                              e_Cnt_lane_coupling_count=0)
         scene_lane_segments.append(scene_lane_segment) 
 
     scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_segment_id,

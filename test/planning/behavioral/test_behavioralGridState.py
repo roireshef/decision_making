@@ -35,3 +35,29 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         target_gff_fstate = behavioral_grid_state.extended_lane_frames[rel_lane].convert_from_segment_state(
             map_state.lane_fstate, map_state.lane_id)
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
+
+
+def test_overloadDynamicObject_createsCorrectNumberOfPseudoObjects(intersection_state_with_sorrounding_objects):
+    """
+    Tests that all vehicles on intersections are being generated
+    """
+    overloaded_objects = BehavioralGridState._overload_dynamic_objects(dynamic_objects=intersection_state_with_sorrounding_objects.dynamic_objects)
+    vehicles_on_intersection = []
+    assert len(overloaded_objects) == len(intersection_state_with_sorrounding_objects.dynamic_objects) + len(vehicles_on_intersection)
+
+
+def test_overloadDynamicObject_createsCorrectPseudoObjects(intersection_state_with_sorrounding_objects):
+    """
+    Tests that all vehicles on intersections are being generated
+    """
+    overloaded_objects = BehavioralGridState._overload_dynamic_objects(dynamic_objects=
+                                                           intersection_state_with_sorrounding_objects.dynamic_objects)
+    vehicles_on_intersection = []
+    for i in range(len(intersection_state_with_sorrounding_objects.dynamic_objects), len(overloaded_objects)):
+        assert overloaded_objects[i].map_state.lane_fstate is None
+        assert overloaded_objects[i].map_state.lane_id == vehicles_on_intersection[i] #change to test contains
+
+
+
+
+

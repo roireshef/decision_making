@@ -4,8 +4,10 @@ import numpy as np
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
     MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
-    MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
+    MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection, SceneRoadIntersection, LaneOverlap, OverlapType
 from decision_making.src.planning.types import FP_SX, FP_DX
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.utils.map_utils import MapUtils
 
 from mapping.src.exceptions import NextRoadNotFound
 from mapping.src.model.map_api import MapAPI
@@ -37,6 +39,24 @@ def scene_static_no_split():
 def scene_static():
     MapService.initialize('PG_split.bin')
     return create_scene_static_from_map_api(MapService.get_instance())
+
+@pytest.fixture
+def scene_static_with_intersections():
+    MapService.initialize('PG_split.bin')
+    scene_static = create_scene_static_from_map_api(MapService.get_instance())
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    MapUtils.get_road_segment(21).e_e_road_segment_type = MapRoadSegmentType.Intersection
+    intersection21 = SceneRoadIntersection(21, 1, [LaneOverlap(210, 211, OverlapType.CeSYS_e_OverlapType_RIGHT_SPLIT)])
+    scene_static.s_Data.as_scene_road_intersection.append(intersection21)
+    return scene_static
+#    for road_segement in scene_static.s_Data.as_scene_road_segment:
+#        print('**')
+#        print(road_segement.e_i_road_segment_id)
+#        print(road_segement.e_e_road_segment_type)
+#        print(road_segement.a_i_lane_segment_ids)
+#
+#    for intersection in scene_static.s_Data.as_scene_road_intersection:
+
 
 
 def create_scene_static_from_map_api(map_api: MapAPI):
@@ -144,8 +164,7 @@ def create_scene_static_from_map_api(map_api: MapAPI):
                                                     e_Cnt_right_boundary_points_count=len(right_boundry_point),
                                                     as_right_boundary_points=right_boundry_point,
                                                     e_i_downstream_road_intersection_id=0,
-                                                    e_Cnt_lane_coupling_count=0,
-                                                    as_lane_coupling=[]))
+                                                    e_Cnt_lane_coupling_count=0))
 
     header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
     map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0, 0))

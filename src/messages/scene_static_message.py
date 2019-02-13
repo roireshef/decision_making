@@ -1,15 +1,23 @@
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
-    TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
-    TsSYSSceneLaneSegment, TsSYSLaneSegmentConnectivity
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSSceneStatic
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_AdjacentLane import TsSYSAdjacentLane
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_BoundaryPoint import TsSYSBoundaryPoint
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import \
     TsSYSDataSceneStatic
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicStatus import TsSYSDynamicStatus
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicTrafficFlowControl import \
+    TsSYSDynamicTrafficFlowControl
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_LaneOverlap import TsSYSLaneOverlap
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_LaneSegmentConnectivity import \
+    TsSYSLaneSegmentConnectivity
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneLaneSegment import TsSYSSceneLaneSegment
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadIntersection import \
     TsSYSSceneRoadIntersection
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegment import \
     TsSYSSceneRoadSegment
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneStatic import TsSYSSceneStatic
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_StaticTrafficFlowControl import \
+    TsSYSStaticTrafficFlowControl
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 from enum import Enum
@@ -178,6 +186,14 @@ class NominalPathPoint(Enum):
     CeSYS_NominalPathPoint_e_l_right_offset = 9
 
 
+class OverlapType(Enum):
+    CeSYS_e_OverlapType_CROSS = 0
+    CeSYS_e_OverlapType_LEFT_MERGE = 1
+    CeSYS_e_OverlapType_RIGHT_MERGE = 2
+    CeSYS_e_OverlapType_LEFT_SPLIT = 3
+    CeSYS_e_OverlapType_RIGHT_SPLIT = 4
+
+
 class SceneRoadSegment(PUBSUB_MSG_IMPL):
     e_i_road_segment_id = int
     e_i_road_id = int
@@ -247,53 +263,61 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.a_i_downstream_road_segment_ids[:pubsubMsg.e_Cnt_downstream_segment_count])
 
 
+class LaneOverlap(PUBSUB_MSG_IMPL):
+    e_i_first_lane_segment_id = int
+    e_i_second_lane_segment_id = int
+    e_e_overlap_type = OverlapType
+
+    def __init__(self, e_i_first_lane_segment_id: int, e_i_second_lane_segment_id: int,
+                 e_e_overlap_type: OverlapType) -> None:
+        self.e_e_overlap_type = e_e_overlap_type
+        self.e_i_first_lane_segment_id = e_i_first_lane_segment_id
+        self.e_i_second_lane_segment_id = e_i_second_lane_segment_id
+
+    def serialize(self) -> TsSYSLaneOverlap:
+        pubsub_msg = TsSYSLaneOverlap()
+        pubsub_msg.e_i_first_lane_segment_id = self.e_i_first_lane_segment_id
+        pubsub_msg.e_i_second_lane_segment_id = self.e_i_second_lane_segment_id
+        pubsub_msg.e_e_overlap_type = self.e_e_overlap_type
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg: TsSYSLaneOverlap):
+        return cls(pubsubMsg.e_i_first_lane_segment_id, pubsubMsg.e_i_second_lane_segment_id,
+                   pubsubMsg.e_e_overlap_type)
+
+
 class SceneRoadIntersection(PUBSUB_MSG_IMPL):
     e_i_road_intersection_id = int
-    e_Cnt_lane_coupling_count = int
-    a_i_lane_coupling_segment_ids = np.ndarray
-    e_Cnt_intersection_road_segment_count = int
-    a_i_intersection_road_segment_ids = np.ndarray
+    e_Cnt_lane_overlaps_count = int
+    as_lane_overlaps = List[LaneOverlap]
 
     def __init__(self, e_i_road_intersection_id: int,
-                 e_Cnt_lane_coupling_count: int, a_i_lane_coupling_segment_ids: np.ndarray,
-                 e_Cnt_intersection_road_segment_count: int, a_i_intersection_road_segment_ids: np.ndarray) -> None:
+                 e_Cnt_lane_overlaps_count: int, as_lane_overlaps: List[LaneOverlap]) -> None:
         """
         Road-intersection information
         :param e_i_road_intersection_id: ID of this road-intersection
         :param e_Cnt_lane_coupling_count: Total number of lane-couplings inside this road-intersection
         :param a_i_lane_coupling_segment_ids: Lane-couplings inside this road-intersection: all lane-couplings inside
         a road-intersection are non-virtual, and are equivalent to lane-segments.
-        :param e_Cnt_intersection_road_segment_count: Total number of road-segments inside this road-intersection
-        :param a_i_intersection_road_segment_ids: Road-segments inside this road-intersection. A road-intersection
-        contains all the road-segments going through it, e.g. in a 4-way intersection, the road-intersection will
-        contain both the North/South and East/West road-segments.
         """
         self.e_i_road_intersection_id = e_i_road_intersection_id
-        self.e_Cnt_lane_coupling_count = e_Cnt_lane_coupling_count
-        self.a_i_lane_coupling_segment_ids = a_i_lane_coupling_segment_ids
-        self.e_Cnt_intersection_road_segment_count = e_Cnt_intersection_road_segment_count
-        self.a_i_intersection_road_segment_ids = a_i_intersection_road_segment_ids
+        self.e_Cnt_lane_overlaps_count = e_Cnt_lane_overlaps_count
+        self.as_lane_overlaps = as_lane_overlaps
 
     def serialize(self) -> TsSYSSceneRoadIntersection:
         pubsub_msg = TsSYSSceneRoadIntersection()
-
         pubsub_msg.e_i_road_intersection_id = self.e_i_road_intersection_id
-
-        pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
-        pubsub_msg.a_i_lane_coupling_segment_ids = self.a_i_lane_coupling_segment_ids
-
-        pubsub_msg.e_Cnt_intersection_road_segment_count = self.e_Cnt_intersection_road_segment_count
-        pubsub_msg.a_i_intersection_road_segment_ids = self.a_i_intersection_road_segment_ids
+        pubsub_msg.e_Cnt_lane_overlaps_count = self.e_Cnt_lane_overlaps_count
+        pubsub_msg.as_lane_overlaps = self.as_lane_overlaps
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneRoadIntersection):
         return cls(pubsubMsg.e_i_road_intersection_id,
-                   pubsubMsg.e_Cnt_lane_coupling_count,
-                   pubsubMsg.a_i_lane_coupling_segment_ids[:pubsubMsg.e_Cnt_lane_coupling_count],
-                   pubsubMsg.e_Cnt_intersection_road_segment_count,
-                   pubsubMsg.a_i_intersection_road_segment_ids[:pubsubMsg.e_Cnt_intersection_road_segment_count])
+                   pubsubMsg.e_Cnt_lane_overlaps_count,
+                   pubsubMsg.as_lane_overlaps[:pubsubMsg.e_Cnt_lane_overlaps_count])
 
 
 class AdjacentLane(PUBSUB_MSG_IMPL):
@@ -365,48 +389,6 @@ class BoundaryPoint(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSBoundaryPoint):
         return cls(pubsubMsg.e_e_lane_marker_type, pubsubMsg.e_l_s_start, pubsubMsg.e_l_s_end)
 
-
-class LaneCoupling(PUBSUB_MSG_IMPL):
-    e_i_lane_segment_id = int
-    e_i_road_intersection_id = int
-    e_i_downstream_lane_segment_id = int
-    e_i_upstream_lane_segment_id = int
-    e_e_maneuver_type = ManeuverType
-
-    def __init__(self, e_i_lane_segment_id: int, e_i_road_intersection_id: int, e_i_downstream_lane_segment_id: int,
-                 e_i_upstream_lane_segment_id: int, e_e_maneuver_type: ManeuverType):
-        """
-        Lane-coupling information. Generally, a lane-coupling connects two lane-segments with the same moving direction.
-        'Virtual' lane-couplings (e.g. between two lane-segments on a straight road) have ID's of 0.
-        Non-virtual lane-couplings (e.g. inside a road-intersection) are equivalent to lane-segments and have non-zero ID's.
-        :param e_i_lane_segment_id: ID of this lane-coupling/lane-segment. ID=0 if this is a virtual lane-coupling
-        :param e_i_road_intersection_id: ID of the road-intersection that this lane-coupling is in. ID=0 if N/A.
-        :param e_i_downstream_lane_segment_id: ID of the lane-segment downstream from this lane-coupling
-        :param e_i_upstream_lane_segment_id: ID of the lane-segment upstream from this lane-coupling
-        :param e_e_maneuver_type:
-        """
-        self.e_i_lane_segment_id = e_i_lane_segment_id
-        self.e_i_road_intersection_id = e_i_road_intersection_id
-        self.e_i_downstream_lane_segment_id = e_i_downstream_lane_segment_id
-        self.e_i_upstream_lane_segment_id = e_i_upstream_lane_segment_id
-        self.e_e_maneuver_type = e_e_maneuver_type
-
-    def serialize(self) -> TsSYSLaneCoupling:
-        pubsub_msg = TsSYSLaneCoupling()
-
-        pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
-        pubsub_msg.e_i_road_intersection_id = self.e_i_road_intersection_id
-        pubsub_msg.e_i_downstream_lane_segment_id = self.e_i_downstream_lane_segment_id
-        pubsub_msg.e_i_upstream_lane_segment_id = self.e_i_upstream_lane_segment_id
-        pubsub_msg.e_e_maneuver_type = self.e_e_maneuver_type.value
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSLaneCoupling):
-        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_intersection_id,
-                   pubsubMsg.e_i_downstream_lane_segment_id, pubsubMsg.e_i_upstream_lane_segment_id,
-                   ManeuverType(pubsubMsg.e_e_maneuver_type))
 
 
 class StaticTrafficFlowControl(PUBSUB_MSG_IMPL):
@@ -533,7 +515,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     as_right_boundary_points = List[BoundaryPoint]
     e_i_downstream_road_intersection_id = int
     e_Cnt_lane_coupling_count = int
-    as_lane_coupling = List[LaneCoupling]
 
     def __init__(self, e_i_lane_segment_id: int, e_i_road_segment_id: int, e_e_lane_type: MapLaneType,
                  e_Cnt_static_traffic_flow_control_count: int,
@@ -547,8 +528,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
                  e_v_nominal_speed: float, e_Cnt_nominal_path_point_count: int, a_nominal_path_points: np.ndarray,
                  e_Cnt_left_boundary_points_count: int, as_left_boundary_points: List[BoundaryPoint],
                  e_Cnt_right_boundary_points_count: int, as_right_boundary_points: List[BoundaryPoint],
-                 e_i_downstream_road_intersection_id: int, e_Cnt_lane_coupling_count: int,
-                 as_lane_coupling: List[LaneCoupling]):
+                 e_i_downstream_road_intersection_id: int, e_Cnt_lane_coupling_count: int):
         """
         Lane-segment information
         :param e_i_lane_segment_id: ID of this lane-segment
@@ -576,7 +556,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         :param as_right_boundary_points: Points that specify the right-boundary for this lane-segment
         :param e_i_downstream_road_intersection_id: ID of the Road-Intersection that is immediately downstream from this lane-segment (0 if not applicable)
         :param e_Cnt_lane_coupling_count: Total number of lane-couplings for this lane-segment
-        :param as_lane_coupling: Lane-couplings for this lane-segment
         """
         self.e_i_lane_segment_id = e_i_lane_segment_id
         self.e_i_road_segment_id = e_i_road_segment_id
@@ -602,7 +581,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         self.as_right_boundary_points = as_right_boundary_points
         self.e_i_downstream_road_intersection_id = e_i_downstream_road_intersection_id
         self.e_Cnt_lane_coupling_count = e_Cnt_lane_coupling_count
-        self.as_lane_coupling = as_lane_coupling
 
     def serialize(self) -> TsSYSSceneLaneSegment:
         pubsub_msg = TsSYSSceneLaneSegment()
@@ -650,10 +628,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_i_downstream_road_intersection_id = self.e_i_downstream_road_intersection_id
 
-        pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
-        for i in range(pubsub_msg.e_Cnt_lane_coupling_count):
-            pubsub_msg.as_lane_coupling[i] = self.as_lane_coupling[i].serialize()
-
         return pubsub_msg
 
     @classmethod
@@ -695,10 +669,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_right_boundary_points_count):
             as_right_boundary_points.append(BoundaryPoint.deserialize(pubsubMsg.as_right_boundary_points[i]))
 
-        as_lane_coupling = list()
-        for i in range(pubsubMsg.e_Cnt_lane_coupling_count):
-            as_lane_coupling.append(LaneCoupling.deserialize(pubsubMsg.as_lane_coupling[i]))
-
         return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, pubsubMsg.e_e_lane_type,
                    pubsubMsg.e_Cnt_static_traffic_flow_control_count, as_static_traffic_flow_control,
                    pubsubMsg.e_Cnt_dynamic_traffic_flow_control_count, as_dynamic_traffic_flow_control,
@@ -710,8 +680,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_nominal_path_point_count, a_nominal_path_points,
                    pubsubMsg.e_Cnt_left_boundary_points_count, as_left_boundary_points,
                    pubsubMsg.e_Cnt_right_boundary_points_count, as_right_boundary_points,
-                   pubsubMsg.e_i_downstream_road_intersection_id,
-                   pubsubMsg.e_Cnt_lane_coupling_count, as_lane_coupling)
+                   pubsubMsg.e_i_downstream_road_intersection_id)
 
 
 class DataSceneStatic(PUBSUB_MSG_IMPL):

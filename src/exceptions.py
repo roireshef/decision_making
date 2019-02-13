@@ -96,6 +96,10 @@ class AmbiguousNavigationPlan(MappingException):
     pass
 
 
+class IntersectionNotFound(MappingException):
+    pass
+
+
 class RoadNotFound(MappingException):
     pass
 

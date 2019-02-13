@@ -10,9 +10,9 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
-    UpstreamLaneNotFound
+    UpstreamLaneNotFound, IntersectionNotFound
 from mapping.src.service.map_service import MapService
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.static_scene_fixture import scene_static, scene_static_with_intersections
 from decision_making.test.messages.lane_split_fixture import scene_static_lane_split
 
 MAP_SPLIT = "PG_split.bin"
@@ -546,5 +546,24 @@ def test_getLaneFrenetFrame_isClose(scene_static: SceneStatic):
     assert np.isclose(lane_frenet.points, original_lane_frenet.points).all()
     assert np.isclose(lane_frenet.T, original_lane_frenet.T).all()
     assert np.isclose(lane_frenet.N, original_lane_frenet.N).all()
+
+
+def test_getIntersection_returnsIntersection(scene_static_with_intersections: SceneStatic):
+    intersection = MapUtils.get_intersection(21)
+    assert intersection is not None
+    assert len(intersection.as_lane_overlaps) == 1
+
+
+def test_getIntersection_throwsException(scene_static: SceneStatic):
+    try:
+        MapUtils.get_intersection(111)
+    except IntersectionNotFound as e:
+        return
+    assert False, "Should throw IntersectionNotFound"
+
+
+def test_getLaneSegmentOverlaps(scene_static: SceneStatic):
+    # TODO
+    pass
 
 
