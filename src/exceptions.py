@@ -30,17 +30,21 @@ class MsgSerializationError(Exception):
     pass
 
 
+class StateHasNotArrivedYet(Warning):
+    pass
+
+
 # TRAJECTORY PLANNING
 @six.add_metaclass(ABCMeta)
-class TrjajectoryPlanningException(Exception):
+class TrajectoryPlanningException(Exception):
     pass
 
 
-class NoValidTrajectoriesFound(TrjajectoryPlanningException):
+class NoValidTrajectoriesFound(TrajectoryPlanningException):
     pass
 
 
-class CouldNotGenerateTrajectories(TrjajectoryPlanningException):
+class CouldNotGenerateTrajectories(TrajectoryPlanningException):
     pass
 
 
