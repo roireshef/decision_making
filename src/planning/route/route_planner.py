@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
 from decision_making.src.messages.route_plan_message import DataRoutePlan
-from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticBase,DataNavigationPlan
+from decision_making.src.messages.scene_static_message import DataSceneStaticBase,DataNavigationPlan
 
 class RoutePlannerInputData():
         
@@ -18,11 +18,11 @@ class RoutePlannerInputData():
     
     def Update_DictData(self, Scene: DataSceneStaticBase):
         for i in range(Scene.e_Cnt_num_lane_segments):
-            self.LaneSegmentDict[Scene.as_scene_lane_segments[i].e_i_lane_segment_id] = \
-            Scene.as_scene_lane_segments[i]
+            e_i_lane_segment_id = Scene.as_scene_lane_segments[i].e_i_lane_segment_id
+            self.LaneSegmentDict[e_i_lane_segment_id] = Scene.as_scene_lane_segments[i]
         for i in range(Scene.e_Cnt_num_road_segments):
-            road_seg_id = Scene.as_scene_road_segment[i].e_i_road_segment_id
-            self.RoadSegmentDict[road_seg_id] = Scene.as_scene_road_segment[i]
+            e_i_road_segment_id = Scene.as_scene_road_segment[i].e_i_road_segment_id
+            self.RoadSegmentDict[e_i_road_segment_id] = Scene.as_scene_road_segment[i]
         
     def Update_RoutePlanData(self, Nav: DataNavigationPlan):
         for road_seg_idx in range(Nav.e_Cnt_num_road_segments):
