@@ -146,6 +146,7 @@ class RoutePlanSubscriber(DmModule):
 
     def _print_results(self, route_plan:RoutePlan, takeover_msg:Takeover) :
         
+        print("------------   ROUTE MESSAGE BEGIN  ---------------------")
         for i in range(route_plan.s_Data.e_Cnt_num_road_segments):
             print("ROAD SEGMENT: " , route_plan.s_Data.a_i_road_segment_ids[i], "\n")
             for j in range(route_plan.s_Data.a_Cnt_num_lane_segments[i]):
@@ -154,6 +155,8 @@ class RoutePlanSubscriber(DmModule):
                       "   Lane Occupancy Cost:  ", route_plan.s_Data.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost , "\n" )
 
         print("TAKEOVER FLAG:  ", takeover_msg.s_Data.e_b_is_takeover_needed , "\n")
+        print("------------   ROUTE MESSAGE END  ---------------------","\n\n")
+
 
 
     def _set_takeover_message_mock(self, route_plan:RoutePlan, state_mock:StateMock ) -> Takeover:
