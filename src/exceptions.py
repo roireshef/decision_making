@@ -104,6 +104,10 @@ class LaneNotFound(MappingException):
     pass
 
 
+class LaneCostNotFound(MappingException):
+    pass
+
+
 def raises(*e):
     # type: (Exception)
     """

@@ -2,19 +2,19 @@ from unittest.mock import patch
 
 import pytest
 import numpy as np
+from typing import Dict
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneStatic, NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
-    UpstreamLaneNotFound
+    UpstreamLaneNotFound, LaneCostNotFound
 from mapping.src.service.map_service import MapService
 from decision_making.test.messages.static_scene_fixture import scene_static
-from decision_making.test.messages.lane_split_fixture import scene_static_lane_split, route_plan_with_split, route_plan_without_split
+from decision_making.test.messages.lane_split_fixture import scene_static_lane_split, lane_cost_dict_with_split, lane_cost_dict_without_split
 
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
@@ -179,27 +179,62 @@ def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static: 
     assert len(sub_segments) == len(road_segment_ids)
 
 
-# def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static: SceneStatic):
-#     """
-#     test the method _advance_by_cost
-#         run lookahead_dist from the beginning until end of the map
-#         cost for each road segment should be the same, 0, as each is in the navigation plan
-#     """
-#     SceneStaticModel.get_instance().set_scene_static(scene_static)
-#     road_segment_ids = MapUtils.get_road_segment_ids()
-#     route_plan = Route
+def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static: SceneStatic):
+    """
+    test the method _advance_by_cost
+        run lookahead_dist from the beginning until end of the map
+        cost for each road segment should be the same, 0, as each is in the navigation plan
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    road_segment_ids = MapUtils.get_road_segment_ids()
 
-#     current_ordinal = 1
-#     # test lookahead distance until the end of the map: verify no exception is thrown
-#     cumulative_distance = 0
-#     for road_id in road_segment_ids:
-#         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
-#         cumulative_distance += MapUtils.get_lane_length(lane_id)
-#     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-#     sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)))
-#     assert len(sub_segments) == len(road_segment_ids)
+    # Give all lane segments first ordinal end cost of 0
+    lane_cost_dict = {
+        201:0, 211:0, 221:0, 231:0, 241:0, 251:0, 261:0, 271:0, 281:0, 291:0 
+    }
 
-def test_getCostsPerLanes(scene_static_lane_split: SceneStatic, route_plan_with_split: RoutePlan):
+    current_ordinal = 1
+    # test lookahead distance until the end of the map: verify no exception is thrown
+    cumulative_distance = 0
+    for road_id in road_segment_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
+        cumulative_distance += MapUtils.get_lane_length(lane_id)
+        print(road_id, ":", lane_id)
+    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
+    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)), lane_cost_dict)
+    assert len(sub_segments) == len(road_segment_ids)
+
+
+def test_advanceByCost_lookaheadCoversFullMap_validateExceptionThrownLaneCostNotFound(scene_static: SceneStatic):
+    """
+    test the method _advance_by_cost
+        run lookahead_dist from the beginning until end of the map
+        cost for each road segment should be the same, 0, as each is in the navigation plan
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    road_segment_ids = MapUtils.get_road_segment_ids()
+
+    # Give all lane segments first ordinal end cost of 0, missing lane cost for lane segment 221
+    lane_cost_dict = {
+        201:0, 211:0, 231:0, 241:0, 251:0, 261:0, 271:0, 281:0, 291:0 
+    }
+
+    current_ordinal = 1
+    # test lookahead distance until the end of the map: verify no exception is thrown
+    cumulative_distance = 0
+    for road_id in road_segment_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
+        cumulative_distance += MapUtils.get_lane_length(lane_id)
+        print(road_id, ":", lane_id)
+    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
+    try:
+        sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)), lane_cost_dict)
+        assert False
+    except LaneCostNotFound:
+        assert True
+
+
+def test_getCostsPerLanes(scene_static_lane_split: SceneStatic, lane_cost_dict_with_split: Dict[int, float]):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split)
     all_road_segment_ids = [30, 31, 32, 33, 34, 43]
 
@@ -214,29 +249,29 @@ def test_getCostsPerLanes(scene_static_lane_split: SceneStatic, route_plan_with_
 
     for road_id in all_road_segment_ids:
         current_lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_id)
-        cost_per_lane = MapUtils._get_costs_per_lanes(current_lane_ids, route_plan_with_split)
+        cost_per_lane = MapUtils._get_costs_per_lanes(current_lane_ids, lane_cost_dict_with_split)
         assert correct_cost_per_lane[road_id] == cost_per_lane
 
 
-def test_chooseNextLaneIDByCost_addSplit(scene_static_lane_split: SceneStatic, route_plan_with_split: RoutePlan):
+def test_chooseNextLaneIDByCost_addSplit(scene_static_lane_split: SceneStatic, lane_cost_dict_with_split: Dict[int, float]):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split)
     current_lane_id = 330
     next_lane_id = 430
 
-    least_cost_lane = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan_with_split)
+    least_cost_lane = MapUtils._choose_next_lane_id_by_cost(current_lane_id, lane_cost_dict_with_split)
     assert least_cost_lane == next_lane_id
 
 
-def test_chooseNextLaneIDByCost_ignoreSplit(scene_static_lane_split: SceneStatic, route_plan_without_split: RoutePlan):
+def test_chooseNextLaneIDByCost_ignoreSplit(scene_static_lane_split: SceneStatic, lane_cost_dict_without_split: Dict[int, float]):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split)
     current_lane_id = 330
     next_lane_id = 340
 
-    least_cost_lane = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan_without_split)
+    least_cost_lane = MapUtils._choose_next_lane_id_by_cost(current_lane_id, lane_cost_dict_without_split)
     assert least_cost_lane == next_lane_id    
 
 
-def test_advanceByCost_addSplit(scene_static_lane_split: SceneStatic, route_plan_with_split: RoutePlan):
+def test_advanceByCost_addSplit(scene_static_lane_split: SceneStatic, lane_cost_dict_with_split: Dict[int, float]):
     """
     Path is starred:    |  34 |_____
                         | *33  _*43_
@@ -259,11 +294,11 @@ def test_advanceByCost_addSplit(scene_static_lane_split: SceneStatic, route_plan
             cumulative_distance += MapUtils.get_lane_length(lane_id)
 
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, navigation_plan, route_plan_with_split)
+    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, navigation_plan, lane_cost_dict_with_split)
     assert len(sub_segments) == len(road_segment_ids) + 2   # Three more lane segments added in final road segment 
 
 
-def test_advanceByCost_ignoreSplit(scene_static_lane_split: SceneStatic, route_plan_without_split: RoutePlan):
+def test_advanceByCost_ignoreSplit(scene_static_lane_split: SceneStatic, lane_cost_dict_without_split: Dict[int, float]):
     """
     Path is starred:    | *34 |_____
                         | *33  _43__
@@ -283,7 +318,7 @@ def test_advanceByCost_ignoreSplit(scene_static_lane_split: SceneStatic, route_p
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, navigation_plan, route_plan_without_split)
+    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, navigation_plan, lane_cost_dict_without_split)
     assert len(sub_segments) == len(road_segment_ids)
 
 

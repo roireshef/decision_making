@@ -8,7 +8,6 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
@@ -62,7 +61,7 @@ class BehavioralGridState(BehavioralState):
 
     @classmethod
     @prof.ProfileFunction()
-    def create_from_state(cls, state: State, nav_plan: NavigationPlanMsg, route_plan: RoutePlan, logger: Logger):
+    def create_from_state(cls, state: State, nav_plan: NavigationPlanMsg, lane_cost_dict: Dict[int, float], logger: Logger):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -75,7 +74,7 @@ class BehavioralGridState(BehavioralState):
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan, route_plan)
+        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan, lane_cost_dict)
 
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
@@ -177,14 +176,14 @@ class BehavioralGridState(BehavioralState):
         return longitudinal_differences
 
     @staticmethod
-    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg, route_plan: RoutePlan) -> \
+    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg, lane_cost_dict: Dict[int, float]) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
         contain multiple original lane segments.
         :param state:
         :param nav_plan:
-        :param route_plan:
+        :param lane_cost_dict: dictionary of key lane ID to value end cost of traversing lane
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
@@ -208,7 +207,7 @@ class BehavioralGridState(BehavioralState):
                 extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, navigation_plan=nav_plan,
-                    route_plan=route_plan)
+                    lane_cost_dict=lane_cost_dict)
             except MappingException:
                 continue
 

@@ -12,7 +12,6 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -68,15 +67,16 @@ class CostBasedBehavioralPlanner:
         pass
 
     @abstractmethod
-    def plan(self, state: State, nav_plan: NavigationPlanMsg, route_plan: RoutePlan):
+    def plan(self, state: State, nav_plan: NavigationPlanMsg, lane_cost_dict: Dict[int, float]):
         """
-        Given current state, navigation plan, and route plan, plans the next semantic action to be carried away. This method makes
-        use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
+        Given current state, navigation plan, and lane cost dictionary, plans the next semantic action to be carried away. 
+        This method makes use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
         and evaluating actions. Its output will be further handled and used to create a trajectory in Trajectory Planner
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
         cost params and strategy.
         :param state: the current world state
         :param nav_plan:
+        :param lane_cost_dict: dictionary of key lane ID to value end cost of traversing lane
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
         pass

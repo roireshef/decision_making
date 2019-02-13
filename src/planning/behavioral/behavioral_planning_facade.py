@@ -1,6 +1,7 @@
 import time
 import traceback
 from logging import Logger
+from typing import Dict
 
 import numpy as np
 
@@ -23,7 +24,6 @@ from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 
-#added code
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
@@ -87,16 +87,18 @@ class BehavioralPlanningFacade(DmModule):
 
             navigation_plan = self._get_current_navigation_plan()
 
-            #added code
-            # get current route plan 
+            # Get current route plan, convert into nav plan array and lane end cost dictionary 
             route_plan = self._get_current_route_plan()
+            route_plan_lane_cost_dict = _create_route_plan_dictionary(route_plan)
+            route_plan_nav_plan = _create_route_plan_nav_plan(route_plan)   # TODO replace nav_plan with this
+
             # calculate the takeover message
             takeover_msg = self._set_takeover_message(route_plan , updated_state)
             # publish takeover message
             self._publish_takeover(takeover_msg)
 
-
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan, route_plan)
+            trajectory_params, samplable_trajectory, behavioral_visualization_message = \
+                self._planner.plan(updated_state, navigation_plan, route_plan_lane_cost_dict)
 
             self._last_trajectory = samplable_trajectory
 
@@ -136,14 +138,24 @@ class BehavioralPlanningFacade(DmModule):
         self.logger.debug("Received navigation plan: %s" % object_plan)
         return object_plan
 
-    #added code
     def _get_current_route_plan(self) -> RoutePlan:
         is_success, input_route_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], timeout=1)
         object_route_plan = RoutePlan.deserialize(input_route_plan)
         self.logger.debug("Received route plan: %s" % object_route_plan)
         return object_route_plan
 
-    #added code
+    @staticmethod
+    def _create_route_plan_dictionary(route_plan: RoutePlan) -> Dict(int, float):
+        lane_cost_dict: Dict[int, float] = {}
+        for road_seg in route_plan.s_Data.as_route_plan_lane_segments:
+                for rp_lane in road_seg:
+                    lane_cost_dict[rp_lane.e_i_lane_segment_id] = rp_lane.e_cst_lane_end_cost
+        return lane_cost_dict
+    
+    @staticmethod
+    def _create_route_plan_nav_plan(route_plan: RoutePlan) ->  np.ndarray:
+        return route_plan.s_Data.a_i_road_segment_ids
+
     def _set_takeover_message(self, route_plan:RoutePlan, state:State ) -> Takeover:
         
         # find current lane segment ID
@@ -193,7 +205,6 @@ class BehavioralPlanningFacade(DmModule):
 
         return takeover_msg
 
-
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
@@ -228,7 +239,6 @@ class BehavioralPlanningFacade(DmModule):
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_VISUALIZATION_LCM"], visualization_message.serialize())
 
-    #added code
     def _publish_takeover(self, takeover_msg:Takeover) -> None :
         self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TAKEOVER"], takeover_msg.serialize())
 

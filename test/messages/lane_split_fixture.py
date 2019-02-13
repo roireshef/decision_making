@@ -1,9 +1,9 @@
 import copy
 import pytest
 import numpy as np
+from typing import Dict
 
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStaticBase, DataSceneStaticGeometry, \
     DataNavigationPlan, SceneRoadSegment, MapRoadSegmentType, SceneLaneSegmentGeometry, SceneLaneSegmentBase, MapLaneType, \
     LaneSegmentConnectivity, ManeuverType, NominalPathPoint, MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
@@ -26,18 +26,14 @@ NominalPathPoints for both roads are set to count = NUM_NOM_PATH_POINTS, setting
 '''
 
 @pytest.fixture
-def route_plan_with_split():
-    header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
-    data_route = create_route_plan_split()
-    route_plan = RoutePlan(s_Header=header, s_Data=data_route)
-    return route_plan
+def lane_cost_dict_with_split():
+    lane_cost_dict = create_lane_cost_split()
+    return lane_cost_dict
 
 @pytest.fixture
-def route_plan_without_split():
-    header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
-    data_route = create_route_plan_no_split()
-    route_plan = RoutePlan(s_Header=header, s_Data=data_route)
-    return route_plan
+def lane_cost_dict_without_split():
+    lane_cost_dict = create_lane_cost_no_split()
+    return lane_cost_dict
     
 
 @pytest.fixture
@@ -67,76 +63,31 @@ START_EAST_X_VAL = -3e2
 START_NORTH_Y_VAL = -7e4
 
 # ---------------------------------------------------------
-# Sample route plans with and without split
+# Lane cost dictionaries with and without split
 # ---------------------------------------------------------
-def route_plan_lane_seg_list_free(id1, id2, id3):
-    return [RoutePlanLaneSegment(e_i_lane_segment_id=id1, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0),
-            RoutePlanLaneSegment(e_i_lane_segment_id=id2, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0),
-            RoutePlanLaneSegment(e_i_lane_segment_id=id3, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0)]
+def create_lane_cost_no_split():
+    lane_cost_dict: Dict[int, float] = {}
+    lane_cost_dict = {
+        300: 0, 301: 0, 302: 0,
+        310: 0, 311: 0, 312: 0,
+        320: 0, 321: 0, 322: 0,
+        330: 0, 331: 0, 332: 0,
+        340: 0, 341: 0, 342: 0,
+        430: 1, 431: 1, 432: 1
+    }
+    return lane_cost_dict
 
-def create_route_plan_no_split():
-    road_seg_ids = [30, 31, 32, 33, 34]
-    cnt_lane_segs = [3, 3, 3, 3, 3]
-    rp_lane_segs = []
-    rp_lane_segs.append(route_plan_lane_seg_list_free(300, 301, 302))
-    rp_lane_segs.append(route_plan_lane_seg_list_free(310, 311, 312))
-    rp_lane_segs.append(route_plan_lane_seg_list_free(320, 321, 322))
-    rp_lane_segs.append(route_plan_lane_seg_list_free(330, 331, 332))
-    rp_lane_segs.append(route_plan_lane_seg_list_free(340, 341, 342))
-
-    inner = []
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=430, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=431, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=432, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))    
-    rp_lane_segs.append(inner)
-
-    return DataRoutePlan(e_b_is_valid=True,
-                         e_Cnt_num_road_segments=len(road_seg_ids),
-                         a_i_road_segment_ids=np.ndarray(road_seg_ids),
-                         a_Cnt_num_lane_segments=np.ndarray(cnt_lane_segs),
-                         as_route_plan_lane_segments=rp_lane_segs)
-
-def create_route_plan_split():
-    road_seg_ids = [30, 31, 32, 33, 43]
-    cnt_lane_segs = [3, 3, 3, 3, 3]
-    rp_lane_segs = []
-    inner = []
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=300, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=301, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=302, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))    
-    rp_lane_segs.append(inner)
-    
-    inner = []
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=310, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=311, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=312, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))    
-    rp_lane_segs.append(inner)
-    
-    inner = []
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=320, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=321, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=322, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))    
-    rp_lane_segs.append(inner)
-
-    inner = []
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=330, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=0))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=331, e_cst_lane_occupancy_cost=0, e_cst_lane_end_cost=1))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=332, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))    
-    rp_lane_segs.append(inner)
-
-    inner = []
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=340, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=341, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))
-    inner.append(RoutePlanLaneSegment(e_i_lane_segment_id=342, e_cst_lane_occupancy_cost=1, e_cst_lane_end_cost=1))    
-    rp_lane_segs.append(inner)
-
-    rp_lane_segs.append(route_plan_lane_seg_list_free(430, 431, 432))
-
-    return DataRoutePlan(e_b_is_valid=True,
-                         e_Cnt_num_road_segments=len(road_seg_ids),
-                         a_i_road_segment_ids=np.ndarray(road_seg_ids),
-                         a_Cnt_num_lane_segments=np.ndarray(cnt_lane_segs),
-                         as_route_plan_lane_segments=rp_lane_segs)
+def create_lane_cost_split():
+    lane_cost_dict: Dict[int, float] = {}
+    lane_cost_dict = {
+        300: 0, 301: 0, 302: 1,
+        310: 0, 311: 0, 312: 1,
+        320: 0, 321: 0, 322: 1,
+        330: 0, 331: 1, 332: 1,
+        340: 1, 341: 1, 342: 1,
+        430: 0, 431: 0, 432: 0
+    }
+    return lane_cost_dict
 
 # ---------------------------------------------------------
 # Defines sample scene message
