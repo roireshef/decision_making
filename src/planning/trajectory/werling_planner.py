@@ -1,8 +1,11 @@
 import numpy as np
+from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from logging import Logger
 from typing import Tuple
+import rte.python.profiler as prof
 
-from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
+from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories, \
+    NoSafeTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS
@@ -161,28 +164,47 @@ class WerlingPlanner(TrajectoryPlanner):
                 np.sum(valid_lon_acc), np.sum(valid_lat_acc), np.sum(np.logical_and(valid_lon_acc, valid_lat_acc)),
                 worst_lat_acc_time_sample*self.dt, worst_lat_acc))
 
+        # filter trajectories by RSS safety
+        safe_traj_indices, safety_costs = \
+            self.filter_trajectories_by_safety(state, planning_time_points, ftrajectories_refiltered, reference_route)
+        # Throw an error if no safe trajectory is found
+        if not safe_traj_indices.any():
+            objects_curr_fstates = []
+            for dynamic_object in state.dynamic_objects:
+                objects_curr_fstates.append(dynamic_object._cached_map_state.lane_fstate)
+            raise NoSafeTrajectoriesFound("No safe trajectories found\ntime: %f, goal_frenet: %s\nstate: %s\n"
+                                          "ego_fstate: %s\nobjects_fstates: %s" %
+                                          (T_s, NumpyUtils.str_log(goal_frenet_state), str(state).replace('\n', ''),
+                                           NumpyUtils.str_log(ftrajectories[0, 0, :]),
+                                           NumpyUtils.str_log(np.array(objects_curr_fstates))))
+
+        ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
+        ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
+        refiltered_indices_safe = refiltered_indices[safe_traj_indices]
+        safety_costs_safe = safety_costs[safe_traj_indices]
+
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
         filtered_trajectory_costs = \
-            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
-                               global_time_sample, self._predictor, self.dt, reference_route)
+            self._compute_cost(ctrajectories_filtered_safe, ftrajectories_refiltered_safe, state, goal_frenet_state,
+                               safety_costs_safe, cost_params, global_time_sample, self._predictor, self.dt, reference_route)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
         self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
-            T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
+            T_d_vals[refiltered_indices_safe[sorted_filtered_idxs[0]]]))
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp_in_sec=state.ego_state.timestamp_in_sec,
             T_s=T_s,
-            T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
+            T_d=T_d_vals[refiltered_indices_safe[sorted_filtered_idxs[0]]],
             frenet_frame=reference_route,
-            poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
-            poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
+            poly_s_coefs=poly_coefs[refiltered_indices_safe[sorted_filtered_idxs[0]]][:6],
+            poly_d_coefs=poly_coefs[refiltered_indices_safe[sorted_filtered_idxs[0]]][6:]
         )
 
         return samplable_trajectory, \
-               ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
+               ctrajectories_filtered_safe[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
 
     @staticmethod
@@ -238,7 +260,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
-                      goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
+                      goal_in_frenet: FrenetState2D, non_weigted_safety_costs: np.array, params: TrajectoryCostParams, global_time_samples: np.ndarray,
                       predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
@@ -262,12 +284,15 @@ class WerlingPlanner(TrajectoryPlanner):
         dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
+        ''' RSS (truncated sigmoid) '''
+        safety_costs = TrajectoryPlannerCosts.compute_safety_costs(non_weigted_safety_costs)
+
         ''' point-wise costs: obstacles, deviations, jerk '''
         pointwise_costs = TrajectoryPlannerCosts.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
                                                                          global_time_samples, predictor, dt,
                                                                          reference_route)
 
-        return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
+        return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs + safety_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
     @staticmethod
@@ -388,3 +413,37 @@ class WerlingPlanner(TrajectoryPlanner):
         valid_traj_slice = horizons[:, FP_SX] >= horizons[:, FP_DX]
 
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]
+
+    @prof.ProfileFunction()
+    def filter_trajectories_by_safety(self, state: State, time_samples: np.ndarray,
+                                      ego_ftrajectories: FrenetTrajectories2D, reference_route: FrenetSerret2DFrame) \
+            -> [np.array, np.array]:
+        """
+        Filter frenet trajectories by RSS safety (both longitudinal & lateral).
+        The naive objects prediction in Frenet frame is used.
+        :param state: the current state
+        :param time_samples: time samples of ego trajectories
+        :param ego_ftrajectories: ego Frenet trajectories
+        :param reference_route: Frenet frame (reference lane center)
+        :return: indices of safe trajectories
+        """
+        objects_frenet_states_list = []
+        obj_sizes = []
+        for dynamic_object in state.dynamic_objects:
+            # Objects without map_state are too far (not affected by safety) and outside the reference frame.
+            # We don't care them here.
+            if dynamic_object._cached_map_state is not None:
+                objects_frenet_states_list.append(dynamic_object._cached_map_state.lane_fstate)
+                obj_sizes.append(dynamic_object.size)
+        if len(objects_frenet_states_list) == 0:
+            return np.array(range(ego_ftrajectories.shape[0])), np.zeros((ego_ftrajectories.shape[0]))
+
+        # create a matrix of all objects' predictions and a list of objects' sizes
+        obj_ftraj = self.predictor.predict_frenet_states(np.array(objects_frenet_states_list), time_samples)
+
+        # calculate RSS safety for all trajectories, all objects and all timestamps
+        safety_costs = SafetyUtils.get_safety_costs(ego_ftrajectories, state.ego_state.size, obj_ftraj, obj_sizes)
+        # AND over all objects and all timestamps
+        safe_trajectories = (safety_costs < 1).all(axis=(1, 2))
+
+        return np.where(safe_trajectories)[0], np.max(safety_costs, axis=(1, 2))

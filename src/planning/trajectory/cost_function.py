@@ -1,7 +1,7 @@
 import numpy as np
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST, SAFETY_SIGMOID_COST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
@@ -69,7 +69,7 @@ class TrajectoryPlannerCosts:
 
             # calculate objects' map_state
             # TODO: consider using map_state_on_host_lane
-            objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
+            objects_relative_fstates = np.array([obj._cached_map_state.lane_fstate
                                                  for obj in close_objects if obj.cartesian_state is not None])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
@@ -131,6 +131,16 @@ class TrajectoryPlannerCosts:
         distances_from_ego_boundaries = np.abs(ego_centers_in_objs_frame) - 0.5 * (objects_sizes[:, np.newaxis] + ego_size)
 
         return distances_from_ego_boundaries
+
+    @staticmethod
+    def compute_safety_costs(safety_costs: np.array):
+        """
+        Given raw (not weighted) safety costs (based on RSS), sum it over obstacles and multiply by weight
+        :param safety_costs: 1D array (of size trajectories_number) of safety costs based on RSS in range [0, 1]
+        :param params: parameters for the cost function (from behavioral layer)
+        :return: MxN matrix of safety costs per point, where N is trajectories number, M is trajectory length.
+        """
+        return SAFETY_SIGMOID_COST * safety_costs
 
     @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):

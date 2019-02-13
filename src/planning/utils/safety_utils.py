@@ -4,7 +4,8 @@ import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_RESPONSE, \
-    LAT_SAFETY_ACCEL_DURING_RESPONSE, LONGITUDINAL_SAFETY_MIN_DIST, EXP_CLIP_TH, SAFETY_SIGMOID_K_PARAM
+    LAT_SAFETY_ACCEL_DURING_RESPONSE, LONGITUDINAL_SAFETY_MIN_DIST, EXP_CLIP_TH, LON_SAFETY_SIGMOID_K_PARAM, \
+    LAT_SAFETY_SIGMOID_K_PARAM
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX, FS_SV, FS_DX, FS_DV, \
     ObjectSizeArray, OBJ_LENGTH, OBJ_WIDTH
 from decision_making.src.state.state import ObjectSize
@@ -152,10 +153,7 @@ class SafetyUtils:
                         (1 - ego_ahead) * (ego_vel * ego_response_time + ego_acceleration_dist) + \
                         ego_ahead * (obj_vel * obj_response_time + obj_acceleration_dist) + margin
 
-        marginal_safe_dist = sign_of_lon_relative_to_obj * lon_relative_to_obj - min_safe_dist
-        min_safe_dist_between_cars_edges = min_safe_dist - (margin - LONGITUDINAL_SAFETY_MIN_DIST)
-        normalized_marginal_safe_dist = np.divide(marginal_safe_dist, min_safe_dist_between_cars_edges)
-        return normalized_marginal_safe_dist
+        return sign_of_lon_relative_to_obj * lon_relative_to_obj - min_safe_dist
 
     @staticmethod
     def _get_lat_safe_dist(ego_trajectories: FrenetTrajectories2D, ego_response_time: float,
@@ -212,9 +210,7 @@ class SafetyUtils:
                                       -sign_of_lat_relative_to_obj * action_lat_dir > 0)
 
         marginal_safe_dist = sign_of_lat_relative_to_obj * lat_relative_to_obj - min_safe_dist
-        min_safe_dist_between_cars_edges = min_safe_dist - (margin - LATERAL_SAFETY_MU)
-        normalized_marginal_safe_dist = np.divide(marginal_safe_dist, min_safe_dist_between_cars_edges)
-        return normalized_marginal_safe_dist, lat_vel_blame
+        return marginal_safe_dist, lat_vel_blame
 
     @staticmethod
     def _calc_full_costs(ego_longitudes: np.array, obj_longitudes: np.array,
@@ -235,9 +231,10 @@ class SafetyUtils:
         :return: 2D boolean matrix (2D matrix of shape: trajectories_num x timestamps_num) of times, when ego is safe.
         """
         # transfer lon & lat normalized safe distances to truncated sigmoid costs
-        points_offset = np.array([lon_safe_dist, lat_safe_dist])
+        normalized_offset = np.array([LON_SAFETY_SIGMOID_K_PARAM * lon_safe_dist,
+                                      LAT_SAFETY_SIGMOID_K_PARAM * lat_safe_dist])
         # the following sigmoid obtains values between 0 and 2.
-        logit_costs = np.divide(2., (1. + np.exp(np.minimum(SAFETY_SIGMOID_K_PARAM * points_offset, EXP_CLIP_TH))))
+        logit_costs = np.divide(2., (1. + np.exp(np.minimum(normalized_offset, EXP_CLIP_TH))))
         # truncate the sigmoid by 1 and extract lon & lat costs, which are safe if 0 < cost < 1 and unsafe if cost = 1
         lon_cost, lat_cost = np.split(np.minimum(logit_costs, 1), 2)
 

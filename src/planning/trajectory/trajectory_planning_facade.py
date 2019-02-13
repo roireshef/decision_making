@@ -26,10 +26,12 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
+import copy
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -104,9 +106,12 @@ class TrajectoryPlanningFacade(DmModule):
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
+            projected_state = TrajectoryPlanningFacade._project_objects_on_reference_route(updated_state,
+                                                                                           params.reference_route)
+
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
+                plan(projected_state, params.reference_route, params.target_state, lon_plan_horizon,
                      params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
@@ -137,6 +142,22 @@ class TrajectoryPlanningFacade(DmModule):
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
+
+    @staticmethod
+    def _project_objects_on_reference_route(state: State, reference_route: GeneralizedFrenetSerretFrame):
+        """
+        Project all dynamic objects on the reference route. In case of failure set map_state = None.
+        :param state: original state
+        :param reference_route: GFF to project on
+        :return: a new state with the projected map_states
+        """
+        projected_state = copy.deepcopy(state)
+        for obj in projected_state.dynamic_objects:
+            try:
+                obj._cached_map_state = MapState(reference_route.cstate_to_fstate(obj.cartesian_state), 0)
+            except Exception:  # verify the object can be projected on the reference_route
+                obj._cached_map_state = None
+        return projected_state
 
     # TODO: add map_origin that is sent from the outside
     def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory):
@@ -269,17 +290,14 @@ class TrajectoryPlanningFacade(DmModule):
         # TODO: create 3 GFFs in TP and convert objects' predictions on them
         objects_visualizations = []
         for obj in state.dynamic_objects:
-            try:
-                obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
-                obj_fpredictions = predictor.predict_frenet_states(np.array([obj_fstate]),
-                                                                   prediction_horizons)[0][:, [FS_SX, FS_DX]]
-                # skip objects having predictions out of reference_route
-                valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
-                obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
-                objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
-
-            except Exception:  # verify the object can be projected on reference_route
+            if obj._cached_map_state is None:
                 continue
+            obj_fpredictions = predictor.predict_frenet_states(np.array([obj._cached_map_state.lane_fstate]),
+                                                               prediction_horizons)[0][:, [FS_SX, FS_DX]]
+            # skip objects having predictions out of reference_route
+            valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
+            obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
+            objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
 
         header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
         points_step = int(ctrajectories.shape[1] / MAX_NUM_POINTS_FOR_VIZ) + 1

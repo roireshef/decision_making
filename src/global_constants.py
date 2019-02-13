@@ -76,7 +76,8 @@ LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 SAFETY_SIGMOID_COST = 100                   # maximal cost of RSS safety (sigmoid)
-SAFETY_SIGMOID_K_PARAM = 9                  # sigmoid k (slope) param of RSS safety cost
+LON_SAFETY_SIGMOID_K_PARAM = 6              # sigmoid k (slope) param of longitudinal RSS safety cost
+LAT_SAFETY_SIGMOID_K_PARAM = 15             # sigmoid k (slope) param of lateral RSS safety cost
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 23.0  # TODO - get this value from the map
