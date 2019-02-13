@@ -199,7 +199,6 @@ def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static: 
     for road_id in road_segment_ids:
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
-        print(road_id, ":", lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
     sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)), lane_cost_dict)
     assert len(sub_segments) == len(road_segment_ids)
@@ -225,7 +224,6 @@ def test_advanceByCost_lookaheadCoversFullMap_validateExceptionThrownLaneCostNot
     for road_id in road_segment_ids:
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
-        print(road_id, ":", lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
     try:
         sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)), lane_cost_dict)
@@ -284,7 +282,6 @@ def test_advanceByCost_addSplit(scene_static_lane_split: SceneStatic, lane_cost_
     current_ordinal = 0
     navigation_plan = NavigationPlanMsg(np.array(road_segment_ids))
     
-
     # Get correct cumulative distance (through three lane segments of 43)
     cumulative_distance = 0
     for road_id in road_segment_ids:
