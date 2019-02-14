@@ -5,27 +5,26 @@ from typing import List
 import pytest
 from logging import Logger
 from decision_making.src.infra.pubsub import PubSub
+from rte.python.logger.AV_logger import AV_Logger
 
-from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
+from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
 
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
-     
-from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData, DataRoutePlan
+
+from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
-from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, MapLaneDirection, \
-     GMAuthorityType, LaneConstructionType
 
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
 
-from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.messages.static_scene_fixture import scene_static
 
 
-def test_plan_twoRoadSegments_routePlanOutput(): 
+def test_plan_simpleScene_routePlanOutput():
 
     logger = AV_Logger.get_logger("")
 
     pubsub = PubSub()
-    
+
     scene_static_obj = SceneStaticPublisher(pubsub = pubsub , logger = logger)
 
     scene_static_data = scene_static_obj._generate_data()
@@ -37,7 +36,7 @@ def test_plan_twoRoadSegments_routePlanOutput():
     route_planner_input = RoutePlannerInputData(Scene=scene_static_base,Nav=navigation_plan)
 
     route_plan_obj = CostBasedRoutePlanner()
-    
+
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
     # expected outputs:
@@ -53,7 +52,7 @@ def test_plan_twoRoadSegments_routePlanOutput():
     exp_route_plan_lane_segments = [road_segment_1 , road_segment_2]
 
     # assertion
-    
+
     assert route_plan_output.e_Cnt_num_road_segments == exp_num_road_segments
     assert route_plan_output.a_i_road_segment_ids.all() == exp_road_segment_ids.all()
     assert route_plan_output.a_Cnt_num_lane_segments.all() == exp_num_lane_segments.all()
