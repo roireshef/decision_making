@@ -5,22 +5,21 @@ from typing import List
 import pytest
 from logging import Logger
 from decision_making.src.infra.pubsub import PubSub
+from rte.python.logger.AV_logger import AV_Logger
 
-from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
+from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
 
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
      
-from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData, DataRoutePlan
+from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
-from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, MapLaneDirection, \
-     GMAuthorityType, LaneConstructionType
 
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
 
-from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.messages.static_scene_fixture import scene_static
 
 
-def test_plan_twoRoadSegments_routePlanOutput(): 
+def test_plan_simpleScene_routePlanOutput(): 
 
     logger = AV_Logger.get_logger("")
 
@@ -62,9 +61,3 @@ def test_plan_twoRoadSegments_routePlanOutput():
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_end_cost
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == exp_route_plan_lane_segments[i][j].e_i_lane_segment_id
-
-
-
-
-
-
