@@ -30,9 +30,9 @@ def test_plan_twoRoadSegments_routePlanOutput():
 
     scene_static_data = scene_static_obj._generate_data()
 
-    scene_static_base = scene_static_data.s_SceneStaticBaseData
+    scene_static_base = scene_static_data.s_Data.s_SceneStaticBase
 
-    navigation_plan = scene_static_data.s_NavigationPlanData
+    navigation_plan = scene_static_data.s_Data.s_NavigationPlan
 
     route_planner_input = RoutePlannerInputData(Scene=scene_static_base,Nav=navigation_plan)
 
@@ -62,9 +62,3 @@ def test_plan_twoRoadSegments_routePlanOutput():
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_end_cost
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == exp_route_plan_lane_segments[i][j].e_i_lane_segment_id
-
-
-
-
-
-
