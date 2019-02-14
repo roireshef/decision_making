@@ -2,11 +2,11 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
 from decision_making.src.messages.route_plan_message import DataRoutePlan
-from decision_making.src.messages.scene_static_message import DataSceneStaticBase,DataNavigationPlan
+from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan
 
 class RoutePlannerInputData():
         
-    def __init__(self, Scene: DataSceneStaticBase, Nav: DataNavigationPlan):
+    def __init__(self, Scene: SceneStaticBase, Nav: NavigationPlan):
         self.route_roadsegments = [] # list: ordered RouteSegment's upto the variable size e_Cnt_num_road_segments
         self.route_lanesegments = OrderedDict() # dict:  key - road segment IDs (sorted as in routeplan) , value - list(LaneSegmentID)
         self.LaneSegmentDict = {} # dict : key - lane segment ID, value - LaneSegmentBase. 
@@ -16,7 +16,7 @@ class RoutePlannerInputData():
         self.Update_DictData(Scene)
         self.Update_RoutePlanData(Nav)
     
-    def Update_DictData(self, Scene: DataSceneStaticBase):
+    def Update_DictData(self, Scene: SceneStaticBase):
         for i in range(Scene.e_Cnt_num_lane_segments):
             e_i_lane_segment_id = Scene.as_scene_lane_segments[i].e_i_lane_segment_id
             self.LaneSegmentDict[e_i_lane_segment_id] = Scene.as_scene_lane_segments[i]
@@ -24,7 +24,7 @@ class RoutePlannerInputData():
             e_i_road_segment_id = Scene.as_scene_road_segment[i].e_i_road_segment_id
             self.RoadSegmentDict[e_i_road_segment_id] = Scene.as_scene_road_segment[i]
         
-    def Update_RoutePlanData(self, Nav: DataNavigationPlan):
+    def Update_RoutePlanData(self, Nav: NavigationPlan):
         for road_seg_idx in range(Nav.e_Cnt_num_road_segments):
             road_seg = Nav.a_i_road_segment_ids[road_seg_idx]
             self.route_roadsegments.append(road_seg)
