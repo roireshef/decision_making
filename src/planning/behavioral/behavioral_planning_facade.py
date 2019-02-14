@@ -23,7 +23,6 @@ from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 
-#added code
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
@@ -50,7 +49,6 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"], None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
-        #added code
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"],None)
 
     # TODO: unsubscribe once logic is fixed in LCM
@@ -87,11 +85,10 @@ class BehavioralPlanningFacade(DmModule):
 
             navigation_plan = self._get_current_navigation_plan()
 
-            #added code
             # get current route plan 
             route_plan = self._get_current_route_plan()
             # calculate the takeover message
-            takeover_msg = self._set_takeover_message(route_plan , updated_state)
+            takeover_msg = self.set_takeover_message(route_plan , updated_state)
             # publish takeover message
             self._publish_takeover(takeover_msg)
 
@@ -136,15 +133,14 @@ class BehavioralPlanningFacade(DmModule):
         self.logger.debug("Received navigation plan: %s" % object_plan)
         return object_plan
 
-    #added code
     def _get_current_route_plan(self) -> RoutePlan:
         is_success, input_route_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], timeout=1)
         object_route_plan = RoutePlan.deserialize(input_route_plan)
         self.logger.debug("Received route plan: %s" % object_route_plan)
         return object_route_plan
-
-    #added code
-    def _set_takeover_message(self, route_plan:RoutePlan, state:State ) -> Takeover:
+    
+    @staticmethod
+    def set_takeover_message(route_plan:RoutePlan, state:State ) -> Takeover:
         
         # find current lane segment ID
         ego_lane_id = MapUtils.get_closest_lane(state.ego_state.cartesian_state[:(C_Y+1)])
@@ -228,7 +224,6 @@ class BehavioralPlanningFacade(DmModule):
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_VISUALIZATION_LCM"], visualization_message.serialize())
 
-    #added code
     def _publish_takeover(self, takeover_msg:Takeover) -> None :
         self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TAKEOVER"], takeover_msg.serialize())
 
