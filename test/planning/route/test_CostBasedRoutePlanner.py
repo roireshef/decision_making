@@ -7,15 +7,14 @@ from logging import Logger
 from decision_making.src.infra.pubsub import PubSub
 from rte.python.logger.AV_logger import AV_Logger
 
-from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
-
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
-
-from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
+from decision_making.src.messages.scene_static_message import (
+    SceneStatic,
+    SceneStaticBase,
+    NavigationPlan)
+from decision_making.src.planning.route.route_planner import RoutePlannerInputData
 from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
-
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
-
 from decision_making.test.messages.static_scene_fixture import scene_static
 
 
@@ -53,6 +52,37 @@ def test_plan_simpleScene_routePlanOutput():
 
     # assertion
 
+    assert route_plan_output.e_Cnt_num_road_segments == exp_num_road_segments
+    assert route_plan_output.a_i_road_segment_ids.all() == exp_road_segment_ids.all()
+    assert route_plan_output.a_Cnt_num_lane_segments.all() == exp_num_lane_segments.all()
+    for i in range(len(exp_route_plan_lane_segments)) :
+        for j in range(len(exp_route_plan_lane_segments[i])) :
+            assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_end_cost
+            assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
+            assert route_plan_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == exp_route_plan_lane_segments[i][j].e_i_lane_segment_id
+
+def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):
+
+    scene_static_base = scene_static.s_Data.s_SceneStaticBase
+
+    navigation_plan = scene_static.s_Data.s_NavigationPlan
+
+    route_planner_input = RoutePlannerInputData(Scene=scene_static_base,Nav=navigation_plan)
+
+    route_plan_obj = CostBasedRoutePlanner()
+
+    route_plan_output = route_plan_obj.plan(route_planner_input)
+
+    # expected outputs:
+    num_lane_segments = [road_segment.e_Cnt_lane_segment_id_count for road_segment in scene_static_base.as_scene_road_segment]
+
+    exp_num_road_segments = navigation_plan.e_Cnt_num_road_segments
+    exp_road_segment_ids = navigation_plan.a_i_road_segment_ids
+    exp_num_lane_segments = np.array(num_lane_segments)
+    exp_route_plan_lane_segments = [[RoutePlanLaneSegment(lane_segment_id, 0., 0.) for lane_segment_id in road_segment.a_i_lane_segment_ids]
+                                    for road_segment in scene_static_base.as_scene_road_segment]
+
+    # assertion
     assert route_plan_output.e_Cnt_num_road_segments == exp_num_road_segments
     assert route_plan_output.a_i_road_segment_ids.all() == exp_road_segment_ids.all()
     assert route_plan_output.a_Cnt_num_lane_segments.all() == exp_num_lane_segments.all()
