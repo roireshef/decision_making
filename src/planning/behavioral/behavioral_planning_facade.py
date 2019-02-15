@@ -97,7 +97,7 @@ class BehavioralPlanningFacade(DmModule):
             # get current route plan
             route_plan = self._get_current_route_plan()
             # calculate the takeover message
-            takeover_msg = self.set_takeover_message(route_plan , updated_state)
+            takeover_msg = self.set_takeover_message(route_plan , updated_state, scene_static)
             # publish takeover message
             self._publish_takeover(takeover_msg)
 
@@ -169,10 +169,15 @@ class BehavioralPlanningFacade(DmModule):
         return object_route_plan
 
     @staticmethod
-    def set_takeover_message(route_plan:RoutePlan, state:State ) -> Takeover:
+    def set_takeover_message(route_plan:RoutePlan, state:State, scene_static: SceneStatic ) -> Takeover:
+
+        SceneStaticModel.get_instance().set_scene_static(scene_static)
 
         # find current lane segment ID
-        ego_lane_id = MapUtils.get_closest_lane(state.ego_state.cartesian_state[:(C_Y+1)])
+        ego_lane_id = state.ego_state.map_state.lane_id
+        # ego_lane_id = MapUtils.get_closest_lane(state.ego_state.cartesian_state[:(C_Y+1)])
+        # ego_lane_id = MapUtils.get_closest_lane(np.array([1, 0]))
+
         # find current road segment ID
         curr_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(ego_lane_id)
         # find road segment index in route plan 2-d array
@@ -184,7 +189,7 @@ class BehavioralPlanningFacade(DmModule):
         row_idx = route_plan_idx[0]
 
          # find station on the current lane
-        ego_station = state.ego_state.map_state[FS_SX]
+        ego_station = state.ego_state.map_state.lane_fstate[FS_SX]
         #find length of the lane segment
         ego_lane_length = MapUtils.get_lane_length(ego_lane_id)
         # distance to the end of current road (lane) segment
