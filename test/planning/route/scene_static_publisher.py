@@ -140,9 +140,9 @@ class SceneStaticPublisher(DmModule):
                 num_active_lane_attributes = 4
                 active_lane_attribute_indices = array([0, 1, 2, 3], dtype=np_int)
                 lane_attributes = array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
-                                   GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
-                                   LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                   MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value], dtype=np_int)
+                                         GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
+                                         LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
+                                         MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value], dtype=np_int)
                 lane_attribute_confidences = ones(4, dtype=np_float)
                 
                 lane_segment_lite.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_segment_ids[i][j],
