@@ -50,7 +50,6 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"], None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
-        #added code
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"],None)
 
     # TODO: unsubscribe once logic is fixed in LCM
@@ -93,7 +92,7 @@ class BehavioralPlanningFacade(DmModule):
             route_plan_nav_plan = _create_route_plan_nav_plan(route_plan)   # TODO replace nav_plan with this
 
             # calculate the takeover message
-            takeover_msg = self._set_takeover_message(route_plan , updated_state)
+            takeover_msg = self.set_takeover_message(route_plan , updated_state)
             # publish takeover message
             self._publish_takeover(takeover_msg)
 
@@ -155,8 +154,9 @@ class BehavioralPlanningFacade(DmModule):
     @staticmethod
     def _create_route_plan_nav_plan(route_plan: RoutePlan) ->  np.ndarray:
         return route_plan.s_Data.a_i_road_segment_ids
-
-    def _set_takeover_message(self, route_plan:RoutePlan, state:State ) -> Takeover:
+    
+    @staticmethod
+    def set_takeover_message(route_plan:RoutePlan, state:State ) -> Takeover:
         
         # find current lane segment ID
         ego_lane_id = MapUtils.get_closest_lane(state.ego_state.cartesian_state[:(C_Y+1)])

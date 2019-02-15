@@ -12,10 +12,8 @@ from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
-
-    
-from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticBase, DataNavigationPlan
-from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
+from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, NavigationPlan
+from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
     
 
 class RoutePlanningFacade(DmModule):
@@ -75,15 +73,16 @@ class RoutePlanningFacade(DmModule):
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
                                  e, traceback.format_exc())
 
-    def _get_current_scene_static(self) -> (DataSceneStaticBase, DataNavigationPlan):
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
+    def _get_current_scene_static(self) -> (SceneStaticBase, NavigationPlan):
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(
+            topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
                                           pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
         scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
-        return scene_static.s_SceneStaticBaseData, scene_static.s_NavigationPlanData
+        return scene_static.s_Data.s_SceneStaticBase, scene_static.s_Data.s_NavigationPlan
     
     def _publish_results(self, s_Data: DataRoutePlan) -> None:
         timestamp_object = Timestamp.from_seconds(0)

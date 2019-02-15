@@ -30,6 +30,13 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
     def serialize(self) -> TsSYSRoutePlanLaneSegment:
         pubsub_msg = TsSYSRoutePlanLaneSegment()
 
+        # Convert to standard Python scalar
+        self.e_i_lane_segment_id = self.e_i_lane_segment_id.item()
+        
+        # Print message if the type is not as expected
+        if type(self.e_i_lane_segment_id) is not int:
+            print("RoutePlanLaneSegment: e_i_lane_segment_id is not int")
+
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
         pubsub_msg.e_cst_lane_occupancy_cost = self.e_cst_lane_occupancy_cost
         pubsub_msg.e_cst_lane_end_cost = self.e_cst_lane_end_cost

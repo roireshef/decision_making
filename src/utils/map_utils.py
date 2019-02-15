@@ -24,7 +24,7 @@ class MapUtils:
         :return:road_segment_ids of every road in the static scene
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
-        road_segments = scene_static.s_SceneStaticBaseData.as_scene_road_segment[:scene_static.s_SceneStaticBaseData.e_Cnt_num_road_segments]
+        road_segments = scene_static.s_Data.s_SceneStaticBase.as_scene_road_segment[:scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_road_segments]
         return [road_segment.e_i_road_segment_id for road_segment in road_segments]
 
     @staticmethod
@@ -141,7 +141,7 @@ class MapUtils:
 
         map_lane_ids = np.array([lane_segment.e_i_lane_segment_id
                                  for lane_segment in
-                                 SceneStaticModel.get_instance().get_scene_static().s_SceneStaticBaseData.as_scene_lane_segments])
+                                 SceneStaticModel.get_instance().get_scene_static().s_Data.s_SceneStaticBase.as_scene_lane_segments])
 
         num_points_in_map_lanes = np.array([MapUtils.get_lane_geometry(lane_id).a_nominal_path_points.shape[0]
                                             for lane_id in map_lane_ids])
@@ -519,7 +519,7 @@ class MapUtils:
         :return:
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
-        lanes = [lane for lane in scene_static.s_SceneStaticBaseData.as_scene_lane_segments if
+        lanes = [lane for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
             raise LaneNotFound('lane {0} not found'.format(lane_id))
@@ -535,7 +535,7 @@ class MapUtils:
         :return:
         """
         scene_static_lane_geo = SceneStaticModel.get_instance().get_scene_static()
-        lanes = [lane for lane in scene_static_lane_geo.s_SceneStaticGeometryData.as_scene_lane_segments if
+        lanes = [lane for lane in scene_static_lane_geo.s_Data.s_SceneStaticGeometry.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
             raise LaneNotFound('lane {0} not found'.format(lane_id))
@@ -552,7 +552,7 @@ class MapUtils:
         :return:
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
-        road_segments = [road_segment for road_segment in scene_static.s_SceneStaticBaseData.as_scene_road_segment if
+        road_segments = [road_segment for road_segment in scene_static.s_Data.s_SceneStaticBase.as_scene_road_segment if
                          road_segment.e_i_road_segment_id == road_id]
         if len(road_segments) == 0:
             raise RoadNotFound('road {0} not found '.format(road_id))

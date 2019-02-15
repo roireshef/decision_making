@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
-from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStaticBase, DataSceneStaticGeometry, DataNavigationPlan, \
+from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneStaticBase, SceneStaticGeometry, NavigationPlan, \
     SceneRoadSegment, MapRoadSegmentType, SceneLaneSegmentGeometry, SceneLaneSegmentBase, \
     MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
 from decision_making.src.planning.types import FP_SX, FP_DX
@@ -159,30 +159,36 @@ def create_scene_static_from_map_api(map_api: MapAPI):
                                      as_right_boundary_points=right_boundry_point)
         )
 
-    header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
-    map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0, 0))
+    header = Header(e_Cnt_SeqNum=0, 
+                    s_Timestamp=Timestamp(0, 0), 
+                    e_Cnt_version=0)
+
+    map_origin = MapOrigin(e_phi_latitude=.0, 
+                           e_phi_longitude=.0, 
+                           e_l_altitude=.0, 
+                           s_Timestamp=Timestamp(0, 0))
+
     scene_road_intersections = []
-    base_data = DataSceneStaticBase(e_b_Valid=True,
-                                    s_RecvTimestamp=Timestamp(0, 0),
-                                    s_ComputeTimestamp=Timestamp(0, 0),
-                                    e_l_perception_horizon_front=.0,
-                                    e_l_perception_horizon_rear=.0,
-                                    e_Cnt_num_lane_segments=len(scene_lane_segments_base),
-                                    as_scene_lane_segments=scene_lane_segments_base,
-                                    e_Cnt_num_road_intersections=len(scene_road_intersections),
-                                    as_scene_road_intersection=scene_road_intersections,
-                                    e_Cnt_num_road_segments=len(scene_road_segments),
-                                    as_scene_road_segment=scene_road_segments)
+    base_data = SceneStaticBase(e_Cnt_num_lane_segments=len(scene_lane_segments_base),
+                                as_scene_lane_segments=scene_lane_segments_base,
+                                e_Cnt_num_road_intersections=len(scene_road_intersections),
+                                as_scene_road_intersection=scene_road_intersections,
+                                e_Cnt_num_road_segments=len(scene_road_segments),
+                                as_scene_road_segment=scene_road_segments)
 
-    geometry_data = DataSceneStaticGeometry(e_b_Valid=True,
-                                            s_RecvTimestamp=Timestamp(0, 0),
-                                            s_ComputeTimestamp=Timestamp(0, 0),
-                                            e_Cnt_num_lane_segments=len(scene_lane_segments_geo),
-                                            as_scene_lane_segments=scene_lane_segments_geo)
+    geometry_data = SceneStaticGeometry(e_Cnt_num_lane_segments=len(scene_lane_segments_geo),
+                                        as_scene_lane_segments=scene_lane_segments_geo)
 
-    nav_plan_data = DataNavigationPlan(e_b_Valid=True,
-                                       e_Cnt_num_road_segments=0,
+    nav_plan_data = NavigationPlan(e_Cnt_num_road_segments=0,
                                        a_i_road_segment_ids=np.array([]))
 
-    scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_SceneStaticGeometryData=geometry_data, s_SceneStaticBaseData=base_data, s_NavigationPlanData=nav_plan_data)
+    data = DataSceneStatic(e_b_Valid=True, 
+                          s_RecvTimestamp=Timestamp(0, 0), 
+                          e_l_perception_horizon_front=.0, 
+                          e_l_perception_horizon_rear=.0,
+                          s_MapOrigin=map_origin, 
+                          s_SceneStaticBase=base_data, 
+                          s_SceneStaticGeometry=geometry_data,
+                          s_NavigationPlan=nav_plan_data)
+    scene = SceneStatic(s_Header=header, s_Data=data)
     return scene
