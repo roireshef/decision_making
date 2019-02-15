@@ -29,9 +29,9 @@ def test_plan_simpleScene_routePlanOutput():
 
     scene_static_data = scene_static_obj._generate_data()
 
-    scene_static_base = scene_static_data.s_SceneStaticBaseData
+    scene_static_base = scene_static_data.s_Data.s_SceneStaticBase
 
-    navigation_plan = scene_static_data.s_NavigationPlanData
+    navigation_plan = scene_static_data.s_Data.s_NavigationPlan
 
     route_planner_input = RoutePlannerInputData(Scene=scene_static_base,Nav=navigation_plan)
 
