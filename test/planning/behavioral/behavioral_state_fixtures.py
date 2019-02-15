@@ -18,6 +18,25 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 
+@pytest.fixture(scope='function')
+def state_with_no_sorrounding_objects_for_takover_message():
+    
+    # Ego state
+    
+    ego_lane_id = 101
+    ego_lane_lon = 0 # station along the lane
+    ego_vel = 10
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+    
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    dynamic_objects: List[DynamicObject] = list()
+ 
+    yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects():
