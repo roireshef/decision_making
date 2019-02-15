@@ -4,8 +4,8 @@ import numpy as np
 from typing import Dict
 
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
-from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStaticBase, DataSceneStaticGeometry, \
-    DataNavigationPlan, SceneRoadSegment, MapRoadSegmentType, SceneLaneSegmentGeometry, SceneLaneSegmentBase, MapLaneType, \
+from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneStaticBase, SceneStaticGeometry, \
+    NavigationPlan, SceneRoadSegment, MapRoadSegmentType, SceneLaneSegmentGeometry, SceneLaneSegmentBase, MapLaneType, \
     LaneSegmentConnectivity, ManeuverType, NominalPathPoint, MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
 
 '''
@@ -241,45 +241,54 @@ def scene_static_straight():
 
         # Make SceneRoadSegment
         scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_id,
-                                            e_i_road_id=ROAD_ID,
-                                            e_Cnt_lane_segment_id_count=NUM_STRAIGHT_LANE_SEGS_CROSS,
-                                            a_i_lane_segment_ids=np.array(current_lane_seg_ids),
-                                            e_e_road_segment_type=MapRoadSegmentType.Normal,
-                                            e_Cnt_upstream_segment_count=road_seg_upstream_count,
-                                            a_i_upstream_road_segment_ids=np.array([road_seg_upstream_id]),
-                                            e_Cnt_downstream_segment_count=road_seg_downstream_count,
-                                            a_i_downstream_road_segment_ids=np.array([road_seg_downstream_id]))
+                                              e_i_road_id=ROAD_ID,
+                                              e_Cnt_lane_segment_id_count=NUM_STRAIGHT_LANE_SEGS_CROSS,
+                                              a_i_lane_segment_ids=np.array(current_lane_seg_ids),
+                                              e_e_road_segment_type=MapRoadSegmentType.Normal,
+                                              e_Cnt_upstream_segment_count=road_seg_upstream_count,
+                                              a_i_upstream_road_segment_ids=np.array([road_seg_upstream_id]),
+                                              e_Cnt_downstream_segment_count=road_seg_downstream_count,
+                                              a_i_downstream_road_segment_ids=np.array([road_seg_downstream_id]))
 
         scene_road_segments.append(scene_road_segment)
 
     # Create header, map origin, populate data
-    header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
-    map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0,0))
-    base_data = DataSceneStaticBase(e_b_Valid=True,
-                                    s_RecvTimestamp=Timestamp(0,0),
-                                    s_ComputeTimestamp=Timestamp(0, 0),
-                                    e_l_perception_horizon_front=HORIZON_PERCEP_DIST,
-                                    e_l_perception_horizon_rear=HORIZON_PERCEP_DIST,
-                                    e_Cnt_num_lane_segments=len(scene_lane_segments_base),
-                                    as_scene_lane_segments=scene_lane_segments_base,
-                                    e_Cnt_num_road_intersections=0,
-                                    as_scene_road_intersection=[],
-                                    e_Cnt_num_road_segments=len(scene_road_segments),
-                                    as_scene_road_segment=scene_road_segments)
-    geo_data = DataSceneStaticGeometry(e_b_Valid=True,
-                                       s_RecvTimestamp=Timestamp(0, 0),
-                                       s_ComputeTimestamp=Timestamp(0, 0),
-                                       e_Cnt_num_lane_segments=len(scene_lane_segments_geo),
-                                       as_scene_lane_segments=scene_lane_segments_geo)
-    nav_plan_data = DataNavigationPlan(e_b_Valid=True,
-                                       e_Cnt_num_road_segments=0,
-                                       a_i_road_segment_ids=np.array([]))
-    scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_SceneStaticGeometryData=geo_data, s_SceneStaticBaseData=base_data, s_NavigationPlanData=nav_plan_data)
+    header = Header(e_Cnt_SeqNum=0, 
+                    s_Timestamp=Timestamp(0, 0), 
+                    e_Cnt_version=0)
+
+    map_origin = MapOrigin(e_phi_latitude=.0, 
+                           e_phi_longitude=.0, 
+                           e_l_altitude=.0, 
+                           s_Timestamp=Timestamp(0, 0))
+
+    base_data = SceneStaticBase(e_Cnt_num_lane_segments=len(scene_lane_segments_base),
+                                as_scene_lane_segments=scene_lane_segments_base,
+                                e_Cnt_num_road_intersections=0,
+                                as_scene_road_intersection=[],
+                                e_Cnt_num_road_segments=len(scene_road_segments),
+                                as_scene_road_segment=scene_road_segments)
+    
+    geo_data = SceneStaticGeometry(e_Cnt_num_lane_segments=len(scene_lane_segments_geo),
+                                   as_scene_lane_segments=scene_lane_segments_geo)
+    
+    nav_plan_data = NavigationPlan(e_Cnt_num_road_segments=0,
+                                   a_i_road_segment_ids=np.array([]))
+    
+    data = DataSceneStatic(e_b_Valid=True, 
+                           s_RecvTimestamp=Timestamp(0, 0), 
+                           e_l_perception_horizon_front=.0, 
+                           e_l_perception_horizon_rear=.0,
+                           s_MapOrigin=map_origin, 
+                           s_SceneStaticBase=base_data, 
+                           s_SceneStaticGeometry=geo_data,
+                           s_NavigationPlan=nav_plan_data)
+    scene = SceneStatic(s_Header=header, s_Data=data)
     return scene
 
 
 def add_lane_split(scene_static: SceneStatic, road_seg_split_idx: int):   
-    ref_scene_road_segment = scene_static.s_SceneStaticBaseData.as_scene_road_segment[road_seg_split_idx]
+    ref_scene_road_segment = scene_static.s_Data.s_SceneStaticBase.as_scene_road_segment[road_seg_split_idx]
     ref_scene_road_segment_id = ref_scene_road_segment.e_i_road_segment_id
 
     current_lane_seg_ids = []
@@ -293,7 +302,7 @@ def add_lane_split(scene_static: SceneStatic, road_seg_split_idx: int):
 
         # Starting nom path pt = new path point
         if lane_idx == 0:
-            ref_lane = scene_static.s_SceneStaticGeometryData.as_scene_lane_segments[road_seg_split_idx * 2]
+            ref_lane = scene_static.s_Data.s_SceneStaticGeometry.as_scene_lane_segments[road_seg_split_idx * 2]
             ref_nominal_path_pt = ref_lane.a_nominal_path_points[int(NUM_NOM_PATH_PTS/2), :]
               
             starting_nominal_path_pt = np.empty(len(NominalPathPoint))    
@@ -338,7 +347,7 @@ def add_lane_split(scene_static: SceneStatic, road_seg_split_idx: int):
         upstream_id = (lane_id - 1) if upstream_lane_count == 1 else -1 
         if lane_idx == 0:
             upstream_lane_count = 1
-            upstream_id = scene_static.s_SceneStaticBaseData.as_scene_lane_segments[road_seg_split_idx * NUM_STRAIGHT_LANE_SEGS_CROSS].e_i_lane_segment_id
+            upstream_id = scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments[road_seg_split_idx * NUM_STRAIGHT_LANE_SEGS_CROSS].e_i_lane_segment_id
 
         downstream_lane_segment_connectivity = \
             LaneSegmentConnectivity(downstream_id, ManeuverType.STRAIGHT_CONNECTION) \
@@ -408,18 +417,18 @@ def add_lane_split(scene_static: SceneStatic, road_seg_split_idx: int):
     ref_scene_road_segment.a_i_upstream_road_segment_ids = np.append(ref_scene_road_segment.a_i_upstream_road_segment_ids,
                                                                      ref_scene_road_segment_id)
 
-    ref_scene_lane = scene_static.s_SceneStaticBaseData.as_scene_lane_segments[road_seg_split_idx * NUM_STRAIGHT_LANE_SEGS_CROSS]    
+    ref_scene_lane = scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments[road_seg_split_idx * NUM_STRAIGHT_LANE_SEGS_CROSS]    
     ref_scene_lane.e_Cnt_downstream_lane_count += 1
     ref_scene_lane.as_downstream_lanes.append(
         LaneSegmentConnectivity(scene_lane_segments_base[0].e_i_lane_segment_id, 
                                 ManeuverType.RIGHT_TURN_CONNECTION)
     )
 
-    scene_static.s_SceneStaticBaseData.e_Cnt_num_lane_segments += NUM_SPLIT_LANE_SEGS_LONG
-    scene_static.s_SceneStaticGeometryData.e_Cnt_num_lane_segments += NUM_SPLIT_LANE_SEGS_LONG
+    scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments += NUM_SPLIT_LANE_SEGS_LONG
+    scene_static.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments += NUM_SPLIT_LANE_SEGS_LONG
     for lane in scene_lane_segments_base:
-        scene_static.s_SceneStaticBaseData.as_scene_lane_segments.append(lane) 
+        scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments.append(lane) 
     for lane in scene_lane_segments_geo:
-        scene_static.s_SceneStaticGeometryData.as_scene_lane_segments.append(lane)
-    scene_static.s_SceneStaticBaseData.e_Cnt_num_road_segments += 1
-    scene_static.s_SceneStaticBaseData.as_scene_road_segment.append(scene_road_segment)
+        scene_static.s_Data.s_SceneStaticGeometry.as_scene_lane_segments.append(lane)
+    scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_road_segments += 1
+    scene_static.s_Data.s_SceneStaticBase.as_scene_road_segment.append(scene_road_segment)
