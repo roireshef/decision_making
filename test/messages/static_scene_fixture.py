@@ -6,6 +6,11 @@ from decision_making.src.messages.scene_static_message import SceneStatic, Scene
     SceneRoadSegment, MapRoadSegmentType, SceneLaneSegmentGeometry, SceneLaneSegmentBase, DataSceneStatic, \
     MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
 from decision_making.src.planning.types import FP_SX, FP_DX
+from decision_making.src.messages.scene_static_enums import (
+    LaneMappingStatusType,
+    GMAuthorityType,
+    LaneConstructionType,
+    MapLaneDirection)
 
 from mapping.src.exceptions import NextRoadNotFound
 from mapping.src.model.map_api import MapAPI
@@ -142,10 +147,14 @@ def create_scene_static_from_map_api(map_api: MapAPI):
                                  e_i_downstream_road_intersection_id=0,
                                  e_Cnt_lane_coupling_count=0,
                                  as_lane_coupling=[],
-                                 e_Cnt_num_active_lane_attributes=0,                # TODO
-                                 a_i_active_lane_attribute_indices=np.array([]),    # TODO
-                                 a_cmp_lane_attributes=np.array([]),                # TODO
-                                 a_cmp_lane_attribute_confidences=np.array([]))     # TODO
+                                 e_Cnt_num_active_lane_attributes=4,
+                                 a_i_active_lane_attribute_indices=np.array([0, 1, 2, 3]),
+                                 a_cmp_lane_attributes=np.array(
+                                     [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                                      GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
+                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
+                                      MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value]),
+                                 a_cmp_lane_attribute_confidences=np.ones(4))
         )
 
         scene_lane_segments_geo.append(
@@ -179,8 +188,10 @@ def create_scene_static_from_map_api(map_api: MapAPI):
     geometry_data = SceneStaticGeometry(e_Cnt_num_lane_segments=len(scene_lane_segments_geo),
                                         as_scene_lane_segments=scene_lane_segments_geo)
 
-    nav_plan_data = NavigationPlan(e_Cnt_num_road_segments=0,
-                                   a_i_road_segment_ids=np.array([]))
+    road_segment_ids = [road_segment.e_i_road_segment_id for road_segment in scene_road_segments]
+
+    nav_plan_data = NavigationPlan(e_Cnt_num_road_segments=len(scene_road_segments),
+                                   a_i_road_segment_ids=np.array(road_segment_ids))
 
     return SceneStatic(s_Header=header,
                        s_Data=DataSceneStatic(e_b_Valid=True,
