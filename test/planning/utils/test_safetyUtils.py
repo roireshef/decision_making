@@ -52,7 +52,7 @@ def test_calcSafetyForTrajectories_safetyWrtFrontObject_allCasesShouldComplyRSS(
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safe_distances(ego_ftraj, obj_size, obj_ftraj, [obj_size]) > 0).any(axis=-1).all(axis=-1)[0][0]
     assert actual_safe == expected
 
 
@@ -98,7 +98,7 @@ def test_calcSafetyForTrajectories_safetyWrtLeftBackObject_allCasesShouldComplyR
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safe_distances(ego_ftraj, obj_size, obj_ftraj, [obj_size]) > 0).any(axis=-1).all(axis=-1)[0][0]
     assert actual_safe == expected
 
 
@@ -138,7 +138,7 @@ def test_calcSafetyForTrajectories_safetyWrtLeftFrontObject_allCasesShouldComply
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safe_distances(ego_ftraj, obj_size, obj_ftraj, [obj_size]) > 0).any(axis=-1).all(axis=-1)[0][0]
     assert actual_safe == expected
 
 
@@ -186,7 +186,7 @@ def test_calcSafetyForTrajectories_safetyWrtLeftObject_allCasesShouldComplyRSS(
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safe_distances(ego_ftraj, obj_size, obj_ftraj, [obj_size]) > 0).any(axis=-1).all(axis=-1)[0][0]
     assert actual_safe == expected
 
 
@@ -224,5 +224,5 @@ def test_calcSafetyForTrajectories_safetyWrtRearObject_allCasesShouldComplyRSS(
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safe_distances(ego_ftraj, obj_size, obj_ftraj, [obj_size]) > 0).any(axis=-1).all(axis=-1)[0][0]
     assert actual_safe == expected
