@@ -151,7 +151,7 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
         ego_size = behavioral_state.ego_state.size
 
         # collect action specs into at most 3 groups, according to their target lane
-        are_specs_safe = np.full(len(action_specs), True)
+        safe_specs = np.full(len(action_specs), True)
         specs_by_rel_lane = defaultdict(list)
         indices_by_rel_lane = defaultdict(list)
         for i, spec in enumerate(action_specs):
@@ -160,41 +160,46 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
                 indices_by_rel_lane[spec.relative_lane].append(i)
 
         for rel_lane in specs_by_rel_lane.keys():
-            # if there is no front object on the target lane, then all actions are safe
-            if (rel_lane, RelativeLongitudinalPosition.FRONT) not in behavioral_state.road_occupancy_grid:
-                continue
-
             lane_specs = specs_by_rel_lane[rel_lane]
             lane_frenet = behavioral_state.extended_lane_frames[rel_lane]
             ego_init_fstate = behavioral_state.projected_ego_fstates[rel_lane]
             T_d_grid_size = MAX_SAFETY_T_D_GRID_SIZE
+
+            # predict objects' trajectories
+            obj_sizes = []
+            obj_map_states = []
+            for lon_cell in RelativeLongitudinalPosition:
+                if (rel_lane, lon_cell) in behavioral_state.road_occupancy_grid:
+                    obj = behavioral_state.road_occupancy_grid[(rel_lane, lon_cell)][0].dynamic_object
+                    obj_sizes.append(obj.size)
+                    obj_map_states.append(lane_frenet.convert_from_segment_state(obj.map_state.lane_fstate, obj.map_state.lane_id))
+            if len(obj_sizes) == 0:
+                continue  # if there are no objects on the target lane, then all actions are safe
+
             time_points = np.arange(0, BP_ACTION_T_LIMITS[1] + EPS, TRAJECTORY_TIME_RESOLUTION)
+            obj_trajectories = predictor.predict_frenet_states(np.array(obj_map_states), time_points)
 
             # generate baseline Frenet trajectories for the relative-lane actions, with T_d grid
             ftrajectories = FilterUnsafeExpectedTrajectory._generate_frenet_trajectories_for_relative_lane(
                 ego_init_fstate, lane_specs, T_d_grid_size, time_points)
 
-            # predict objects' trajectories
-            obj = behavioral_state.road_occupancy_grid[(rel_lane, RelativeLongitudinalPosition.FRONT)][0].dynamic_object
-            obj_map_state = lane_frenet.convert_from_segment_state(obj.map_state.lane_fstate, obj.map_state.lane_id)
-            obj_sizes = [obj.size]
-            obj_trajectories = predictor.predict_frenet_states(np.array([obj_map_state]), time_points)
-
             # calculate safety for each trajectory, each object, each timestamp
-            safety_costs = SafetyUtils.get_safety_costs(ftrajectories, ego_size, obj_trajectories, obj_sizes)
-            # for each triple (ego_trajectory, obj_trajectory, time_sample) choose minimal cost among all T_d
-            safety_costs = safety_costs.reshape(len(lane_specs), T_d_grid_size, len(obj_trajectories), len(time_points)).min(axis=1)
+            safe_distances = SafetyUtils.get_safe_distances(ftrajectories, ego_size, obj_trajectories, obj_sizes)
+            safe_times = (safe_distances > 0).any(axis=-1)  # OR on lon & lat safe distances
 
-            # safe_specs = (safety_costs < 1).all(axis=(1, 2))
+            # safe_specs = safe_specs_for_any_T_d.all(axis=(1, 2))
             # print('safe_specs: %s; specs_v %s, specs_t %s\nvel: %s\nacc: %s\ndist: %s\ncosts: %s: ' %
             #       (safe_specs, specs_v, specs_t, ftrajectories_s[-2, ::4, 1], ftrajectories_s[-2, ::4, 2],
             #        obj_trajectories[0, ::4, 0] - ftrajectories_s[-2, ::4, 0],
-            #        safety_costs[-2, 0, ::4]))
+            #        safe_specs_for_any_T_d[-2, 0, ::4]))
 
             # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
-            are_specs_safe[np.array(indices_by_rel_lane[rel_lane])] = (safety_costs < 1).all(axis=(1, 2))
+            safe_trajectories = safe_times.all(axis=(1, 2))
+            # find trajectories that are safe for any T_d
+            safe_specs[np.array(indices_by_rel_lane[rel_lane])] = \
+                safe_trajectories.reshape(len(lane_specs), T_d_grid_size).any(axis=1)  # OR on different T_d
 
-        return are_specs_safe
+        return safe_specs
 
     @staticmethod
     def _generate_frenet_trajectories_for_relative_lane(ego_init_fstate: FrenetState2D, lane_specs: List[ActionSpec],

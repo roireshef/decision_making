@@ -1,4 +1,6 @@
 import time
+
+from decision_making.src.state.map_state import MapState
 from typing import List
 from unittest.mock import patch
 
@@ -37,7 +39,7 @@ mock_td_steps = 5
 # @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 5)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
-    reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
+    reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=40, k=1, step=1, lat=1, offset=-.5))
 
     v0 = 5
     vT = 5
@@ -49,9 +51,9 @@ def test_werlingPlanner_toyScenario_noException():
     goal_s = reference_route.cpoint_to_fpoint(goal_pos)[0]
     goal = np.concatenate((goal_pos, reference_route.get_yaw(np.array([goal_s])), [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
 
-    pos1 = np.array([7, -.5])
+    pos1 = np.array([27, -.5])  # the objects should not be too close to ego because of the safety in TP
     yaw1 = 0
-    pos2 = np.array([11, 1.5])
+    pos2 = np.array([31, 1.5])
     yaw2 = np.pi / 4
 
     obs = list([
@@ -62,6 +64,8 @@ def test_werlingPlanner_toyScenario_noException():
                                                   cartesian_state=np.array([pos2[0], pos2[1], yaw2, 0, 0, 0]),
                                                   size=ObjectSize(1.5, 0.5, 0), confidence=1.0)
     ])
+    for obj in obs:
+        obj._cached_map_state = MapState(reference_route.cstate_to_fstate(obj.cartesian_state), 0)
 
     # set ego starting longitude > 0 in order to prevent the starting point to be outside the reference route
     ego = EgoState.create_from_cartesian_state(obj_id=-1, timestamp=1000 * 10e6,
@@ -290,6 +294,7 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
                                                                    cartesian_state=np.array([cobs[C_X], cobs[C_Y],
                                                                         frenet.get_yaw(pose[FP_SX]), 0.0, 0.0, 0.0]),
                                                                    size=ObjectSize(4, 1.8, 0), confidence=1.0)
+        dynamic_object._cached_map_state = MapState(frenet.cstate_to_fstate(dynamic_object.cartesian_state), 0)
         obs.append(dynamic_object)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
@@ -338,10 +343,13 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
     # duplicate frenet_pixels for all time samples
     frenet_pixels = np.repeat(frenet_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
 
+    safe_traj_indices, safe_distances = \
+        planner.filter_trajectories_by_safety(state, time_samples, frenet_pixels)
+
     # calculate cost components for all image pixels by building a static "trajectory" for every pixel
     pointwise_costs = \
         TrajectoryPlannerCosts.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
-                                                       planner.predictor, planner.dt)
+                                                       planner.predictor, planner.dt, frenet, safe_distances)
 
     pixel_costs = (pointwise_costs[:, :, 0] + pointwise_costs[:, :, 1]).reshape(height, width, time_samples.shape[0])
     return pixels2D, pixel_costs

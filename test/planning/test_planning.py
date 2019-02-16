@@ -38,7 +38,7 @@ from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_F
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
-                                                                        state_module:StateModule,
+                                                                        state_module: StateModule,
                                                                         short_testable_map_api):
 
 

@@ -135,16 +135,14 @@ def state(short_testable_map_api):
     v_x = 2.0
     v_y = 2.0
     v = np.linalg.norm([v_x, v_y])
-    dyn1 = DynamicObject(obj_id=1, timestamp=34, cartesian_state=np.array([0.5, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
-                         map_state=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
-                         map_state_on_host_lane=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
+    dyn1 = DynamicObject(obj_id=1, timestamp=34, cartesian_state=np.array([10.5, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
+                         map_state=MapState(lane_fstate=np.array([10.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
+                         map_state_on_host_lane=MapState(lane_fstate=np.array([10.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
                          size=ObjectSize(1, 1, 1), confidence=1.0)
     dyn2 = DynamicObject(obj_id=2, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
                          map_state=MapState(lane_fstate=np.array([10., 2.61312593, 0., 0., 1.0823922, 0.]), lane_id=11),
                          map_state_on_host_lane=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
                          size=ObjectSize(1, 1, 1), confidence=1.0)
-    dyn1.map_state
-    dyn2.map_state
 
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)

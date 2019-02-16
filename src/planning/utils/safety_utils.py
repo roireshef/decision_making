@@ -4,8 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_RESPONSE, \
-    LAT_SAFETY_ACCEL_DURING_RESPONSE, LONGITUDINAL_SAFETY_MIN_DIST, EXP_CLIP_TH, LON_SAFETY_SIGMOID_K_PARAM, \
-    LAT_SAFETY_SIGMOID_K_PARAM
+    LAT_SAFETY_ACCEL_DURING_RESPONSE, LONGITUDINAL_SAFETY_MIN_DIST
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX, FS_SV, FS_DX, FS_DV, \
     ObjectSizeArray, OBJ_LENGTH, OBJ_WIDTH
 from decision_making.src.state.state import ObjectSize
@@ -53,8 +52,8 @@ class SafetyUtils:
     # TODO: treat cases of occlusions (Mobileye / ACDA), road intersection/merge/split, stohastic predictions.
 
     @staticmethod
-    def get_safety_costs(ego_trajectories: FrenetTrajectories2D, ego_size: ObjectSize,
-                         obj_trajectories: np.array, obj_sizes: List[ObjectSize]) -> np.array:
+    def get_safe_distances(ego_trajectories: FrenetTrajectories2D, ego_size: ObjectSize,
+                           obj_trajectories: np.array, obj_sizes: List[ObjectSize]) -> np.array:
         """
         For every ego Frenet trajectory, every predicted object's Frenet trajectory and every timestamp (3D tensor)
         calculate RSS safety: a boolean indicating whether this tensor element is safe.
@@ -67,22 +66,22 @@ class SafetyUtils:
         :param ego_size: ego size
         :param obj_trajectories: objects Frenet trajectories; 3D tensor: objects_num x timestamps_num x 6 (Frenet state size)
         :param obj_sizes: list of objects' sizes
-        :return: [bool] safety per [ego trajectory, object, timestamp].
-                Tensor of shape: traj_num x objects_num x timestamps_num
+        :return: safe distances: 4D tensor of shape: traj_num x objects_num x timestamps_num x 2
+                                                    [ego_trajectory, object, timestamp, x & y]
         """
         objects_num = obj_trajectories.shape[0]
         # calculate safe dists for every object
-        safe_costs = np.ones((ego_trajectories.shape[0], objects_num, ego_trajectories.shape[1]))
+        safe_distances = np.zeros((ego_trajectories.shape[0], objects_num, ego_trajectories.shape[1], 2))
         ego_size_arr = np.array([ego_size.length, ego_size.width])
         for i in range(objects_num):  # loop over objects
             obj_size_arr = np.array([obj_sizes[i].length, obj_sizes[i].width])
-            safe_costs[:, i] = SafetyUtils._get_costs_per_obj(ego_trajectories, ego_size_arr,
-                                                              obj_trajectories[i], obj_size_arr)
-        return safe_costs
+            safe_distances[:, i] = SafetyUtils._get_distances_per_obj(ego_trajectories, ego_size_arr,
+                                                                      obj_trajectories[i], obj_size_arr)
+        return safe_distances
 
     @staticmethod
-    def _get_costs_per_obj(ego_trajectories: FrenetTrajectories2D, ego_size: ObjectSizeArray,
-                           obj_trajectories: FrenetTrajectories2D, obj_size: ObjectSizeArray) -> np.array:
+    def _get_distances_per_obj(ego_trajectories: FrenetTrajectories2D, ego_size: ObjectSizeArray,
+                               obj_trajectories: FrenetTrajectories2D, obj_size: ObjectSizeArray) -> np.array:
         """
         Calculate safety boolean tensor for different ego Frenet trajectories and a SINGLE object.
         Safety definition by the RSS paper: an object is defined safe if it's safe either longitudinally OR laterally.
@@ -94,7 +93,7 @@ class SafetyUtils:
         :param ego_size: array of size 2: ego length, ego width
         :param obj_trajectories: object's frenet trajectories: 2D matrix of shape timestamps_num x 6
         :param obj_size: one or array of arrays of size 2: i-th row is i-th object's size
-        :return: [bool] safe times. 2D matrix of shape: trajectories_num x timestamps_num
+        :return: 3D matrix of shape: trajectories_num x timestamps_num x 2
         """
         lon_margin = 0.5 * (ego_size[OBJ_LENGTH] + obj_size[OBJ_LENGTH]) + LONGITUDINAL_SAFETY_MIN_DIST
         lat_margin = 0.5 * (ego_size[OBJ_WIDTH] + obj_size[OBJ_WIDTH]) + LATERAL_SAFETY_MU
@@ -106,10 +105,12 @@ class SafetyUtils:
         lat_safe_dist, lat_vel_blame = \
             SafetyUtils._get_lat_safe_dist(ego_trajectories, SAFETY_MARGIN_TIME_DELAY,
                                            obj_trajectories, SPECIFICATION_MARGIN_TIME_DELAY, lat_margin)
-        # calculate and return safe times
-        costs = SafetyUtils._calc_full_costs(ego_trajectories[..., FS_SX], obj_trajectories[..., FS_SX],
-                                             lon_safe_dist, lat_safe_dist, lat_vel_blame, lon_margin)
-        return costs
+
+        # calculate combined longitudinal and lateral safe distances
+        safe_distances = \
+            SafetyUtils._calc_combined_distances(ego_trajectories[..., FS_SX], obj_trajectories[..., FS_SX],
+                                                 lon_safe_dist, lat_safe_dist, lat_vel_blame, lon_margin)
+        return safe_distances
 
     @staticmethod
     def _get_lon_safe_dist(ego_trajectories: FrenetTrajectories2D, ego_response_time: float,
@@ -213,9 +214,9 @@ class SafetyUtils:
         return marginal_safe_dist, lat_vel_blame
 
     @staticmethod
-    def _calc_full_costs(ego_longitudes: np.array, obj_longitudes: np.array,
-                         lon_safe_dist: np.array, lat_safe_dist: np.array,
-                         lat_vel_blame: np.array, lon_margin: float) -> np.array:
+    def _calc_combined_distances(ego_longitudes: np.array, obj_longitudes: np.array,
+                                 lon_safe_dist: np.array, lat_safe_dist: np.array,
+                                 lat_vel_blame: np.array, lon_margin: float) -> np.array:
         """
         For all trajectories and times check if ego is safe wrt non-rear objects and not unsafe wrt rear on ego blame.
         A timestamp is defined as safe if
@@ -223,34 +224,43 @@ class SafetyUtils:
             2. ego is not blamed for unsafe situation (wrt rear object)
         :param ego_longitudes: ego longitudes: 2D matrix of shape: trajectories_num x timestamps_num
         :param obj_longitudes: object longitudes: 1D array of size timestamps_num
-        :param lon_safe_dist: longitudinally safe distances; 2D matrix of shape: trajectories_num x timestamps_num
-        :param lat_safe_dist: laterally safe distances; 2D matrix of shape: trajectories_num x timestamps_num
+        :param lon_safe_dist: difference between actual longitudinal distance and safe longitudinal distance;
+                                2D matrix of shape: trajectories_num x timestamps_num
+        :param lat_safe_dist: difference between actual lateral distance and safe lateral distance;
+                                2D matrix of shape: trajectories_num x timestamps_num
         :param lat_vel_blame: times for which ego lat_vel towards object is larger than object's lat_vel;
                 boolean 2D matrix of shape: trajectories_num x timestamps_num
         :param lon_margin: [m] cars' lengths half sum
-        :return: 2D boolean matrix (2D matrix of shape: trajectories_num x timestamps_num) of times, when ego is safe.
+        :return: 3D matrix of shape: trajectories_num x timestamps_num x 2, longitudinal and lateral
+                    safe distances
         """
-        # transfer lon & lat normalized safe distances to truncated sigmoid costs
-        normalized_offset = np.array([LON_SAFETY_SIGMOID_K_PARAM * lon_safe_dist,
-                                      LAT_SAFETY_SIGMOID_K_PARAM * lat_safe_dist])
-        # the following sigmoid obtains values between 0 and 2.
-        logit_costs = np.divide(2., (1. + np.exp(np.minimum(normalized_offset, EXP_CLIP_TH))))
-        # truncate the sigmoid by 1 and extract lon & lat costs, which are safe if 0 < cost < 1 and unsafe if cost = 1
-        lon_cost, lat_cost = np.split(np.minimum(logit_costs, 1), 2)
-
         front_ego = (ego_longitudes > obj_longitudes + lon_margin).astype(int)
+        lat_safe = (lat_safe_dist > 0).astype(int)
+        lat_unsafe = (lat_safe_dist <= 0).astype(int)
 
-        # find points, for which lateral safety changes from true to false, while the unsafe longitudinally,
+        # find points, for which lateral safety changes from true to false,
         # and lateral velocity of ego towards the object is larger than of the object towards ego
-        becomes_unsafe_laterally_excluding_time_0 = \
-            np.logical_and(lat_safe_dist[:, :-1] > 0, lat_safe_dist[:, 1:] <= 0)  # become unsafe laterally
+        becomes_unsafe_laterally_excluding_time_0 = lat_safe[:, :-1] * lat_unsafe[:, 1:]  # become unsafe laterally
         # add first column (time 0)
-        becomes_unsafe_laterally = np.insert(
-            becomes_unsafe_laterally_excluding_time_0, 0, lat_safe_dist[:, 0] <= 0, axis=-1).astype(int)
+        becomes_unsafe_laterally = np.insert(becomes_unsafe_laterally_excluding_time_0, 0, lat_unsafe[:, 0], axis=-1)
 
-        # front_lat_blame_cost=1 if ego cuts-in rear object, i.e. becomes unsafe laterally wrt rear object on ego blame
-        front_lat_cost = front_ego * lat_vel_blame * becomes_unsafe_laterally  # 0 or 1
-        # lat_cost for non-front ego
-        non_front_lat_cost = (1 - front_ego) * lat_cost
-        # final_cost = lon_cost * lat_cost, where lat_cost has two cases: ego is front and not in front
-        return lon_cost * (front_lat_cost + non_front_lat_cost)
+        # In most cases ego is defined as unsafe iff it's unsafe both longitudinally and laterally.
+        # The exception may be in this case: ego is in front and the rear car is unsafe.
+        # In this case we should distinguish between two scenarios:
+        # 1. Cut-in: Ego is guilty, since it performs cut-in to the rear car. Then ego is defined unsafe.
+        # 2. No cut-in: The rear car is guilty, it does not keep safe longitudinal distance. Then ego is safe.
+
+        # Find points, where ego ego performs unsafe cut-in:
+        #     becomes unsafe laterally  AND  unsafe longitudinally  AND  moves laterally toward the object
+        cut_in = becomes_unsafe_laterally * (lon_safe_dist <= 0) * lat_vel_blame
+
+        # If the rear car is guilty, i.e. ego is safe, then the safe distance is irrelevant.
+        # Find points, where the safe distance is relevant:
+        dist_is_relevant = ((1 - front_ego) +          # ego is not in front  OR
+                            cut_in +                   # ego performs cut-in  OR
+                            lat_safe * lat_vel_blame)  # ego is safe laterally and moves laterally toward the object
+
+        # in case of irrelevant distance set the longitudinal safe distance to be very large
+        final_lon_safe_dist = lon_safe_dist + (1 - dist_is_relevant) * np.finfo(np.float16).max
+
+        return np.concatenate((final_lon_safe_dist[..., np.newaxis], lat_safe_dist[..., np.newaxis]), axis=-1)

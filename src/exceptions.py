@@ -48,7 +48,7 @@ class CouldNotGenerateTrajectories(TrajectoryPlanningException):
     pass
 
 
-class NoSafeTrajectoriesFound(TrjajectoryPlanningException):
+class NoSafeTrajectoriesFound(TrajectoryPlanningException):
     pass
 
 
