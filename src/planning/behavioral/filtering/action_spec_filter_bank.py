@@ -165,17 +165,26 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
             ego_init_fstate = behavioral_state.projected_ego_fstates[rel_lane]
             T_d_grid_size = MAX_SAFETY_T_D_GRID_SIZE
 
-            # predict objects' trajectories
+            # find relevant objects for safety: front and from the target lane
+            relevant_objects = []
+            front_cell = (rel_lane, RelativeLongitudinalPosition.FRONT)
+            if front_cell in behavioral_state.road_occupancy_grid:
+                relevant_objects.append(behavioral_state.road_occupancy_grid[front_cell][0].dynamic_object)
+            # TODO: bring here the recipes and choose at most 2 objects from the target lane according to recipe.lon_cell
+            if rel_lane != RelativeLane.SAME_LANE:
+                for lon_cell in RelativeLongitudinalPosition:
+                    if (rel_lane, lon_cell) in behavioral_state.road_occupancy_grid:
+                        relevant_objects.append(behavioral_state.road_occupancy_grid[(rel_lane, lon_cell)][0].dynamic_object)
+
             obj_sizes = []
             obj_map_states = []
-            for lon_cell in RelativeLongitudinalPosition:
-                if (rel_lane, lon_cell) in behavioral_state.road_occupancy_grid:
-                    obj = behavioral_state.road_occupancy_grid[(rel_lane, lon_cell)][0].dynamic_object
-                    obj_sizes.append(obj.size)
-                    obj_map_states.append(lane_frenet.convert_from_segment_state(obj.map_state.lane_fstate, obj.map_state.lane_id))
+            for obj in relevant_objects:
+                obj_sizes.append(obj.size)
+                obj_map_states.append(lane_frenet.convert_from_segment_state(obj.map_state.lane_fstate, obj.map_state.lane_id))
             if len(obj_sizes) == 0:
                 continue  # if there are no objects on the target lane, then all actions are safe
 
+            # predict objects' trajectories
             time_points = np.arange(0, BP_ACTION_T_LIMITS[1] + EPS, TRAJECTORY_TIME_RESOLUTION)
             obj_trajectories = predictor.predict_frenet_states(np.array(obj_map_states), time_points)
 
