@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from logging import Logger
-from typing import Tuple
+from typing import Tuple, List
 import rte.python.profiler as prof
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories, \
@@ -24,7 +24,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.state.state import State
+from decision_making.src.state.state import State, DynamicObject
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -424,14 +424,14 @@ class WerlingPlanner(TrajectoryPlanner):
         :param ego_ftrajectories: ego Frenet trajectories
         :return: indices of safe trajectories and point-wise safe distances
         """
+        # find relevant objects for the safety test
+        relevant_objects = self._choose_relevant_objects_for_safety(state, time_samples, ego_ftrajectories)
+        # extract Frenet states and sizes of the relevant objects
         objects_frenet_states_list = []
         obj_sizes = []
-        for dynamic_object in state.dynamic_objects:
-            # Objects without map_state are too far (not affected by safety) and outside the reference frame.
-            # We don't care them here.
-            if dynamic_object._cached_map_state is not None:
-                objects_frenet_states_list.append(dynamic_object._cached_map_state.lane_fstate)
-                obj_sizes.append(dynamic_object.size)
+        for obj in relevant_objects:
+            objects_frenet_states_list.append(obj.map_state.lane_fstate)
+            obj_sizes.append(obj.size)
         if len(objects_frenet_states_list) == 0:
             return np.array(range(ego_ftrajectories.shape[0])), \
                    np.zeros((ego_ftrajectories.shape[0], ego_ftrajectories.shape[1], 2))
@@ -446,3 +446,56 @@ class WerlingPlanner(TrajectoryPlanner):
         safe_trajectories = (safe_distances > 0).all(axis=(1, 2)).any(axis=-1)
 
         return np.where(safe_trajectories)[0], np.min(safe_distances, axis=1)
+
+    def _choose_relevant_objects_for_safety(self, state: State, time_samples: np.ndarray,
+                                            ego_ftrajectories: FrenetTrajectories2D) -> List[DynamicObject]:
+        """
+        Choose at most 3 objects relevant for the safety test: F, LF/RF, RF/RB
+        :param state: the current state
+        :param time_samples: time samples of ego trajectories
+        :param ego_ftrajectories: ego Frenet trajectories
+        :return: objects list relevant for the safety
+        """
+        # find at most 3 dynamic objects relevant for safety
+        # TODO: the following logic is correct only for naive predictions, when dynamic objects don't change lane
+        ego_fstate = ego_ftrajectories[0, 0]
+        ego_size = state.ego_state.size
+
+        existing_objects = [obj for obj in state.dynamic_objects if obj._cached_map_state is not None]
+        if len(existing_objects) == 0:
+            return []
+        obj_orig_indices = np.array([idx for idx, obj in enumerate(state.dynamic_objects) if obj._cached_map_state is not None])
+
+        obj_fstates = np.array([obj.map_state.lane_fstate for obj in existing_objects])
+        obj_sizes = np.array([[obj.size.length, obj.size.width] for obj in existing_objects])
+        common_widths = 0.5 * (ego_size.width + obj_sizes[:, 1])
+
+        relevant_objects = []
+        # find front object F: the object is in front of ego longitudinally and is close to ego laterally
+        start_front_idxs = np.where(np.logical_and(ego_fstate[FS_SX] < obj_fstates[:, FS_SX],
+                                                   np.abs(ego_fstate[FS_DX] - obj_fstates[:, FS_DX]) < common_widths))[0]
+        if len(start_front_idxs) > 0:
+            closest_front_idx = start_front_idxs[np.argmin(obj_fstates[:, FS_SX][start_front_idxs])]
+            relevant_objects.append(state.dynamic_objects[obj_orig_indices[closest_front_idx]])
+
+        # find the objects LF/RF and LB/RB
+        ego_end_x = ego_ftrajectories[0, -1, FS_SX]
+        objects_end_state = self.predictor.predict_frenet_states(obj_fstates, time_samples[-1:])[:, 0]
+        objects_end_x, objects_end_y = objects_end_state[:, FS_SX], objects_end_state[:, FS_DX]
+
+        # find the closest back objects to the final ego position
+        end_back_idxs = np.where(np.logical_and(ego_end_x >= objects_end_x, np.abs(objects_end_y) < common_widths))[0]
+        if len(end_back_idxs) > 0:
+            closest_end_back = end_back_idxs[np.argmax(objects_end_x[end_back_idxs])]
+            relevant_objects.append(state.dynamic_objects[obj_orig_indices[closest_end_back]])
+
+        # find the closest front objects to the final ego position
+        end_front_idxs = np.where(np.logical_and(ego_end_x < objects_end_x, np.abs(objects_end_y) < common_widths))[0]
+        if len(end_front_idxs) > 0:
+            closest_front_idx = end_front_idxs[np.argmin(objects_end_x[end_front_idxs])]
+            relevant_objects.append(state.dynamic_objects[obj_orig_indices[closest_front_idx]])
+
+        # remove duplicated objects (e.g. if F becomes LF)
+        seen = set()
+        # The statement if seen.add(...) always returns False
+        return [obj for obj in relevant_objects if obj.obj_id not in seen and not seen.add(obj.obj_id)]
