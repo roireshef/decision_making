@@ -36,10 +36,10 @@ class PubSub:
 
     @staticmethod
     def unsubscribe(topic):
-        # TODO Implement unsubscribe from a specific callback if required
         """
-        Unsuscribes
+        Unsuscribes ALL(!) callbacks from the topic given as argument to this method.
         :param topic:
         :return:
         """
+        # TODO Implement unsubscribe from a specific callback if required
         topic.unregister_cb(None)
