@@ -119,12 +119,12 @@ class BehavioralPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, input_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
+        is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_state is None:
             if self._started_receiving_states:
                 # PubSub queue is empty after being non-empty for a while
-                raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t "
+                raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_STATE_LCM)
             else:
                 # Pubsub queue is empty since planning module is up

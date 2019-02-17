@@ -36,6 +36,7 @@ class PubSub:
 
     @staticmethod
     def unsubscribe(topic):
+        # TODO Implement unsubscribe from a specific callback if required
         """
         Unsuscribes
         :param topic:
