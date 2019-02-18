@@ -21,56 +21,56 @@ class CostBasedRoutePlanner(RoutePlanner):
 
     @staticmethod
     # Normalized cost (0 to 1). Current implementation is binary cost.
-    def _MappingStatusAttrBsdOccCost(MappingStatusAttr: LaneMappingStatusType)->float:
-        if((MappingStatusAttr == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
-           (MappingStatusAttr == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
+    def _mapping_status_attributeBsdOccCost(mapping_status_attribute: LaneMappingStatusType)->float:
+        if((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
+           (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
             return 0
         return 1
 
     @staticmethod
     # Normalized cost (0 to 1). Current implementation is binary cost.
-    def _ConstructionZoneAttrBsdOccCost(ConstructionZoneAttr: LaneConstructionType)->float:
-        #print("ConstructionZoneAttr ",ConstructionZoneAttr)
-        if((ConstructionZoneAttr == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
-           (ConstructionZoneAttr == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
+    def _construction_zone_attributeBsdOccCost(construction_zone_attribute: LaneConstructionType)->float:
+        #print("construction_zone_attribute ",construction_zone_attribute)
+        if((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
+           (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
             return 0
         return 1
 
     @staticmethod
     # Normalized cost (0 to 1). Current implementation is binary cost.
-    def _LaneRouteDirAttrBsdOccCost(LaneRouteDirAttr: MapLaneDirection)->float:
-        #print("LaneRouteDirAttr ",LaneRouteDirAttr)
-        if((LaneRouteDirAttr == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
-           (LaneRouteDirAttr == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
-                (LaneRouteDirAttr == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
+    def _lane_dir_in_route_attributeBsdOccCost(lane_dir_in_route_attribute: MapLaneDirection)->float:
+        #print("lane_dir_in_route_attribute ",lane_dir_in_route_attribute)
+        if((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
+           (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
+                (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
             return 0
         return 1
 
     @staticmethod
     # Normalized cost (0 to 1). Current implementation is binary cost.
-    def _GMAuthorityAttrBsdOccCost(GMAuthorityAttr: GMAuthorityType)->float:
-        #print("GMAuthorityAttr ",GMAuthorityAttr)
-        if(GMAuthorityAttr == GMAuthorityType.CeSYS_e_GMAuthorityType_None):
+    def _gm_authority_attributeBsdOccCost(gm_authority_attribute: GMAuthorityType)->float:
+        #print("gm_authority_attribute ",gm_authority_attribute)
+        if(gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None):
             return 0
         return 1
 
     # Normalized cost (0 to 1). This method is a wrapper on the individual lane attribute cost calculations and arbitrates 
     # according to the (input) lane attribute, which lane attribute method to invoke
-    # Input : LaneAttrIdx, pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
-    # Input : LaneAttrVal, value of the pointed lane attribute 
+    # Input : lane_attribute_index, pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
+    # Input : lane_attribute_value, value of the pointed lane attribute 
     # Output: lane occupancy cost based on the concerned lane attribute
     @staticmethod
-    def _LaneAttrBsdOccCost(LaneAttrIdx: int, LaneAttrVal: int)->float:  # if else logic
-        if(LaneAttrIdx == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus):
-            return CostBasedRoutePlanner._MappingStatusAttrBsdOccCost(LaneAttrVal)
-        elif(LaneAttrIdx == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA):
-            return CostBasedRoutePlanner._GMAuthorityAttrBsdOccCost(LaneAttrVal)
-        elif(LaneAttrIdx == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction):
-            return CostBasedRoutePlanner._ConstructionZoneAttrBsdOccCost(LaneAttrVal)
-        elif(LaneAttrIdx == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction):
-            return CostBasedRoutePlanner._LaneRouteDirAttrBsdOccCost(LaneAttrVal)
+    def _LaneAttrBsdOccCost(lane_attribute_index: int, lane_attribute_value: int)->float:  # if else logic
+        if(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus):
+            return CostBasedRoutePlanner._mapping_status_attributeBsdOccCost(lane_attribute_value)
+        elif(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA):
+            return CostBasedRoutePlanner._gm_authority_attributeBsdOccCost(lane_attribute_value)
+        elif(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction):
+            return CostBasedRoutePlanner._construction_zone_attributeBsdOccCost(lane_attribute_value)
+        elif(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction):
+            return CostBasedRoutePlanner._lane_dir_in_route_attributeBsdOccCost(lane_attribute_value)
         else:
-            print("Error LaneAttrIdx not supported ", LaneAttrIdx)
+            print("Error lane_attribute_index not supported ", lane_attribute_index)
             return 0
 
 
@@ -78,25 +78,26 @@ class CostBasedRoutePlanner(RoutePlanner):
     # Input : SceneLaneSegmentBase for the concerned lane
     # Output: LaneOccupancyCost, cost to the AV if it occupies the lane. 
     @staticmethod
-    def _lane_occupancy_cost_calc(lanesegBaseData: SceneLaneSegmentBase)->float:
-        LaneOccCost = 0
+    def _lane_occupancy_cost_calc(laneseg_base_data: SceneLaneSegmentBase)->float:
+        lane_occupancy_cost = 0
 
         # Now iterate over all the active lane attributes for the lane segment
-        for Idx in range(lanesegBaseData.e_Cnt_num_active_lane_attributes):
-            # LaneAttrIdx gives the index lookup for lane attributes and confidences
-            LaneAttrIdx = lanesegBaseData.a_i_active_lane_attribute_indices[Idx]
-            LaneAttrVal = lanesegBaseData.a_cmp_lane_attributes[LaneAttrIdx]
-            LaneAttrConf = lanesegBaseData.a_cmp_lane_attribute_confidences[LaneAttrIdx]
-            if (LaneAttrConf < 0.7):  # change to a config param later
+        for Idx in range(laneseg_base_data.e_Cnt_num_active_lane_attributes):
+            # lane_attribute_index gives the index lookup for lane attributes and confidences
+            lane_attribute_index = laneseg_base_data.a_i_active_lane_attribute_indices[Idx]
+            lane_attribute_value = laneseg_base_data.a_cmp_lane_attributes[lane_attribute_index]
+            lane_attribute_confidence = laneseg_base_data.a_cmp_lane_attribute_confidences[lane_attribute_index]
+            if (lane_attribute_confidence < 0.7):  # change to a config param later
                 continue
-            LaneAttrOccCost = CostBasedRoutePlanner._LaneAttrBsdOccCost(LaneAttrIdx = LaneAttrIdx, LaneAttrVal = LaneAttrVal)
-            #print("LaneAttrConf ",LaneAttrConf," LaneAttrIdx",LaneAttrIdx," LaneAttrVal ",LaneAttrVal," LaneAttrOccCost ",LaneAttrOccCost)
+            lane_attribute_based_occupancy_cost = \
+                CostBasedRoutePlanner._LaneAttrBsdOccCost(lane_attribute_index = lane_attribute_index, lane_attribute_value = lane_attribute_value)
+            #print("lane_attribute_confidence ",lane_attribute_confidence," lane_attribute_index",lane_attribute_index," lane_attribute_value ",lane_attribute_value," lane_attribute_based_occupancy_cost ",lane_attribute_based_occupancy_cost)
             # Add costs from all lane attributes
-            LaneOccCost = LaneOccCost + LaneAttrOccCost
+            lane_occupancy_cost = lane_occupancy_cost + lane_attribute_based_occupancy_cost
 
         # Normalize to the [0, 1] range
-        LaneOccCost = max(min(LaneOccCost, 1), 0)
-        return LaneOccCost
+        lane_occupancy_cost = max(min(lane_occupancy_cost, 1), 0)
+        return lane_occupancy_cost
 
 
     # Calculates lane end cost for a single lane segment
@@ -104,29 +105,30 @@ class CostBasedRoutePlanner(RoutePlanner):
     # Input : as_route_plan_lane_segments is the array or routeplan lane segments (already evaluated, downstrem of the concerned lane).
     #         We mainly need the lane end cost from here.
     # Input : reverseroadsegidx, the index of the concerned roadsegment index to access the costs from the as_route_plan_lane_segments container
-    # Input : NextRoadSegLanes, list of lane segment IDs in the next road segment in route
-    # Output: LaneEndCost, cost to the AV if it reaches the lane end
+    # Input : lanesegs_in_next_roadseg, list of lane segment IDs in the next road segment in route
+    # Output: lane_end_cost, cost to the AV if it reaches the lane end
     @staticmethod
-    def _lane_end_cost_calc(lanesegBaseData: SceneLaneSegmentBase,reverseroadsegidx:int,NextRoadSegLanes,\
+    def _lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase,reverseroadsegidx:int,lanesegs_in_next_roadseg,\
         as_route_plan_lane_segments:List[List[RoutePlanLaneSegment]])->float: 
-        LaneEndCost = 0
-        MinDwnStreamLaneOccCost = 1
+        lane_end_cost = 0
+        min_down_stream_laneseg_occupancy_cost = 1
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
         # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
         # search through all downstream lanes to to current lane
-        for Idx in range(lanesegBaseData.e_Cnt_downstream_lane_count):
-            DownStreamlanesegID = lanesegBaseData.as_downstream_lanes[Idx].e_i_lane_segment_id
+        for Idx in range(laneseg_base_data.e_Cnt_downstream_lane_count):
+            down_stream_laneseg_id = laneseg_base_data.as_downstream_lanes[Idx].e_i_lane_segment_id
             # All lane IDs in downstream roadsegment in route to the
             # currently indexed roadsegment in the loop
-            if DownStreamlanesegID in NextRoadSegLanes:  # verify if the downstream lane is in the route
-                DownStreamlanesegIdx = NextRoadSegLanes.index(DownStreamlanesegID)
-                DownStreamLaneOccCost = as_route_plan_lane_segments[reverseroadsegidx-1][DownStreamlanesegIdx].e_cst_lane_occupancy_cost
-                MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost, DownStreamLaneOccCost)
+            if down_stream_laneseg_id in lanesegs_in_next_roadseg:  # verify if the downstream lane is in the route
+                down_stream_laneseg_idx = lanesegs_in_next_roadseg.index(down_stream_laneseg_id)
+                down_stream_laneseg_occupancy_cost = \
+                    as_route_plan_lane_segments[reverseroadsegidx-1][down_stream_laneseg_idx].e_cst_lane_occupancy_cost
+                min_down_stream_laneseg_occupancy_cost = min(min_down_stream_laneseg_occupancy_cost, down_stream_laneseg_occupancy_cost)
             else:
                 # Add exception later
-                print(" DownStreamlanesegID ", DownStreamlanesegID, " not found in NextRoadSegLanes ", NextRoadSegLanes)        
-                LaneEndCost = MinDwnStreamLaneOccCost
-        return LaneEndCost
+                print(" down_stream_laneseg_id ", down_stream_laneseg_id, " not found in lanesegs_in_next_roadseg ", lanesegs_in_next_roadseg)        
+                lane_end_cost = min_down_stream_laneseg_occupancy_cost
+        return lane_end_cost
 
 
     # Calculates lane end and occupancy costs for all the lanes in the NAV plan 
@@ -156,31 +158,31 @@ class CostBasedRoutePlanner(RoutePlanner):
             enumerated_lanesegIDs = enumerate(lanesegIDs)
             for lanesegidx, lanesegID in enumerated_lanesegIDs:
                 # Access all the lane segment lite data from lane segment dict
-                lanesegBaseData = RouteData.LaneSegmentDict[lanesegID]
+                laneseg_base_data = RouteData.LaneSegmentDict[lanesegID]
 
                 # -------------------------------------------
                 # Calculate lane occupancy costs for a lane
                 # -------------------------------------------
-                LaneOccCost = CostBasedRoutePlanner._lane_occupancy_cost_calc(lanesegBaseData)
+                lane_occupancy_cost = CostBasedRoutePlanner._lane_occupancy_cost_calc(laneseg_base_data)
                 # -------------------------------------------
                 # Calculate lane end costs (from lane occupancy costs)
                 # -------------------------------------------
 
                 if (reverseroadsegidx == 0):  # the last road segment in the route; put all endcosts to 0
-                    LaneEndCost = 0
-                elif (LaneOccCost == 1):
+                    lane_end_cost = 0
+                elif (lane_occupancy_cost == 1):
                     # Can't occupy the lane, end cost must be MAX(=1)
-                    LaneEndCost = 1
+                    lane_end_cost = 1
                 elif (reverseroadsegidx > 0):
-                    NextRoadSegLanes = RouteData.route_lanesegments[prev_roadsegID]
-                    LaneEndCost = CostBasedRoutePlanner._lane_end_cost_calc(lanesegBaseData=lanesegBaseData,reverseroadsegidx =reverseroadsegidx,\
-                        NextRoadSegLanes = NextRoadSegLanes, as_route_plan_lane_segments = as_route_plan_lane_segments)
+                    lanesegs_in_next_roadseg = RouteData.route_lanesegments[prev_roadsegID]
+                    lane_end_cost = CostBasedRoutePlanner._lane_end_cost_calc(laneseg_base_data=laneseg_base_data,reverseroadsegidx =reverseroadsegidx,\
+                        lanesegs_in_next_roadseg = lanesegs_in_next_roadseg, as_route_plan_lane_segments = as_route_plan_lane_segments)
                 else:
                     print(" Bad value for reverseroadsegidx :",reverseroadsegidx)  # Add exception later
 
                 # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
                 CurrRoutePlanLaneSegment = RoutePlanLaneSegment(e_i_lane_segment_id=lanesegID,
-                                                                e_cst_lane_occupancy_cost=LaneOccCost, e_cst_lane_end_cost=LaneEndCost)
+                                                                e_cst_lane_occupancy_cost=lane_occupancy_cost, e_cst_lane_end_cost=lane_end_cost)
                 AllRouteLanesInThisRoadSeg.append(CurrRoutePlanLaneSegment)
 
             # At this point we have at least iterated once through the road segment loop once. prev_roadsegID is set to be used for
