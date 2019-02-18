@@ -1,10 +1,12 @@
 import numpy as np
 import pprint
 from typing import List
-
+import traceback
+from logging import Logger
 
 from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
+from decision_making.src.exceptions import LaneNotFound
 
 
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
@@ -122,8 +124,8 @@ class CostBasedRoutePlanner(RoutePlanner):
                 MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost, DownStreamLaneOccCost)
             else:
                 # Add exception later
-                print(" DownStreamlanesegID ", DownStreamlanesegID, " not found in NextRoadSegLanes ", NextRoadSegLanes)
-        LaneEndCost = MinDwnStreamLaneOccCost
+                print(" DownStreamlanesegID ", DownStreamlanesegID, " not found in NextRoadSegLanes ", NextRoadSegLanes)        
+                LaneEndCost = MinDwnStreamLaneOccCost
         return LaneEndCost
 
 
@@ -143,8 +145,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         # index -> reverseroadsegidx
         # key -> roadsegID
         # value -> lanesegIDs
-        reverse_enumerated_route_lanesegments = enumerate(
-            reversed(RouteData.route_lanesegments.items()))
+        reverse_enumerated_route_lanesegments = enumerate(reversed(RouteData.route_lanesegments.items()))
         for reverseroadsegidx, (roadsegID, lanesegIDs) in reverse_enumerated_route_lanesegments:
             # roadsegidx = num_road_segments - reverseroadsegidx
             AllRouteLanesInThisRoadSeg = []

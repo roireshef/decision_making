@@ -44,7 +44,7 @@ class DmInitialization:
     #     return state_module
 
     @staticmethod
-    def create_route_planner(map_file: str=DEFAULT_MAP_FILE) -> RoutePlanningFacade:
+    def create_route_planner(map_file:str=DEFAULT_MAP_FILE):
         logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
