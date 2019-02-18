@@ -22,7 +22,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_no_sorrounding_objects_for_takover_message
 
 
-def test_setTakeoverMessage_simpleScene_takeoverFlag():
+def test_setTakeoverMessage_simpleScene_takeoverFlag(state_with_no_sorrounding_objects_for_takover_message:State):
     
     # route plan input
     num_road_segments = 2
@@ -35,7 +35,7 @@ def test_setTakeoverMessage_simpleScene_takeoverFlag():
     road_segment_2 = [RoutePlanLaneSegment(201,0,0) , RoutePlanLaneSegment(202,0,0) ]
     route_plan_lane_segments = [road_segment_1 , road_segment_2]
 
-    route_plan = DataRoutePlan(True, num_road_segments, road_segment_ids, num_lane_segments,route_plan_lane_segments)
+    route_plan_data = DataRoutePlan(True, num_road_segments, road_segment_ids, num_lane_segments,route_plan_lane_segments)
 
     # setting the scene static for MApUtil functions
 
@@ -45,7 +45,7 @@ def test_setTakeoverMessage_simpleScene_takeoverFlag():
     scene_static_obj = SceneStaticPublisher(pubsub = pubsub , logger = logger)
     scene_static_data = scene_static_obj._generate_data()
 
-    takeover_msg = BehavioralPlanningFacade.set_takeover_message(route_plan = route_plan, state= state_with_no_sorrounding_objects_for_takover_message, \
+    takeover_msg = BehavioralPlanningFacade.set_takeover_message(route_plan_data = route_plan_data, state= state_with_no_sorrounding_objects_for_takover_message, \
                                                                  scene_static =scene_static_data)
 
     assert takeover_msg.s_Data.e_b_is_takeover_needed == False
