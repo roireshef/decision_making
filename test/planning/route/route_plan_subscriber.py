@@ -54,6 +54,7 @@ class RoutePlanSubscriber(DmModule):
 
     def _start_impl(self):
         #self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"],None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"],None)
 
     # TODO: unsubscribe once logic is fixed in LCM
@@ -75,13 +76,13 @@ class RoutePlanSubscriber(DmModule):
             mock_state = generate_mock_state(ego_lane_id = 101, ego_lane_station = 0)
 
             # get the scene static data for MapUtils setup
-            scene_static_data = self._get_current_scene_static
+            scene_static_data = self._get_current_scene_static()
             
             # get current route plan 
             route_plan = self._get_current_route_plan()
 
             # calculate the takeover message
-            takeover_msg = BehavioralPlanningFacade.set_takeover_message(route_plan , mock_state, scene_static_data)
+            takeover_msg = BehavioralPlanningFacade.set_takeover_message(route_plan_data= route_plan.s_Data , state = mock_state, scene_static = scene_static_data)
             
             # publish takeover message
             self._publish_takeover(takeover_msg)
