@@ -193,7 +193,7 @@ def scene_static_straight():
         scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_id,
                                             e_i_road_id=ROAD_ID,
                                             e_Cnt_lane_segment_id_count=NUM_STRAIGHT_LANE_SEGS_CROSS,
-                                            a_i_lane_segment_ids=np.array([current_lane_seg_ids]),
+                                            a_i_lane_segment_ids=np.array(current_lane_seg_ids),
                                             e_e_road_segment_type=MapRoadSegmentType.Normal,
                                             e_Cnt_upstream_segment_count=road_seg_upstream_count,
                                             a_i_upstream_road_segment_ids=np.array([road_seg_upstream_id]),

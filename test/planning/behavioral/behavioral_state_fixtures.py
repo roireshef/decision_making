@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.static_scene_fixture import scene_static, scene_static_with_intersections
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
@@ -68,7 +68,8 @@ def state_with_sorrounding_objects():
 
 @pytest.fixture(scope='function')
 def intersection_state_with_sorrounding_objects():
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    # has intersection in road_segment 21  with overlapping lane segments (210,211)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_with_intersections())
     road_segment_id = 20
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
@@ -225,6 +226,10 @@ def state_with_objects_for_filtering_too_aggressive():
 
     yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
+@pytest.fixture(scope='function')
+def intersection_behavioral_grid_state(intersection_state_with_sorrounding_objects: State):
+    yield BehavioralGridState.create_from_state(intersection_state_with_sorrounding_objects,
+                                                NAVIGATION_PLAN, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state(state_with_sorrounding_objects: State):

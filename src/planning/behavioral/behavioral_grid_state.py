@@ -122,17 +122,18 @@ class BehavioralGridState(BehavioralState):
 
 
     @staticmethod
-    def _lazy_set_map_states(object_map_states, extended_lane_frames, rel_lanes_per_obj):
+    def _lazy_set_map_states(dynamic_objects, extended_lane_frames, rel_lanes_per_obj):
         """
-        Takes the relevant map_states and calculates the fstate  (ones with None fstate and not None rel_lanes_per_obj)
+        Takes the relevant map_states and calculates the fstate ( map_states with None fstate and not None rel_lanes_per_obj)
         :param object_map_states:
         :param extended_lane_frames:
         :param rel_lanes_per_obj:
         :return:
         """
-        for i, object_map_state in enumerate(object_map_states):
-            if object_map_state.lane_fstate is None and rel_lanes_per_obj[i] is not None:
-                extended_lane_frames[rel_lanes_per_obj[i]].cstate_to_fstate(object_map_state.cartesian_state)
+        for i, dynamic_object in enumerate(dynamic_objects):
+            if dynamic_object.map_state.lane_fstate is None and rel_lanes_per_obj[i] is not None:
+                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]].\
+                    cstate_to_fstate(dynamic_object.cartesian_state)
 
 
     @staticmethod
@@ -156,7 +157,7 @@ class BehavioralGridState(BehavioralState):
 
         # calculate objects' segment map_states
         object_map_states = [obj.map_state for obj in overloaded_dynamic_objects]
-        objects_segment_ids = np.array([map_state.lane_id for map_state in overloaded_dynamic_objects])
+        objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
         rel_lanes_per_obj = np.full(len(overloaded_dynamic_objects), None)
@@ -167,7 +168,7 @@ class BehavioralGridState(BehavioralState):
             rel_lanes_per_obj[relevant_objects] = rel_lane
 
         # setting the missing map_states to pseudo-objects
-        object_map_states = BehavioralGridState._lazy_set_map_states(object_map_states, extended_lane_frames, rel_lanes_per_obj)
+        BehavioralGridState._lazy_set_map_states(overloaded_dynamic_objects, extended_lane_frames, rel_lanes_per_obj)
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
@@ -204,6 +205,8 @@ class BehavioralGridState(BehavioralState):
         target_segment_ids = np.array([map_state.lane_id for map_state in target_map_states])
         target_segment_fstates = np.array([map_state.lane_fstate for map_state in target_map_states])
 
+        # TODO: Check why this does not catch Nones
+        if None in target_segment_fstates: raise ValueError("Fstate not initialized")
         # initialize longitudinal_differences to infinity
         longitudinal_differences = np.full(len(target_segment_ids), np.inf)
 

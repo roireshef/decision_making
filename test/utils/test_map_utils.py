@@ -549,12 +549,15 @@ def test_getLaneFrenetFrame_isClose(scene_static: SceneStatic):
 
 
 def test_getIntersection_returnsIntersection(scene_static_with_intersections: SceneStatic):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_with_intersections)
     intersection = MapUtils.get_intersection(21)
     assert intersection is not None
     assert len(intersection.as_lane_overlaps) == 1
 
 
 def test_getIntersection_throwsException(scene_static: SceneStatic):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
     try:
         MapUtils.get_intersection(111)
     except IntersectionNotFound as e:
@@ -562,8 +565,9 @@ def test_getIntersection_throwsException(scene_static: SceneStatic):
     assert False, "Should throw IntersectionNotFound"
 
 
-def test_getLaneSegmentOverlaps(scene_static: SceneStatic):
-    # TODO
-    pass
+def test_getLaneSegmentOverlaps(scene_static_with_intersections: SceneStatic):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_with_intersections)
+    assert  MapUtils.get_lane_segment_overlaps(210) == [211]
+    assert  MapUtils.get_lane_segment_overlaps(211) == [210]
 
 
