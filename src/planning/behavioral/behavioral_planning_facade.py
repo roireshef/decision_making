@@ -32,7 +32,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.planning.types import C_Y, FS_SX
@@ -97,7 +97,7 @@ class BehavioralPlanningFacade(DmModule):
             # get current route plan
             route_plan = self._get_current_route_plan()
             # calculate the takeover message
-            takeover_msg = self.set_takeover_message(route_plan , updated_state, scene_static)
+            takeover_msg = self.set_takeover_message(route_plan.s_Data , updated_state, scene_static)
             # publish takeover message
             self._publish_takeover(takeover_msg)
 
@@ -169,22 +169,20 @@ class BehavioralPlanningFacade(DmModule):
         return object_route_plan
 
     @staticmethod
-    def set_takeover_message(route_plan:RoutePlan, state:State, scene_static: SceneStatic ) -> Takeover:
+    def set_takeover_message(route_plan_data:DataRoutePlan, state:State, scene_static: SceneStatic ) -> Takeover:
 
         SceneStaticModel.get_instance().set_scene_static(scene_static)
 
         # find current lane segment ID
         ego_lane_id = state.ego_state.map_state.lane_id
-        # ego_lane_id = MapUtils.get_closest_lane(state.ego_state.cartesian_state[:(C_Y+1)])
-        # ego_lane_id = MapUtils.get_closest_lane(np.array([1, 0]))
 
         # find current road segment ID
         curr_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(ego_lane_id)
         # find road segment index in route plan 2-d array
-        route_plan_idx = [i for i in range(route_plan.s_Data.e_Cnt_num_road_segments) \
-                            if route_plan.s_Data.a_i_road_segment_ids[i]==curr_road_segment_id ]
+        route_plan_idx = [i for i in range(route_plan_data.e_Cnt_num_road_segments) \
+                            if route_plan_data.a_i_road_segment_ids[i]==curr_road_segment_id ]
 
-        assert(len(route_plan_idx)==1 and route_plan_idx[0] >= 0 and route_plan_idx[0] < route_plan.s_Data.e_Cnt_num_road_segments )
+        assert(len(route_plan_idx)==1 and route_plan_idx[0] >= 0 and route_plan_idx[0] < route_plan_data.e_Cnt_num_road_segments )
 
         row_idx = route_plan_idx[0]
 
@@ -196,24 +194,29 @@ class BehavioralPlanningFacade(DmModule):
         dist_to_end = ego_lane_length - ego_station
 
         # check the end costs for the current road segment lanes
-        blockage_flag = True
-        for i in range(row_idx,route_plan.s_Data.e_Cnt_num_road_segments):
+        for i in range(row_idx,route_plan_data.e_Cnt_num_road_segments):
+            blockage_flag = True
 
-            for j in range(route_plan.s_Data.a_Cnt_num_lane_segments[i]) :
-                if route_plan.s_Data.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost < 1 :
+            for j in range(route_plan_data.a_Cnt_num_lane_segments[i]) :
+                if route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost < 1 :
                     blockage_flag = False
                     break
 
-            # check how many road segments are within the horizon
-            if i > row_idx:
-                next_road_lane_id = route_plan.s_Data.as_route_plan_lane_segments[i][0].e_i_lane_segment_id
+            if blockage_flag == False :
+                # check how many road segments are within the horizon
+                next_road_lane_id = route_plan_data.as_route_plan_lane_segments[i][0].e_i_lane_segment_id
                 lane_length = MapUtils.get_lane_length(next_road_lane_id)
                 dist_to_end += lane_length
-            if dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG :
+
+                if dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG :
+                    break
+            else :
                 break
 
         if blockage_flag == True and dist_to_end < DISTANCE_TO_SET_TAKEOVER_FLAG:
             takeover_flag = True
+        else :
+            takeover_flag = False
 
         # TODO check this timestamp
         timestamp_object = Timestamp.from_seconds(state.ego_state.timestamp_in_sec)
