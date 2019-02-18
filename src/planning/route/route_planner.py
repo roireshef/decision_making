@@ -13,10 +13,10 @@ class RoutePlannerInputData():
         #The dict should contain all the lane segments listed in self.route_segment_ids. 
         self.RoadSegmentDict = {} # dict : key - road segment ID, value - Road Segments. 
         #The dict should contain all the lane segments listed in self.route_segment_ids. 
-        self.Update_DictData(Scene)
-        self.Update_RoutePlanData(Nav)
+        self._update_dict_data(Scene)
+        self._update_routeplan_data(Nav)
     
-    def Update_DictData(self, Scene: SceneStaticBase):
+    def _update_dict_data(self, Scene: SceneStaticBase):
         for i in range(Scene.e_Cnt_num_lane_segments):
             e_i_lane_segment_id = Scene.as_scene_lane_segments[i].e_i_lane_segment_id
             self.LaneSegmentDict[e_i_lane_segment_id] = Scene.as_scene_lane_segments[i]
@@ -24,7 +24,7 @@ class RoutePlannerInputData():
             e_i_road_segment_id = Scene.as_scene_road_segment[i].e_i_road_segment_id
             self.RoadSegmentDict[e_i_road_segment_id] = Scene.as_scene_road_segment[i]
         
-    def Update_RoutePlanData(self, Nav: NavigationPlan):
+    def _update_routeplan_data(self, Nav: NavigationPlan):
         for road_seg_idx in range(Nav.e_Cnt_num_road_segments):
             road_seg = Nav.a_i_road_segment_ids[road_seg_idx]
             self.route_roadsegments.append(road_seg)
