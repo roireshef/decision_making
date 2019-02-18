@@ -136,7 +136,6 @@ class CostBasedRoutePlanner(RoutePlanner):
     def plan(self, route_data: RoutePlannerInputData) -> DataRoutePlan:  
         """Add comments"""
         #
-        # NewRoutePlan = DataRoutePlan()
         valid = True
         num_road_segments = len(route_data.route_roadsegments)
         a_i_road_segment_ids = []
@@ -158,7 +157,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             enumerated_laneseg_ids = enumerate(laneseg_ids)
             for laneseg_idx, laneseg_id in enumerated_laneseg_ids:
                 # Access all the lane segment lite data from lane segment dict
-                laneseg_base_data = route_data.LaneSegmentDict[laneseg_id]
+                laneseg_base_data = route_data.route_lanesegs_base_as_dict[laneseg_id]
 
                 # -------------------------------------------
                 # Calculate lane occupancy costs for a lane
@@ -195,7 +194,6 @@ class CostBasedRoutePlanner(RoutePlanner):
             a_Cnt_num_lane_segments.insert(0, laneseg_idx+1)
             as_route_plan_lane_segments.insert(0, all_routesegs_in_this_roadseg)
 
-        NewRoutePlan = DataRoutePlan(e_b_is_valid=valid, e_Cnt_num_road_segments=num_road_segments, a_i_road_segment_ids=np.array(a_i_road_segment_ids),
+        return DataRoutePlan(e_b_is_valid=valid, e_Cnt_num_road_segments=num_road_segments, a_i_road_segment_ids=np.array(a_i_road_segment_ids),
                                      a_Cnt_num_lane_segments=np.array(a_Cnt_num_lane_segments), as_route_plan_lane_segments=as_route_plan_lane_segments)
 
-        return NewRoutePlan
