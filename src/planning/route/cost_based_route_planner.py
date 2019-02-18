@@ -104,11 +104,11 @@ class CostBasedRoutePlanner(RoutePlanner):
     # Input : SceneLaneSegmentBase for the concerned lane
     # Input : as_route_plan_lane_segments is the array or routeplan lane segments (already evaluated, downstrem of the concerned lane).
     #         We mainly need the lane end cost from here.
-    # Input : reverseroadsegidx, the index of the concerned roadsegment index to access the costs from the as_route_plan_lane_segments container
+    # Input : reversed_roadseg_idx_in_route, the index of the concerned roadsegment index to access the costs from the as_route_plan_lane_segments container
     # Input : lanesegs_in_next_roadseg, list of lane segment IDs in the next road segment in route
     # Output: lane_end_cost, cost to the AV if it reaches the lane end
     @staticmethod
-    def _lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase,reverseroadsegidx:int,lanesegs_in_next_roadseg,\
+    def _lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase,reversed_roadseg_idx_in_route:int,lanesegs_in_next_roadseg,\
         as_route_plan_lane_segments:List[List[RoutePlanLaneSegment]])->float: 
         lane_end_cost = 0
         min_down_stream_laneseg_occupancy_cost = 1
@@ -122,7 +122,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             if down_stream_laneseg_id in lanesegs_in_next_roadseg:  # verify if the downstream lane is in the route
                 down_stream_laneseg_idx = lanesegs_in_next_roadseg.index(down_stream_laneseg_id)
                 down_stream_laneseg_occupancy_cost = \
-                    as_route_plan_lane_segments[reverseroadsegidx-1][down_stream_laneseg_idx].e_cst_lane_occupancy_cost
+                    as_route_plan_lane_segments[reversed_roadseg_idx_in_route-1][down_stream_laneseg_idx].e_cst_lane_occupancy_cost
                 min_down_stream_laneseg_occupancy_cost = min(min_down_stream_laneseg_occupancy_cost, down_stream_laneseg_occupancy_cost)
             else:
                 # Add exception later
@@ -133,32 +133,32 @@ class CostBasedRoutePlanner(RoutePlanner):
 
     # Calculates lane end and occupancy costs for all the lanes in the NAV plan 
 
-    def plan(self, RouteData: RoutePlannerInputData) -> DataRoutePlan:  
+    def plan(self, route_data: RoutePlannerInputData) -> DataRoutePlan:  
         """Add comments"""
         #
         # NewRoutePlan = DataRoutePlan()
         valid = True
-        num_road_segments = len(RouteData.route_roadsegments)
+        num_road_segments = len(route_data.route_roadsegments)
         a_i_road_segment_ids = []
         a_Cnt_num_lane_segments = []
         as_route_plan_lane_segments = []
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
-        # index -> reverseroadsegidx
-        # key -> roadsegID
-        # value -> lanesegIDs
-        reverse_enumerated_route_lanesegments = enumerate(reversed(RouteData.route_lanesegments.items()))
-        for reverseroadsegidx, (roadsegID, lanesegIDs) in reverse_enumerated_route_lanesegments:
-            # roadsegidx = num_road_segments - reverseroadsegidx
-            AllRouteLanesInThisRoadSeg = []
+        # index -> reversed_roadseg_idx_in_route
+        # key -> roadseg_id
+        # value -> laneseg_ids
+        reverse_enumerated_route_lanesegments = enumerate(reversed(route_data.route_lanesegments.items()))
+        for reversed_roadseg_idx_in_route, (roadseg_id, laneseg_ids) in reverse_enumerated_route_lanesegments:
+            # roadseg_idx = num_road_segments - reversed_roadseg_idx_in_route
+            all_routesegs_in_this_roadseg = []
 
             # Now iterate over all the lane segments inside  the enumerate(road segment)
-            # index -> lanesegidx
-            # value -> lanesegID
-            enumerated_lanesegIDs = enumerate(lanesegIDs)
-            for lanesegidx, lanesegID in enumerated_lanesegIDs:
+            # index -> laneseg_idx
+            # value -> laneseg_id
+            enumerated_laneseg_ids = enumerate(laneseg_ids)
+            for laneseg_idx, laneseg_id in enumerated_laneseg_ids:
                 # Access all the lane segment lite data from lane segment dict
-                laneseg_base_data = RouteData.LaneSegmentDict[lanesegID]
+                laneseg_base_data = route_data.LaneSegmentDict[laneseg_id]
 
                 # -------------------------------------------
                 # Calculate lane occupancy costs for a lane
@@ -168,31 +168,32 @@ class CostBasedRoutePlanner(RoutePlanner):
                 # Calculate lane end costs (from lane occupancy costs)
                 # -------------------------------------------
 
-                if (reverseroadsegidx == 0):  # the last road segment in the route; put all endcosts to 0
+                if (reversed_roadseg_idx_in_route == 0):  # the last road segment in the route; put all endcosts to 0
                     lane_end_cost = 0
                 elif (lane_occupancy_cost == 1):
                     # Can't occupy the lane, end cost must be MAX(=1)
                     lane_end_cost = 1
-                elif (reverseroadsegidx > 0):
-                    lanesegs_in_next_roadseg = RouteData.route_lanesegments[prev_roadsegID]
-                    lane_end_cost = CostBasedRoutePlanner._lane_end_cost_calc(laneseg_base_data=laneseg_base_data,reverseroadsegidx =reverseroadsegidx,\
+                elif (reversed_roadseg_idx_in_route > 0):
+                    lanesegs_in_next_roadseg = route_data.route_lanesegments[prev_roadseg_id]
+                    lane_end_cost = CostBasedRoutePlanner._lane_end_cost_calc(laneseg_base_data=laneseg_base_data,\
+                    reversed_roadseg_idx_in_route =reversed_roadseg_idx_in_route,\
                         lanesegs_in_next_roadseg = lanesegs_in_next_roadseg, as_route_plan_lane_segments = as_route_plan_lane_segments)
                 else:
-                    print(" Bad value for reverseroadsegidx :",reverseroadsegidx)  # Add exception later
+                    print(" Bad value for reversed_roadseg_idx_in_route :",reversed_roadseg_idx_in_route)  # Add exception later
 
                 # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
-                CurrRoutePlanLaneSegment = RoutePlanLaneSegment(e_i_lane_segment_id=lanesegID,
+                current_routeseg = RoutePlanLaneSegment(e_i_lane_segment_id=laneseg_id,
                                                                 e_cst_lane_occupancy_cost=lane_occupancy_cost, e_cst_lane_end_cost=lane_end_cost)
-                AllRouteLanesInThisRoadSeg.append(CurrRoutePlanLaneSegment)
+                all_routesegs_in_this_roadseg.append(current_routeseg)
 
-            # At this point we have at least iterated once through the road segment loop once. prev_roadsegID is set to be used for
+            # At this point we have at least iterated once through the road segment loop once. prev_roadseg_id is set to be used for
             # the next road segment loop
-            prev_roadsegID = roadsegID
+            prev_roadseg_id = roadseg_id
 
             # push back the road segment sepecific info , as the road seg iteration is reverse
-            a_i_road_segment_ids.insert(0, roadsegID)
-            a_Cnt_num_lane_segments.insert(0, lanesegidx+1)
-            as_route_plan_lane_segments.insert(0, AllRouteLanesInThisRoadSeg)
+            a_i_road_segment_ids.insert(0, roadseg_id)
+            a_Cnt_num_lane_segments.insert(0, laneseg_idx+1)
+            as_route_plan_lane_segments.insert(0, all_routesegs_in_this_roadseg)
 
         NewRoutePlan = DataRoutePlan(e_b_is_valid=valid, e_Cnt_num_road_segments=num_road_segments, a_i_road_segment_ids=np.array(a_i_road_segment_ids),
                                      a_Cnt_num_lane_segments=np.array(a_Cnt_num_lane_segments), as_route_plan_lane_segments=as_route_plan_lane_segments)
