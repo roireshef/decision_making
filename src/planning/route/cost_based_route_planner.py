@@ -21,7 +21,7 @@ class CostBasedRoutePlanner(RoutePlanner):
 
     @staticmethod
     # Normalized cost (0 to 1). Current implementation is binary cost.
-    def _mapping_status_attributeBsdOccCost(mapping_status_attribute: LaneMappingStatusType)->float:
+    def _mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType)->float:
         if((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
            (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
             return 0
@@ -29,7 +29,7 @@ class CostBasedRoutePlanner(RoutePlanner):
 
     @staticmethod
     # Normalized cost (0 to 1). Current implementation is binary cost.
-    def _construction_zone_attributeBsdOccCost(construction_zone_attribute: LaneConstructionType)->float:
+    def _construction_zone_based_occupancy_cost(construction_zone_attribute: LaneConstructionType)->float:
         #print("construction_zone_attribute ",construction_zone_attribute)
         if((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
            (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
@@ -38,7 +38,7 @@ class CostBasedRoutePlanner(RoutePlanner):
 
     @staticmethod
     # Normalized cost (0 to 1). Current implementation is binary cost.
-    def _lane_dir_in_route_attributeBsdOccCost(lane_dir_in_route_attribute: MapLaneDirection)->float:
+    def _lane_dir_in_route_based_occupancy_cost(lane_dir_in_route_attribute: MapLaneDirection)->float:
         #print("lane_dir_in_route_attribute ",lane_dir_in_route_attribute)
         if((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
            (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
@@ -48,7 +48,7 @@ class CostBasedRoutePlanner(RoutePlanner):
 
     @staticmethod
     # Normalized cost (0 to 1). Current implementation is binary cost.
-    def _gm_authority_attributeBsdOccCost(gm_authority_attribute: GMAuthorityType)->float:
+    def _gm_authority_based_occupancy_cost(gm_authority_attribute: GMAuthorityType)->float:
         #print("gm_authority_attribute ",gm_authority_attribute)
         if(gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None):
             return 0
@@ -62,13 +62,13 @@ class CostBasedRoutePlanner(RoutePlanner):
     @staticmethod
     def _LaneAttrBsdOccCost(lane_attribute_index: int, lane_attribute_value: int)->float:  # if else logic
         if(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus):
-            return CostBasedRoutePlanner._mapping_status_attributeBsdOccCost(lane_attribute_value)
+            return CostBasedRoutePlanner._mapping_status_based_occupancy_cost(lane_attribute_value)
         elif(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA):
-            return CostBasedRoutePlanner._gm_authority_attributeBsdOccCost(lane_attribute_value)
+            return CostBasedRoutePlanner._gm_authority_based_occupancy_cost(lane_attribute_value)
         elif(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction):
-            return CostBasedRoutePlanner._construction_zone_attributeBsdOccCost(lane_attribute_value)
+            return CostBasedRoutePlanner._construction_zone_based_occupancy_cost(lane_attribute_value)
         elif(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction):
-            return CostBasedRoutePlanner._lane_dir_in_route_attributeBsdOccCost(lane_attribute_value)
+            return CostBasedRoutePlanner._lane_dir_in_route_based_occupancy_cost(lane_attribute_value)
         else:
             print("Error lane_attribute_index not supported ", lane_attribute_index)
             return 0
@@ -154,7 +154,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             # Now iterate over all the lane segments inside  the enumerate(road segment)
             # index -> laneseg_idx
             # value -> laneseg_id
-            enumerated_laneseg_ids = enumerate(laneseg_ids)
+            enumerated_laneseg_ids = enumerate(laneseg_ids)            
             for laneseg_idx, laneseg_id in enumerated_laneseg_ids:
                 # Access all the lane segment lite data from lane segment dict
                 laneseg_base_data = route_data.route_lanesegs_base_as_dict[laneseg_id]
