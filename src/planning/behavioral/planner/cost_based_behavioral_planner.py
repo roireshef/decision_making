@@ -121,6 +121,7 @@ class CostBasedBehavioralPlanner:
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
+        # TODO: add a parameter for the total planning time (including TP padding instead/in addition to bp_time)
         # create TrajectoryParams for TP
         trajectory_parameters = TrajectoryParams(reference_route=action_frame,
                                                  time=action_spec.t + ego.timestamp_in_sec,
@@ -157,6 +158,7 @@ class CostBasedBehavioralPlanner:
         return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
+                                          total_time=action_spec.t,
                                           frenet_frame=reference_route,
                                           poly_s_coefs=poly_coefs_s,
                                           poly_d_coefs=poly_coefs_d)

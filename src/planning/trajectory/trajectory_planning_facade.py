@@ -109,7 +109,7 @@ class TrajectoryPlanningFacade(DmModule):
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     params.cost_params)
+                     params.bp_time, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
@@ -122,7 +122,7 @@ class TrajectoryPlanningFacade(DmModule):
                 state, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
-            self._publish_debug(debug_results)
+            # self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
             MetricLogger.get_logger().report()

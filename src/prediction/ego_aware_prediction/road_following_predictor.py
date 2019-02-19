@@ -10,6 +10,7 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, DynamicObject
 
 
+# TODO: Consider making predictors static classes
 class RoadFollowingPredictor(EgoAwarePredictor):
     """
     Dynamic objects are predicted as continuing in the same intra road lat and following the road's curve in constant

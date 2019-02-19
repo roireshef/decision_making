@@ -1,4 +1,5 @@
 import numpy as np
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from logging import Logger
 from typing import Tuple
 
@@ -21,7 +22,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.state.state import State
+from decision_making.src.state.state import State, EgoState
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -33,23 +34,22 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
-    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState,
+             time_horizon: float,
+             bp_time: int, cost_params: TrajectoryCostParams) -> Tuple[
+        SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
-        T_s = time_horizon
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
-        ego_cartesian_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, state.ego_state.velocity,
-                                        state.ego_state.acceleration, state.ego_state.curvature])
 
-        ego_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(ego_cartesian_state)
+        ego_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(state.ego_state.cartesian_state)
 
         # THIS HANDLES CURRENT STATES WHERE THE VEHICLE IS STANDING STILL
         if np.any(np.isnan(ego_frenet_state)):
             self._logger.warning("Werling planner tried to convert current EgoState from cartesian-frame (%s)"
                                  "to frenet-frame (%s) and encountered nan values. Those values are zeroed by default",
-                                 str(ego_cartesian_state), str(ego_frenet_state))
+                                 str(state.ego_state.cartesian_state), str(ego_frenet_state))
             ego_frenet_state[np.isnan(ego_frenet_state)] = 0.0
 
         # define constraints for the initial state
@@ -75,32 +75,41 @@ class WerlingPlanner(TrajectoryPlanner):
         fconstraints_tT = FrenetConstraints(sx=sx_range, sv=sv_range, sa=goal_frenet_state[FS_SA],
                                             dx=dx_range, dv=goal_frenet_state[FS_DV], da=goal_frenet_state[FS_DA])
 
-        assert T_s >= self.dt
-        # Make sure T_s values are multiples of dt (or else the matrix, calculated using T_s, and the latitudinal
-        #  time axis, lon_time_samples, won't fit).
+        T_s = max(time_horizon, self.dt)
+        # TODO: Hack! Replace with other parameter from BP!
+        total_padded_horizon = max(EgoState.ticks_to_sec(bp_time) + 2.0, T_s) - state.ego_state.timestamp_in_sec
 
-        # TODO: figure out if T_s can be not rounded
+        # TODO: should we make sure T_s values are multiples of dt ? (Otherwise the matrix, calculated using T_s,
+        #  and the longitudinal time axis, lon_time_samples, won't fit).
         # T_s = Math.round_to_step(T_s, self.dt)
 
-        # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
-        # so time points are from t0 = 0 until some T (lon_plan_horizon)
-        planning_time_points = np.arange(0, T_s + np.finfo(np.float16).eps, self.dt)
-
         # Latitudinal planning horizon(Td) lower bound, now approximated from x=a*t^2
-        lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
+        lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T_s, self.dt)
 
-        assert T_s >= lower_bound_T_d
-        self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds',
-                           NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
-                            T_s)
         # create a grid on T_d (lateral movement time-grid)
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
         self._logger.debug("Lateral horizon grid considered is: {}".format(str(T_d_grid)))
 
+        self._logger.debug(
+            'WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds and extrapolating to %s seconds',
+            NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
+            T_s, total_padded_horizon)
+
         # solve problem in frenet-frame
+        # if T_s >= self.dt:
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                  T_s, T_d_grid, self.dt)
+        # else:
+        #     ftrajectories = [state.ego_state.map_state.lane_fstate]
+
+        # TODO: Here we should pad ftrajectories to the padded length
+        if total_padded_horizon > T_s:
+            # TODO: start from T_s or T_s + self.dt for the padding?
+            time_samples = np.arange(T_s + self.dt, total_padded_horizon, self.dt)
+            road_following_predictor = RoadFollowingPredictor(None)
+            extrapolated_fstates_s = road_following_predictor.predict_frenet_states(ftrajectories[:, -1, :], time_samples-T_s)
+            ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
 
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
         frenet_filtered_indices = self._filter_by_frenet_limits(ftrajectories, poly_coefs[:, D5:], T_d_vals,
@@ -151,7 +160,11 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(cartesian_refiltered_indices), len(ctrajectories),
                                             len(refiltered_indices), len(ftrajectories),
                                             goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                            time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV])*0.5))
+                                            time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+
+        # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
+        # so time points are from t0 = 0 until some T (lon_plan_horizon)
+        planning_time_points = np.arange(0, total_padded_horizon + EPS, self.dt)
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
@@ -170,7 +183,8 @@ class WerlingPlanner(TrajectoryPlanner):
             T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
             frenet_frame=reference_route,
             poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
-            poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
+            poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:],
+            total_time=total_padded_horizon
         )
 
         return samplable_trajectory, \
@@ -263,25 +277,26 @@ class WerlingPlanner(TrajectoryPlanner):
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
-                               dt) -> float:
+                               T_s: float, dt: float) -> float:
         """
         Calculates the lower bound for the lateral time horizon based on the physical constraints.
         :param fconstraints_t0: a set of constraints over the initial state
         :param fconstraints_tT: a set of constraints over the terminal state
+        :param T_s: longitudinal action time horizon
         :param dt: [sec] basic time unit from constructor
         :return: Low bound for lateral time horizon.
         """
         min_lat_movement = np.min(np.abs(fconstraints_tT.get_grid_d()[:, 0] - fconstraints_t0.get_grid_d()[0, 0]))
         low_bound_lat_plan_horizon = max(np.sqrt((2 * min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), dt)
-        return max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt)
+        return min(max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt), T_s)
 
     @staticmethod
     def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float, dt: float) -> np.ndarray:
         """
         Receives the lower bound of the lateral time horizon T_d_low_bound and the longitudinal time horizon T_s
         and returns a grid of possible lateral planning time values.
-        :param T_s: longitudinal trajectory duration (sec.), relative to ego. Ts has to be a multiple of dt.
-        :param T_d_low_bound: lower bound on latitudinal trajectory duration (sec.), relative to ego. Higher bound is Ts.
+        :param T_s: longitudinal trajectory duration (sec.), relative to ego.
+        :param T_d_low_bound: lower bound on lateral trajectory duration (sec.), relative to ego. Higher bound is Ts.
         :param dt: [sec] basic time unit from constructor.
         :return: numpy array (1D) of the possible lateral planning horizons
         """
@@ -289,8 +304,8 @@ class WerlingPlanner(TrajectoryPlanner):
         if T_s != T_d_low_bound:
             T_d_vals = np.linspace(T_d_low_bound, T_s, TD_STEPS)
 
-        # Make sure T_d_vals values are multiples of dt (or else the matrix, calculated using T_d, and the latitudinal
-        #  time axis, lat_time_samples, won't fit).
+        # Make sure T_d_vals values are multiples of dt (or else the matrix, calculated using T_d, and the lateral
+        # time axis, lat_time_samples, won't fit).
         T_d_vals = Math.round_to_step(T_d_vals, dt)
 
         return T_d_vals
@@ -327,7 +342,7 @@ class WerlingPlanner(TrajectoryPlanner):
         poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d],
         array of the Td values associated with the polynomials)
         """
-        time_samples_s = np.arange(0, T_s + np.finfo(np.float16).eps, dt)
+        time_samples_s = np.arange(0, T_s + EPS, dt)
 
         # Define constraints
         constraints_s = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
@@ -347,7 +362,7 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
         horizons_d = np.empty(shape=0)
         for T_d in T_d_vals:
-            time_samples_d = np.arange(dt, T_d + np.finfo(np.float16).eps, dt)
+            time_samples_d = np.arange(dt, T_d + EPS, dt)
 
             # solve for dimension d (with time-horizon T_d)
             partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)

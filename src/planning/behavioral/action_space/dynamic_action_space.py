@@ -93,7 +93,7 @@ class DynamicActionSpace(ActionSpace):
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
-        T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
+        T = np.maximum(T_d, T_s)
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution.
         # distance_s also takes into account the safe distance that depends on target vehicle velocity that we want
