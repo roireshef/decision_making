@@ -288,11 +288,6 @@ class WerlingPlanner(TrajectoryPlanner):
         T_d_vals = np.array([T_d_low_bound])
         if T_s != T_d_low_bound:
             T_d_vals = np.linspace(T_d_low_bound, T_s, TD_STEPS)
-
-        # Make sure T_d_vals values are multiples of dt (or else the matrix, calculated using T_d, and the latitudinal
-        #  time axis, lat_time_samples, won't fit).
-        T_d_vals = Math.round_to_step(T_d_vals, dt)
-
         return T_d_vals
 
     @staticmethod
@@ -347,7 +342,7 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
         horizons_d = np.empty(shape=0)
         for T_d in T_d_vals:
-            time_samples_d = np.arange(dt, T_d + np.finfo(np.float16).eps, dt)
+            time_samples_d = np.arange(0, T_d + np.finfo(np.float16).eps, dt)
 
             # solve for dimension d (with time-horizon T_d)
             partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
