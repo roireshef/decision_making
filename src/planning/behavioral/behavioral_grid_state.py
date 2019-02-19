@@ -108,16 +108,17 @@ class BehavioralGridState(BehavioralState):
         :param dynamic_objects:
         :return:
         """
+        # TODO: Set valid id to pseudo_object
         pseudo_dynamic_objects = []
         for dynamic_object in dynamic_objects:
             for overlapping_lane_segment in MapUtils.get_lane_segment_overlaps(dynamic_object.map_state.lane_id):
-                pseudo_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id,
+                pseudo_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id*10,
                                                             timestamp=dynamic_object.timestamp,
                                                             cartesian_state=dynamic_object.cartesian_state,
                                                             map_state=MapState(None, overlapping_lane_segment),
-                                                            map_state_on_host_lane=dynamic_object.map_state_on_host_lane,
+                                                            map_state_on_host_lane=dynamic_object.map_state,
                                                             size=dynamic_object.size,
-                                                            confidence=dynamic_object.size))
+                                                            confidence=dynamic_object.confidence))
         return dynamic_objects+pseudo_dynamic_objects
 
 
@@ -125,6 +126,7 @@ class BehavioralGridState(BehavioralState):
     def _lazy_set_map_states(dynamic_objects, extended_lane_frames, rel_lanes_per_obj):
         """
         Takes the relevant map_states and calculates the fstate ( map_states with None fstate and not None rel_lanes_per_obj)
+        TODO: Fix double Conversion
         :param object_map_states:
         :param extended_lane_frames:
         :param rel_lanes_per_obj:
@@ -134,6 +136,8 @@ class BehavioralGridState(BehavioralState):
             if dynamic_object.map_state.lane_fstate is None and rel_lanes_per_obj[i] is not None:
                 dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]].\
                     cstate_to_fstate(dynamic_object.cartesian_state)
+                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]].\
+                    convert_to_segment_state(dynamic_object.map_state.lane_fstate)[1]
 
 
     @staticmethod

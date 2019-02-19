@@ -73,9 +73,7 @@ def intersection_state_with_sorrounding_objects():
     road_segment_id = 20
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
-
     # Ego state
     ego_lane_lon = EGO_LANE_LON
     obj_vel = ego_vel = 10
@@ -103,8 +101,8 @@ def intersection_state_with_sorrounding_objects():
                 continue
             # [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]
             map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_ids[i])
-            dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
-                                                            size=car_size, confidence=1.)
+            dynamic_object = DynamicObject.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
+                                                                 size=car_size, confidence=1.)
             dynamic_objects.append(dynamic_object)
             obj_id += 1
 
