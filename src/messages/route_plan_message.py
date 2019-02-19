@@ -87,6 +87,8 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                 pubsub_msg.as_route_plan_lane_segments[i][j] = self.as_route_plan_lane_segments[i][j].serialize()
 
         return pubsub_msg
+    
+    
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataRoutePlan):

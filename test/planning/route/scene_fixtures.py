@@ -29,9 +29,11 @@ def default_route_plan() -> DataRoutePlan:
                                                                               e_cst_lane_end_cost=0.0) for lane_number in [0, 1, 2]]
                                                         for lane_segment_id_base in np.arange(200, 300, 10)])
 
-@pytest.fixture(scope='function', params=["scene_one",
-                                          "scene_two",
-                                          "scene_three"])
+@pytest.fixture(scope='function', params=[
+                                            "scene_one"
+#                                          ,"scene_two"
+#                                          ,"scene_three"
+                                          ])
 def construction_scene_and_expected_output(request):
     # Set Default Expected Output
     expected_output = default_route_plan()
