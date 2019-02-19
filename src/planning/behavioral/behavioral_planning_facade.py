@@ -200,6 +200,9 @@ class BehavioralPlanningFacade(DmModule):
             blockage_flag = True
 
             for j in range(route_plan_data.a_Cnt_num_lane_segments[i]) :
+                if i==row_idx and route_plan_data.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == ego_lane_id: 
+                    assert route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost < 1
+                
                 if route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost < 1 :
                     blockage_flag = False
                     break
