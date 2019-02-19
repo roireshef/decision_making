@@ -111,7 +111,6 @@ class CostBasedRoutePlanner(RoutePlanner):
     @staticmethod
     def _lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase, lanesegs_in_next_roadseg,
                             all_routesegs_as_dict: Dict[int, RoutePlanLaneSegment]) -> float:
-        lane_end_cost = 1
         min_down_stream_laneseg_occupancy_cost = 1
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
         # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
@@ -137,7 +136,7 @@ class CostBasedRoutePlanner(RoutePlanner):
                 # Add exception later
                 print(" down_stream_laneseg_id ", down_stream_laneseg_id,
                       " not found in lanesegs_in_next_roadseg ", lanesegs_in_next_roadseg)
-            lane_end_cost = min_down_stream_laneseg_occupancy_cost
+        lane_end_cost = min_down_stream_laneseg_occupancy_cost
         print("For lane " ,laneseg_id," downstream_lane_segment_ids ",downstream_lane_segment_ids,"\n")
         return lane_end_cost
 
