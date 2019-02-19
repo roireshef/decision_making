@@ -41,8 +41,8 @@ def default_route_plan() -> DataRoutePlan:
 
 @pytest.fixture(scope='function', params=[
                                             "scene_one"
-#                                          ,"scene_two"
-#                                          ,"scene_three"
+                                            ,"scene_two"
+                                            ,"scene_three"
                                           ])
 def construction_scene_and_expected_output(request):
     # Set Default Expected Output
