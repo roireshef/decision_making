@@ -13,11 +13,21 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
 
 from mapping.src.service.map_service import MapService
+from decision_making.src.state.state import EgoState, ObjectSize
+from decision_making.src.state.map_state import MapState
 
 class RoutePlanTestData:
     def __init__(self, scene_static: SceneStatic, expected_output: DataRoutePlan):
         self.scene_static = scene_static
         self.expected_output = expected_output
+
+class TakeOverTestData:
+    def __init__(self, scene_static: SceneStatic, route_plan_data: DataRoutePlan, ego_state: EgoState, expected_takeover: bool ):
+        self.scene_static = scene_static
+        self.route_plan_data = route_plan_data
+        self.ego_state = ego_state
+        self.expected_takeover = expected_takeover
+
 
 def default_route_plan() -> DataRoutePlan:
     return DataRoutePlan(e_b_is_valid=True,
@@ -309,19 +319,19 @@ def combined_scene_and_expected_output(request):
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
         lane_modifications = {212: [(True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
                                      LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
                                      1.0)],
                               221: [(True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)],
                               222: [(True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
                                      LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
                                      1.0),
                                      (True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)],
                               280: [(True,
@@ -357,3 +367,148 @@ def combined_scene_and_expected_output(request):
     
     return RoutePlanTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
                              expected_output=expected_output)
+
+
+def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState :
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+    map_state = MapState(np.array([ego_lane_station, 10, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+    return ego_state
+
+
+@pytest.fixture(scope='function', params=["scene_one",
+                                          "scene_two",
+                                          "scene_three"])
+def construction_scene_for_takeover_test(request):
+    # Set Default Expected Output
+    route_plan_data = default_route_plan()
+    expected_takover = False
+    ego_state = generate_ego_state(ego_lane_id = 200 , ego_lane_station = 0)
+
+
+    # Define Lane Modifications and Modify Expected Outputs
+    if request.param is "scene_one":
+        lane_modifications = {211: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
+                                     1.0)],
+                              212: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
+                                     1.0)]}
+        
+        # Road Segment 20
+        route_plan_data.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
+
+        # Road Segment 21
+        route_plan_data.as_route_plan_lane_segments[1][1].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+
+        ego_state = generate_ego_state(ego_lane_id = 201 , ego_lane_station = 50)
+
+        expected_takover = False
+
+    elif request.param is "scene_two":
+        lane_modifications = {290: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
+                                     1.0)] ,
+                              291: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
+                                     1.0)],
+                              292: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
+                                     1.0)]}
+        
+        # Road Segment 28
+        route_plan_data.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[8][1].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
+
+        # Road Segment 29
+        route_plan_data.as_route_plan_lane_segments[9][0].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[9][1].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[9][0].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[9][1].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
+
+        ego_state = generate_ego_state(ego_lane_id = 282 , ego_lane_station = 80)
+
+        expected_takover = True
+
+    elif request.param is "scene_three":
+        lane_modifications = {212: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
+                                     LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
+                                     1.0)],
+                              220: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
+                                     GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
+                                     1.0)], 
+                              221: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
+                                     GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
+                                     1.0)],
+                              222: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
+                                     LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
+                                     1.0),
+                                     (True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
+                                     GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
+                                     1.0)],
+                              280: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
+                                     LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
+                                     1.0)]}
+        
+        # Road Segment 20
+        route_plan_data.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
+
+        # Road Segment 21
+        route_plan_data.as_route_plan_lane_segments[1][0].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+
+        # Road Segment 22
+        route_plan_data.as_route_plan_lane_segments[2][0].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[2][1].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[2][2].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[2][0].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
+
+        # Road Segment 27
+        route_plan_data.as_route_plan_lane_segments[7][0].e_cst_lane_end_cost = 1.0
+
+        # Road Segment 28
+        route_plan_data.as_route_plan_lane_segments[8][0].e_cst_lane_occupancy_cost = 1.0
+        route_plan_data.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
+
+        # ego state
+        ego_lane_id = 211
+        ego_lane_station = 30 # station along the lane
+        car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+        map_state = MapState(np.array([ego_lane_station, 10, 0, 0, 0, 0]), ego_lane_id)
+        ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+
+        # expected output
+        expected_takover = True
+
+    else:
+        lane_modifications = {}
+    
+    
+    # Initialize Map
+    MapService.initialize('PG_split.bin')
+    
+    return TakeOverTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
+                             route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takover)
