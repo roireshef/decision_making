@@ -25,6 +25,10 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
     def T_s(self):
         return self.T
 
+    @property
+    def max_sample_time(self):
+        return self.timestamp_in_sec + self.total_trajectory_time
+
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """See base method for API. In this specific representation of the trajectory, we sample from s-axis polynomial
         (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial

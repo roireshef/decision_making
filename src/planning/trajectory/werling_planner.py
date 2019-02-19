@@ -1,4 +1,5 @@
 import numpy as np
+import traceback
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from logging import Logger
 from typing import Tuple
@@ -45,13 +46,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ego_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(state.ego_state.cartesian_state)
 
-        # THIS HANDLES CURRENT STATES WHERE THE VEHICLE IS STANDING STILL
-        if np.any(np.isnan(ego_frenet_state)):
-            self._logger.warning("Werling planner tried to convert current EgoState from cartesian-frame (%s)"
-                                 "to frenet-frame (%s) and encountered nan values. Those values are zeroed by default",
-                                 str(state.ego_state.cartesian_state), str(ego_frenet_state))
-            ego_frenet_state[np.isnan(ego_frenet_state)] = 0.0
-
         # define constraints for the initial state
         fconstraints_t0 = FrenetConstraints.from_state(ego_frenet_state)
 
@@ -77,7 +71,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         T_s = max(time_horizon, self.dt)
         # TODO: Hack! Replace with other parameter from BP!
-        total_padded_horizon = max(EgoState.ticks_to_sec(bp_time) + 2.0, T_s) - state.ego_state.timestamp_in_sec
+        total_padded_horizon = max(EgoState.ticks_to_sec(bp_time) + 2.0 - state.ego_state.timestamp_in_sec, T_s)
 
         # TODO: should we make sure T_s values are multiples of dt ? (Otherwise the matrix, calculated using T_s,
         #  and the longitudinal time axis, lon_time_samples, won't fit).
@@ -166,11 +160,16 @@ class WerlingPlanner(TrajectoryPlanner):
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
         planning_time_points = np.arange(0, total_padded_horizon + EPS, self.dt)
 
-        # compute trajectory costs at sampled times
-        global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        filtered_trajectory_costs = \
-            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
-                               global_time_sample, self._predictor, self.dt, reference_route)
+        try:
+            # compute trajectory costs at sampled times
+            global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
+            filtered_trajectory_costs = \
+                self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
+                                   global_time_sample, self._predictor, self.dt, reference_route)
+
+        except ValueError:
+            print("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
+                  traceback.format_exc())
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
@@ -304,9 +303,8 @@ class WerlingPlanner(TrajectoryPlanner):
         if T_s != T_d_low_bound:
             T_d_vals = np.linspace(T_d_low_bound, T_s, TD_STEPS)
 
-        # Make sure T_d_vals values are multiples of dt (or else the matrix, calculated using T_d, and the lateral
-        # time axis, lat_time_samples, won't fit).
-        T_d_vals = Math.round_to_step(T_d_vals, dt)
+        # TODO: should we round?
+        # T_d_vals = Math.round_to_step(T_d_vals, dt)
 
         return T_d_vals
 
@@ -362,7 +360,8 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
         horizons_d = np.empty(shape=0)
         for T_d in T_d_vals:
-            time_samples_d = np.arange(dt, T_d + EPS, dt)
+
+            time_samples_d = np.arange(0, T_d + EPS, dt)
 
             # solve for dimension d (with time-horizon T_d)
             partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
@@ -378,6 +377,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 override_values=np.zeros(3),
                 override_mask=np.array([0, 1, 1])
             )
+
             full_horizon_solutions_d = np.concatenate((partial_solutions_d, solutions_extrapolation_d), axis=-2)
 
             # append polynomials, trajectories and time-horizons to the dimensions d buffers
