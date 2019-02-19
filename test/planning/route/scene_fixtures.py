@@ -131,6 +131,8 @@ def map_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+
     elif request.param is "scene_two":
         lane_modifications = {290: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
@@ -154,6 +156,11 @@ def map_scene_and_expected_output(request):
         expected_output.as_route_plan_lane_segments[9][0].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[9][1].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+
+        expected_output.as_route_plan_lane_segments[9][0].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[9][1].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
+
     else:
         lane_modifications = {}
         
@@ -171,8 +178,7 @@ def map_scene_and_expected_output(request):
                                           "scene_six",
                                           "scene_seven",
                                           "scene_eight",
-                                          "scene_nine",
-                                          "scene_ten"])
+                                          "scene_nine"])
 def gmfa_scene_and_expected_output(request):
     # Set Default Expected Output
     expected_output = default_route_plan()
@@ -186,6 +192,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_two":
         lane_modifications = {222: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -194,6 +201,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_three":
         lane_modifications = {232: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -202,6 +210,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_four":
         lane_modifications = {242: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -210,6 +219,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_five":
         lane_modifications = {252: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -218,6 +228,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_six":
         lane_modifications = {262: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -226,6 +237,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_seven":
         lane_modifications = {272: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -234,6 +246,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_eight":
         lane_modifications = {282: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -242,6 +255,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_nine":
         lane_modifications = {292: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -250,14 +264,7 @@ def gmfa_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
-    elif request.param is "scene_ten":
-        lane_modifications = {292: [(True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
-                                     GMAuthorityType.CeSYS_e_GMAuthorityType_Unknown.value,
-                                     1.0)]}
-        
-        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
     else:
         lane_modifications = {}
         
@@ -281,6 +288,8 @@ def lane_direction_scene_and_expected_output(request):
         
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+
     else:
         lane_modifications = {}
         
@@ -329,12 +338,15 @@ def combined_scene_and_expected_output(request):
         # Road Segment 22
         expected_output.as_route_plan_lane_segments[2][1].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 27
         expected_output.as_route_plan_lane_segments[7][0].e_cst_lane_end_cost = 1.0
 
         # Road Segment 28
         expected_output.as_route_plan_lane_segments[8][0].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
     else:
         lane_modifications = {}
         
