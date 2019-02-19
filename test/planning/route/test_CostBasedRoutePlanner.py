@@ -40,7 +40,7 @@ def test_plan_simpleScene_routePlanOutput():
 
     navigation_plan = scene_static_data.s_Data.s_NavigationPlan
 
-    route_planner_input = RoutePlannerInputData(Scene=scene_static_base,Nav=navigation_plan)
+    route_planner_input = RoutePlannerInputData(scene=scene_static_base,nav_plan=navigation_plan)
 
     route_plan_obj = CostBasedRoutePlanner()
 
@@ -118,9 +118,9 @@ def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_
 
     for i, road_segment in enumerate(route_plan_output.as_route_plan_lane_segments):
         for j, lane_segment in enumerate(road_segment):
-            # print("lane_segment_id     = ", lane_segment.e_i_lane_segment_id)
-            # print("lane_occupancy_cost = ", lane_segment.e_cst_lane_occupancy_cost)
-            # print("lane_end_cost       = ", lane_segment.e_cst_lane_end_cost, "\n")
+            #print("lane_segment_id     = ", lane_segment.e_i_lane_segment_id)
+            #print("lane_occupancy_cost = ", lane_segment.e_cst_lane_occupancy_cost)
+            #print("lane_end_cost       = ", lane_segment.e_cst_lane_end_cost, "\n")
 
             assert lane_segment.e_i_lane_segment_id == expected_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id
             assert lane_segment.e_cst_lane_occupancy_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
@@ -162,8 +162,8 @@ def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output:
     expected_output = gmfa_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(Scene=scene_static.s_Data.s_SceneStaticBase,
-                                                Nav=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
+                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
@@ -190,8 +190,8 @@ def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_a
     expected_output = lane_direction_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(Scene=scene_static.s_Data.s_SceneStaticBase,
-                                                Nav=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
+                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
@@ -218,8 +218,8 @@ def test_plan_combinedScenes_accurateRoutePlanOutput(combined_scene_and_expected
     expected_output = combined_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(Scene=scene_static.s_Data.s_SceneStaticBase,
-                                                Nav=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
+                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 

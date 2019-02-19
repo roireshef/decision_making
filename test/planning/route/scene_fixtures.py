@@ -54,6 +54,10 @@ def construction_scene_and_expected_output(request):
         # Road Segment 21
         expected_output.as_route_plan_lane_segments[1][1].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+
+        expected_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+
     elif request.param is "scene_two":
         lane_modifications = {291: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
@@ -71,6 +75,10 @@ def construction_scene_and_expected_output(request):
         # Road Segment 29
         expected_output.as_route_plan_lane_segments[9][1].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+
+        expected_output.as_route_plan_lane_segments[9][1].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
+
     elif request.param is "scene_three":
         lane_modifications = {251: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
@@ -88,6 +96,9 @@ def construction_scene_and_expected_output(request):
         # Road Segment 25
         expected_output.as_route_plan_lane_segments[5][1].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_occupancy_cost = 1.0
+
+        expected_output.as_route_plan_lane_segments[5][1].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0        
     else:
         lane_modifications = {}
     
