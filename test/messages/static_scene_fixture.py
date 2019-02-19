@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from typing import Dict, List, Tuple
 
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, SceneStaticGeometry, NavigationPlan, \
@@ -44,7 +45,11 @@ def scene_static():
     return create_scene_static_from_map_api(MapService.get_instance())
 
 
-def create_scene_static_from_map_api(map_api: MapAPI):
+def create_scene_static_from_map_api(map_api: MapAPI,
+                                     lane_modifications: Dict[int, List[Tuple[bool, int, int, float]]] = None) -> SceneStatic:
+    if lane_modifications is None:
+        lane_modifications = {}
+
     map_model = map_api._cached_map_model
     road_ids = map_model.get_road_ids()
 
@@ -126,6 +131,25 @@ def create_scene_static_from_map_api(map_api: MapAPI):
             upstream_lane_segment_connectivity = [
                 LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)]
 
+        # Default lane attribute values
+        num_active_lane_attributes = 4
+        active_lane_attribute_indices = np.array([0, 1, 2, 3])
+        lane_attributes = np.array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                                    GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
+                                    LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
+                                    MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value])
+        lane_attribute_confidences = np.ones(4)
+
+        # Check for lane attribute modifications
+        if lane_id in lane_modifications:
+            for lane_modification in lane_modifications[lane_id]:
+                if lane_modification[0] is True:
+                    lane_attributes[lane_modification[1]] = lane_modification[2]
+                    lane_attribute_confidences[lane_modification[1]] = lane_modification[3]
+                else:
+                    active_lane_attribute_indices = np.delete(active_lane_attribute_indices, lane_modification[1])
+                    num_active_lane_attributes -= 1
+
         scene_lane_segments_base.append(
             SceneLaneSegmentBase(e_i_lane_segment_id=lane_id,
                                  e_i_road_segment_id=road_segment_id,
@@ -147,14 +171,10 @@ def create_scene_static_from_map_api(map_api: MapAPI):
                                  e_i_downstream_road_intersection_id=0,
                                  e_Cnt_lane_coupling_count=0,
                                  as_lane_coupling=[],
-                                 e_Cnt_num_active_lane_attributes=4,
-                                 a_i_active_lane_attribute_indices=np.array([0, 1, 2, 3]),
-                                 a_cmp_lane_attributes=np.array(
-                                     [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
-                                      GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
-                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                      MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value]),
-                                 a_cmp_lane_attribute_confidences=np.ones(4))
+                                 e_Cnt_num_active_lane_attributes=num_active_lane_attributes,
+                                 a_i_active_lane_attribute_indices=active_lane_attribute_indices,
+                                 a_cmp_lane_attributes=lane_attributes,
+                                 a_cmp_lane_attribute_confidences=lane_attribute_confidences)
         )
 
         scene_lane_segments_geo.append(
