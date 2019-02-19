@@ -168,7 +168,6 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
             front_cell = (rel_lane, RelativeLongitudinalPosition.FRONT)
             if front_cell in behavioral_state.road_occupancy_grid:
                 relevant_objects.append(behavioral_state.road_occupancy_grid[front_cell][0].dynamic_object)
-            # TODO: bring here the recipes and choose at most 2 objects from the target lane according to recipe.lon_cell
             if rel_lane != RelativeLane.SAME_LANE:
                 for lon_cell in RelativeLongitudinalPosition:
                     if (rel_lane, lon_cell) in behavioral_state.road_occupancy_grid:
