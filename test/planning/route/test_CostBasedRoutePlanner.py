@@ -143,8 +143,8 @@ def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: R
     expected_output = map_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(Scene=scene_static.s_Data.s_SceneStaticBase,
-                                                Nav=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
+                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
