@@ -63,7 +63,7 @@ def jerk_time_weights_optimization():
         s_weights = create_full_range_of_weights(W2_FROM, W2_TILL, W12_RATIO_FROM, W12_RATIO_TILL,
                                                  W01_RATIO_FROM, W01_RATIO_TILL, GRID_RESOLUTION)
     else:  # compare a pair of weights sets
-        s_weights = np.array([[6., 1.6, 0.2], [3.6, 1.2, 0.2]])
+        s_weights = np.array([[6., 1.6, 0.2]])
 
     # remove trivial states, for which T_s = 0
     non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * SPECIFICATION_MARGIN_TIME_DELAY, s)))
@@ -121,7 +121,7 @@ def jerk_time_weights_optimization():
 
     if test_full_range:
         # Monitor a quality of the best set of weights (maximal roots).
-        print_success_map_for_weights_set(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask, s_weights)
+        print_success_map_for_best_weights_set(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask, s_weights)
     else:
         # Compare between two sets of weights (maximal roots).
         print_comparison_between_two_weights_sets(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask)
@@ -185,14 +185,11 @@ def get_lon_safety_for_action_specs(poly_coefs: np.array, T: np.array, v_T: np.a
     # sample polynomials and create ftrajectories_s
     trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
 
-    # test longitudinal safety only for the second half of each trajectory, because in the first half ego
-    # may be safe laterally w.r.t. the followed/overtaken object
-    from_idx = [int(0 * T[i] / TRAJECTORY_TIME_RESOLUTION) for i, trajectory in enumerate(trajectories_s)]
-    ego_trajectories = [trajectory[from_idx[i]:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
+    ego_trajectories = [trajectory[:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
                         for i, trajectory in enumerate(trajectories_s)]
 
-    obj_trajectories = [np.c_[s_T[i] + v_T[i] * from_idx[i] * TRAJECTORY_TIME_RESOLUTION +
-                              np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION, len(ego_trajectory)),
+    obj_trajectories = [np.c_[s_T[i] + np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION,
+                                                   len(ego_trajectory)),
                               np.full(len(ego_trajectory), v_T[i]),
                               np.zeros(len(ego_trajectory))]
                         for i, ego_trajectory in enumerate(ego_trajectories)]
@@ -233,9 +230,32 @@ def get_braking_quality(distances: np.array, acc_samples: np.array) -> [float, f
     return (cum_brake_dist / cum_brake) ** 2, max_brake
 
 
-def print_success_map_for_weights_set(v0_range: np.array, vT_range: np.array, s_range: np.array,
-                                      v0_grid: np.array, vT_grid: np.array, s_grid: np.array,
-                                      is_valid_state: np.array, weights: np.array):
+def print_success_map_for_const_vT(v0_range: np.array, s_range: np.array, v0_grid: np.array, s_grid: np.array,
+                                   is_valid_state: np.array, weights: np.array):
+    """
+    Use for monitoring limits for all sets of weights. Print tables (v0 x s) per weights set
+    :param v0_range: v0 values in the 3D grid
+    :param s_range:  s values in the 3D grid
+    :param v0_grid: v0 of meshgrid of v0_range, vT_range, s_range
+    :param s_grid: s of meshgrid of v0_range, vT_range, s_range
+    :param is_valid_state: boolean array: True if the state is valid (complies all thresholds & safety)
+    :param weights: array of all sets of weights (Nx3)
+    """
+    np.set_printoptions(suppress=True)
+    success_map = np.ones((weights.shape[0], v0_range.shape[0], s_range.shape[0]))
+    for wi, w in enumerate(weights):
+        for i, b in enumerate(is_valid_state[wi]):
+            if not b:
+                success_map[wi, np.argwhere(v0_range == v0_grid[i]), np.argwhere(s_range == s_grid[i])] = 0
+        print('%3d: weights = %s' % (wi, w))
+        print(success_map[wi].astype(int))
+    print('max over all weights:')
+    print(np.max(success_map, axis=0).astype(int))
+
+
+def print_success_map_for_best_weights_set(v0_range: np.array, vT_range: np.array, s_range: np.array,
+                                           v0_grid: np.array, vT_grid: np.array, s_grid: np.array,
+                                           is_valid_state: np.array, weights: np.array):
     """
     Use for monitoring a quality of the best set of weights (maximal roots).
     Print tables (vT x s) for the best weights per v0
@@ -246,6 +266,7 @@ def print_success_map_for_weights_set(v0_range: np.array, vT_range: np.array, s_
     :param vT_grid: vT of meshgrid of v0_range, vT_range, s_range
     :param s_grid: s of meshgrid of v0_range, vT_range, s_range
     :param is_valid_state: boolean array: True if the state is valid (complies all thresholds & safety)
+    :param weights: array of all sets of weights (Nx3)
     """
     best_wi = np.argmax(np.sum(is_valid_state, axis=-1))
     passed = np.sum(is_valid_state[best_wi])
@@ -255,7 +276,7 @@ def print_success_map_for_weights_set(v0_range: np.array, vT_range: np.array, s_
         success_map = np.ones((vT_range.shape[0], s_range.shape[0]))
         for i, b in enumerate(is_valid_state[best_wi]):
             if v0_grid[i] == v0_fixed and not b:
-                success_map[np.argwhere(vT_range == vT_grid[i]), np.argwhere(s_range == s_grid[i])] = b
+                success_map[np.argwhere(vT_range == vT_grid[i]), np.argwhere(s_range == s_grid[i])] = 0
         print('v0_fixed = %d' % v0_fixed)
         print(success_map.astype(int))
 
