@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, EPS, LAT_ACC_LIMITS, BP_ACTION_T_LIMITS, \
-    DX_OFFSET_MIN, DX_OFFSET_MAX, MAX_SAFETY_T_D_GRID_SIZE
+    MAX_SAFETY_T_D_GRID_SIZE
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLongitudinalPosition, RelativeLane
@@ -9,11 +9,9 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
     ActionSpecFilter
 import numpy as np
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterLimitsViolatingTrajectory
-from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.types import C_K, C_V, FS_SX, FS_DX, FrenetState2D, FrenetTrajectories2D
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
@@ -264,18 +262,26 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
     def _calc_T_d_grid(fstate_d: np.array, T_s: np.array, T_d_num: int) -> np.array:
         """
         Calculate the lower bound of the lateral time horizon T_d_low_bound and return a grid of possible lateral
-        planning time values.
+        planning time values based on lateral acceleration limits.
         :param fstate_d: 1D array containing: current latitude, lateral velocity and lateral acceleration
         :param T_s: [m] longitudinal time horizon
         :return: numpy array (1D) of the possible lateral planning horizons
+                The output array size is len(T_s) * T_d_num, such that for each T_s value there are T_d_num
+                values of T_d.
         """
-        dt = TRAJECTORY_TIME_RESOLUTION
-        dx = min(abs(fstate_d[0] + DX_OFFSET_MIN), abs(fstate_d[0] - DX_OFFSET_MAX))
-        fconstraints_t0 = FrenetConstraints(0, 0, 0, dx, fstate_d[1], fstate_d[2])
-        fconstraints_tT = FrenetConstraints(0, 0, 0, 0, 0, 0)
-        lower_bound_T_d = WerlingPlanner.low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, dt)
+        T_d_grid = np.arange(TRAJECTORY_TIME_RESOLUTION, np.max(T_s) + EPS, TRAJECTORY_TIME_RESOLUTION)
+        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T_d_grid)
+        constraints_d = np.concatenate((fstate_d, np.zeros(3)))
+        duplicated_constraints = np.tile(constraints_d, len(T_d_grid)).reshape(-1, 6)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, duplicated_constraints)
+        acc_in_limits = Poly1D.are_accelerations_in_limits(poly_coefs_d, T_d_grid, LAT_ACC_LIMITS)
+        T_d_min = T_d_grid[np.argmax(acc_in_limits)]
+        # Create array of size len(T_s) * T_d_num. If for example T_d_num=3, then the output array looks:
+        # [T_d_min, (T_s[0]+T_d_min)/2, T_s[0],
+        #  T_d_min, (T_s[1]+T_d_min)/2, T_s[1],
+        #  ...]
         T_d = np.repeat(T_s, T_d_num)
-        T_d[0::T_d_num] = lower_bound_T_d
-        T_d[1::T_d_num] = (lower_bound_T_d + T_s) / 2
+        T_d[0::T_d_num] = T_d_min
+        T_d[1::T_d_num] = (T_d_min + T_s) / 2
         # T_d[2::T_d_num] = T_s
         return T_d
