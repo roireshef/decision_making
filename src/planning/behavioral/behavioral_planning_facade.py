@@ -26,7 +26,7 @@ from decision_making.src.planning.behavioral.planner.cost_based_behavioral_plann
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.state.state import State
+from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
@@ -97,7 +97,7 @@ class BehavioralPlanningFacade(DmModule):
             # get current route plan
             route_plan = self._get_current_route_plan()
             # calculate the takeover message
-            takeover_msg = self.set_takeover_message(route_plan.s_Data , updated_state, scene_static)
+            takeover_msg = self.set_takeover_message(route_plan.s_Data , updated_state.ego_state , scene_static)
             # publish takeover message
             self._publish_takeover(takeover_msg)
 
@@ -169,12 +169,12 @@ class BehavioralPlanningFacade(DmModule):
         return object_route_plan
 
     @staticmethod
-    def set_takeover_message(route_plan_data:DataRoutePlan, state:State, scene_static: SceneStatic ) -> Takeover:
+    def set_takeover_message(route_plan_data:DataRoutePlan, ego_state:EgoState, scene_static: SceneStatic ) -> Takeover:
 
         SceneStaticModel.get_instance().set_scene_static(scene_static)
 
         # find current lane segment ID
-        ego_lane_id = state.ego_state.map_state.lane_id
+        ego_lane_id = ego_state.map_state.lane_id
 
         # find current road segment ID
         curr_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(ego_lane_id)
@@ -187,11 +187,13 @@ class BehavioralPlanningFacade(DmModule):
         row_idx = route_plan_idx[0]
 
          # find station on the current lane
-        ego_station = state.ego_state.map_state.lane_fstate[FS_SX]
+        ego_station = ego_state.map_state.lane_fstate[FS_SX]
         #find length of the lane segment
         ego_lane_length = MapUtils.get_lane_length(ego_lane_id)
         # distance to the end of current road (lane) segment
         dist_to_end = ego_lane_length - ego_station
+
+        assert dist_to_end >= 0
 
         # check the end costs for the current road segment lanes
         for i in range(row_idx,route_plan_data.e_Cnt_num_road_segments):
@@ -219,7 +221,7 @@ class BehavioralPlanningFacade(DmModule):
             takeover_flag = False
 
         # TODO check this timestamp
-        timestamp_object = Timestamp.from_seconds(state.ego_state.timestamp_in_sec)
+        timestamp_object = Timestamp.from_seconds(ego_state.timestamp_in_sec)
 
         takeover_msg = Takeover(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0) , \
                                 s_Data = DataTakeover(takeover_flag) )
