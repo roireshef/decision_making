@@ -102,6 +102,24 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                    pubsubMsg.a_Cnt_num_lane_segments[:pubsubMsg.e_Cnt_num_road_segments],
                    as_route_plan_lane_segments)
 
+    def __str__(self):
+        print_route = "\n"
+        for i, road_segment in enumerate(self.as_route_plan_lane_segments):
+            a_i_lane_segment_ids = []
+            a_cst_lane_occupancy_costs = []
+            a_cst_lane_end_costs = []
+            for j, lane_segment in enumerate(road_segment):
+                a_i_lane_segment_ids.append(lane_segment.e_i_lane_segment_id)
+                a_cst_lane_occupancy_costs.append(lane_segment.e_cst_lane_occupancy_cost)
+                a_cst_lane_end_costs.append(lane_segment.e_cst_lane_end_cost)
+            print_route = print_route + "lane_segment_ids "+str(a_i_lane_segment_ids)+"\n"
+            print_route = print_route + "lane_occupancy_costs "+str(a_cst_lane_occupancy_costs)+"\n"
+            print_route = print_route + "lane_end_costs "+str(a_cst_lane_end_costs)+"\n"
+            print_route = print_route +"\n"
+
+        return print_route
+
+
 class RoutePlan(PUBSUB_MSG_IMPL):
     """
     Class that represents the ROUTE_PLAN topic

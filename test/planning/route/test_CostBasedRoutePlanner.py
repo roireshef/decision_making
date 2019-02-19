@@ -111,6 +111,7 @@ def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
+    print(route_plan_output)
     # Assertions
     assert route_plan_output.e_Cnt_num_road_segments == expected_output.e_Cnt_num_road_segments
     assert route_plan_output.a_i_road_segment_ids.all() == expected_output.a_i_road_segment_ids.all()
