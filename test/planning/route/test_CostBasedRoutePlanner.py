@@ -16,6 +16,9 @@ from decision_making.src.planning.route.route_planner import RoutePlannerInputDa
 from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
 from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.planning.route.scene_fixtures import (
+    RoutePlanTestData,
+    construction_scene_and_expected_output)
 
 
 def test_plan_simpleScene_routePlanOutput():
@@ -91,3 +94,31 @@ def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_end_cost
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == exp_route_plan_lane_segments[i][j].e_i_lane_segment_id
+
+def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_expected_output: RoutePlanTestData):
+    # Test Data
+    scene_static = construction_scene_and_expected_output.scene_static
+    expected_output = construction_scene_and_expected_output.expected_output
+
+    # Route Planner Logic
+    route_planner_input = RoutePlannerInputData(Scene=scene_static.s_Data.s_SceneStaticBase,
+                                                Nav=scene_static.s_Data.s_NavigationPlan)
+    route_plan_obj = CostBasedRoutePlanner()
+    route_plan_output = route_plan_obj.plan(route_planner_input)
+
+    # Assertions
+    assert route_plan_output.e_Cnt_num_road_segments == expected_output.e_Cnt_num_road_segments
+    assert route_plan_output.a_i_road_segment_ids.all() == expected_output.a_i_road_segment_ids.all()
+    assert route_plan_output.a_Cnt_num_lane_segments.all() == expected_output.a_Cnt_num_lane_segments.all()
+
+    for i, road_segment in enumerate(route_plan_output.as_route_plan_lane_segments):
+        for j, lane_segment in enumerate(road_segment):
+            # print("lane_segment_id     = ", lane_segment.e_i_lane_segment_id)
+            # print("lane_occupancy_cost = ", lane_segment.e_cst_lane_occupancy_cost)
+            # print("lane_end_cost       = ", lane_segment.e_cst_lane_end_cost, "\n")
+
+            assert lane_segment.e_i_lane_segment_id == expected_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id
+            assert lane_segment.e_cst_lane_occupancy_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
+            assert lane_segment.e_cst_lane_end_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost
+        
+        # print("==========================\n")
