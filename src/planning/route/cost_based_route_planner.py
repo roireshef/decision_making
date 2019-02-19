@@ -127,11 +127,15 @@ class CostBasedRoutePlanner(RoutePlanner):
             if down_stream_laneseg_id in lanesegs_in_next_roadseg:  # verify if the downstream lane is in the route
                 # down_stream_laneseg_idx = lanesegs_in_next_roadseg.index(down_stream_laneseg_id)
                 # down_stream_routeseg = as_route_plan_lane_segments[reversed_roadseg_idx_in_route -1][down_stream_laneseg_idx]
-                down_stream_routeseg = all_routesegs_as_dict[down_stream_laneseg_id]
-                assert (down_stream_laneseg_id == down_stream_routeseg.e_i_lane_segment_id),\
-                  "down_stream_laneseg_id = "+str(down_stream_laneseg_id)+" down_stream_routeseg id = "+str(down_stream_routeseg.e_i_lane_segment_id)
-                down_stream_laneseg_occupancy_cost = down_stream_routeseg.e_cst_lane_occupancy_cost
-                min_down_stream_laneseg_occupancy_cost = min(min_down_stream_laneseg_occupancy_cost, down_stream_laneseg_occupancy_cost)
+                try:
+                    down_stream_routeseg = all_routesegs_as_dict[down_stream_laneseg_id]
+                    assert (down_stream_laneseg_id == down_stream_routeseg.e_i_lane_segment_id),\
+                    "down_stream_laneseg_id = "+str(down_stream_laneseg_id)+" down_stream_routeseg id = "+str(down_stream_routeseg.e_i_lane_segment_id)
+                    down_stream_laneseg_occupancy_cost = down_stream_routeseg.e_cst_lane_occupancy_cost
+                    min_down_stream_laneseg_occupancy_cost = min(min_down_stream_laneseg_occupancy_cost, down_stream_laneseg_occupancy_cost)
+                except KeyError:
+                    print(" Could not find the lane ",down_stream_laneseg_id)
+                    print("All the laneseg present are ",list(all_routesegs_as_dict.keys()))
             else:
                 # Add exception later
                 print(" down_stream_laneseg_id ", down_stream_laneseg_id,
@@ -152,7 +156,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         a_i_road_segment_ids = []
         a_Cnt_num_lane_segments = []
         as_route_plan_lane_segments = []
-        all_routesegs_as_dict = {}
+        all_routesegs_in_downstream_roadseg_as_dict = {}
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # index -> reversed_roadseg_idx_in_route
@@ -162,6 +166,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         for reversed_roadseg_idx_in_route, (roadseg_id, laneseg_ids) in reverse_enumerated_route_lanesegments:
             # roadseg_idx = num_road_segments - reversed_roadseg_idx_in_route
             all_routesegs_in_this_roadseg = []
+            all_routesegs_in_current_roadseg_as_dict = {}
 
             # Now iterate over all the lane segments inside  the enumerate(road segment)
             # index -> laneseg_idx
@@ -170,6 +175,8 @@ class CostBasedRoutePlanner(RoutePlanner):
             for laneseg_idx, laneseg_id in enumerated_laneseg_ids:
                 # Access all the lane segment lite data from lane segment dict
                 laneseg_base_data = route_data.route_lanesegs_base_as_dict[laneseg_id]
+
+                
 
                 # -------------------------------------------
                 # Calculate lane occupancy costs for a lane
@@ -188,7 +195,7 @@ class CostBasedRoutePlanner(RoutePlanner):
                     lanesegs_in_next_roadseg = route_data.route_lanesegments[prev_roadseg_id]
                     lane_end_cost = CostBasedRoutePlanner._lane_end_cost_calc(laneseg_base_data=laneseg_base_data,
                                                                               lanesegs_in_next_roadseg=lanesegs_in_next_roadseg,
-                                                                               all_routesegs_as_dict=all_routesegs_as_dict)
+                                                                               all_routesegs_as_dict=all_routesegs_in_downstream_roadseg_as_dict)
                 else:
                     print(" Bad value for reversed_roadseg_idx_in_route :", reversed_roadseg_idx_in_route)  # Add exception later
                     assert (reversed_roadseg_idx_in_route>=0)
@@ -196,7 +203,7 @@ class CostBasedRoutePlanner(RoutePlanner):
                 # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
                 current_routeseg = RoutePlanLaneSegment(e_i_lane_segment_id=laneseg_id,
                                                         e_cst_lane_occupancy_cost=lane_occupancy_cost, e_cst_lane_end_cost=lane_end_cost)
-                all_routesegs_as_dict[current_routeseg.e_i_lane_segment_id]=current_routeseg
+                all_routesegs_in_current_roadseg_as_dict[current_routeseg.e_i_lane_segment_id]=current_routeseg
                 all_routesegs_in_this_roadseg.append(current_routeseg)
 
                 # print("lane_segment_id     = ", laneseg_id)
@@ -206,7 +213,9 @@ class CostBasedRoutePlanner(RoutePlanner):
             # At this point we have at least iterated once through the road segment loop once. prev_roadseg_id is set to be used for
             # the next road segment loop
             prev_roadseg_id = roadseg_id
-
+            all_routesegs_in_downstream_roadseg_as_dict=all_routesegs_in_current_roadseg_as_dict
+            
+            
             # push back the road segment sepecific info , as the road seg iteration is reverse
             a_i_road_segment_ids.insert(0, roadseg_id)
             a_Cnt_num_lane_segments.insert(0, laneseg_idx+1)
