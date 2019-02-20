@@ -189,10 +189,14 @@ class BehavioralPlanningFacade(DmModule):
          # find station on the current lane
         ego_station = ego_state.map_state.lane_fstate[FS_SX]
         #find length of the lane segment
-        ego_lane_length = MapUtils.get_lane_length(ego_lane_id)
+        for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments :
+            if lane.e_i_lane_segment_id == ego_lane_id :
+                ego_lane_length = lane.e_l_length
+                break
+        # ego_lane_length = MaUptils.get_lane_length(ego_lane_id)
         # distance to the end of current road (lane) segment
         dist_to_end = ego_lane_length - ego_station
-
+        
         assert dist_to_end >= 0
 
         # check the end costs for the current road segment lanes
@@ -210,7 +214,11 @@ class BehavioralPlanningFacade(DmModule):
             if blockage_flag == False :
                 # check how many road segments are within the horizon
                 next_road_lane_id = route_plan_data.as_route_plan_lane_segments[i][0].e_i_lane_segment_id
-                lane_length = MapUtils.get_lane_length(next_road_lane_id)
+                # lane_length = MapUtils.get_lane_length(next_road_lane_id)
+                for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments :
+                    if lane.e_i_lane_segment_id == next_road_lane_id :
+                        lane_length = lane.e_l_length
+                        break
                 dist_to_end += lane_length
 
                 if dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG :
