@@ -508,6 +508,7 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
     e_i_downstream_road_intersection_id = int
     e_Cnt_lane_coupling_count = int
     as_lane_coupling = List[LaneCoupling]
+    e_l_length = float
     e_Cnt_num_active_lane_attributes = int
     a_i_active_lane_attribute_indices = ndarray
     a_cmp_lane_attributes = ndarray
@@ -524,8 +525,8 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
                  e_Cnt_upstream_lane_count: int, as_upstream_lanes: List[LaneSegmentConnectivity],
                  e_v_nominal_speed: float,
                  e_i_downstream_road_intersection_id: int, e_Cnt_lane_coupling_count: int,
-                 as_lane_coupling: List[LaneCoupling], e_Cnt_num_active_lane_attributes: int,
-                 a_i_active_lane_attribute_indices: ndarray,
+                 as_lane_coupling: List[LaneCoupling], e_l_length: float,
+                 e_Cnt_num_active_lane_attributes: int, a_i_active_lane_attribute_indices: ndarray,
                  a_cmp_lane_attributes: ndarray, a_cmp_lane_attribute_confidences: ndarray):
         """
         Lane-segment information
@@ -548,6 +549,7 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
         :param e_i_downstream_road_intersection_id: ID of the Road-Intersection that is immediately downstream from this lane-segment (0 if not applicable)
         :param e_Cnt_lane_coupling_count: Total number of lane-couplings for this lane-segment
         :param as_lane_coupling: Lane-couplings for this lane-segment
+        :param e_l_length: Lane segment length in meters
         :param e_Cnt_num_active_lane_attributes: TODO: Add description
         :param a_i_active_lane_attribute_indices: TODO: Add description
         :param a_cmp_lane_attributes: TODO: Add description
@@ -572,6 +574,7 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
         self.e_i_downstream_road_intersection_id = e_i_downstream_road_intersection_id
         self.e_Cnt_lane_coupling_count = e_Cnt_lane_coupling_count
         self.as_lane_coupling = as_lane_coupling
+        self.e_l_length = e_l_length
         self.e_Cnt_num_active_lane_attributes = e_Cnt_num_active_lane_attributes
         self.e_i_active_lane_attribute_indices = e_i_active_lane_attribute_indices
         self.e_cmp_lane_attributes = e_cmp_lane_attributes
@@ -615,6 +618,8 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
         for i in range(pubsub_msg.e_Cnt_lane_coupling_count):
             pubsub_msg.as_lane_coupling[i] = self.as_lane_coupling[i].serialize()
+
+        pubsub_msg.e_l_length = self.e_l_length
 
         pubsub_msg.e_Cnt_num_active_lane_attributes = self.e_Cnt_num_active_lane_attributes
         pubsub_msg.a_i_active_lane_attribute_indices = self.a_i_active_lane_attribute_indices
@@ -667,6 +672,7 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_v_nominal_speed,
                    pubsubMsg.e_i_downstream_road_intersection_id,
                    pubsubMsg.e_Cnt_lane_coupling_count, as_lane_coupling,
+                   pubsubMsg.e_l_length,
                    pubsubMsg.e_Cnt_num_active_lane_attributes,
                    pubsubMsg.a_i_active_lane_attribute_indices[:pubsubMsg.e_Cnt_num_active_lane_attributes],
                    pubsubMsg.a_cmp_lane_attributes[:MAX_LANE_ATTRIBUTES],
