@@ -164,6 +164,7 @@ class SceneStaticPublisher(DmModule):
                                                               e_i_downstream_road_intersection_id=1,
                                                               e_Cnt_lane_coupling_count=0,
                                                               as_lane_coupling=self._generate_lane_coupling(),
+                                                              e_l_length=100,
                                                               e_Cnt_num_active_lane_attributes=num_active_lane_attributes,
                                                               a_i_active_lane_attribute_indices=active_lane_attribute_indices,
                                                               a_cmp_lane_attributes=lane_attributes,
