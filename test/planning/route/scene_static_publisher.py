@@ -70,7 +70,7 @@ class SceneStaticPublisher:
                                    s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=0,
                                                                              as_scene_lane_segments=self._generate_geometry()),
                                    s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=num_road_segments,
-                                                                   a_i_road_segment_ids=np.array(navigation_plan, dtype=np.int))))
+                                                                   a_i_road_segment_ids=np.array(navigation_plan))))
 
     def _generate_lane_segments(self, road_segment_ids: List[int] = None, num_lane_segments: int = 1,
                                 lane_segment_ids: List[List[int]] = None) -> List[SceneLaneSegmentBase]:
@@ -97,12 +97,12 @@ class SceneStaticPublisher:
                                                                 e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
 
                 num_active_lane_attributes = 4
-                active_lane_attribute_indices = np.array([0, 1, 2, 3], dtype=np.int)
+                active_lane_attribute_indices = np.array([0, 1, 2, 3])
                 lane_attributes = np.array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
                                          GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
                                          LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                         MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value], dtype=np.int)
-                lane_attribute_confidences = np.ones(4, dtype=np.float)
+                                         MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value])
+                lane_attribute_confidences = np.ones(4)
                 
                 lane_segment_lite.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_segment_ids[i][j],
                                                               e_i_road_segment_id=road_segment_ids[i],
@@ -145,12 +145,12 @@ class SceneStaticPublisher:
         return [SceneRoadSegment(e_i_road_segment_id=road_segment_ids[i],
                                  e_i_road_id=1,
                                  e_Cnt_lane_segment_id_count=len(lane_segment_ids),
-                                 a_i_lane_segment_ids=np.array(lane_segment_ids[i], dtype=np.int),
+                                 a_i_lane_segment_ids=np.array(lane_segment_ids[i]),
                                  e_e_road_segment_type=MapRoadSegmentType.Normal,
                                  e_Cnt_upstream_segment_count=0,
-                                 a_i_upstream_road_segment_ids=np.array([0], dtype=np.int),
+                                 a_i_upstream_road_segment_ids=np.array([0]),
                                  e_Cnt_downstream_segment_count=0,
-                                 a_i_downstream_road_segment_ids=np.array([0], dtype=np.int)) \
+                                 a_i_downstream_road_segment_ids=np.array([0])) \
                 for i in range(len(road_segment_ids))]
     
     def _generate_road_intersections(self, num_intersections: int = 1) -> List[SceneRoadIntersection]:
