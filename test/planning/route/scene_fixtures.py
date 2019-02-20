@@ -39,11 +39,9 @@ def default_route_plan() -> DataRoutePlan:
                                                                               e_cst_lane_end_cost=0.0) for lane_number in [0, 1, 2]]
                                                         for lane_segment_id_base in np.arange(200, 300, 10)])
 
-@pytest.fixture(scope='function', params=[
-                                            "scene_one"
-                                            ,"scene_two"
-                                            ,"scene_three"
-                                          ])
+@pytest.fixture(scope='function', params=["scene_one",
+                                          "scene_two",
+                                          "scene_three"])
 def construction_scene_and_expected_output(request):
     # Set Default Expected Output
     expected_output = default_route_plan()
@@ -190,7 +188,8 @@ def map_scene_and_expected_output(request):
                                           "scene_six",
                                           "scene_seven",
                                           "scene_eight",
-                                          "scene_nine"])
+                                          "scene_nine",
+                                          "scene_ten"])
 def gmfa_scene_and_expected_output(request):
     # Set Default Expected Output
     expected_output = default_route_plan()
@@ -272,6 +271,15 @@ def gmfa_scene_and_expected_output(request):
         lane_modifications = {292: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighHorizontalCurvat.value,
+                                     1.0)]}
+        
+        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
+    elif request.param is "scene_ten":
+        lane_modifications = {292: [(True,
+                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
+                                     GMAuthorityType.CeSYS_e_GMAuthorityType_Unknown.value,
                                      1.0)]}
         
         expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
