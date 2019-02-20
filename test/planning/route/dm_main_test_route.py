@@ -25,6 +25,7 @@ from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from decision_making.test.planning.route.route_plan_subscriber import RoutePlanSubscriber
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
+from decision_making.test.planning.route.scene_static_publisher_facade import SceneStaticPublisherFacade
 
 DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
@@ -57,14 +58,16 @@ class DmInitialization:
         return route_planning_module
 
     @staticmethod
-    def create_scene_static_publisher(map_file: str=DEFAULT_MAP_FILE) -> SceneStaticPublisher:
+    def create_scene_static_publisher(map_file: str=DEFAULT_MAP_FILE) -> SceneStaticPublisherFacade:
        logger = AV_Logger.get_logger("SCENE_STATIC_PUBLISHER")
 
        pubsub = PubSub()
        # MapService should be initialized in each process according to the given map_file
        MapService.initialize(map_file)
 
-       scene_static_publisher_module = SceneStaticPublisher(pubsub=pubsub, logger=logger)
+       scene_static_publisher = SceneStaticPublisher()
+
+       scene_static_publisher_module = SceneStaticPublisherFacade(pubsub=pubsub, logger=logger, publisher=scene_static_publisher)
        return scene_static_publisher_module
 
     @staticmethod

@@ -1,15 +1,9 @@
-from traceback import format_exc
-from logging import Logger
 from time import time
-from numpy import zeros, ones, array
-from numpy import int as np_int
-from numpy import float as np_float
 from typing import List
+import numpy as np
 
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 
-from decision_making.src.infra.pubsub import PubSub
-from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_message import (
     SceneStatic,
@@ -42,47 +36,12 @@ from decision_making.src.messages.scene_static_enums import (
     GMAuthorityType,
     LaneConstructionType)
 
-class SceneStaticPublisher(DmModule):
-    """
-    TODO: Add description
+class SceneStaticPublisher:
+    """ TODO: Add description """
 
-    Args:
-        pubsub: TODO: Add description
-        logger: TODO: Add description
-    """
-    def __init__(self, pubsub: PubSub, logger: Logger):
-        super().__init__(pubsub=pubsub, logger=logger)
-        self.logger.info("Initialized Scene Static Publisher")
-
-    def _start_impl(self):
+    def generate_data(self, num_road_segments: int, road_segment_ids: List[int], num_lane_segments: int, lane_segment_ids: List[List[int]],
+                      navigation_plan: List[int]) -> SceneStatic:
         """ TODO: Add description """
-        pass
-
-    def _stop_impl(self):
-        """ TODO: Add description """
-        pass
-
-    def _periodic_action_impl(self):
-        """ TODO: Add description """
-        try:
-            # Generate Data and Publish Message
-            self._publish_scene_static(self._generate_data())
-
-        except Exception as e:
-            self.logger.critical("SceneStaticPublisher: UNHANDLED EXCEPTION: %s. Trace: %s",
-                                 e, format_exc())
-
-    def _generate_data(self) -> SceneStatic:
-        """ TODO: Add description """
-        num_road_segments = 2
-        road_segment_ids = [1, 2]
-
-        num_lane_segments = 4
-        lane_segment_ids = [[101, 102],
-                            [201, 202]]
-
-        navigation_plan = [1, 2]
-
 
         # Time since the epoch
         timestamp_object = Timestamp.from_seconds(time())
@@ -111,7 +70,7 @@ class SceneStaticPublisher(DmModule):
                                    s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=0,
                                                                              as_scene_lane_segments=self._generate_geometry()),
                                    s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=num_road_segments,
-                                                                   a_i_road_segment_ids=array(navigation_plan, dtype=np_int))))
+                                                                   a_i_road_segment_ids=np.array(navigation_plan, dtype=np.int))))
 
     def _generate_lane_segments(self, road_segment_ids: List[int] = None, num_lane_segments: int = 1,
                                 lane_segment_ids: List[List[int]] = None) -> List[SceneLaneSegmentBase]:
@@ -138,12 +97,12 @@ class SceneStaticPublisher(DmModule):
                                                                 e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
 
                 num_active_lane_attributes = 4
-                active_lane_attribute_indices = array([0, 1, 2, 3], dtype=np_int)
-                lane_attributes = array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                active_lane_attribute_indices = np.array([0, 1, 2, 3], dtype=np.int)
+                lane_attributes = np.array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
                                          GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
                                          LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                         MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value], dtype=np_int)
-                lane_attribute_confidences = ones(4, dtype=np_float)
+                                         MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value], dtype=np.int)
+                lane_attribute_confidences = np.ones(4, dtype=np.float)
                 
                 lane_segment_lite.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_segment_ids[i][j],
                                                               e_i_road_segment_id=road_segment_ids[i],
@@ -186,12 +145,12 @@ class SceneStaticPublisher(DmModule):
         return [SceneRoadSegment(e_i_road_segment_id=road_segment_ids[i],
                                  e_i_road_id=1,
                                  e_Cnt_lane_segment_id_count=len(lane_segment_ids),
-                                 a_i_lane_segment_ids=array(lane_segment_ids[i], dtype=np_int),
+                                 a_i_lane_segment_ids=np.array(lane_segment_ids[i], dtype=np.int),
                                  e_e_road_segment_type=MapRoadSegmentType.Normal,
                                  e_Cnt_upstream_segment_count=0,
-                                 a_i_upstream_road_segment_ids=array([0], dtype=np_int),
+                                 a_i_upstream_road_segment_ids=np.array([0], dtype=np.int),
                                  e_Cnt_downstream_segment_count=0,
-                                 a_i_downstream_road_segment_ids=array([0], dtype=np_int)) \
+                                 a_i_downstream_road_segment_ids=np.array([0], dtype=np.int)) \
                 for i in range(len(road_segment_ids))]
     
     def _generate_road_intersections(self, num_intersections: int = 1) -> List[SceneRoadIntersection]:
@@ -264,18 +223,14 @@ class SceneStaticPublisher(DmModule):
             num_nominal_path_points: Number of nominal path points, Default is 1
         """
         boundary_point = [BoundaryPoint(e_e_lane_marker_type=MapLaneMarkerType.MapLaneMarkerType_None,
-                                       e_l_s_start=0,
-                                       e_l_s_end=0)]
+                                        e_l_s_start=0,
+                                        e_l_s_end=0)]
         
         return [SceneLaneSegmentGeometry(e_i_lane_segment_id=0,
-                                        e_i_road_segment_id=0,
-                                        e_Cnt_nominal_path_point_count=num_nominal_path_points,
-                                        a_nominal_path_points=zeros((num_nominal_path_points, MAX_NOMINAL_PATH_POINT_FIELDS)),
-                                        e_Cnt_left_boundary_points_count=1,
-                                        as_left_boundary_points=boundary_point,
-                                        e_Cnt_right_boundary_points_count=1,
-                                        as_right_boundary_points=boundary_point)]
-
-    def _publish_scene_static(self, scene_static: SceneStatic) -> None:
-        """ Publish SCENE_STATIC message """
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], scene_static.serialize())
+                                         e_i_road_segment_id=0,
+                                         e_Cnt_nominal_path_point_count=num_nominal_path_points,
+                                         a_nominal_path_points=np.zeros((num_nominal_path_points, MAX_NOMINAL_PATH_POINT_FIELDS)),
+                                         e_Cnt_left_boundary_points_count=1,
+                                         as_left_boundary_points=boundary_point,
+                                         e_Cnt_right_boundary_points_count=1,
+                                         as_right_boundary_points=boundary_point)]
