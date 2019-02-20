@@ -82,7 +82,7 @@ class RoutePlanSubscriber(DmModule):
             route_plan = self._get_current_route_plan()
 
             # calculate the takeover message
-            takeover_msg = BehavioralPlanningFacade.set_takeover_message(route_plan_data= route_plan.s_Data , state = mock_state, scene_static = scene_static_data)
+            takeover_msg = BehavioralPlanningFacade.set_takeover_message(route_plan_data= route_plan.s_Data , ego_state = mock_state.ego_state, scene_static = scene_static_data)
             
             # publish takeover message
             self._publish_takeover(takeover_msg)
