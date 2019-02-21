@@ -17,6 +17,7 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
+from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
 # from decision_making.src.state.state_module import StateModule
@@ -54,21 +55,29 @@ class DmInitialization:
 
         planner = CostBasedRoutePlanner()
 
-        route_planning_module = RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
-        return route_planning_module
+        return RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
 
     @staticmethod
     def create_scene_static_publisher(map_file: str=DEFAULT_MAP_FILE) -> SceneStaticPublisherFacade:
-       logger = AV_Logger.get_logger("SCENE_STATIC_PUBLISHER")
+        logger = AV_Logger.get_logger("SCENE_STATIC_PUBLISHER")
 
-       pubsub = PubSub()
-       # MapService should be initialized in each process according to the given map_file
-       MapService.initialize(map_file)
+        pubsub = PubSub()
+        # MapService should be initialized in each process according to the given map_file
+        MapService.initialize(map_file)
 
-       scene_static_publisher = SceneStaticPublisher()
+        # Initialize Publisher
+        road_segment_ids = [1, 2]
 
-       scene_static_publisher_module = SceneStaticPublisherFacade(pubsub=pubsub, logger=logger, publisher=scene_static_publisher)
-       return scene_static_publisher_module
+        lane_segment_ids = [[101, 102],
+                            [201, 202]]
+
+        navigation_plan = [1, 2]
+
+        scene_static_publisher = SceneStaticPublisher(road_segment_ids=road_segment_ids,
+                                                      lane_segment_ids=lane_segment_ids,
+                                                      navigation_plan=navigation_plan)
+
+        return SceneStaticPublisherFacade(pubsub=pubsub, logger=logger, publisher=scene_static_publisher)
 
     @staticmethod
     def create_route_subscriber(map_file: str=DEFAULT_MAP_FILE) -> RoutePlanSubscriber:
