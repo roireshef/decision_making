@@ -11,7 +11,8 @@ from decision_making.src.messages.scene_static_enums import (
     LaneMappingStatusType,
     GMAuthorityType,
     LaneConstructionType,
-    MapLaneDirection)
+    MapLaneDirection,
+    RoutePlanLaneSegmentAttr)
 
 from mapping.src.exceptions import NextRoadNotFound
 from mapping.src.model.map_api import MapAPI
@@ -44,11 +45,17 @@ def scene_static():
     MapService.initialize('PG_split.bin')
     return create_scene_static_from_map_api(MapService.get_instance())
 
+LaneSegmentID = int
+IsLaneAttributeActive = bool
+LaneAttribute = int # actually, LaneMappingStatusType, MapLaneDirection, GMAuthorityType, or LaneConstructionType
+LaneAttributeConfidence = float
+LaneAttributeModification = Tuple[IsLaneAttributeActive, RoutePlanLaneSegmentAttr, LaneAttribute, LaneAttributeConfidence]
+LaneAttributeModifications = Dict[LaneSegmentID, List[LaneAttributeModification]]
 
 def create_scene_static_from_map_api(map_api: MapAPI,
-                                     lane_modifications: Dict[int, List[Tuple[bool, int, int, float]]] = None) -> SceneStatic:
-    if lane_modifications is None:
-        lane_modifications = {}
+                                     lane_attribute_modifications: LaneAttributeModifications = None) -> SceneStatic:
+    if lane_attribute_modifications is None:
+        lane_attribute_modifications = {}
 
     map_model = map_api._cached_map_model
     road_ids = map_model.get_road_ids()
@@ -141,13 +148,13 @@ def create_scene_static_from_map_api(map_api: MapAPI,
         lane_attribute_confidences = np.ones(4)
 
         # Check for lane attribute modifications
-        if lane_id in lane_modifications:
-            for lane_modification in lane_modifications[lane_id]:
-                if lane_modification[0] is True:
-                    lane_attributes[lane_modification[1]] = lane_modification[2]
-                    lane_attribute_confidences[lane_modification[1]] = lane_modification[3]
+        if lane_id in lane_attribute_modifications:
+            for lane_attribute_modification in lane_attribute_modifications[lane_id]:
+                if lane_attribute_modification[0] is True:
+                    lane_attributes[lane_attribute_modification[1]] = lane_attribute_modification[2]
+                    lane_attribute_confidences[lane_attribute_modification[1]] = lane_attribute_modification[3]
                 else:
-                    active_lane_attribute_indices = np.delete(active_lane_attribute_indices, lane_modification[1])
+                    active_lane_attribute_indices = np.delete(active_lane_attribute_indices, lane_attribute_modification[1])
                     num_active_lane_attributes -= 1
 
         scene_lane_segments_base.append(
