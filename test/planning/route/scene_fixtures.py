@@ -8,9 +8,11 @@ from decision_making.src.messages.scene_static_enums import (
     RoutePlanLaneSegmentAttr,
     LaneMappingStatusType,
     GMAuthorityType,
-    MapLaneDirection)
+    MapLaneDirection,
+    ManeuverType)
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
+from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
 
 from mapping.src.service.map_service import MapService
 from decision_making.src.state.state import EgoState, ObjectSize
@@ -319,7 +321,8 @@ def lane_direction_scene_and_expected_output(request):
     return RoutePlanTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
                              expected_output=expected_output)
 
-@pytest.fixture(scope='function', params=["scene_one"])
+@pytest.fixture(scope='function', params=["scene_one",
+                                          "scene_two"])
 def combined_scene_and_expected_output(request):
     # Set Default Expected Output
     expected_output = default_route_plan()
@@ -367,6 +370,77 @@ def combined_scene_and_expected_output(request):
         # Road Segment 28
         expected_output.as_route_plan_lane_segments[8][0].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
+    elif request.param is "scene_two":
+        # Scenario in Slides
+        road_segment_ids = [1, 2, 3, 4, 5, 6]
+
+        lane_segment_ids = [[1, 2],
+                            [7, 3, 4],
+                            [5, 6],
+                            [8, 9],
+                            [10],
+                            [11]]
+
+        navigation_plan = [1, 2, 4, 5]
+
+        downstream_road_segment_ids = {1: [2],
+                                       2: [3, 4],
+                                       3: [],
+                                       4: [5, 6],
+                                       5: [],
+                                       6: []}
+
+        downstream_lane_connectivity = {1: [(7, ManeuverType.RIGHT_EXIT_CONNECTION),
+                                            (3, ManeuverType.STRAIGHT_CONNECTION)],
+                                        2: [(4, ManeuverType.STRAIGHT_CONNECTION)],
+                                        3: [(5, ManeuverType.STRAIGHT_CONNECTION)],
+                                        4: [(6, ManeuverType.STRAIGHT_CONNECTION)],
+                                        7: [(8, ManeuverType.RIGHT_FORK_CONNECTION),
+                                            (9, ManeuverType.LEFT_FORK_CONNECTION)],
+                                        8: [(11, ManeuverType.STRAIGHT_CONNECTION)],
+                                        9: [(10, ManeuverType.STRAIGHT_CONNECTION)]}
+
+        lane_modifications = {2: [(True,
+                                   RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
+                                   LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
+                                   1.0)],
+                              4: [(True,
+                                   RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
+                                   GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
+                                   1.0)]}
+
+        scene_static_publisher = SceneStaticPublisher(road_segment_ids=road_segment_ids,
+                                                      lane_segment_ids=lane_segment_ids,
+                                                      navigation_plan=navigation_plan,
+                                                      downstream_road_segment_ids=downstream_road_segment_ids,
+                                                      downstream_lane_connectivity=downstream_lane_connectivity,
+                                                      lane_attribute_modifications=lane_modifications)
+
+        # Expected Output
+        expected_output = DataRoutePlan(e_b_is_valid=True,
+                                        e_Cnt_num_road_segments = len(navigation_plan),
+                                        a_i_road_segment_ids = np.array(navigation_plan),
+                                        a_Cnt_num_lane_segments = np.array([2, 3, 2, 1]),
+                                        as_route_plan_lane_segments = [[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
+                                                                                             e_cst_lane_occupancy_cost=0.0,
+                                                                                             e_cst_lane_end_cost=0.0)
+                                                                        for lane_segment_id in lane_segment_ids[road_segment_id-1]]
+                                                                       for road_segment_id in navigation_plan])
+
+        # Road Segment 1
+        expected_output.as_route_plan_lane_segments[0][1].e_cst_lane_occupancy_cost = 1.0
+        expected_output.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost = 1.0
+
+        # Road Segment 2
+        expected_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+
+        # Road Segment 4
+        expected_output.as_route_plan_lane_segments[2][0].e_cst_lane_end_cost = 1.0
+        
+        return RoutePlanTestData(scene_static=scene_static_publisher.generate_data(),
+                                 expected_output=expected_output)
     else:
         lane_modifications = {}
         
