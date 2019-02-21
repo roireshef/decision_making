@@ -3,7 +3,7 @@ import numpy as np
 from decision_making.src.global_constants import EPS
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
-from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D, FS_DX, FS_SX
+from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D, FS_DX, FS_SX, FS_1D_LEN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
@@ -62,16 +62,22 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         # Handle the longitudinal(s) axis
 
         in_traj_time_points = relative_time_points[relative_time_points <= self.T_s+EPS]
-        padded_time_points = relative_time_points[np.logical_and(self.total_trajectory_time >= relative_time_points,relative_time_points > self.T_s + EPS)]
+        extrapolated_time_points = relative_time_points[np.logical_and(relative_time_points > self.T_s + EPS,
+                                                                       relative_time_points <= self.total_trajectory_time)]
 
-        # assign values from <time_points> in s-axis polynomial
-        fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), in_traj_time_points)[0]
+        fstates_s = np.empty((0, FS_1D_LEN))
 
-        if len(padded_time_points) > 0:
+        if len(in_traj_time_points) > 0:
+            # assign values from <time_points> in s-axis polynomial
+            in_traj_fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), in_traj_time_points)[0]
+            fstates_s = np.vstack((fstates_s, in_traj_fstates_s))
+
+        if len(extrapolated_time_points) > 0:
             road_following_predictor = RoadFollowingPredictor(None)
-            last_frenet_state = np.array([np.append(fstates_s[-1], [0, 0, 0])])
-            extrapolated_fstates_s = road_following_predictor.predict_frenet_states(last_frenet_state, padded_time_points-self.T_s)[0]
-            fstates_s = np.vstack((extrapolated_fstates_s[:, FS_SX: FS_DX], fstates_s))
+            fstate_in_T_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), np.array([self.T_s]))[0]
+            last_frenet_state = np.array([np.append(fstate_in_T_s, [0, 0, 0])])
+            extrapolated_fstates_s = road_following_predictor.predict_frenet_states(last_frenet_state, extrapolated_time_points-self.T_s)[0]
+            fstates_s = np.vstack((fstates_s, extrapolated_fstates_s[:, FS_SX: FS_DX]))
 
         # Now handle the lateral(d) axis:
 

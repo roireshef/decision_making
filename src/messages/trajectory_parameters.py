@@ -163,8 +163,8 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     time = float
     bp_time = int
 
-    def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float, int)->None
+    def __init__(self, strategy, reference_route, target_state, cost_params, time, minimal_required_time, bp_time):
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float, float, int)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)
@@ -172,6 +172,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
+        :param minimal_required_time: minimal required trajectory planning time-frame
         :param bp_time: absolute time of the state that BP planned on.
         """
         self.reference_route = reference_route
@@ -179,6 +180,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         self.cost_params = cost_params
         self.strategy = strategy
         self.time = time
+        self.minimal_required_time = minimal_required_time
         self.bp_time = bp_time
 
     def __str__(self):
@@ -200,6 +202,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         lcm_msg.cost_params = self.cost_params.serialize()
 
         lcm_msg.time = self.time
+        lcm_msg.minimal_required_time = self.minimal_required_time
         lcm_msg.bp_time = self.bp_time
 
         return lcm_msg
@@ -212,4 +215,5 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
                    , lcmMsg.target_state
                    , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
                    , lcmMsg.time
+                   , lcmMsg.minimal_required_time
                    , lcmMsg.bp_time)

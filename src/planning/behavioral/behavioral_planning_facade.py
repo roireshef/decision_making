@@ -140,11 +140,13 @@ class BehavioralPlanningFacade(DmModule):
 
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
-        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
+        # TODO Move the raising of the exception to pubsub code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
         scene_static = SceneStatic.deserialize(serialized_scene_static)
+        if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
+            raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
 

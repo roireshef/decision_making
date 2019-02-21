@@ -92,7 +92,6 @@ class UniformGrid:
         :param value: the value to be looked for on axis
         :return: index of the closest value on the equally-spaced axis
         """
-        eps = 0.02
-        assert self.start-eps <= value <= self.end+eps, "value %s is outside the grid %s" % (value, str(self))
+        assert self.start <= value <= self.end, "value %s is outside the grid %s" % (value, str(self))
         index = np.round((value - self.start) / self.resolution)
         return int(max(min(index, self.length), 0))
