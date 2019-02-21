@@ -25,50 +25,6 @@ from decision_making.test.planning.route.scene_fixtures import (
     lane_direction_scene_and_expected_output,
     combined_scene_and_expected_output)
 
-
-def test_plan_simpleScene_routePlanOutput():
-
-    logger = AV_Logger.get_logger("")
-
-    pubsub = PubSub()
-
-    scene_static_obj = SceneStaticPublisher(pubsub = pubsub , logger = logger)
-
-    scene_static_data = scene_static_obj._generate_data()
-
-    scene_static_base = scene_static_data.s_Data.s_SceneStaticBase
-
-    navigation_plan = scene_static_data.s_Data.s_NavigationPlan
-
-    route_planner_input = RoutePlannerInputData(scene=scene_static_base,nav_plan=navigation_plan)
-
-    route_plan_obj = CostBasedRoutePlanner()
-
-    route_plan_output = route_plan_obj.plan(route_planner_input)
-
-    # expected outputs:
-
-    exp_num_road_segments = 2
-
-    exp_road_segment_ids = np.array([1, 2])
-
-    exp_num_lane_segments = np.array([2, 2])
-
-    road_segment_1 = [RoutePlanLaneSegment(101,0,0) , RoutePlanLaneSegment(102,0,0) ]
-    road_segment_2 = [RoutePlanLaneSegment(201,0,0) , RoutePlanLaneSegment(202,0,0) ]
-    exp_route_plan_lane_segments = [road_segment_1 , road_segment_2]
-
-    # assertion
-
-    assert route_plan_output.e_Cnt_num_road_segments == exp_num_road_segments
-    assert route_plan_output.a_i_road_segment_ids.all() == exp_road_segment_ids.all()
-    assert route_plan_output.a_Cnt_num_lane_segments.all() == exp_num_lane_segments.all()
-    for i in range(len(exp_route_plan_lane_segments)) :
-        for j in range(len(exp_route_plan_lane_segments[i])) :
-            assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_end_cost
-            assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
-            assert route_plan_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == exp_route_plan_lane_segments[i][j].e_i_lane_segment_id
-
 def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):
 
     scene_static_base = scene_static.s_Data.s_SceneStaticBase
@@ -134,7 +90,7 @@ def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_
             assert(lane_segment.e_cst_lane_end_cost == expected_lane_end_cost),\
                 "lane_segment_id:"+str(lane_segment.e_i_lane_segment_id)+\
                     "   output lane_end_cost:"+str(lane_segment.e_cst_lane_end_cost)+"  expected lane_end_cost:"+str(expected_lane_end_cost)
-        
+
         # print("==========================\n")
 
 def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: RoutePlanTestData):
@@ -162,7 +118,7 @@ def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: R
             assert lane_segment.e_i_lane_segment_id == expected_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id
             assert lane_segment.e_cst_lane_occupancy_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             assert lane_segment.e_cst_lane_end_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost
-        
+
         # print("==========================\n")
 
 def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output: RoutePlanTestData):
@@ -190,7 +146,7 @@ def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output:
             assert lane_segment.e_i_lane_segment_id == expected_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id
             assert lane_segment.e_cst_lane_occupancy_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             assert lane_segment.e_cst_lane_end_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost
-        
+
         # print("==========================\n")
 
 def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_and_expected_output: RoutePlanTestData):
@@ -218,7 +174,7 @@ def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_a
             assert lane_segment.e_i_lane_segment_id == expected_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id
             assert lane_segment.e_cst_lane_occupancy_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             assert lane_segment.e_cst_lane_end_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost
-        
+
         # print("==========================\n")
 
 def test_plan_combinedScenes_accurateRoutePlanOutput(combined_scene_and_expected_output: RoutePlanTestData):
@@ -246,5 +202,5 @@ def test_plan_combinedScenes_accurateRoutePlanOutput(combined_scene_and_expected
             assert lane_segment.e_i_lane_segment_id == expected_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id
             assert lane_segment.e_cst_lane_occupancy_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             assert lane_segment.e_cst_lane_end_cost == expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost
-        
+
         # print("==========================\n")
