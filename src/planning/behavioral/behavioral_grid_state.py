@@ -42,7 +42,6 @@ SemanticGridCell = Tuple[RelativeLane, RelativeLongitudinalPosition]
 RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
 
 
-
 class BehavioralGridState(BehavioralState):
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
@@ -91,28 +90,27 @@ class BehavioralGridState(BehavioralState):
 
 
     @staticmethod
-    def _overload_dynamic_objects(dynamic_objects):
+    def _create_mirror_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
         """
-        Takes all the dynamic objects that are on intersections, and adds also pseudo-objects that are located
+        Takes all the dynamic objects that are on intersections, and adds 'pseudo (mirror) -objects' that are located
         on the matching lane segment. According to the intersection
         An 'overloaded' dynamic object looks like this:
 
         map_states of overloaded should have the following:
-            obj_id:    same as original dynamic object
+            obj_id:    the negative id of the original dynamic object
             timestamp: same as original dynamic object
             cartesian_state:same as original dynamic object
             map_state:  (lane id as the pseudo-object), lane_fstate as None for lazy initialization)
-            map_state_on_host_lane:same as original dynamic object
+            map_state_on_host_lane:same as original dynamic object, expected to be removed soon
             size:same as original dynamic object
             confidence:same as original dynamic object
         :param dynamic_objects:
         :return:
         """
-        # TODO: Set valid id to pseudo_object
         pseudo_dynamic_objects = []
         for dynamic_object in dynamic_objects:
             for overlapping_lane_segment in MapUtils.get_lane_segment_overlaps(dynamic_object.map_state.lane_id):
-                pseudo_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id*10,
+                pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
                                                             timestamp=dynamic_object.timestamp,
                                                             cartesian_state=dynamic_object.cartesian_state,
                                                             map_state=MapState(None, overlapping_lane_segment),
@@ -123,7 +121,9 @@ class BehavioralGridState(BehavioralState):
 
 
     @staticmethod
-    def _lazy_set_map_states(dynamic_objects, extended_lane_frames, rel_lanes_per_obj):
+    def _lazy_set_map_states(dynamic_objects: List[DynamicObject],
+                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+                             rel_lanes_per_obj: np.array):
         """
         Takes the relevant map_states and calculates the fstate ( map_states with None fstate and not None rel_lanes_per_obj)
         TODO: Fix double Conversion
@@ -156,8 +156,8 @@ class BehavioralGridState(BehavioralState):
                 corresponding extended_lane_frame
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
-
-        overloaded_dynamic_objects = BehavioralGridState._overload_dynamic_objects(dynamic_objects)
+        # adds mirror objects to any dynamic object which is on the intersection
+        overloaded_dynamic_objects = BehavioralGridState._create_mirror_objects(dynamic_objects)
 
         # calculate objects' segment map_states
         object_map_states = [obj.map_state for obj in overloaded_dynamic_objects]
@@ -209,8 +209,6 @@ class BehavioralGridState(BehavioralState):
         target_segment_ids = np.array([map_state.lane_id for map_state in target_map_states])
         target_segment_fstates = np.array([map_state.lane_fstate for map_state in target_map_states])
 
-        # TODO: Check why this does not catch Nones
-        if None in target_segment_fstates: raise ValueError("Fstate not initialized")
         # initialize longitudinal_differences to infinity
         longitudinal_differences = np.full(len(target_segment_ids), np.inf)
 

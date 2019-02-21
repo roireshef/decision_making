@@ -36,6 +36,19 @@ class DynamicActionSpace(ActionSpace):
         """a list of Recipe classes this action space can handle with"""
         return [DynamicActionRecipe]
 
+    @staticmethod
+    def _get_relevant_target_from_grid(behavioral_state, action_recipe):
+        """
+         Gets the relevant object from a grid. Dynamic objects are ordered according to decreasing
+         longitudinal distances from host vehicle
+        :param behavioral_state: current behavioral state
+        :param action_recipe:
+        :return:
+        """
+        # TODO: Handle the case when there is slow but far vehicle. This might estimate the time to collision based on
+        # aggresiveness level, host speed, dynamic object speed, and the longitudinal distance
+        return behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
+
     @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
@@ -47,10 +60,11 @@ class DynamicActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         # pick ego initial fstates projected on all target frenet_frames
-        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
+        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane]
+                                          for recipe in action_recipes])
 
         # collect targets' lengths, lane_ids and fstates
-        targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
+        targets = [DynamicActionSpace._get_relevant_target_from_grid(behavioral_state, action_recipe)
                    for action_recipe in action_recipes]
         target_length = np.array([target.dynamic_object.size.length for target in targets])
         target_map_states = [target.dynamic_object.map_state for target in targets]

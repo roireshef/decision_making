@@ -42,21 +42,21 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
 
 
-def test_overloadDynamicObject_createsCorrectNumberOfPseudoObjectsNoProjections(state_with_sorrounding_objects):
+def test_createMirrorObjects_createsCorrectNumberOfPseudoObjectsNoProjections(state_with_sorrounding_objects):
     """
     Tests that all vehicles on intersections are being generated
     """
-    overloaded_objects = BehavioralGridState._overload_dynamic_objects(dynamic_objects=state_with_sorrounding_objects.dynamic_objects)
+    overloaded_objects = BehavioralGridState._create_mirror_objects(dynamic_objects=state_with_sorrounding_objects.dynamic_objects)
     vehicles_on_intersection = []
     assert len(overloaded_objects) == len(state_with_sorrounding_objects.dynamic_objects) + len(vehicles_on_intersection)
 
 
 
-def test_overloadDynamicObject_createsCorrectPseudoObjects(intersection_state_with_sorrounding_objects):
+def test_createMirrorObjects_createsCorrectPseudoObjects(intersection_state_with_sorrounding_objects):
     """
     Tests that all vehicles on intersections are being generated correctly
     """
-    overloaded_objects = BehavioralGridState._overload_dynamic_objects(dynamic_objects=intersection_state_with_sorrounding_objects.dynamic_objects)
+    overloaded_objects = BehavioralGridState._create_mirror_objects(dynamic_objects=intersection_state_with_sorrounding_objects.dynamic_objects)
     object_on_210 = intersection_state_with_sorrounding_objects.dynamic_objects [2]
     object_on_211 = intersection_state_with_sorrounding_objects.dynamic_objects [4]
 
@@ -75,7 +75,7 @@ def test_overloadDynamicObject_createsCorrectPseudoObjects(intersection_state_wi
 
 
 def test_lazySetMapStates_calculateCorrectFstate(intersection_state_with_sorrounding_objects):
-    overloaded_objects = BehavioralGridState._overload_dynamic_objects(dynamic_objects=intersection_state_with_sorrounding_objects.dynamic_objects)
+    overloaded_objects = BehavioralGridState._create_mirror_objects(dynamic_objects=intersection_state_with_sorrounding_objects.dynamic_objects)
     object_on_210 = intersection_state_with_sorrounding_objects.dynamic_objects[2]
     object_on_211 = intersection_state_with_sorrounding_objects.dynamic_objects[4]
 
@@ -115,7 +115,7 @@ def test_addRoadSemantics_addedCorrectLongitudinalDistance(intersection_state_wi
     """
     validate that 8 objects around ego have accurate longitudinal distances from ego in multi-road map
     """
-    overloaded_objects = BehavioralGridState._overload_dynamic_objects(dynamic_objects=
+    overloaded_objects = BehavioralGridState._create_mirror_objects(dynamic_objects=
                                                                        intersection_state_with_sorrounding_objects.dynamic_objects)
     objects_segment_ids = np.array([overloaded_object.map_state.lane_id for overloaded_object in overloaded_objects])
     # for objects on non-adjacent lane set relative_lanes[i] = None
@@ -148,7 +148,7 @@ def test_overloadDynamicObject_createsCorrectNumberOfPseudoObjects(intersection_
     """
     Tests that all vehicles on intersections are being generated
     """
-    overloaded_objects = BehavioralGridState._overload_dynamic_objects(dynamic_objects=intersection_state_with_sorrounding_objects.dynamic_objects)
+    overloaded_objects = BehavioralGridState._create_mirror_objects(dynamic_objects=intersection_state_with_sorrounding_objects.dynamic_objects)
     vehicles_on_intersection = ['210 projected on 211', '211 projected on 210' ]
     assert len(overloaded_objects) == len(intersection_state_with_sorrounding_objects.dynamic_objects) + len(vehicles_on_intersection)
 
@@ -195,9 +195,9 @@ def test_createFromState_correctProjectionOfIntersectionVehicles(intersection_st
     behavioral_grid_state = BehavioralGridState.create_from_state(intersection_state_with_sorrounding_objects, nav_plan, None)
 
     expected_objects_on_grid = {(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.PARALLEL): [2],
-                                (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT): [3, 50],
+                                (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT): [3, -5],
                                 (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.REAR): [1],
-                                (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT): [5, 30],
+                                (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT): [5, -3],
                                 (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.REAR): [4],
                                 (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.REAR): [6],
                                 (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.PARALLEL): [7],
