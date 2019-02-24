@@ -71,13 +71,13 @@ class WerlingPlanner(TrajectoryPlanner):
                                             dx=dx_range, dv=goal_frenet_state[FS_DV], da=goal_frenet_state[FS_DA])
 
         T_s = max(time_horizon, 0)
-        minimal_required_horizon = max(minimal_required_horizon, T_s) + EPS
+        planning_horizon = max(minimal_required_horizon, T_s) + EPS
 
         # TODO: should we make sure T_s values are multiples of dt ? (Otherwise the matrix, calculated using T_s,
         #  and the longitudinal time axis, lon_time_samples, won't fit).
         # T_s = Math.round_to_step(T_s, self.dt)
 
-        # Latitudinal planning horizon(Td) lower bound, now approximated from x=a*t^2
+        # Lateral planning horizon(Td) lower bound, now approximated from x=a*t^2
         lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T_s, self.dt)
 
         # create a grid on T_d (lateral movement time-grid)
@@ -88,32 +88,45 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(
             'WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds and extrapolating to %s seconds',
             NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
-            T_s, minimal_required_horizon)
+            T_s, planning_horizon)
 
-        if T_s == 0 or ego_frenet_state[FS_SX] > goal_frenet_state[FS_SX]:
-            time_samples = np.arange(0, minimal_required_horizon + EPS, self.dt)
-            ftrajectory = self.predictor.predict_frenet_states(np.array([ego_frenet_state]), time_samples)[0]
-            ctrajectory = reference_route.ftrajectory_to_ctrajectory(ftrajectory)
-            # TODO: check feasibility and filter
-            return FixedSamplableTrajectory(ctrajectory, state.ego_state.timestamp_in_sec), None, None
+        if T_s > 0 and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]:
 
-        # solve problem in frenet-frame
-        ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
-                                                                                 T_s, T_d_grid, self.dt)
-        if minimal_required_horizon > T_s:
-            time_samples = np.arange(self.dt, minimal_required_horizon - Math.floor_to_step(T_s, self.dt) + EPS, self.dt)
-            extrapolated_fstates_s = self.predictor.predict_frenet_states(ftrajectories[:, -1, :], time_samples)
-            ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
+            # solve problem in frenet-frame
+            ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
+                                                                                     T_s, T_d_grid, self.dt)
+            if planning_horizon > T_s:
+                time_samples = np.arange(self.dt, planning_horizon - Math.floor_to_step(T_s, self.dt) + EPS, self.dt)
+                extrapolated_fstates_s = self.predictor.predict_frenet_states(ftrajectories[:, -1, :], time_samples)
+                ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
+
+            lat_frenet_filtered_indices = self._filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
+                                                                                cost_params)
+
+        else:
+
+            time_samples = np.arange(0, planning_horizon + EPS, self.dt)
+            # Create only one trajectory which is actually a constant-velocity predictor of current state
+            ftrajectories = self.predictor.predict_frenet_states(np.array([ego_frenet_state]), time_samples)[0][
+                np.newaxis, ...]
+            lat_frenet_filtered_indices = np.array([0])
+
+            # # TODO: check feasibility and filter
+            # ctrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
+            # cartesian_filter_result = self._filter_by_cartesian_limits(ctrajectories, cost_params)
+            # frenet_filter_result = self._filter_by_longitudinal_frenet_limits(ftrajectories, reference_route.s_limits)
+
+            # return FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec), ctrajectories, None
 
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
-        frenet_filtered_indices = self._filter_by_frenet_limits(ftrajectories, poly_coefs[:, D5:], T_d_vals,
-                                                                cost_params, reference_route.s_limits)
+        lon_frenet_filtered_indices = self._filter_by_longitudinal_frenet_limits(ftrajectories, reference_route.s_limits)
+        frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(
             ftrajectories[frenet_filtered_indices])
 
-        #TODO: Hack! Remove!
+        # TODO: Hack! Remove and apply inside frenet and CTM conversions!
         ctrajectories[:, :, C_V] += EPS
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
@@ -127,18 +140,20 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories) == 0:
-            raise CouldNotGenerateTrajectories("No valid cartesian trajectories. time: %f, goal: %s, state: %s. "
-                                               "Longitudes range: [%s, %s] (limits: %s)"
+            raise CouldNotGenerateTrajectories("No valid cartesian trajectories. time horizon: %f, "
+                                               "extrapolated time horizon: %f.  goal: %s, "
+                                               "state: %s. Longitudes range: [%s, %s] (limits: %s)"
                                                "Min frenet velocity: %s"
                                                "number of trajectories passed according to Frenet limits: %s/%s;" %
-                                               (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                               (T_s, planning_horizon,  NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                                 np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                                 reference_route.s_limits,
                                                 np.min(ftrajectories[:, :, FS_SV]),
                                                 len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s.\n"
+            raise NoValidTrajectoriesFound("No valid trajectories found. time horizon: %f, "
+                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
                                            "planned velocities range [%s, %s] (limits: %s); "
                                            "planned lon. accelerations range [%s, %s] (limits: %s); "
                                            "planned lat. accelerations range [%s, %s] (limits: %s); "
@@ -146,7 +161,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
                                            "number of trajectories passed according to all limits: %s/%s;\n"
                                            "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
-                                           (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                           (T_s, planning_horizon,  NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
                                             NumpyUtils.str_log(cost_params.velocity_limits),
                                             np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
@@ -157,11 +172,11 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(cartesian_refiltered_indices), len(ctrajectories),
                                             len(refiltered_indices), len(ftrajectories),
                                             goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                            time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+                                            planning_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
-        planning_time_points = np.arange(0, minimal_required_horizon, self.dt)
+        planning_time_points = np.arange(0, planning_horizon, self.dt)
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
@@ -171,18 +186,24 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
-        self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
-            T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
+        if T_s > 0 and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]:
 
-        samplable_trajectory = SamplableWerlingTrajectory(
-            timestamp_in_sec=state.ego_state.timestamp_in_sec,
-            T_s=T_s,
-            T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
-            frenet_frame=reference_route,
-            poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
-            poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:],
-            total_time=minimal_required_horizon
-        )
+            samplable_trajectory = SamplableWerlingTrajectory(
+                timestamp_in_sec=state.ego_state.timestamp_in_sec,
+                T_s=T_s,
+                T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
+                frenet_frame=reference_route,
+                poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
+                poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:],
+                total_time=planning_horizon
+            )
+
+            self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
+                T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
+
+        else:
+
+            samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec)
 
         return samplable_trajectory, \
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
@@ -210,17 +231,11 @@ class WerlingPlanner(TrajectoryPlanner):
         return np.argwhere(conforms).flatten()
 
     @staticmethod
-    def _filter_by_frenet_limits(ftrajectories: FrenetTrajectories2D, poly_coefs_d: np.ndarray,
-                                 T_d_vals: np.ndarray, cost_params: TrajectoryCostParams,
-                                 reference_route_limits: Limits) -> np.ndarray:
+    def _filter_by_longitudinal_frenet_limits(ftrajectories: FrenetTrajectories2D, reference_route_limits: Limits) -> np.ndarray:
         """
         Given a set of trajectories in Frenet coordinate-frame, it validates them against the following limits:
-        (longitudinal progress on the frenet frame curve, positive longitudinal velocity, acceleration of the lateral
-        polynomial used in planning is in the allowed limits)
+        (longitudinal progress on the frenet frame curve, positive longitudinal velocity)
         :param ftrajectories: FrenetTrajectories2D object of trajectories to validate
-        :param poly_coefs_d: 2D numpy array of each row has 6 poly coefficients of lateral polynomial
-        :param T_d_vals: 1D numpy array with lateral planning-horizons (correspond to each trajectory)
-        :param cost_params: TrajectoryCostParams object that holds desired limits (for validation)
         :param reference_route_limits: the minimal and maximal progress (s value) on the reference route used
         in the frenet frame used for planning
         :return: Indices along the 1st dimension in <ctrajectories> (trajectory index) for valid trajectories
@@ -230,6 +245,19 @@ class WerlingPlanner(TrajectoryPlanner):
             NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
             np.greater_equal(ftrajectories[:, :, FS_SV], -EPS), axis=1)
 
+        return np.argwhere(conforms).flatten()
+
+    @staticmethod
+    def _filter_by_lateral_frenet_limits(poly_coefs_d: np.ndarray, T_d_vals: np.ndarray,
+                                         cost_params: TrajectoryCostParams) -> np.ndarray:
+        """
+        Given a set of trajectories in Frenet coordinate-frame, it validates that the acceleration of the lateral
+        polynomial used in planning is in the allowed limits.
+        :param poly_coefs_d: 2D numpy array of each row has 6 poly coefficients of lateral polynomial
+        :param T_d_vals: 1D numpy array with lateral planning-horizons (correspond to each trajectory)
+        :param cost_params: TrajectoryCostParams object that holds desired limits (for validation)
+        :return: Indices along the 1st dimension in <ctrajectories> (trajectory index) for valid trajectories
+        """
         # here we validate feasible lateral acceleration *directly from the lateral polynomial* because our
         # discretization of the trajectory (via sampling with constant self.dt) can overlook cases where there is a high
         # lateral acceleration between two adjacent sampled points (critical in the lateral case because we allow
@@ -237,7 +265,7 @@ class WerlingPlanner(TrajectoryPlanner):
         frenet_lateral_movement_is_feasible = \
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
 
-        return np.argwhere(np.logical_and(conforms, frenet_lateral_movement_is_feasible)).flatten()
+        return np.argwhere(frenet_lateral_movement_is_feasible).flatten()
 
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
@@ -310,7 +338,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param constraints: 3D numpy array of a set of constraints over the initial and terminal states
         :param T: longitudinal/lateral trajectory duration (sec.), relative to ego. T has to be a multiple of WerlingPlanner.dt
         :param poly_impl: OptimalControlUtils 1d polynomial implementation class
-        :return: a poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d]
+        :return: a poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s] or [c0_d, ..., c5_d]
         """
         A = poly_impl.time_constraints_matrix(T)
         A_inv = np.linalg.inv(A)
