@@ -182,7 +182,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                     cost_params: TrajectoryCostParams) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
-        longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
+        longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity),
+        curvature (determined by the minimal turning radius of HV)
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param cost_params: TrajectoryCostParams object that holds desired limits (for validation)
         :return: Indices along the 1st dimension in <ctrajectories> (trajectory index) for valid trajectories
