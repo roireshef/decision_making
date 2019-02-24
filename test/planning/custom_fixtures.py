@@ -236,7 +236,7 @@ def trajectory_params():
                                                   mock_sigmoid, 3.0, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT,
                                                   VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
-                           cost_params=trajectory_cost_params, time=16,
+                           cost_params=trajectory_cost_params, time=16, minimal_required_time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY,
                            bp_time=0)
 

@@ -73,8 +73,8 @@ class WerlingPlanner(TrajectoryPlanner):
         T_s = max(time_horizon, 0)
         planning_horizon = max(minimal_required_horizon, T_s) + EPS
 
-        # TODO: should we make sure T_s values are multiples of dt ? (Otherwise the matrix, calculated using T_s,
-        #  and the longitudinal time axis, lon_time_samples, won't fit).
+        # TODO: should we make sure T_s values are multiples of dt?
+        # (Otherwise the matrix, calculated using T_s,and the longitudinal time axis, lon_time_samples, won't fit).
         # T_s = Math.round_to_step(T_s, self.dt)
 
         # Lateral planning horizon(Td) lower bound, now approximated from x=a*t^2
@@ -104,19 +104,13 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                                 cost_params)
 
         else:
-
+            # Goal is behind us
             time_samples = np.arange(0, planning_horizon + EPS, self.dt)
             # Create only one trajectory which is actually a constant-velocity predictor of current state
             ftrajectories = self.predictor.predict_frenet_states(np.array([ego_frenet_state]), time_samples)[0][
                 np.newaxis, ...]
+            T_d_vals = np.array([0])
             lat_frenet_filtered_indices = np.array([0])
-
-            # # TODO: check feasibility and filter
-            # ctrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
-            # cartesian_filter_result = self._filter_by_cartesian_limits(ctrajectories, cost_params)
-            # frenet_filter_result = self._filter_by_longitudinal_frenet_limits(ftrajectories, reference_route.s_limits)
-
-            # return FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec), ctrajectories, None
 
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
         lon_frenet_filtered_indices = self._filter_by_longitudinal_frenet_limits(ftrajectories, reference_route.s_limits)
@@ -198,12 +192,12 @@ class WerlingPlanner(TrajectoryPlanner):
                 total_time=planning_horizon
             )
 
-            self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
-                T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
-
         else:
 
             samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec)
+
+        self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
+            T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
 
         return samplable_trajectory, \
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \

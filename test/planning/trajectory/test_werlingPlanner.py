@@ -30,6 +30,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 mock_td_steps = 5
 
+
 # @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 # @patch('decision_making.test.planning.trajectory.test_werlingPlanner.TD_STEPS', mock_td_steps)
 # @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.TD_STEPS', mock_td_steps)
@@ -47,7 +48,8 @@ def test_werlingPlanner_toyScenario_noException():
 
     goal_pos = np.array([15, 0.005])
     goal_s = reference_route.cpoint_to_fpoint(goal_pos)[0]
-    goal = np.concatenate((goal_pos, reference_route.get_yaw(np.array([goal_s])), [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
+    goal = np.concatenate(
+        (goal_pos, reference_route.get_yaw(np.array([goal_s])), [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
 
     pos1 = np.array([7, -.5])
     yaw1 = 0
@@ -91,7 +93,7 @@ def test_werlingPlanner_toyScenario_noException():
     start_time = time.time()
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route, goal=goal,
-                                                      time_horizon=Ts, cost_params=cost_params)
+                                                   time_horizon=Ts, minimal_required_horizon=Ts, bp_time=0, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
 
@@ -126,6 +128,7 @@ def test_werlingPlanner_toyScenario_noException():
     # plt.show()
     # fig.clear()
 
+
 # remove this skip if you want to run the test
 @pytest.mark.skip(reason="takes too long.")
 def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
@@ -159,14 +162,14 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             curvature = 0.2
 
         if test_idx < 40:  # test safety vs deviations vs goal, and consistency for small changes
-            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx%20)*0.2])])
+            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx % 20) * 0.2])])
             goal_latitude = lane_width / 2
         else:  # test jerk vs. goal
             obs_poses = np.array([])
             goal_latitude = reference_route_latitude = start_ego_lat = lane_width / 2
             v0 = 8
             vT = 8
-            T = 2*lng/(v0+vT + (test_idx-40))
+            T = 2 * lng / (v0 + vT + (test_idx - 40))
 
         # Additional tests that probably will be used in the future
         # elif test_idx == 8:  # go on margin to prevent collision
@@ -180,13 +183,12 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         #     goal_latitude = reference_route_latitude = lane_width / 2 + (test_idx % 2) * lane_width
         #     start_ego_lat = lane_width / 2 + ((test_idx+1) % 2) * lane_width
 
-
         # Create reference route (normal and extended). The extension is intended to prevent
         # overflow of projection on the ref route
         route_points, ext_route_points, map = create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width,
-                                                                              reference_route_latitude, lng, ext,
-                                                                              curvature)
-        with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda : map):
+                                                                                   reference_route_latitude, lng, ext,
+                                                                                   curvature)
+        with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda: map):
 
             frenet = FrenetSerret2DFrame.fit(ext_route_points[:, :2])
 
@@ -194,8 +196,9 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
                                                                v0, vT, start_ego_lat, goal_latitude)
 
-            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
-                                                                          reference_route_latitude=reference_route_latitude)
+            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID,
+                                                                           ego_size=state.ego_state.size,
+                                                                           reference_route_latitude=reference_route_latitude)
 
             # run Werling planner
             planner = WerlingPlanner(logger, predictor)
@@ -216,7 +219,8 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             pixels, pixel_costs = compute_pixel_costs(route_points, reference_route_latitude, road_width, state,
                                                       cost_params, time_samples[t:(t + 1)], planner, frenet)
 
-            visualize_test_scenario(route_points, reference_route_latitude, road_width, state, goal, ctrajectories, costs,
+            visualize_test_scenario(route_points, reference_route_latitude, road_width, state, goal, ctrajectories,
+                                    costs,
                                     pixels, pixel_costs, plottable_obs, 'test_costs' + str(test_idx) + '.png')
 
 
@@ -237,7 +241,8 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
     """
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     step = 0.2
-    route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
+    route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step,
+                                               curvature=curvature)
     ext_route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step,
                                                    curvature=curvature)
 
@@ -270,14 +275,16 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
     """
     # Convert two points (start and goal) from Frenet to cartesian coordinates.
     ftraj_start_goal = np.array([np.array([route_ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
-                                 np.array([route_lng + route_ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
+                                 np.array(
+                                     [route_lng + route_ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
     ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
 
     ego = EgoState.create_from_cartesian_state(obj_id=-1, timestamp=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
                                                confidence=1.0,
-                                               cartesian_state=np.array([ctraj_start_goal[0][C_X], ctraj_start_goal[0][C_Y],
-                                                                   ctraj_start_goal[0][C_YAW], ctraj_start_goal[0][C_V],
-                                                                   0.0, 0.0]))
+                                               cartesian_state=np.array(
+                                                   [ctraj_start_goal[0][C_X], ctraj_start_goal[0][C_Y],
+                                                    ctraj_start_goal[0][C_YAW], ctraj_start_goal[0][C_V],
+                                                    0.0, 0.0]))
 
     goal = ctraj_start_goal[1]
     goal[C_X] -= 0.001
@@ -288,7 +295,9 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
         cobs = frenet.fpoint_to_cpoint(fobs)
         dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=i, timestamp=0,
                                                                    cartesian_state=np.array([cobs[C_X], cobs[C_Y],
-                                                                        frenet.get_yaw(pose[FP_SX]), 0.0, 0.0, 0.0]),
+                                                                                             frenet.get_yaw(
+                                                                                                 pose[FP_SX]), 0.0, 0.0,
+                                                                                             0.0]),
                                                                    size=ObjectSize(4, 1.8, 0), confidence=1.0)
         obs.append(dynamic_object)
 
@@ -340,7 +349,8 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
 
     # calculate cost components for all image pixels by building a static "trajectory" for every pixel
     pointwise_costs = \
-        TrajectoryPlannerCosts.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
+        TrajectoryPlannerCosts.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params,
+                                                       time_samples,
                                                        planner.predictor, planner.dt)
 
     pixel_costs = (pointwise_costs[:, :, 0] + pointwise_costs[:, :, 1]).reshape(height, width, time_samples.shape[0])
@@ -407,7 +417,7 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
             p.plot(range_x, np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')
             range_y = np.arange(min_cost_y - ego.size.width / 2, min_cost_y + ego.size.width / 2 + 0.01)
             p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1), range_y, '*w')
-            p.plot(np.repeat(np.array([ ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1), range_y, '*w')
+            p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1), range_y, '*w')
 
     d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
     WerlingVisualizer.plot_route(p2, np.c_[
@@ -429,7 +439,7 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
 
     fig.savefig(image_file_name)
 
-    #fig.show()
+    # fig.show()
     fig.clear()
 
 
@@ -442,9 +452,12 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
         timestamp_in_sec=10.0,
         T_s=1.5,
         T_d=1.0,
+        total_time=1.5,
         frenet_frame=frenet,
-        poly_s_coefs=np.array([-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),
-        poly_d_coefs=np.array([-1.44408865e+01, 3.62482582e+01, -2.42818417e+01, -3.62145365e-02, 1.03423064e-02, 5.01250837e-01])
+        poly_s_coefs=np.array(
+            [-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),
+        poly_d_coefs=np.array(
+            [-1.44408865e+01, 3.62482582e+01, -2.42818417e+01, -3.62145365e-02, 1.03423064e-02, 5.01250837e-01])
     )
 
     fstate_terminal = frenet.cstate_to_fstate(trajectory.sample(
@@ -457,8 +470,8 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
 
 
 def test_computeJerk_simpleTrajectory():
-    p1 :CartesianExtendedState = np.array([0, 0, 0, 1, 0, 0.1])
-    p2 :CartesianExtendedState = np.array([0, 0, 0, 2, 1, 0.1])
+    p1: CartesianExtendedState = np.array([0, 0, 0, 1, 0, 0.1])
+    p2: CartesianExtendedState = np.array([0, 0, 0, 2, 1, 0.1])
     ctrajectory: CartesianTrajectory = np.array([p1, p2])
     lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctrajectory]), 0.1)
     assert np.isclose(lon_jerks[0][0], 10) and np.isclose(lat_jerks[0][0], 0.9)
