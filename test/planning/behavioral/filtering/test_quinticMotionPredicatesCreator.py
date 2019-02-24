@@ -3,7 +3,7 @@ import os
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID, \
-    SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY
+    SPECIFICATION_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator

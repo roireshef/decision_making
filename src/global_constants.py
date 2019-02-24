@@ -104,10 +104,14 @@ LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-3.0, 3.0])
 
+EMERGENCY_BRAKE_ACC = 6  # LON_ACC_LIMITS[0]
+
+
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 0.5
+SPECIFICATION_MARGIN_TIME_DELAY = 3.0
+HOST_SAFETY_MARGIN_TIME_DELAY = 1
+ACTOR_SAFETY_MARGIN_TIME_DELAY = 2
 
 # [m] minimal longitudinal safe distance between objects
 LONGITUDINAL_SAFETY_MIN_DIST = 0.5

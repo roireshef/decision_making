@@ -2,9 +2,9 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_RESPONSE, \
-    LAT_SAFETY_ACCEL_DURING_RESPONSE, LONGITUDINAL_SAFETY_MIN_DIST
+from decision_making.src.global_constants import HOST_SAFETY_MARGIN_TIME_DELAY, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
+    LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_RESPONSE, LAT_SAFETY_ACCEL_DURING_RESPONSE, \
+    LONGITUDINAL_SAFETY_MIN_DIST, EMERGENCY_BRAKE_ACC, ACTOR_SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX, FS_SV, FS_DX, FS_DV, \
     ObjectSizeArray, OBJ_LENGTH, OBJ_WIDTH
 from decision_making.src.state.state import ObjectSize
@@ -99,12 +99,12 @@ class SafetyUtils:
         lat_margin = 0.5 * (ego_size[OBJ_WIDTH] + obj_size[OBJ_WIDTH]) + LATERAL_SAFETY_MU
 
         # calculate longitudinal safety
-        lon_safe_dist = SafetyUtils._get_lon_safe_dist(ego_trajectories, SAFETY_MARGIN_TIME_DELAY,
-                                                       obj_trajectories, SPECIFICATION_MARGIN_TIME_DELAY, lon_margin)
+        lon_safe_dist = SafetyUtils._get_lon_safe_dist(ego_trajectories, HOST_SAFETY_MARGIN_TIME_DELAY,
+                                                       obj_trajectories, ACTOR_SAFETY_MARGIN_TIME_DELAY, lon_margin)
         # calculate lateral safety
         lat_safe_dist, lat_vel_blame = \
-            SafetyUtils._get_lat_safe_dist(ego_trajectories, SAFETY_MARGIN_TIME_DELAY,
-                                           obj_trajectories, SPECIFICATION_MARGIN_TIME_DELAY, lat_margin)
+            SafetyUtils._get_lat_safe_dist(ego_trajectories, HOST_SAFETY_MARGIN_TIME_DELAY,
+                                           obj_trajectories, ACTOR_SAFETY_MARGIN_TIME_DELAY, lat_margin)
 
         # calculate combined longitudinal and lateral safe distances
         safe_distances = \
@@ -115,7 +115,7 @@ class SafetyUtils:
     @staticmethod
     def _get_lon_safe_dist(ego_trajectories: FrenetTrajectories2D, ego_response_time: float,
                            obj_trajectories: FrenetTrajectories2D, obj_response_time: float,
-                           margin: float, max_brake: float= -LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
+                           margin: float, max_brake: float = -EMERGENCY_BRAKE_ACC) -> np.array:
         """
         Calculate longitudinal safety between ego and another object for all timestamps.
         Longitudinal safety between two objects considers only their longitudinal data: longitude and longitudinal velocity.
@@ -146,8 +146,8 @@ class SafetyUtils:
 
         # longitudinal RSS formula considers distance reduction during the reaction time and difference between
         # objects' braking distances
-        ego_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SAFETY_MARGIN_TIME_DELAY ** 2
-        obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SPECIFICATION_MARGIN_TIME_DELAY ** 2
+        ego_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * HOST_SAFETY_MARGIN_TIME_DELAY ** 2
+        obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * ACTOR_SAFETY_MARGIN_TIME_DELAY ** 2
         min_safe_dist = np.maximum(np.divide(sign_of_lon_relative_to_obj * (obj_vel_after_reaction_time ** 2 -
                                                                             ego_vel_after_reaction_time ** 2),
                                              2 * max_brake), 0) + \
