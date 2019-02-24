@@ -5,7 +5,7 @@ from typing import Tuple
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS
+    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, MAX_CURVATURE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -190,11 +190,13 @@ class WerlingPlanner(TrajectoryPlanner):
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
+        curvature = ctrajectories[:, :, C_K]
 
         conforms = np.all(
             NumpyUtils.is_in_limits(lon_velocity, cost_params.velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, cost_params.lon_acceleration_limits) &
-            NumpyUtils.is_in_limits(lat_acceleration, cost_params.lat_acceleration_limits), axis=1)
+            NumpyUtils.is_in_limits(lat_acceleration, cost_params.lat_acceleration_limits) &
+            (np.abs(curvature) < MAX_CURVATURE), axis=1)
 
         return np.argwhere(conforms).flatten()
 

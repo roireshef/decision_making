@@ -196,6 +196,9 @@ TD_MIN_DT = 3
 # [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)
 TINY_CURVATURE = 10e-5
 
+# [1/m] maximal trajectory curvature, based on the minimal turning radius
+MAX_CURVATURE = 0.2
+
 # [m/sec^2] when acceleration is not specified - TP uses this as goal acceleration
 DEFAULT_ACCELERATION = 0.0
 
