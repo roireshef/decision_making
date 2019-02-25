@@ -31,7 +31,8 @@ def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):
 
     navigation_plan = scene_static.s_Data.s_NavigationPlan
 
-    route_planner_input = RoutePlannerInputData(scene=scene_static_base,nav_plan=navigation_plan)
+    route_planner_input = RoutePlannerInputData()
+    route_planner_input.reformat_input_data(scene=scene_static_base,nav_plan=navigation_plan)
 
     route_plan_obj = CostBasedRoutePlanner()
 
@@ -62,8 +63,9 @@ def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_
     expected_output = construction_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
-                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData()
+    route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
+                                            nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
@@ -99,8 +101,9 @@ def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: R
     expected_output = map_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
-                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData()
+    route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
+                                            nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
@@ -127,8 +130,9 @@ def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output:
     expected_output = gmfa_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
-                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData()
+    route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
+                                            nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
@@ -155,8 +159,9 @@ def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_a
     expected_output = lane_direction_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
-                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData()
+    route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
+                                            nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
@@ -183,8 +188,9 @@ def test_plan_combinedScenes_accurateRoutePlanOutput(combined_scene_and_expected
     expected_output = combined_scene_and_expected_output.expected_output
 
     # Route Planner Logic
-    route_planner_input = RoutePlannerInputData(scene=scene_static.s_Data.s_SceneStaticBase,
-                                                nav_plan=scene_static.s_Data.s_NavigationPlan)
+    route_planner_input = RoutePlannerInputData()
+    route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
+                                            nav_plan=scene_static.s_Data.s_NavigationPlan)
     route_plan_obj = CostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
