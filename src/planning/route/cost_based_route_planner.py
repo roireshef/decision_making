@@ -16,7 +16,7 @@ from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegment
     GMAuthorityType, LaneConstructionType
 
 
-class CostBasedRoutePlanner(RoutePlanner):
+class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost based route planner ?
     """Add comments"""
 
     @staticmethod
@@ -125,7 +125,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             # currently indexed roadsegment in the loop
             if down_stream_laneseg_id in lanesegs_in_downstream_roadseg_in_route:  # verify if the downstream lane is in the route (it may not be ex: fork/exit)
                 down_stream_laneseg_idx = lanesegs_in_downstream_roadseg_in_route.index(down_stream_laneseg_id)
-                down_stream_routeseg = as_route_plan_lane_segments[0][down_stream_laneseg_idx]
+                down_stream_routeseg = as_route_plan_lane_segments[0][down_stream_laneseg_idx] 
                 down_stream_laneseg_occupancy_cost = down_stream_routeseg.e_cst_lane_occupancy_cost
                 min_down_stream_laneseg_occupancy_cost = min(min_down_stream_laneseg_occupancy_cost, down_stream_laneseg_occupancy_cost)   
             else:
@@ -144,7 +144,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         """Add comments"""
         #
         valid = True
-        num_road_segments = len(route_data.route_roadsegments)
+        num_road_segments = len(route_data.route_lanesegments)
         a_i_road_segment_ids = []
         a_Cnt_num_lane_segments = []
         as_route_plan_lane_segments = []
@@ -178,7 +178,7 @@ class CostBasedRoutePlanner(RoutePlanner):
                 # -------------------------------------------
 
                 
-                if (lane_occupancy_cost == 1):# Can't occupy the lane, end cost must be MAX(=1)
+                if (lane_occupancy_cost == 1):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=1)
                     lane_end_cost = 1
                 elif (reversed_roadseg_idx_in_route == 0): # the last road segment in the route; put all endcosts to 0
                     lane_end_cost = 0
@@ -188,8 +188,7 @@ class CostBasedRoutePlanner(RoutePlanner):
                                                                               lanesegs_in_downstream_roadseg_in_route=lanesegs_in_downstream_roadseg_in_route,
                                                                                as_route_plan_lane_segments=as_route_plan_lane_segments)
                 else:
-                    print(" Bad value for reversed_roadseg_idx_in_route :", reversed_roadseg_idx_in_route)  # Add exception later
-                    assert (reversed_roadseg_idx_in_route>=0)
+                    assert (reversed_roadseg_idx_in_route>=0), " Negative value for reversed_roadseg_idx_in_route :"
 
                 # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
                 current_routeseg = RoutePlanLaneSegment(e_i_lane_segment_id=laneseg_id,

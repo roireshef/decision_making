@@ -38,13 +38,19 @@ class RoutePlanningFacade(DmModule):
         """Add comments"""
         pass
 
-    def _periodic_action_impl(self):
-        """Add comments"""
+    def _periodic_action_impl(self)->None:
+        """
+        The main function of the route planner. It read the most up-to-date scene static base, includning the navigation route and lane 
+        attributes, processes them into internal data structures (as described in RoutePlannerInputData() class). 
+        The main planner function then uses this intrernal data structure to come up with the route plan (as described in class 
+        DataRoutePlan() ) The results are then published to the behavior planner.
+        """
+
         try:
             # Read inputs
             start_time = time.time()
-            ss_lite, ss_nav = self._get_current_scene_static()
-            MainRoutePlanInputData = RoutePlannerInputData(ss_lite, ss_nav)
+            ss_base, ss_nav = self._get_current_scene_static()
+            MainRoutePlanInputData = RoutePlannerInputData(ss_base, ss_nav)
 
 
             # Plan
