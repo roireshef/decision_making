@@ -136,6 +136,22 @@ class StateModule(DmModule):
                                     map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
                                     size=size,
                                     confidence=confidence)
+            
+             # TODO: Handle negative velocities properly
+            if dyn_obj.cartesian_state[C_V] < 0:
+                raise ObjectHasNegativeVelocityError('Dynamic object with id %d was received with negative velocity %f'
+                                                     % (dyn_obj.obj_id, dyn_obj.cartesian_state[C_V]))
+
+            # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
+            # Required to verify the object has map state and that the velocity exceeds a minimal value.
+            if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
+                thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
+                thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
+                dyn_obj = dyn_obj.clone_from_map_state(
+                    map_state=MapState(lane_fstate=thresholded_lane_fstate,
+                                       lane_id=dyn_obj.map_state.lane_id))
+
+            
 
             # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
             # Required to verify the object has map state and that the velocity exceeds a minimal value.
