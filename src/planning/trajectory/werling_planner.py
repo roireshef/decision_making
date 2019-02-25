@@ -97,7 +97,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                                      T_s, T_d_grid, self.dt)
             if planning_horizon > T_s:
                 time_samples = np.arange(self.dt, planning_horizon - Math.floor_to_step(T_s, self.dt) + EPS, self.dt)
-                extrapolated_fstates_s = self.predictor.predict_frenet_states(ftrajectories[:, -1, :], time_samples)
+                extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(ftrajectories[:, -1, :], time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
 
             lat_frenet_filtered_indices = self._filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
@@ -107,8 +107,10 @@ class WerlingPlanner(TrajectoryPlanner):
             # Goal is behind us
             time_samples = np.arange(0, planning_horizon + EPS, self.dt)
             # Create only one trajectory which is actually a constant-velocity predictor of current state
-            ftrajectories = self.predictor.predict_frenet_states(np.array([ego_frenet_state]), time_samples)[0][
+            ftrajectories = self.predictor.predict_2d_frenet_states(np.array([ego_frenet_state]), time_samples)[0][
                 np.newaxis, ...]
+            # here we just take the current state and extrapolate it linearly in time with constant velocity,
+            # meaning no lateral motion is carried out.
             T_d_vals = np.array([0])
             lat_frenet_filtered_indices = np.array([0])
 
@@ -121,7 +123,7 @@ class WerlingPlanner(TrajectoryPlanner):
             ftrajectories[frenet_filtered_indices])
 
         # TODO: Hack! Remove and apply inside frenet and CTM conversions!
-        ctrajectories[:, :, C_V] += EPS
+        # ctrajectories[:, :, C_V] += EPS
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame

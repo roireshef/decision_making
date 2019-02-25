@@ -112,7 +112,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action_spec = selected_action_spec
 
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
-            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters.reference_route,
+            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",

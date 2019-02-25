@@ -287,8 +287,8 @@ class TrajectoryPlanningFacade(DmModule):
         for obj in state.dynamic_objects:
             try:
                 obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
-                obj_fpredictions = predictor.predict_frenet_states(np.array([obj_fstate]),
-                                                                   prediction_horizons)[0][:, [FS_SX, FS_DX]]
+                obj_fpredictions = predictor.predict_2d_frenet_states(np.array([obj_fstate]),
+                                                                      prediction_horizons)[0][:, [FS_SX, FS_DX]]
                 # skip objects having predictions out of reference_route
                 valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
                 obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)

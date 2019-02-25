@@ -63,7 +63,7 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         in_traj_time_points = relative_time_points[relative_time_points <= self.T_s+EPS]
         extrapolated_time_points = relative_time_points[np.logical_and(relative_time_points > self.T_s + EPS,
-                                                                       relative_time_points <= self.total_trajectory_time)]
+                                                                       relative_time_points <= self.total_trajectory_time + EPS)]
 
         fstates_s = np.empty((0, FS_1D_LEN))
 
@@ -75,9 +75,8 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         if len(extrapolated_time_points) > 0:
             road_following_predictor = RoadFollowingPredictor(None)
             fstate_in_T_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), np.array([self.T_s]))[0]
-            last_frenet_state = np.array([np.append(fstate_in_T_s, [0, 0, 0])])
-            extrapolated_fstates_s = road_following_predictor.predict_frenet_states(last_frenet_state, extrapolated_time_points-self.T_s)[0]
-            fstates_s = np.vstack((fstates_s, extrapolated_fstates_s[:, FS_SX: FS_DX]))
+            extrapolated_fstates_s = road_following_predictor.predict_1d_frenet_states(fstate_in_T_s, extrapolated_time_points - self.T_s)[0]
+            fstates_s = np.vstack((fstates_s, extrapolated_fstates_s))
 
         # Now handle the lateral(d) axis:
 
@@ -102,6 +101,4 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         fstates_d[np.logical_not(is_within_horizon_d)] = extrapolation_state_d
 
         # Return trajectory in Frenet coordinates
-        fstates = np.hstack((fstates_s, fstates_d))
-
-        return fstates
+        return np.hstack((fstates_s, fstates_d))
