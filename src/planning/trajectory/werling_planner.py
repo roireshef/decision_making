@@ -2,7 +2,7 @@ import numpy as np
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS
+    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, VELOCITY_LIMITS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedSamplableTrajectory
@@ -239,7 +239,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
         conforms = np.all(
             NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
-            np.greater_equal(ftrajectories[:, :, FS_SV], -EPS), axis=1)
+            np.greater_equal(ftrajectories[:, :, FS_SV], VELOCITY_LIMITS[LIMIT_MIN]), axis=1)
 
         return np.argwhere(conforms).flatten()
 
