@@ -40,9 +40,9 @@ class RoutePlanningFacade(DmModule):
 
     def _periodic_action_impl(self)->None:
         """
-        The main function of the route planner. It read the most up-to-date scene static base, includning the navigation route and lane 
-        attributes, processes them into internal data structures (as described in RoutePlannerInputData() class). 
-        The main planner function then uses this intrernal data structure to come up with the route plan (as described in class 
+        The main function of the route planner. It read the most up-to-date scene static base, includning the navigation route and lane
+        attributes, processes them into internal data structures (as described in RoutePlannerInputData() class).
+        The main planner function then uses this intrernal data structure to come up with the route plan (as described in class
         DataRoutePlan() ) The results are then published to the behavior planner.
         """
 
@@ -50,14 +50,13 @@ class RoutePlanningFacade(DmModule):
             # Read inputs
             start_time = time.time()
             ss_base, ss_nav = self._get_current_scene_static()
-            MainRoutePlanInputData = RoutePlannerInputData(ss_base, ss_nav)
-
+            route_planner_input = RoutePlannerInputData()
+            route_planner_input.reformat_input_data(scene=ss_base, nav_plan=ss_nav)
 
             # Plan
-            route_plan = self.__planner.plan(MainRoutePlanInputData)
+            route_plan = self.__planner.plan(route_planner_input)
 
             # Write outputs
-
             # Send plan to behavior
             self._publish_results(route_plan)
 
@@ -91,10 +90,8 @@ class RoutePlanningFacade(DmModule):
     def _publish_results(self, s_Data: DataRoutePlan) -> None:
         timestamp_object = Timestamp.from_seconds(0)
 
-        final_route_plan = RoutePlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0) , \
-                                s_Data = s_Data)
-        #print("final_route_plan",s_Data.a_Cnt_num_lane_segments,s_Data.a_i_road_segment_ids,s_Data.as_route_plan_lane_segments, "\n")
-        # final_route_plan.serialize()
+        final_route_plan = RoutePlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0), s_Data = s_Data)
+
         self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], final_route_plan.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_ROUTE_PLANNER_OUTPUT, final_route_plan))
 

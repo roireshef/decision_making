@@ -20,16 +20,24 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
     """Add comments"""
 
     @staticmethod
-    # Normalized cost (0 to 1). Current implementation is binary cost.
     def _mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
+        """
+        Cost of lane map type. Current implementation is binary cost.
+        :param mapping_status_attribute: type of mapped 
+        :return: normalized cost (0 to 1)
+        """
         if((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
            (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
             return 0
         return 1
 
     @staticmethod
-    # Normalized cost (0 to 1). Current implementation is binary cost.
     def _construction_zone_based_occupancy_cost(construction_zone_attribute: LaneConstructionType) -> float:
+        """
+        Cost of construction zone type. Current implementation is binary cost. 
+        :param construction_zone_attribute: type of lane construction
+        :return: Normalized cost (0 to 1)
+        """
         # print("construction_zone_attribute ",construction_zone_attribute)
         if((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
            (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
@@ -37,8 +45,12 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         return 1
 
     @staticmethod
-    # Normalized cost (0 to 1). Current implementation is binary cost.
     def _lane_dir_in_route_based_occupancy_cost(lane_dir_in_route_attribute: MapLaneDirection) -> float:
+        """
+        Cost of lane direction. Current implementation is binary cost. 
+        :param lane_dir_in_route_attribute: map lane direction in respect to host
+        :return: Normalized cost (0 to 1)
+        """
         # print("lane_dir_in_route_attribute ",lane_dir_in_route_attribute)
         if((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
            (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
@@ -47,20 +59,26 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         return 1
 
     @staticmethod
-    # Normalized cost (0 to 1). Current implementation is binary cost.
     def _gm_authority_based_occupancy_cost(gm_authority_attribute: GMAuthorityType) -> float:
+        """
+        Cost of GM authorized driving area. Current implementation is binary cost.  
+        :param gm_authority_attribute: type of GM authority
+        :return: Normalized cost (0 to 1)
+        """
         # print("gm_authority_attribute ",gm_authority_attribute)
         if(gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None):
             return 0
         return 1
 
-    # Normalized cost (0 to 1). This method is a wrapper on the individual lane attribute cost calculations and arbitrates
-    # according to the (input) lane attribute, which lane attribute method to invoke
-    # Input : lane_attribute_index, pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
-    # Input : lane_attribute_value, value of the pointed lane attribute
-    # Output: lane occupancy cost based on the concerned lane attribute
     @staticmethod
     def _LaneAttrBsdOccCost(lane_attribute_index: int, lane_attribute_value: int) -> float:  # if else logic
+        """
+        This method is a wrapper on the individual lane attribute cost calculations and arbitrates
+        according to the (input) lane attribute, which lane attribute method to invoke
+        :param lane_attribute_index: pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
+        :param lane_attribute_value: value of the pointed lane attribute
+        :return: Normalized lane occupancy cost based on the concerned lane attribute (0 to 1)
+        """
         if(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus):
             return CostBasedRoutePlanner._mapping_status_based_occupancy_cost(lane_attribute_value)
         elif(lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA):
@@ -74,15 +92,17 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                   lane_attribute_index)
             return 0
 
-    # Calculates lane occupancy cost for a single lane segment
-    # Input : SceneLaneSegmentBase for the concerned lane
-    # Output: LaneOccupancyCost, cost to the AV if it occupies the lane.
     @staticmethod
     def _lane_occupancy_cost_calc(laneseg_base_data: SceneLaneSegmentBase) -> float:
+        """
+        Calculates lane occupancy cost for a single lane segment
+        :param laneseg_base_data: SceneLaneSegmentBase for the concerned lane
+        :return: LaneOccupancyCost, cost to the AV if it occupies the lane.
+        """
         lane_occupancy_cost = 0
 
         # Now iterate over all the active lane attributes for the lane segment
-        for Idx in range(laneseg_base_data.e_Cnt_num_active_lane_attributes):
+        for Idx in range(laneseg_base_data.e_Cnt_num_active_lane_attributes):   # TODO change range based for loop
             # lane_attribute_index gives the index lookup for lane attributes and confidences
             lane_attribute_index = laneseg_base_data.a_i_active_lane_attribute_indices[Idx]
             lane_attribute_value = laneseg_base_data.a_cmp_lane_attributes[lane_attribute_index]
@@ -101,15 +121,17 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         lane_occupancy_cost = max(min(lane_occupancy_cost, 1), 0)
         return lane_occupancy_cost
 
-    # Calculates lane end cost for a single lane segment
-    # Input : SceneLaneSegmentBase for the concerned lane
-    # Input : as_route_plan_lane_segments is the array or routeplan lane segments (already evaluated, downstrem of the concerned lane).
-    #         We mainly need the lane end cost from here.
-    # Input : lanesegs_in_downstream_roadseg_in_route, list of lane segment IDs in the next road segment in route
-    # Output: lane_end_cost, cost to the AV if it reaches the lane end
     @staticmethod
     def _lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase, lanesegs_in_downstream_roadseg_in_route: List[int],
                             as_route_plan_lane_segments: List[List[RoutePlanLaneSegment]]) -> float:
+        """
+        Calculates lane end cost for a single lane segment
+        :param laneseg_base_data: SceneLaneSegmentBase for the concerned lane
+        :param lanesegs_in_downstream_roadseg_in_route: list of lane segment IDs in the next road segment in route
+        :param as_route_plan_lane_segments: as_route_plan_lane_segments is the array or routeplan lane segments 
+        (already evaluated, downstrem of the concerned lane). We mainly need the lane end cost from here.
+        :return: lane_end_cost, cost to the AV if it reaches the lane end
+        """
         min_down_stream_laneseg_occupancy_cost = 1
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
         # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
@@ -118,7 +140,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         e_Cnt_downstream_lane_count = laneseg_base_data.e_Cnt_downstream_lane_count
         # print("For lane " ,laneseg_id," e_Cnt_downstream_lane_count ",e_Cnt_downstream_lane_count)
         downstream_lane_segment_ids = []
-        for Idx in range(e_Cnt_downstream_lane_count):
+        for Idx in range(e_Cnt_downstream_lane_count):  # TODO change range based for loop
             down_stream_laneseg_id = laneseg_base_data.as_downstream_lanes[Idx].e_i_lane_segment_id
             downstream_lane_segment_ids.append(down_stream_laneseg_id)
             # All lane IDs in downstream roadsegment in route to the
