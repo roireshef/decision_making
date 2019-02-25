@@ -13,7 +13,7 @@ class RoutePlannerInputData():
         self.route_roadsegs_as_dict = {} # dict : key - road segment ID, value - Road Segments.
         #The dict should contain all the lane segments listed in self.route_segment_ids.
 
-        self._update_dict_data(scene,nav_plan)
+        self._update_dict_data(scene,nav_plan) # maintain the following order
         self._update_routeplan_data(nav_plan)
 
         # This method updates route_lanesegs_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
@@ -24,6 +24,8 @@ class RoutePlannerInputData():
             e_i_lane_segment_id = scene.as_scene_lane_segments[i].e_i_lane_segment_id
             e_i_road_segment_id = scene.as_scene_lane_segments[i].e_i_road_segment_id
             if e_i_road_segment_id in nav_plan.a_i_road_segment_ids: # Verify if these road segs are in route.
+            # Also at this point the assumption is a complete road segment is in/not in the route. It is not assumed only a partial list of
+            #  lane segments of a roadsegment could be in the route.
                 self.route_lanesegs_base_as_dict[e_i_lane_segment_id] = scene.as_scene_lane_segments[i]
 
         for i in range(scene.e_Cnt_num_road_segments):

@@ -108,7 +108,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
     # Input : lanesegs_in_downstream_roadseg_in_route, list of lane segment IDs in the next road segment in route
     # Output: lane_end_cost, cost to the AV if it reaches the lane end
     @staticmethod
-    def _lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase, lanesegs_in_downstream_roadseg_in_route,
+    def _lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase, lanesegs_in_downstream_roadseg_in_route: List[int],
                             as_route_plan_lane_segments: List[List[RoutePlanLaneSegment]]) -> float:
         min_down_stream_laneseg_occupancy_cost = 1
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
@@ -125,7 +125,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
             # currently indexed roadsegment in the loop
             if down_stream_laneseg_id in lanesegs_in_downstream_roadseg_in_route:  # verify if the downstream lane is in the route (it may not be ex: fork/exit)
                 down_stream_laneseg_idx = lanesegs_in_downstream_roadseg_in_route.index(down_stream_laneseg_id)
-                down_stream_routeseg = as_route_plan_lane_segments[0][down_stream_laneseg_idx] 
+                down_stream_routeseg = as_route_plan_lane_segments[0][down_stream_laneseg_idx] # 0 th index is the last segment pushed into this struct
+                # which is the downstream roadseg.
                 down_stream_laneseg_occupancy_cost = down_stream_routeseg.e_cst_lane_occupancy_cost
                 min_down_stream_laneseg_occupancy_cost = min(min_down_stream_laneseg_occupancy_cost, down_stream_laneseg_occupancy_cost)   
             else:
