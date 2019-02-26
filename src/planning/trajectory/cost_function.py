@@ -68,31 +68,29 @@ class TrajectoryPlannerCosts:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
             # calculate objects' map_state
-            # TODO: consider using map_state_on_host_lane
-            objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
-                                                 for obj in close_objects if obj.cartesian_state is not None])
+            objects_lane_fstates = np.array([obj.map_state.lane_fstate
+                                             for obj in close_objects if obj.cartesian_state is not None])
+            objects_lane_ids = [obj.map_state.lane_id
+                                for obj in close_objects if obj.cartesian_state is not None]
+            objects_relative_fstates = reference_route.convert_from_segment_states(objects_lane_fstates, objects_lane_ids)
 
-            try:
-                # Predict objects' future movement, then project predicted objects' states to Cartesian frame
-                # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
-                objects_predicted_ftrajectories = predictor.predict_frenet_states(
-                    objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
-                objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
+            # Predict objects' future movement, then project predicted objects' states to Cartesian frame
+            # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
+            objects_predicted_ftrajectories = predictor.predict_frenet_states(
+                objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
+            objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
-                objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
-                ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
+            objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
+            ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
-                # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
-                distances = TrajectoryPlannerCosts.compute_distances_to_objects(
-                    ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
-            except ValueError:
-                kak =1
+            # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
+            distances = TrajectoryPlannerCosts.compute_distances_to_objects(
+                ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
 
             # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
             k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
             offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
-            points_offset = distances - offset
-            per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.minimum(np.multiply(k, points_offset), EXP_CLIP_TH))))
+            per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.minimum(np.multiply(k, distances - offset), EXP_CLIP_TH))))
 
             # multiply dimensional flipped-logistic costs, so that big values are where the two dimensions have
             # negative distance, i.e. collision
