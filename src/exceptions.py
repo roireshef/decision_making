@@ -113,7 +113,7 @@ class LaneNotFound(MappingException):
 class RoutePlanningException(Exception):
     pass
 
-class UnwantedNegativeIndex(RoutePlanningException)
+class UnwantedNegativeIndex(RoutePlanningException):
     pass
 
 def raises(*e):
