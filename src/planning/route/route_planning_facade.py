@@ -4,7 +4,7 @@ from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_to
 import time
 import traceback
 
-from decision_making.src.exceptions import MsgDeserializationError
+from decision_making.src.exceptions import MsgDeserializationError, RoutePlanningException
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.utils.metric_logger import MetricLogger
@@ -71,6 +71,9 @@ class RoutePlanningFacade(DmModule):
             self.logger.warning("RoutePlanningFacade: MsgDeserializationError was raised. Skipping planning. " +
                                 "Turn on debug logging level for more details. Trace: %s", traceback.format_exc())
             self.logger.debug(str(e))
+
+        except RoutePlanningException as e:
+            self.logger.warning(e)
 
         except Exception as e:
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",

@@ -108,13 +108,13 @@ class LaneNotFound(MappingException):
     pass
 
 
-class OutOfSegmentBack(Exception):
+# ROUTE PLANNING
+@six.add_metaclass(ABCMeta)
+class RoutePlanningException(Exception):
     pass
 
-
-class OutOfSegmentFront(Exception):
+class UnwantedNegativeIndex(RoutePlanningException)
     pass
-
 
 def raises(*e):
     # type: (Exception)

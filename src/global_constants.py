@@ -190,6 +190,12 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN = 0.15
 FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 
 
+# Route Planner #
+# Lane Attribute confidence threshold
+LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
+
+
+
 # State #
 
 # TODO: set real values

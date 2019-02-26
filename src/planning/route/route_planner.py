@@ -44,6 +44,7 @@ class RoutePlannerInputData():
         """
         for road_segment_id in nav_plan.a_i_road_segment_ids:
             self.route_lanesegments[road_segment_id] = self.route_roadsegs_as_dict[road_segment_id].a_i_lane_segment_ids.tolist()
+            # TODO replace tolist() with something appropriate
 
     def reformat_input_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan):
         """
