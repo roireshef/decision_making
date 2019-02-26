@@ -57,6 +57,14 @@ class NumpyUtils:
         return np.logical_or(np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX]),
                              np.logical_or(np.isclose(arr, limits[LIMIT_MIN]), np.isclose(arr, limits[LIMIT_MAX])))
 
+    @staticmethod
+    def div(a: np.array, b: np.array):
+        with np.errstate(divide='ignore', invalid='ignore'):
+            c = np.true_divide(a, b)
+            c[c == np.inf] = 0
+            c = np.nan_to_num(c)
+
+        return c
 
 class UniformGrid:
     """Lean version of a uniform grid (inclusive)"""
