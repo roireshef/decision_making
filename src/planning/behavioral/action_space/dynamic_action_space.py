@@ -61,7 +61,8 @@ class DynamicActionSpace(ActionSpace):
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
 
-        # calculate initial longitudinal differences between all target objects and ego along target lanes
+        # calculate initial longitudinal differences between a target object and ego along target lanes
+        # the distances we get here are in terms of center of object/ego (not front-to-rear)
         longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_map_states)
         assert not np.isinf(longitudinal_differences).any()
 
