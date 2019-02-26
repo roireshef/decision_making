@@ -1,9 +1,9 @@
+import numpy as np
 from logging import Logger
 
-import numpy as np
-
-from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
+from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, \
+    OBSTACLE_SIGMOID_K_PARAM_LON, \
+    OBSTACLE_SIGMOID_OFFSET_LON, OBSTACLE_SIGMOID_K_PARAM_LAT, OBSTACLE_SIGMOID_OFFSET_LAT
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -82,10 +82,10 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
 
     # calculate obstacle costs for each trajectory
     predictor = RoadFollowingPredictor(logger)
-    objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
-                                           offset=LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
-    objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
-                                           offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
+    objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM_LON,
+                                           offset=OBSTACLE_SIGMOID_OFFSET_LON)  # Very high (inf) cost
+    objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM_LAT,
+                                           offset=OBSTACLE_SIGMOID_OFFSET_LAT)  # Very high (inf) cost
     cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x, obstacle_cost_y=objects_cost_y,
                                        left_lane_cost=None, right_lane_cost=None, left_shoulder_cost=None,
                                        right_shoulder_cost=None, left_road_cost=None, right_road_cost=None,
@@ -99,3 +99,29 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     assert total_costs[0] < total_costs[1]              # obstacle-free route (smallest T_d)
     assert total_costs[1] < OBSTACLE_SIGMOID_COST       # close to obstacle route (medium T_d)
     assert total_costs[2] > OBSTACLE_SIGMOID_COST       # obstacle-colliding route (largest T_d)
+
+    # import matplotlib.pyplot as plt
+    # from decision_making.test.planning.trajectory.utils import PlottableSigmoidBoxObstacle, WerlingVisualizer
+    #
+    # fig = plt.figure()
+    # p1 = fig.add_subplot(311)
+    # p2 = fig.add_subplot(312)
+    # p3 = fig.add_subplot(313)
+    #
+    # time_samples = np.arange(0.0, T, 0.1)
+    # plottable_obs = [PlottableSigmoidBoxObstacle(state, o, cost_params.obstacle_cost_x.k,
+    #                                                     np.array([cost_params.obstacle_cost_x.offset,
+    #                                                               cost_params.obstacle_cost_y.offset]),
+    #                                                     time_samples, predictor)
+    #                  for o in state.dynamic_objects]
+    #
+    # WerlingVisualizer.plot_obstacles(p1, plottable_obs)
+    # WerlingVisualizer.plot_obstacles(p2, plottable_obs)
+    # WerlingVisualizer.plot_obstacles(p3, plottable_obs)
+    #
+    # WerlingVisualizer.plot_route(p1, ctrajectories[0, :, :2])
+    # WerlingVisualizer.plot_route(p2, ctrajectories[1, :, :2])
+    # WerlingVisualizer.plot_route(p3, ctrajectories[2, :, :2])
+    #
+    # plt.show()
+    # fig.clear()

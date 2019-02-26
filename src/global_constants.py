@@ -33,7 +33,7 @@ MAX_HORIZON_DISTANCE = 400
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 4.0
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
@@ -56,7 +56,10 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Trajectory cost parameters
 OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_K_PARAM_LON = 10           # longitudinal sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_K_PARAM_LAT = 20           # lateral sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_OFFSET_LON = 1.5           # longitudinal offset param m of getting to close to obstacle: cost = w/(1+e^(k*(x-m)))
+OBSTACLE_SIGMOID_OFFSET_LAT = 0.4           # lateral offset param m of getting to close to obstacle: cost = w/(1+e^(k*(x-m)))
 
 DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
@@ -181,10 +184,10 @@ SX_OFFSET_MIN, SX_OFFSET_MAX = -8, 0
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = 0, 0
+DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 9
+SX_STEPS, SV_STEPS, DX_STEPS = 9, 1, 5
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 6
