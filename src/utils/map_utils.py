@@ -7,13 +7,13 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegment, SceneRoadSegment
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 class MapUtils:
@@ -81,7 +81,7 @@ class MapUtils:
         ds = np.mean(
             np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))  # TODO: is this necessary?
 
-        return FrenetSerret2DFrame(points=points, T=T, N=N, k=k, k_tag=k_tag, ds=ds)
+        return FrenetSerret2DFrame.init_from_components(points=points, T=T, N=N, K=k, k_tag=k_tag, ds=ds)
 
     @staticmethod
     def get_adjacent_lane_ids(lane_id: int, relative_lane: RelativeLane) -> List[int]:

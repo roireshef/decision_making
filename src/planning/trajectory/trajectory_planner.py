@@ -8,9 +8,9 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianPath2D, CartesianTrajectories, \
     CartesianExtendedState
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):

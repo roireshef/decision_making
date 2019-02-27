@@ -83,7 +83,7 @@ class TrajectoryPlanningFacade(DmModule):
             lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
 
             self.logger.debug("input: target_state: %s", params.target_state)
-            self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
+            self.logger.debug("input: reference_route[0]: %s", params.reference_route.O[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
             self.logger.debug("input: ego: velocity: %s", state.ego_state.velocity)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)

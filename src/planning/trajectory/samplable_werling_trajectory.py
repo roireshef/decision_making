@@ -4,8 +4,8 @@ from decision_making.src.global_constants import EPS
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
 from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):

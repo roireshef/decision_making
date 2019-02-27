@@ -8,7 +8,6 @@ from common_data.interface.Rte_Types.python.sub_structures.LcmTrajectoryCostPara
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 
 

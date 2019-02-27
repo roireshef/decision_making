@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, A
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
 from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL, FP_DX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 from decision_making.src.utils.map_utils import MapUtils
 
 

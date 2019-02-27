@@ -1,8 +1,8 @@
 from abc import abstractmethod, ABCMeta
 
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 class TrajectoryGenerator(metaclass=ABCMeta):

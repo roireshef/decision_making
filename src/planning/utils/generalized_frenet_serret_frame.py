@@ -8,9 +8,9 @@ from common_data.interface.py.utils.serialization_utils import SerializationUtil
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.exceptions import OutOfSegmentFront
 from mapping.src.transformations.geometry_utils import Euclidean
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 class FrenetSubSegment(PUBSUB_MSG_IMPL):
@@ -41,7 +41,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segments_id: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
-        FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
+        # FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
+        FrenetSerret2DFrame.init_from_components(points, T, N, k, k_tag, None)
         self._segments_id = segments_id
         self._segments_s_start = segments_s_start
         self._segments_s_offsets = segments_s_offsets
@@ -95,11 +96,11 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                 # TODO: figure out how to solve it better!!
                 assert segments_s_end[i] - frame.s_max < 0.01, 'frenet frame of segment %s has problems with s_max' % \
                                                                 sub_segments[i].segment_id
-                end_ind = frame.points.shape[0] - 1
+                end_ind = frame.O.shape[0] - 1
             else:
                 end_ind = int(np.ceil(segments_s_end[i] / segments_ds[i])) + 1
 
-            points = np.vstack((points, frame.points[start_ind:end_ind, :]))
+            points = np.vstack((points, frame.O[start_ind:end_ind, :]))
             T = np.vstack((T, frame.T[start_ind:end_ind, :]))
             N = np.vstack((N, frame.N[start_ind:end_ind, :]))
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))

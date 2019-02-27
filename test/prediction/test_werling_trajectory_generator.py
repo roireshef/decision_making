@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from decision_making.src.planning.types import FP_SX, FS_DX, FS_SX, C_X, C_Y
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils

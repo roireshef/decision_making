@@ -3,10 +3,10 @@ from decision_making.src.planning.trajectory.frenet_constraints import FrenetCon
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, S5, D5
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
     TrajectoryGenerator
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 class WerlingTrajectoryGenerator(TrajectoryGenerator):

@@ -15,7 +15,6 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
     SamplableWerlingTrajectory
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
     CartesianExtendedState, CartesianTrajectory
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
@@ -26,6 +25,7 @@ from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
 from mapping.src.transformations.geometry_utils import CartesianFrame
 from mapping.test.model.map_model_utils import TestMapModelUtils
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 from rte.python.logger.AV_logger import AV_Logger
 
 mock_td_steps = 5
@@ -47,7 +47,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     goal_pos = np.array([15, 0.005])
     goal_s = reference_route.cpoint_to_fpoint(goal_pos)[0]
-    goal = np.concatenate((goal_pos, reference_route.get_yaw(np.array([goal_s])), [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
+    goal = np.concatenate((goal_pos, reference_route.get_yaw(np.array([goal_s]))[1], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
 
     pos1 = np.array([7, -.5])
     yaw1 = 0

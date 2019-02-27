@@ -17,7 +17,6 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
@@ -31,6 +30,7 @@ from decision_making.test.planning.navigation.mock_navigation_facade import Navi
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api

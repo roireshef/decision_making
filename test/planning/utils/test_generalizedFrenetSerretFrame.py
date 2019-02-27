@@ -1,10 +1,10 @@
 import numpy as np
 
 from decision_making.src.planning.types import C_A, C_V, C_K, C_X, C_Y, FS_SX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.test.planning.trajectory.utils import RouteFixture
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_accurate():
@@ -18,11 +18,11 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n:], full_frenet.T[n:], full_frenet.N[n:],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n:], full_frenet.T[n:], full_frenet.N[n:],
                                             full_frenet.k[n:], full_frenet.k_tag[n:], full_frenet.ds)
 
     upstream_s_start = upstream_frenet.ds * 3
@@ -53,11 +53,11 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionNonExactSegmentationSame
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n:], full_frenet.T[n:], full_frenet.N[n:],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n:], full_frenet.T[n:], full_frenet.N[n:],
                                             full_frenet.k[n:], full_frenet.k_tag[n:], full_frenet.ds)
 
     upstream_s_start = upstream_frenet.ds * 2.8  # not an existing point
@@ -88,11 +88,11 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionNonExactSegmentationDiff
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = upstream_frenet.ds * 2.8  # not an existing point
@@ -126,11 +126,11 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversionTwoFullFrene
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = 0
@@ -176,11 +176,11 @@ def test_ctrajectoriesToFtrajectoriesToCtrajectories_pointTwoWayConversionTwoFul
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = 0
@@ -218,11 +218,11 @@ def test_convertFromSegmentState_x_y():
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = 0
@@ -258,11 +258,11 @@ def test_convertFromSegmentStates_x_y():
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = 0
@@ -306,11 +306,11 @@ def test_convertToAndFromSegmentStates_x_y():
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = 0
@@ -356,11 +356,11 @@ def test_convertToAndFromSegmentStates_firstSegmentStartsInMiddle_x_y():
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = upstream_frenet.ds * 100.8
@@ -409,11 +409,11 @@ def test_convertToAndFromSegmentStates_firstSegmentStartsInMiddle_validate_FtoC_
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = upstream_frenet.ds * 100.9
@@ -464,11 +464,11 @@ def test_convertToSegmentStates_multiDimensionalFrenetStates_correctOuputShape()
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = 0
@@ -503,11 +503,11 @@ def test_hasSegmentIds_testMultiDimnesionalArrayOfIndices_validResults():
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    n = (len(full_frenet.points) // 2)
-    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+    n = (len(full_frenet.O) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.O[:(n + 1)], full_frenet.T[:(n + 1)],
                                           full_frenet.N[:(n + 1)],
                                           full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
-    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.O[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
     upstream_s_start = 0
@@ -538,7 +538,7 @@ def test_buildAndConvert_singleFrenetFrame_conversionsAreAccurate():
                         ])
 
     full_frenet = FrenetSerret2DFrame.fit(route_points)
-    point_idx_start, point_idx_end = len(full_frenet.points)//10, 9*len(full_frenet.points)//10
+    point_idx_start, point_idx_end = len(full_frenet.O)//10, 9*len(full_frenet.O)//10
     segmentation = [FrenetSubSegment(0, full_frenet.ds*point_idx_start, full_frenet.ds*point_idx_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[full_frenet],
                                                             sub_segments=segmentation)
@@ -554,4 +554,4 @@ def test_buildAndConvert_singleFrenetFrame_conversionsAreAccurate():
     np.testing.assert_array_less(errors, ACCURACY_TH, 'Conversions aren\'t accurate enough')
     np.testing.assert_array_equal(segment_idxs, new_segment_idxs, 'Segment indices came out wrong')
 
-    assert len(generalized_frenet.points) == point_idx_end - point_idx_start + 1, 'Segment indices came out wrong'
+    assert len(generalized_frenet.O) == point_idx_end - point_idx_start + 1, 'Segment indices came out wrong'

@@ -5,10 +5,10 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, C_A, C_K, CartesianExtendedTrajectory
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.planning.trajectory.utils import WerlingVisualizer
 from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 class OfflineTrajectoryGenerator:
