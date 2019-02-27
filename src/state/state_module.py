@@ -68,13 +68,13 @@ class StateModule(DmModule):
                 if state.ego_state.cartesian_state[C_V] < 0:
                     state.ego_state.cartesian_state[C_V] = 0
                     state.ego_state.map_state.lane_fstate[FS_SV] = 0
-                    self.logger.error('Ego was received with negative velocity %f' % state.ego_state.cartesian_state[C_V])
+                    self.logger.warning('Ego was received with negative velocity %f' % state.ego_state.cartesian_state[C_V])
 
                 for i in range(len(state.dynamic_objects)):
                     if state.dynamic_objects[i].cartesian_state[C_V] < 0:
                         state.dynamic_objects[i].cartesian_state[C_V] = 0
                         state.dynamic_objects[i].map_state.lane_fstate[FS_SV] = 0
-                        self.logger.error(
+                        self.logger.warning(
                             'Dynamic object with obj_id %s was received with negative velocity %f',
                             state.dynamic_objects[i].obj_id, state.dynamic_objects[i].cartesian_state[C_V])
 
