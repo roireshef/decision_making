@@ -135,7 +135,7 @@ class BehavioralPlanningFacade(DmModule):
         return state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        is_success, input_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_NAVIGATION_PLAN_LCM, timeout=1)
+        is_success, serialized_nav_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_NAVIGATION_PLAN_LCM, timeout=1)
         if serialized_nav_plan is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_NAVIGATION_PLAN_LCM)
