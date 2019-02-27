@@ -33,7 +33,7 @@ MAX_HORIZON_DISTANCE = 400
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 4.0
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process

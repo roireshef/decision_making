@@ -51,7 +51,8 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(goal)
 
         if ego_frenet_state[FS_SX] > goal_frenet_state[FS_SX]:
-            self._logger.warning('Goal longitudinal %s is behind ego longitudinal %s', goal_frenet_state[FS_SX], ego_frenet_state[FS_SX])
+            self._logger.warning('Goal longitudinal %s is behind ego longitudinal %s', goal_frenet_state[FS_SX],
+                                 ego_frenet_state[FS_SX])
 
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
                                        (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
@@ -72,6 +73,9 @@ class WerlingPlanner(TrajectoryPlanner):
 
         T_s = max(time_horizon, 0)
         planning_horizon = max(minimal_required_horizon, T_s) + EPS
+
+        assert planning_horizon >= self.dt + EPS, 'planning_horizon (=%f) is too short and is less than one trajectory' \
+                                                  ' timestamp (=%f)' % (planning_horizon, self.dt)
 
         # TODO: should we make sure T_s values are multiples of dt?
         # (Otherwise the matrix, calculated using T_s,and the longitudinal time axis, lon_time_samples, won't fit).
@@ -115,7 +119,8 @@ class WerlingPlanner(TrajectoryPlanner):
             lat_frenet_filtered_indices = np.array([0])
 
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
-        lon_frenet_filtered_indices = self._filter_by_longitudinal_frenet_limits(ftrajectories, reference_route.s_limits)
+        lon_frenet_filtered_indices = self._filter_by_longitudinal_frenet_limits(ftrajectories,
+                                                                                 reference_route.s_limits)
         frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
@@ -141,7 +146,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                                "state: %s. Longitudes range: [%s, %s] (limits: %s)"
                                                "Min frenet velocity: %s"
                                                "number of trajectories passed according to Frenet limits: %s/%s;" %
-                                               (T_s, planning_horizon,  NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                               (T_s, planning_horizon, NumpyUtils.str_log(goal),
+                                                str(state).replace('\n', ''),
                                                 np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                                 reference_route.s_limits,
                                                 np.min(ftrajectories[:, :, FS_SV]),
@@ -157,7 +163,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
                                            "number of trajectories passed according to all limits: %s/%s;\n"
                                            "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
-                                           (T_s, planning_horizon,  NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                           (T_s, planning_horizon, NumpyUtils.str_log(goal),
+                                            str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
                                             NumpyUtils.str_log(cost_params.velocity_limits),
                                             np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
@@ -168,7 +175,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(cartesian_refiltered_indices), len(ctrajectories),
                                             len(refiltered_indices), len(ftrajectories),
                                             goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                            planning_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+                                            planning_horizon * (
+                                                        ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
@@ -196,7 +204,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         else:
 
-            samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec)
+            samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec,
+                                                            planning_horizon)
 
         self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
             T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
@@ -227,7 +236,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return np.argwhere(conforms).flatten()
 
     @staticmethod
-    def _filter_by_longitudinal_frenet_limits(ftrajectories: FrenetTrajectories2D, reference_route_limits: Limits) -> np.ndarray:
+    def _filter_by_longitudinal_frenet_limits(ftrajectories: FrenetTrajectories2D,
+                                              reference_route_limits: Limits) -> np.ndarray:
         """
         Given a set of trajectories in Frenet coordinate-frame, it validates them against the following limits:
         (longitudinal progress on the frenet frame curve, positive longitudinal velocity)
@@ -379,7 +389,6 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
         horizons_d = np.empty(shape=0)
         for T_d in T_d_vals:
-
             time_samples_d = np.arange(0, T_d + EPS, dt)
 
             # solve for dimension d (with time-horizon T_d)
