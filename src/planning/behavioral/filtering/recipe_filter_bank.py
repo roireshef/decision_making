@@ -12,6 +12,8 @@ from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextR
 
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
+from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 from typing import List
 
 
@@ -126,13 +128,19 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
                 # compute distance from target vehicle +/- safety margin
                 s_T = relative_dynamic_object.longitudinal_distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
-                                                          ego_state.size.length / 2 + dynamic_object.size.length / 2)
+                                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
                 v_T = dynamic_object.map_state.lane_fstate[FS_SV]
+
+                # filter_result[i] = QuinticMotionPredicatesCreator.generate_predicate_value(recipe.action_type, wT, wJ,
+                #                                                                            a_0, v_0, v_T, s_T,
+                #                                                                            SPECIFICATION_MARGIN_TIME_DELAY * margin_sign,
+                #                                                                            SAFETY_MARGIN_TIME_DELAY * margin_sign)
 
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
                 filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                                    FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+                                             FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(
+                    v_T)] > 0
 
             elif action_type == ActionType.FOLLOW_LANE:
 
@@ -141,7 +149,10 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
                 filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                                    FILTER_V_T_GRID.get_index(v_T)] > 0
+                                             FILTER_V_T_GRID.get_index(v_T)] > 0
+
+                # filter_result[i] = QuarticMotionPredicatesCreator.generate_predicate_value(wT, wJ, a_0, v_0, v_T)
+
             else:
                 filter_result[i] = False
 
