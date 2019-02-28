@@ -6,11 +6,12 @@ import numpy as np
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ
+    WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
-    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
+    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D, \
+    FrenetTrajectory2D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
@@ -19,8 +20,11 @@ from decision_making.test.exceptions import NotTriggeredException
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0):
-        super().__init__(timestamp_in_sec, T=np.inf)
+        super().__init__(timestamp_in_sec, T=TRAJECTORY_TIME_RESOLUTION * (len(fixed_trajectory) - 1))
         self._fixed_trajectory = fixed_trajectory
+
+    def sample_frenet(self, time_points: np.ndarray) -> FrenetTrajectory2D:
+        raise NotImplemented('FxiedSamplableTrajectory is based on Cartesian coordinates, use the sample(.) method')
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
@@ -58,6 +62,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._sleep_std = sleep_std
         self._sleep_mean = sleep_mean
 
+    # TODO: this should be changed according to changes in TrajectoryPlanner's signature
     @raises(NotTriggeredException)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:

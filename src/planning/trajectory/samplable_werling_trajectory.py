@@ -1,4 +1,5 @@
 import numpy as np
+from typing import List
 
 from decision_making.src.global_constants import EPS
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
@@ -105,3 +106,4 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         fstates = np.hstack((fstates_s, fstates_d))
 
         return fstates
+
