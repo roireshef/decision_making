@@ -30,13 +30,12 @@ class RoutePlanningFacade(DmModule):
         MetricLogger.init(ROUTE_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
-        """Add comments"""
+        """Subscribe to messages"""
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
-        pass
 
     def _stop_impl(self):
-        """Add comments"""
-        pass
+        """Unsubscribe from messages"""
+        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
 
     def _periodic_action_impl(self)->None:
         """
