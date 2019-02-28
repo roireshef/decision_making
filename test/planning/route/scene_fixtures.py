@@ -1,5 +1,6 @@
-import pytest
 import numpy as np
+import pytest
+
 from typing import List
 
 from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanLaneSegment
@@ -11,12 +12,12 @@ from decision_making.src.messages.scene_static_enums import (
     MapLaneDirection,
     ManeuverType)
 from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.state.map_state import MapState
+from decision_making.src.state.state import EgoState, ObjectSize
 from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
 
 from mapping.src.service.map_service import MapService
-from decision_making.src.state.state import EgoState, ObjectSize
-from decision_making.src.state.map_state import MapState
 
 class RoutePlanTestData:
     def __init__(self, scene_static: SceneStatic, expected_output: DataRoutePlan):
@@ -29,7 +30,6 @@ class TakeOverTestData:
         self.route_plan_data = route_plan_data
         self.ego_state = ego_state
         self.expected_takeover = expected_takeover
-
 
 def default_route_plan() -> DataRoutePlan:
     return DataRoutePlan(e_b_is_valid=True,

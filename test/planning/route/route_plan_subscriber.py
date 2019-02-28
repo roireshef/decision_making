@@ -1,30 +1,26 @@
+import numpy as np
 import time
 import traceback
+
 from logging import Logger
 from typing import List
 
-import numpy as np
-
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+
+from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.infra.pubsub import PubSub
-from decision_making.src.global_constants import DISTANCE_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_STATIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.planning.types import CartesianExtendedState
-# from decision_making.src.planning.utils.localization_utils import LocalizationUtils
+from decision_making.src.global_constants import DISTANCE_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_STATIC_RECEIVED
+from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.messages.takeover_message import Takeover, DataTakeover
+from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.src.planning.types import CartesianExtendedState, C_Y, FS_SX
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.metric_logger import MetricLogger
-
-# from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.takeover_message import Takeover, DataTakeover
-from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.planning.types import C_Y, FS_SX
-from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
-from decision_making.src.exceptions import MsgDeserializationError
-from decision_making.src.messages.scene_static_message import SceneStatic
-from decision_making.src.scene.scene_static_model import SceneStaticModel
-
 
 def generate_mock_state(ego_lane_id:int, ego_lane_station:float) -> State :
     
@@ -41,7 +37,6 @@ def generate_mock_state(ego_lane_id:int, ego_lane_station:float) -> State :
     dynamic_objects: List[DynamicObject] = list()
  
     return State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
-
 
 class RoutePlanSubscriber(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger) -> None:
@@ -115,7 +110,6 @@ class RoutePlanSubscriber(DmModule):
 
     def _publish_takeover(self, takeover_msg:Takeover) -> None :
         self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TAKEOVER"], takeover_msg.serialize())
-
 
     def _print_results(self, route_plan:RoutePlan, takeover_msg:Takeover) :
         

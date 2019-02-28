@@ -34,17 +34,6 @@ class DmInitialization:
     """
     This class contains the module initializations
     """
-
-    # @staticmethod
-    # def create_state_module(map_file: str=DEFAULT_MAP_FILE) -> StateModule:
-    #     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-
-    #     pubsub = PubSub()
-    #     # MapService should be initialized in each process according to the given map_file
-    #     MapService.initialize(map_file)
-    #     state_module = StateModule(pubsub, logger, None)
-    #     return state_module
-
     @staticmethod
     def create_route_planner(map_file:str=DEFAULT_MAP_FILE):
         logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)

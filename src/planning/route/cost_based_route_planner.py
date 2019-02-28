@@ -1,19 +1,23 @@
 import numpy as np
 import pprint
-from typing import List, Dict
 import traceback
+
 from logging import Logger
+from typing import List, Dict
 
-from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
-from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
-from decision_making.src.exceptions import UnwantedNegativeIndex, raises
-
-from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
 
+from decision_making.src.exceptions import UnwantedNegativeIndex, raises
+from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD
+from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
+from decision_making.src.messages.scene_static_enums import (
+    RoutePlanLaneSegmentAttr,
+    LaneMappingStatusType,
+    MapLaneDirection,
+    GMAuthorityType,
+    LaneConstructionType)
+from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
-from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, MapLaneDirection, \
-    GMAuthorityType, LaneConstructionType
 
 class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost based route planner ?
     """TODO Add comments"""

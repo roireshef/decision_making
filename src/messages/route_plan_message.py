@@ -6,8 +6,8 @@ from common_data.interface.Rte_Types.python.sub_structures import (
     TsSYSDataRoutePlan,
     TsSYSRoutePlanLaneSegment)
 
-from decision_making.src.messages.scene_common_messages import Header
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.scene_common_messages import Header
 
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int

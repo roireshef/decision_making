@@ -5,6 +5,19 @@ import numpy as np
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
+from decision_making.src.messages.scene_static_enums import (
+    MapLaneMarkerType,
+    MapRoadSegmentType,
+    MapLaneType,
+    RoadObjectType,
+    TrafficSignalState,
+    MovingDirection,
+    ManeuverType,
+    LaneMappingStatusType,
+    MapLaneDirection,
+    GMAuthorityType,
+    LaneConstructionType,
+    RoutePlanLaneSegmentAttr)
 from decision_making.src.messages.scene_static_message import (
     SceneStatic,
     DataSceneStatic,
@@ -23,22 +36,8 @@ from decision_making.src.messages.scene_static_message import (
     AdjacentLane,
     LaneSegmentConnectivity,
     LaneCoupling)
-from decision_making.src.messages.scene_static_enums import (
-    MapLaneMarkerType,
-    MapRoadSegmentType,
-    MapLaneType,
-    RoadObjectType,
-    TrafficSignalState,
-    MovingDirection,
-    ManeuverType,
-    LaneMappingStatusType,
-    MapLaneDirection,
-    GMAuthorityType,
-    LaneConstructionType,
-    RoutePlanLaneSegmentAttr)
 
 class SceneStaticPublisher:
-    """ TODO: Add description """
     RoadSegmentID = int
     LaneSegmentID = int
     DownstreamRoadSegmentIDs = Dict[RoadSegmentID, List[RoadSegmentID]]
@@ -54,6 +53,15 @@ class SceneStaticPublisher:
                  navigation_plan: List[RoadSegmentID], downstream_road_segment_ids: DownstreamRoadSegmentIDs = None,
                  downstream_lane_connectivity: DownstreamLaneConnectivity = None,
                  lane_attribute_modifications: LaneAttributeModifications = None):
+        """
+        Creates SCENE_STATIC message for testing
+        :param road_segment_ids: Array of road segment IDs
+        :param lane_segment_ids: 2D array containing lane segment IDs. Each row is associated with a road segment
+        :param navigation_plan: Ordered sequence of road segment IDs that makes up the navigaiton plan
+        :param downstream_road_segment_ids: Optional dictionary containing downstream road segment IDs
+        :param downstream_lane_connectivity: Optional dictionary containing downstream lane connectivity information
+        :param lane_attribute_modifications: Optional dictionary containing modifications to the default lane attributes
+        """
         if downstream_road_segment_ids is None:
             downstream_road_segment_ids = {}
 
@@ -71,7 +79,7 @@ class SceneStaticPublisher:
         self._lane_attribute_modifications = lane_attribute_modifications
 
     def generate_data(self) -> SceneStatic:
-        """ TODO: Add description """
+        """ Generates scene static data """
         # Time since the epoch
         timestamp_object = Timestamp.from_seconds(time())
 
@@ -201,9 +209,7 @@ class SceneStaticPublisher:
     def _generate_road_intersections(self, num_intersections: int = 1) -> List[SceneRoadIntersection]:
         """
         Generates default road intersection data
-
-        Args:
-            num_intersections: Number of intersections, Default is 1
+        :param num_intersections: Number of intersections, Default is 1
         """
         return [SceneRoadIntersection(e_i_road_intersection_id=1,
                                       e_Cnt_lane_coupling_count=0,
@@ -251,9 +257,7 @@ class SceneStaticPublisher:
     def _generate_geometry(self, num_nominal_path_points: int = 1) -> List[SceneLaneSegmentGeometry]:
         """
         Generates default lane segment geometry data
-
-        Args:
-            num_nominal_path_points: Number of nominal path points, Default is 1
+        :param num_nominal_path_points: Number of nominal path points, Default is 1
         """
         boundary_point = [BoundaryPoint(e_e_lane_marker_type=MapLaneMarkerType.MapLaneMarkerType_None,
                                         e_l_s_start=0,

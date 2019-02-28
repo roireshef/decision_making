@@ -1,23 +1,25 @@
 from logging import Logger
-from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 import time
 import traceback
 
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+
 from decision_making.src.exceptions import MsgDeserializationError, RoutePlanningException
+from decision_making.src.global_constants import (
+    LOG_MSG_ROUTE_PLANNER_OUTPUT,
+    LOG_MSG_RECEIVED_STATE,
+    LOG_MSG_ROUTE_PLANNER_IMPL_TIME,
+    ROUTE_PLANNING_NAME_FOR_METRICS,
+    LOG_MSG_SCENE_STATIC_RECEIVED)
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
-from decision_making.src.utils.metric_logger import MetricLogger
-from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, NavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
-
+from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.utils.metric_logger import MetricLogger
 
 class RoutePlanningFacade(DmModule):
-
-
     def __init__(self, pubsub: PubSub, logger: Logger, route_planner: RoutePlanner):
         """
         :param pubsub:
@@ -44,7 +46,6 @@ class RoutePlanningFacade(DmModule):
         The main planner function then uses this intrernal data structure to come up with the route plan (as described in class
         DataRoutePlan() ) The results are then published to the behavior planner.
         """
-
         try:
             # Read inputs
             start_time = time.time()
@@ -56,11 +57,7 @@ class RoutePlanningFacade(DmModule):
             route_plan = self.__planner.plan(route_planner_input)
 
             # Write outputs
-            # Send plan to behavior
             self._publish_results(route_plan)
-
-            # Send visualization data
-            #self._publish_visualization(behavioral_visualization_message)
 
             self.logger.info("{} {}".format(LOG_MSG_ROUTE_PLANNER_IMPL_TIME, time.time() - start_time))
 

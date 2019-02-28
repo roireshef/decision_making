@@ -1,21 +1,17 @@
-
 import numpy as np
-import pprint
+import pytest
+
+from logging import Logger
 from typing import List
 
-import pytest
-from logging import Logger
 from decision_making.src.infra.pubsub import PubSub
-from rte.python.logger.AV_logger import AV_Logger
-
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_message import (
     SceneStatic,
     SceneStaticBase,
     NavigationPlan)
-from decision_making.src.planning.route.route_planner import RoutePlannerInputData
 from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
-from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
+from decision_making.src.planning.route.route_planner import RoutePlannerInputData
 from decision_making.test.messages.static_scene_fixture import scene_static
 from decision_making.test.planning.route.scene_fixtures import (
     RoutePlanTestData,
@@ -24,21 +20,23 @@ from decision_making.test.planning.route.scene_fixtures import (
     gmfa_scene_and_expected_output,
     lane_direction_scene_and_expected_output,
     combined_scene_and_expected_output)
+from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
+
+from rte.python.logger.AV_logger import AV_Logger
 
 def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):
-
+    # Test Data
     scene_static_base = scene_static.s_Data.s_SceneStaticBase
-
     navigation_plan = scene_static.s_Data.s_NavigationPlan
 
+    # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
-    route_planner_input.reformat_input_data(scene=scene_static_base,nav_plan=navigation_plan)
-
+    route_planner_input.reformat_input_data(scene=scene_static_base,
+                                            nav_plan=navigation_plan)
     route_plan_obj = CostBasedRoutePlanner()
-
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
-    # expected outputs:
+    # Expected Outputs
     num_lane_segments = [road_segment.e_Cnt_lane_segment_id_count for road_segment in scene_static_base.as_scene_road_segment]
 
     exp_num_road_segments = navigation_plan.e_Cnt_num_road_segments
@@ -47,7 +45,7 @@ def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):
     exp_route_plan_lane_segments = [[RoutePlanLaneSegment(lane_segment_id, 0., 0.) for lane_segment_id in road_segment.a_i_lane_segment_ids]
                                     for road_segment in scene_static_base.as_scene_road_segment]
 
-    # assertion
+    # Assertions
     assert route_plan_output.e_Cnt_num_road_segments == exp_num_road_segments
     assert route_plan_output.a_i_road_segment_ids.all() == exp_road_segment_ids.all()
     assert route_plan_output.a_Cnt_num_lane_segments.all() == exp_num_lane_segments.all()
@@ -70,6 +68,7 @@ def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
     print(route_plan_output)
+
     # Assertions
     assert route_plan_output.e_Cnt_num_road_segments == expected_output.e_Cnt_num_road_segments
     assert route_plan_output.a_i_road_segment_ids.all() == expected_output.a_i_road_segment_ids.all()
