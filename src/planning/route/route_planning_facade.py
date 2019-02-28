@@ -25,7 +25,7 @@ class RoutePlanningFacade(DmModule):
         :param route_planner:
         """
         super().__init__(pubsub=pubsub, logger=logger)
-        self.__planner = route_planner
+        self.planner = route_planner
         self.logger.info("Initialized Route Planner Facade.")
         MetricLogger.init(ROUTE_PLANNING_NAME_FOR_METRICS)
 
@@ -100,10 +100,10 @@ class RoutePlanningFacade(DmModule):
 
     @property
     def planner(self):
-        """Add comments"""
+        """Getter for planner property"""
         return self.__planner
 
     @planner.setter
     def planner(self, planner):
-        """Add comments"""
+        """Setter for planner property"""
         self.__planner = planner
