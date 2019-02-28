@@ -65,8 +65,6 @@ class RoutePlanSubscriber(DmModule):
         """
 
         try:
-            start_time = time.time()
-
             # get mock state
             mock_state = generate_mock_state(ego_lane_id = 101, ego_lane_station = 0)
 
