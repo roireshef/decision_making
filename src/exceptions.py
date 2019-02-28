@@ -107,6 +107,8 @@ class RoadNotFound(MappingException):
 class LaneNotFound(MappingException):
     pass
 
+class EgoStationBeyondLaneLength(MappingException):
+    pass
 
 # ROUTE PLANNING
 @six.add_metaclass(ABCMeta)
@@ -114,6 +116,15 @@ class RoutePlanningException(Exception):
     pass
 
 class UnwantedNegativeIndex(RoutePlanningException):
+    pass
+
+class RepeatedRoadSegments(RoutePlanningException):
+    pass
+
+class EgoRoadSegmentNotFound(RoutePlanningException):
+    pass
+
+class EgoLaneOccupancyCostIncorrect(RoutePlanningException):
     pass
 
 def raises(*e):
