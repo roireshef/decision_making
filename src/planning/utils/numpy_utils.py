@@ -59,6 +59,12 @@ class NumpyUtils:
 
     @staticmethod
     def div(a: np.array, b: np.array):
+        """
+        simple numpy vision operation with handling of division by zero (in that case returns 0)
+        :param a: divided part
+        :param b: divisor
+        :return: a/b where b!=0, 0 otherwise
+        """
         with np.errstate(divide='ignore', invalid='ignore'):
             c = np.true_divide(a, b)
             c[c == np.inf] = 0
