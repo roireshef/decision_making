@@ -10,19 +10,18 @@ from decision_making.src.messages.scene_common_messages import Header
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
-    """
-    Route Plan Lane Segment Information
-
-    Args:            
-        e_i_lane_segment_id: TODO: Add Comment
-        e_cst_lane_occupancy_cost: TODO: Add Comment
-        e_cst_lane_end_cost: TODO: Add Comment
-    """
     e_i_lane_segment_id = int
     e_cst_lane_occupancy_cost = float
     e_cst_lane_end_cost = float
 
     def __init__(self, e_i_lane_segment_id: int, e_cst_lane_occupancy_cost: float, e_cst_lane_end_cost: float):
+        """
+        Route Plan Lane Segment Information
+        :param e_i_lane_segment_id: Lane segment ID
+        :param e_cst_lane_occupancy_cost: Cost of being within the lane while driving through the associated road segment
+        :param e_cst_lane_end_cost: Cost of being within the lane at the end of the associated road segment. In other words, this cost
+            deals with transitions between road segments.
+        """
         self.e_i_lane_segment_id = e_i_lane_segment_id
         self.e_cst_lane_occupancy_cost = e_cst_lane_occupancy_cost
         self.e_cst_lane_end_cost = e_cst_lane_end_cost
@@ -57,16 +56,6 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_cst_lane_end_cost)
 
 class DataRoutePlan(PUBSUB_MSG_IMPL):
-    """
-    Route Plan Output Data
-
-    Args:
-        e_b_is_valid: TODO: Add Comment
-        e_Cnt_num_road_segments: TODO: Add Comment
-        a_i_road_segment_ids: TODO: Add Comment
-        a_Cnt_num_lane_segments: TODO: Add Comment
-        as_route_plan_lane_segments: TODO: Add Comment
-    """
     e_b_is_valid = bool
     e_Cnt_num_road_segments = int
     a_i_road_segment_ids = np.ndarray
@@ -75,6 +64,14 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
 
     def __init__(self, e_b_is_valid: bool, e_Cnt_num_road_segments: int, a_i_road_segment_ids: np.ndarray,
                  a_Cnt_num_lane_segments: np.ndarray, as_route_plan_lane_segments: List[List[RoutePlanLaneSegment]]):
+        """
+        Route Plan Output Data
+        :param e_b_is_valid: Set to true when the data is valid
+        :param e_Cnt_num_road_segments: Number of road segments in the route plan
+        :param a_i_road_segment_ids: Ordered array of road segment IDs
+        :param a_Cnt_num_lane_segments: Array containing the number of lane segments in each road segment
+        :param as_route_plan_lane_segments: 2D array containing lane segment information
+        """
         self.e_b_is_valid = e_b_is_valid
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
         self.a_i_road_segment_ids = a_i_road_segment_ids
@@ -95,8 +92,6 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
 
         return pubsub_msg
     
-    
-
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataRoutePlan):
         as_route_plan_lane_segments = [[RoutePlanLaneSegment.deserialize(pubsubMsg.as_route_plan_lane_segments[i][j]) \
@@ -126,19 +121,16 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
 
         return print_route
 
-
 class RoutePlan(PUBSUB_MSG_IMPL):
-    """
-    Class that represents the ROUTE_PLAN topic
-    
-    Args:
-        s_Header: TODO: Add Comment
-        s_Data: TODO: Add Comment
-    """
     s_Header = Header
     s_Data = DataRoutePlan
 
     def __init__(self, s_Header: Header, s_Data: DataRoutePlan):
+        """
+        Class that represents the ROUTE_PLAN topic
+        :param s_Header: General Information
+        :param s_Data: Message Data
+        """
         self.s_Header = s_Header
         self.s_Data = s_Data
 
