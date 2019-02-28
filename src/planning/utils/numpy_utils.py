@@ -66,7 +66,7 @@ class NumpyUtils:
         :return: a/b where b!=0, 0 otherwise
         """
         with np.errstate(divide='ignore', invalid='ignore'):
-            c = np.true_divide(a, b)
+            c = np.divide(a, b)
             c[c == np.inf] = 0
             c = np.nan_to_num(c)
 
