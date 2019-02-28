@@ -29,13 +29,20 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
 
     def serialize(self) -> TsSYSRoutePlanLaneSegment:
         pubsub_msg = TsSYSRoutePlanLaneSegment()
-
-        # Convert to standard Python scalar
-        self.e_i_lane_segment_id = self.e_i_lane_segment_id.item()
         
-        # Print message if the type is not as expected
+        # =====================================================================
+        # This block of code was added due to a TypeError previously raised by the middleware.
+        # At the time, the type of this variable was numpy.uint64, but the middleware was expecting an int.
+
+        # If a numpy type, convert to built-in type
+        if type(self.e_i_lane_segment_id).__module__ is np.__name__:
+            self.e_i_lane_segment_id = self.e_i_lane_segment_id.item()
+        
+        # If still not type int, cast to int and print message
         if type(self.e_i_lane_segment_id) is not int:
+            self.e_i_lane_segment_id = int(self.e_i_lane_segment_id)
             print("RoutePlanLaneSegment: e_i_lane_segment_id is not int")
+        # =====================================================================
 
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
         pubsub_msg.e_cst_lane_occupancy_cost = self.e_cst_lane_occupancy_cost
