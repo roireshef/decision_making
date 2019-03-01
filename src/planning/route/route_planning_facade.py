@@ -19,6 +19,7 @@ from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlan
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.utils.metric_logger import MetricLogger
 
+
 class RoutePlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, route_planner: RoutePlanner):
         """
