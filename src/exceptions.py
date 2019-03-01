@@ -115,9 +115,6 @@ class EgoStationBeyondLaneLength(MappingException):
 class RoutePlanningException(Exception):
     pass
 
-class UnwantedNegativeIndex(RoutePlanningException):
-    pass
-
 class RepeatedRoadSegments(RoutePlanningException):
     pass
 
@@ -127,11 +124,15 @@ class EgoRoadSegmentNotFound(RoutePlanningException):
 class RouteRoadSegmentNotFound(RoutePlanningException):
     pass
 
+class RouteLaneSegmentNotFound(RoutePlanningException):
+    pass
+
 class EgoLaneOccupancyCostIncorrect(RoutePlanningException):
     pass
 
 class RoadSegmentLaneSegmentMismatch(RoutePlanningException):
     pass
+
 
 def raises(*e):
     # type: (Exception)
