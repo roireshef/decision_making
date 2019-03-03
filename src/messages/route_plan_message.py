@@ -9,6 +9,8 @@ from common_data.interface.Rte_Types.python.sub_structures import (
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
 
+
+
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
     e_cst_lane_occupancy_cost = float
@@ -62,15 +64,19 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
         print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_end_cost "+str(self.e_cst_lane_end_cost)+"\n"
         print_route_plan_lane_segment = print_route_plan_lane_segment +"\n"
 
+
+RoadSegRoutePlanLaneSegments = List[RoutePlanLaneSegment]
+RoadRoutePlanLaneSegments = List[RoadSegRoutePlanLaneSegments]
+
 class DataRoutePlan(PUBSUB_MSG_IMPL):
     e_b_is_valid = bool
     e_Cnt_num_road_segments = int
     a_i_road_segment_ids = np.ndarray
     a_Cnt_num_lane_segments = np.ndarray
-    as_route_plan_lane_segments = List[List[RoutePlanLaneSegment]]
+    as_route_plan_lane_segments = RoadRoutePlanLaneSegments
 
     def __init__(self, e_b_is_valid: bool, e_Cnt_num_road_segments: int, a_i_road_segment_ids: np.ndarray,
-                 a_Cnt_num_lane_segments: np.ndarray, as_route_plan_lane_segments: List[List[RoutePlanLaneSegment]]):
+                 a_Cnt_num_lane_segments: np.ndarray, as_route_plan_lane_segments: RoadRoutePlanLaneSegments):
         """
         Route Plan Output Data
         :param e_b_is_valid: Set to true when the data is valid

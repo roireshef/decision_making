@@ -11,7 +11,8 @@ from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlan
 
 from decision_making.src.exceptions import  RoadSegmentLaneSegmentMismatch, raises
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD
-from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
+from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan, RoadSegRoutePlanLaneSegments, \
+    RoadRoutePlanLaneSegments
 from decision_making.src.messages.scene_static_enums import (
     RoutePlanLaneSegmentAttr,
     LaneMappingStatusType,
@@ -26,9 +27,6 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
 
     """
-    RoadSegRoutePlanLaneSegments = List[RoutePlanLaneSegment]
-    RoadRoutePlanLaneSegments = List[RoadSegRoutePlanLaneSegments]
-
 
     @staticmethod
     def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
