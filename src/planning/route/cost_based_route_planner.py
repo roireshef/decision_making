@@ -133,12 +133,10 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
     @staticmethod
     @raises(IndexError)
-    def lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase, lanesegs_in_downstream_roadseg_in_route: ndarray,
-                           route_plan_lane_segments: List[List[RoutePlanLaneSegment]]) -> (float, bool):
+    def lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase,route_plan_lane_segments: List[List[RoutePlanLaneSegment]]) -> (float, bool):
         """
         Calculates lane end cost for a single lane segment
         :param laneseg_base_data: SceneLaneSegmentBase for the concerned lane
-        :param lanesegs_in_downstream_roadseg_in_route: list of lane segment IDs in the next road segment in route
         :param route_plan_lane_segments: route_plan_lane_segments is the array or routeplan lane segments 
         (already evaluated, downstrem of the concerned lane). We mainly need the lane end cost from here.
         :return: 
@@ -151,12 +149,16 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
         # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
         # search through all downstream lanes to to current lane
-        laneseg_id = laneseg_base_data.e_i_lane_segment_id
-        downstream_lane_segment_ids:List[int] = []
         at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = False
+
+        all_route_lanesegs_in_downstream_roadseg:List[RoutePlanLaneSegment] = route_plan_lane_segments[0]
+        lanesegs_in_downstream_roadseg_in_route:int = [] # list of lane segment IDs in the next road segment in route
+        for route_laneseg in all_route_lanesegs_in_downstream_roadseg:
+            lanesegs_in_downstream_roadseg_in_route.append(route_laneseg.e_i_lane_segment_id)
+        lanesegs_in_downstream_roadseg_in_route = np.array(lanesegs_in_downstream_roadseg_in_route)
+
         for down_stream_laneseg in laneseg_base_data.as_downstream_lanes:
             down_stream_laneseg_id = down_stream_laneseg.e_i_lane_segment_id
-            downstream_lane_segment_ids.append(down_stream_laneseg_id)
 
             # All lane IDs in downstream roadsegment in route to the currently indexed roadsegment in the loop
             if down_stream_laneseg_id in lanesegs_in_downstream_roadseg_in_route:  # verify if the downstream lane is in the route (it may not be ex: fork/exit)
@@ -164,8 +166,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                 # find the index corresponding to the lane seg ID in the road segment
                 down_stream_laneseg_idx = np.where(lanesegs_in_downstream_roadseg_in_route==down_stream_laneseg_id)[0][0]
 
-                if(down_stream_laneseg_idx <len(route_plan_lane_segments[0])):
-                    down_stream_routeseg = route_plan_lane_segments[0][down_stream_laneseg_idx]  # 0 th index is the last segment pushed into this struct
+                if(down_stream_laneseg_idx <len(all_route_lanesegs_in_downstream_roadseg)):
+                    down_stream_routeseg = all_route_lanesegs_in_downstream_roadseg[down_stream_laneseg_idx]  # 0 th index is the last segment pushed into this struct
                                                                                                  # which is the downstream roadseg.
                 else:
                     raise IndexError("Cost Based Route Planner: down_stream_laneseg_idx not present in route_plan_lane_segments")
@@ -245,7 +247,6 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
                     lane_end_cost_calc_from_downstream_segments, at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = \
                         CostBasedRoutePlanner.lane_end_cost_calc(laneseg_base_data=current_laneseg_base_data,
-                                                                 lanesegs_in_downstream_roadseg_in_route=lanesegs_in_downstream_roadseg_in_route,
                                                                  route_plan_lane_segments=route_plan_lane_segments)
                     no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
                         no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route and \
