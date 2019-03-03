@@ -6,7 +6,7 @@ from typing import List, Dict
 
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, SceneRoadSegment, SceneLaneSegmentBase
-from decision_making.src.exceptions import  RepeatedRoadSegments, raises
+from decision_making.src.exceptions import  MissingInputInformation, RepeatedRoadSegments, raises
 
 RoadSegmentDict = Dict[int,SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int,SceneLaneSegmentBase]
@@ -34,27 +34,34 @@ class RoutePlannerInputData():
                                                                     # Should contain all the road segments listed in Nav route
 
 
-
-
+    @raises(MissingInputInformation)
     def _update_dict_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan)->None:
         """
          This method updates route_lanesegs_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
                              route_roadsegs_as_dict : all the roadsegments in the route as a dictionary for fast access
         """
-        for scene_lane_segment in scene.as_scene_lane_segments:
-            lane_segment_id = scene_lane_segment.e_i_lane_segment_id
-            road_segment_id = scene_lane_segment.e_i_road_segment_id
 
-            # Verify if these lane segs are in NAV route plan
-            if road_segment_id in nav_plan.a_i_road_segment_ids:
-                self.route_lanesegs_base_as_dict[lane_segment_id] = scene_lane_segment
 
-        for scene_road_segment in scene.as_scene_road_segment:
-            road_segment_id = scene_road_segment.e_i_road_segment_id
+        if scene.as_scene_lane_segments:
+            for scene_lane_segment in scene.as_scene_lane_segments:
+                lane_segment_id = scene_lane_segment.e_i_lane_segment_id
+                road_segment_id = scene_lane_segment.e_i_road_segment_id
 
-            # Verify if these road segs are in NAV route plan.
-            if road_segment_id in nav_plan.a_i_road_segment_ids:
-                self.route_roadsegs_as_dict[road_segment_id] = scene_road_segment
+                # Verify if these lane segs are in NAV route plan
+                if road_segment_id in nav_plan.a_i_road_segment_ids:
+                    self.route_lanesegs_base_as_dict[lane_segment_id] = scene_lane_segment
+        else:
+            raise MissingInputInformation("Route Planner Input Data Processing:Empty scene.as_scene_lane_segments")
+
+        if scene.as_scene_road_segment:
+            for scene_road_segment in scene.as_scene_road_segment:
+                road_segment_id = scene_road_segment.e_i_road_segment_id
+
+                # Verify if these road segs are in NAV route plan.
+                if road_segment_id in nav_plan.a_i_road_segment_ids:
+                    self.route_roadsegs_as_dict[road_segment_id] = scene_road_segment
+        else:
+            raise MissingInputInformation("Route Planner Input Data Processing:Empty scene.as_scene_road_segment")
 
 
 

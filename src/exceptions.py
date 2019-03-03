@@ -127,6 +127,8 @@ class EgoLaneOccupancyCostIncorrect(RoutePlanningException):
 class RoadSegmentLaneSegmentMismatch(RoutePlanningException):
     pass
 
+class MissingInputInformation(RoutePlanningException):
+    pass
 
 def raises(*e):
     # type: (Exception)
