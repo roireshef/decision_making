@@ -26,6 +26,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
 
     """
+    RoadSegRoutePlanLaneSegments = List[RoutePlanLaneSegment]
+    RoadRoutePlanLaneSegments = List[RoadSegRoutePlanLaneSegments]
     @staticmethod
     def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
         """
@@ -135,7 +137,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
     @staticmethod
     @raises(IndexError)
-    def lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase,route_plan_lane_segments: List[List[RoutePlanLaneSegment]]) -> (float, bool):
+    def lane_end_cost_calc(laneseg_base_data: SceneLaneSegmentBase,route_plan_lane_segments: RoadRoutePlanLaneSegments) -> (float, bool):
         """
         Calculates lane end cost for a single lane segment
         :param laneseg_base_data: SceneLaneSegmentBase for the concerned lane
@@ -153,7 +155,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # search through all downstream lanes to to current lane
         at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = False
 
-        all_route_lanesegs_in_downstream_roadseg:List[RoutePlanLaneSegment] = route_plan_lane_segments[-1]
+        all_route_lanesegs_in_downstream_roadseg:RoadSegRoutePlanLaneSegments = route_plan_lane_segments[-1]
         lanesegs_in_downstream_roadseg_in_route:int = [] # list of lane segment IDs in the next road segment in route
         for route_laneseg in all_route_lanesegs_in_downstream_roadseg:
             lanesegs_in_downstream_roadseg_in_route.append(route_laneseg.e_i_lane_segment_id)
@@ -199,7 +201,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         num_road_segments = len(route_data.route_lanesegments)
         a_i_road_segment_ids:List[int] = []
         a_Cnt_num_lane_segments:List[int] = []
-        route_plan_lane_segments:List[List[RoutePlanLaneSegment]] = []
+        route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
         no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = True
 
@@ -208,7 +210,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # key -> roadseg_id
         # value -> laneseg_ids
         for reversed_roadseg_idx_in_route, (roadseg_id, laneseg_ids) in enumerate( reversed(route_data.route_lanesegments.items())):
-            all_route_lanesegs_in_this_roadseg:List[RoutePlanLaneSegment] = []
+            all_route_lanesegs_in_this_roadseg:RoadSegRoutePlanLaneSegments = []
 
             # Now iterate over all the lane segments inside  the enumerate(road segment)
             # index -> laneseg_idx
