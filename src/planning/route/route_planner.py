@@ -6,7 +6,7 @@ from typing import List, Dict
 
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, SceneRoadSegment, SceneLaneSegmentBase
-from decision_making.src.exceptions import  RouteRoadSegmentNotFound, RepeatedRoadSegments, raises
+from decision_making.src.exceptions import  RepeatedRoadSegments, raises
 
 RoadSegmentDict = Dict[int,SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int,SceneLaneSegmentBase]
@@ -45,14 +45,14 @@ class RoutePlannerInputData():
             lane_segment_id = scene_lane_segment.e_i_lane_segment_id
             road_segment_id = scene_lane_segment.e_i_road_segment_id
 
-            # Verify if these lane segs are in route
+            # Verify if these lane segs are in NAV route plan
             if road_segment_id in nav_plan.a_i_road_segment_ids:
                 self.route_lanesegs_base_as_dict[lane_segment_id] = scene_lane_segment
 
         for scene_road_segment in scene.as_scene_road_segment:
             road_segment_id = scene_road_segment.e_i_road_segment_id
 
-            # Verify if these road segs are in route.
+            # Verify if these road segs are in NAV route plan.
             if road_segment_id in nav_plan.a_i_road_segment_ids:
                 self.route_roadsegs_as_dict[road_segment_id] = scene_road_segment
 
@@ -60,7 +60,7 @@ class RoutePlannerInputData():
 
 
     @raises(RepeatedRoadSegments)
-    @raises(RouteRoadSegmentNotFound)
+    @raises(KeyError)
     def _update_routeplan_data(self, nav_plan: NavigationPlan)->None:
         """
         This method updates route_lanesegments : an ordered dictionary: key -> road seg ids ordered as in route
@@ -77,8 +77,8 @@ class RoutePlannerInputData():
             if road_segment_id in self.route_roadsegs_as_dict:
                 self.route_lanesegments[road_segment_id] = self.route_roadsegs_as_dict[road_segment_id].a_i_lane_segment_ids
             else:
-                raise RouteRoadSegmentNotFound("Route Planner Input Data Processing: Road segement reported in the NAV route not found in \
-                    scene static base")
+                raise KeyError("Route Planner Input Data Processing: Road segement reported in the NAV route not found in \
+                    scene static base for key:",road_segment_id)
 
             # The same road segment can appear more than once in the the route indicating a loop, but should not appear consecutively
             if road_segment_idx > 0:
@@ -105,7 +105,7 @@ class RoutePlannerInputData():
 
         """
          This method is a helper for pretty print of the RoutePlannerInputData(route_lanesegments only as the dictionaries are ususally not
-         information we need to visualize for all road/lane segments at once ). 
+         information we need to visualize for all road/lane segments at once ).
         """
         print_route_planner_input_data = "\n"
         for road_segment_id in self.route_lanesegments:

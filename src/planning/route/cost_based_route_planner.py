@@ -9,7 +9,7 @@ from typing import List, Dict
 
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
 
-from decision_making.src.exceptions import  RoadSegmentLaneSegmentMismatch, RouteLaneSegmentNotFound, raises
+from decision_making.src.exceptions import  RoadSegmentLaneSegmentMismatch, raises
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD
 from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
 from decision_making.src.messages.scene_static_enums import (
@@ -28,6 +28,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
     """
     RoadSegRoutePlanLaneSegments = List[RoutePlanLaneSegment]
     RoadRoutePlanLaneSegments = List[RoadSegRoutePlanLaneSegments]
+
+
     @staticmethod
     def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
         """
@@ -99,6 +101,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
             return 0
 
     @staticmethod
+    @raises(IndexError)
     def lane_occupancy_cost_calc(laneseg_base_data: SceneLaneSegmentBase) -> float:
         """
         Calculates lane occupancy cost for a single lane segment
@@ -189,7 +192,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
     @raises(IndexError)
     @raises(RoadSegmentLaneSegmentMismatch)
-    @raises(RouteLaneSegmentNotFound)
+    @raises(KeyError)
     def plan(self, route_data: RoutePlannerInputData) -> DataRoutePlan:
         """
         Calculates lane end and occupancy costs for all the lanes in the NAV plan
@@ -223,8 +226,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                     # Access all the lane segment lite data from lane segment dict
                     current_laneseg_base_data = route_data.route_lanesegs_base_as_dict[laneseg_id]
                 else:
-                    raise RouteLaneSegmentNotFound("Cost Based Route Planner: Lane segment not found in route_lanesegs_base_as_dict. Not \
-                                                    found laneseg_id = ",laneseg_id)
+                    raise KeyError("Cost Based Route Planner: Lane segment not found in route_lanesegs_base_as_dict. Not \
+                                    found laneseg_id = ",laneseg_id)
 
                 # -------------------------------------------
                 # Calculate lane occupancy costs for a lane

@@ -121,12 +121,6 @@ class RepeatedRoadSegments(RoutePlanningException):
 class EgoRoadSegmentNotFound(RoutePlanningException):
     pass
 
-class RouteRoadSegmentNotFound(RoutePlanningException):
-    pass
-
-class RouteLaneSegmentNotFound(RoutePlanningException):
-    pass
-
 class EgoLaneOccupancyCostIncorrect(RoutePlanningException):
     pass
 
