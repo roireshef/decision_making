@@ -42,7 +42,7 @@ class RoutePlannerInputData():
         if not scene.as_scene_road_segment:
             raise MissingInputInformation("Route Planner Input Data Processing:Empty scene.as_scene_road_segment")
 
-        if not nav_plan.a_i_road_segment_ids.size:
+        if not nav_plan.a_i_road_segment_ids.size: # ndarray type
             raise MissingInputInformation("Route Planner Input Data Processing:Empty NAV Plan")
 
 
@@ -72,7 +72,7 @@ class RoutePlannerInputData():
 
 
 
-
+    @raises(MissingInputInformation)
     @raises(RepeatedRoadSegments)
     @raises(KeyError)
     def _update_routeplan_data(self, nav_plan: NavigationPlan)->None:
@@ -89,7 +89,14 @@ class RoutePlannerInputData():
             #
             #  So this fails to check if all the road segs in NAV route are reported in the scene. We are doing that check and exception raise here
             if road_segment_id in self.route_roadsegs_as_dict:
-                self.route_lanesegments[road_segment_id] = self.route_roadsegs_as_dict[road_segment_id].a_i_lane_segment_ids
+                all_lane_segment_ids_in_this_road_segment = self.route_roadsegs_as_dict[road_segment_id].a_i_lane_segment_ids
+
+                # Since this is a input validity check for which we have to loop over all road segs, it will cost O(n) extra if we do it upfront.
+                if all_lane_segment_ids_in_this_road_segment.size:
+                    self.route_lanesegments[road_segment_id] = all_lane_segment_ids_in_this_road_segment
+                else:
+                    raise MissingInputInformation("Route Planner Input Data Processing:Possible no lane segments in road segment ",road_segment_id)
+
             else:
                 raise KeyError("Route Planner Input Data Processing: Road segement reported in the NAV route not found in \
                     scene static base for key:",road_segment_id)
