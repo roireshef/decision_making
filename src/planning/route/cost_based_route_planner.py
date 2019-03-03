@@ -151,7 +151,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # search through all downstream lanes to to current lane
         at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = False
 
-        all_route_lanesegs_in_downstream_roadseg:List[RoutePlanLaneSegment] = route_plan_lane_segments[0]
+        all_route_lanesegs_in_downstream_roadseg:List[RoutePlanLaneSegment] = route_plan_lane_segments[-1]
         lanesegs_in_downstream_roadseg_in_route:int = [] # list of lane segment IDs in the next road segment in route
         for route_laneseg in all_route_lanesegs_in_downstream_roadseg:
             lanesegs_in_downstream_roadseg_in_route.append(route_laneseg.e_i_lane_segment_id)
@@ -274,11 +274,15 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
             # the next road segment loop
             downstream_road_segment_id = roadseg_id           
             
-            # push back the road segment sepecific info , as the road seg iteration is reverse
-            a_i_road_segment_ids.insert(0, roadseg_id)
-            a_Cnt_num_lane_segments.insert(0, laneseg_idx+1)
-            route_plan_lane_segments.insert(0, all_route_lanesegs_in_this_roadseg)
-            # TODO append and then reverse 
+            # append the road segment sepecific info , as the road seg iteration is reverse
+            a_i_road_segment_ids.append(roadseg_id)
+            a_Cnt_num_lane_segments.append(laneseg_idx+1)
+            route_plan_lane_segments.append(all_route_lanesegs_in_this_roadseg)
+        
+        # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning
+        a_i_road_segment_ids.reverse()
+        a_Cnt_num_lane_segments.reverse()
+        route_plan_lane_segments.reverse()
 
         return DataRoutePlan(e_b_is_valid=valid, 
                              e_Cnt_num_road_segments=num_road_segments, 
