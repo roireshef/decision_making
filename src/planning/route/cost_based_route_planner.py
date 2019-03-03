@@ -22,8 +22,10 @@ from decision_making.src.messages.scene_static_message import SceneLaneSegmentBa
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 
 class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost based route planner ?
-    """TODO Add comments"""
+    """
+    child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
 
+    """
     @staticmethod
     def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
         """
@@ -141,7 +143,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         (already evaluated, downstrem of the concerned lane). We mainly need the lane end cost from here.
         :return: 
         lane_end_cost, cost to the AV if it reaches the lane end
-        at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route-> diagnostics info, whether at least
+        at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route, diagnostics info, whether at least
         one downstream lane segment (as described in the map) is in the downstream route road segement
         """
         min_down_stream_laneseg_occupancy_cost = 1
@@ -173,7 +175,6 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                     raise IndexError("Cost Based Route Planner: down_stream_laneseg_idx not present in route_plan_lane_segments")
                 
 
-                # TODO if the route_plan_lane_segments struct is reversed access -1 index instead of 0
                 down_stream_laneseg_occupancy_cost = down_stream_routeseg.e_cst_lane_occupancy_cost
                 min_down_stream_laneseg_occupancy_cost = min(min_down_stream_laneseg_occupancy_cost, down_stream_laneseg_occupancy_cost)   
             else:
@@ -218,7 +219,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                     # Access all the lane segment lite data from lane segment dict
                     current_laneseg_base_data = route_data.route_lanesegs_base_as_dict[laneseg_id]
                 else:
-                    raise RouteLaneSegmentNotFound("Cost Based Route Planner: Lane segment not found in route_lanesegs_base_as_dict")
+                    raise RouteLaneSegmentNotFound("Cost Based Route Planner: Lane segment not found in route_lanesegs_base_as_dict. Not \
+                                                    found laneseg_id = ",laneseg_id)
 
                 # -------------------------------------------
                 # Calculate lane occupancy costs for a lane
@@ -240,15 +242,11 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
 
                 elif (reversed_roadseg_idx_in_route > 0):
-                    if downstream_road_segment_id in route_data.route_lanesegments:
-                        lanesegs_in_downstream_roadseg_in_route = route_data.route_lanesegments[downstream_road_segment_id]
-                    else:
-                        raise RouteLaneSegmentNotFound("Cost Based Route Planner: downstream Lane segment not found in route_lanesegments")
 
                     lane_end_cost_calc_from_downstream_segments, at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = \
                         CostBasedRoutePlanner.lane_end_cost_calc(laneseg_base_data=current_laneseg_base_data,
                                                                  route_plan_lane_segments=route_plan_lane_segments)
-                    no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
+                    no_downstream_lane_to_current_roadreversed_roadseg_idx_in_route_segment_found_in_downstream_road_segment_in_route = \
                         no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route and \
                         not(at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route)
 
@@ -257,7 +255,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                     else:   
                         lane_end_cost = lane_end_cost_calc_from_downstream_segments
                 else:
-                    raise IndexError("Cost Based Route Planner: Negative value for reversed_roadseg_idx_in_route")
+                    raise IndexError("Cost Based Route Planner: Negative value for reversed_roadseg_idx_in_route. reversed_roadseg_idx_in_route = ",\
+                                    reversed_roadseg_idx_in_route)
 
                 # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
                 current_route_laneseg = RoutePlanLaneSegment(e_i_lane_segment_id=laneseg_id,
@@ -270,16 +269,15 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                     road segment (lane segments) were found in the downstream road segment described in the navigation route plan")
                 
 
-            # At this point we have at least iterated once through the road segment loop once. downstream_road_segment_id is set to be used for
-            # the next road segment loop
-            downstream_road_segment_id = roadseg_id           
+        
             
             # append the road segment sepecific info , as the road seg iteration is reverse
             a_i_road_segment_ids.append(roadseg_id)
             a_Cnt_num_lane_segments.append(laneseg_idx+1)
             route_plan_lane_segments.append(all_route_lanesegs_in_this_roadseg)
         
-        # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning
+        # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning of the list
+        # at each road segment loop (of length n)
         a_i_road_segment_ids.reverse()
         a_Cnt_num_lane_segments.reverse()
         route_plan_lane_segments.reverse()

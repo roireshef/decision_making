@@ -80,7 +80,7 @@ class RoutePlannerInputData():
                 raise RouteRoadSegmentNotFound("Route Planner Input Data Processing: Road segement reported in the NAV route not found in \
                     scene static base")
 
-            # The same road segment can appear more than once in the the route indicating a loop but not consecutively
+            # The same road segment can appear more than once in the the route indicating a loop, but should not appear consecutively
             if road_segment_idx > 0:
                 downstream_road_segment_id, _ = enumerated_road_segment_ids[road_segment_idx-1]
                 if (downstream_road_segment_id == road_segment_id):
