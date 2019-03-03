@@ -55,6 +55,13 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_cst_lane_occupancy_cost,
                    pubsubMsg.e_cst_lane_end_cost)
 
+    def __str__(self):
+        print_route_plan_lane_segment = "\n"
+        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_segment_id "+str(self.e_i_lane_segment_id)+"\n"
+        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_occupancy_cost "+str(self.e_cst_lane_occupancy_cost)+"\n"
+        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_end_cost "+str(self.e_cst_lane_end_cost)+"\n"
+        print_route_plan_lane_segment = print_route_plan_lane_segment +"\n"
+
 class DataRoutePlan(PUBSUB_MSG_IMPL):
     e_b_is_valid = bool
     e_Cnt_num_road_segments = int
