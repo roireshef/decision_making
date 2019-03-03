@@ -101,6 +101,22 @@ class RoutePlannerInputData():
         self._update_dict_data(scene, nav_plan) # maintain the following order
         self._update_routeplan_data(nav_plan)
 
+    def __str__(self)->str:
+
+        """
+         This method is a helper for pretty print of the RoutePlannerInputData(route_lanesegments only as the dictionaries are ususally not
+         information we need to visualize for all road/lane segments at once ). 
+        """
+        print_route_planner_input_data = "\n"
+        for road_segment_id in self.route_lanesegments:
+            print_route_planner_input_data = print_route_planner_input_data + "roadseg:" + str(road_segment_id) + "\t"
+        #    print_route_planner_input_data = print_route_planner_input_data + str(lane_segment_ids) + "\n"
+
+        return print_route_planner_input_data
+
+
+
+
 
 
 class RoutePlanner(metaclass=ABCMeta):

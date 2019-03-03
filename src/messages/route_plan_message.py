@@ -111,7 +111,7 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                    pubsubMsg.a_Cnt_num_lane_segments[:pubsubMsg.e_Cnt_num_road_segments],
                    as_route_plan_lane_segments)
 
-    def __str__(self):
+    def __str__(self)->str:
         print_route = "\n"
         for i, road_segment in enumerate(self.as_route_plan_lane_segments):
             a_i_lane_segment_ids = []

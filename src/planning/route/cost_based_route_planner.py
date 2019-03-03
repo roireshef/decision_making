@@ -186,7 +186,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         lane_end_cost = min_down_stream_laneseg_occupancy_cost
         return lane_end_cost,at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route
 
-    
+
     @raises(IndexError)
     @raises(RoadSegmentLaneSegmentMismatch)
     @raises(RouteLaneSegmentNotFound)
@@ -197,6 +197,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                  RoutePlannerInputData() class definition.
         :return: DataRoutePlan , the complete route plan information ready to be serialized and published
         """
+        
         valid = True
         num_road_segments = len(route_data.route_lanesegments)
         a_i_road_segment_ids:List[int] = []
@@ -211,6 +212,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # value -> laneseg_ids
         for reversed_roadseg_idx_in_route, (roadseg_id, laneseg_ids) in enumerate( reversed(route_data.route_lanesegments.items())):
             all_route_lanesegs_in_this_roadseg:RoadSegRoutePlanLaneSegments = []
+
 
             # Now iterate over all the lane segments inside  the enumerate(road segment)
             # index -> laneseg_idx
@@ -268,7 +270,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
             if(no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route):
                 raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current \
-                    road segment (lane segments) were found in the downstream road segment described in the navigation route plan")
+                    road segment (lane segments) were found in the downstream road segment described in the navigation route plan",\
+                    "reversed_roadseg_idx_in_route",reversed_roadseg_idx_in_route,"roadseg_id",roadseg_id)
                 
 
         
