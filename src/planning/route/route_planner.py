@@ -25,15 +25,15 @@ class RoutePlannerInputData():
 
     def __init__(self):
 
-        self.route_lane_segments:RouteLaneSegmentOrderedDict = OrderedDict() # dict:  key - road segment IDs (ordered as in routeplan),
-                                                                            #        value - ndarray(LaneSegmentID)
-                                                                            #        (ordered as in the road segment structure )
-        self.route_lane_segments_base_as_dict:LaneSegmentBaseDict = {}      # dict: key - lane segment ID,
-                                                                            #       value - LaneSegmentBase.
-                                                                            # Should contain all the lane segments listed in Nav route road segments
-        self.route_road_segments_as_dict: RoadSegmentDict = {}              # dict: key - road segment ID,
-                                                                            #       value - Road Segments.
-                                                                            # Should contain all the road segments listed in Nav route
+        self._route_lane_segment_ids:RouteLaneSegmentOrderedDict = OrderedDict() # dict:  key - road segment IDs (ordered as in routeplan),
+                                                                              #        value - ndarray(LaneSegmentID)
+                                                                              #        (ordered as in the road segment structure )
+        self._route_lane_segments_base_as_dict:LaneSegmentBaseDict = {}       # dict: key - lane segment ID,
+                                                                              #       value - LaneSegmentBase.
+                                                                              # Should contain all the lane segments listed in Nav route road segments
+        self._route_road_segments_as_dict: RoadSegmentDict = {}               # dict: key - road segment ID,
+                                                                              #       value - Road Segments.
+                                                                              # Should contain all the road segments listed in Nav route
 
 
     @staticmethod # Made static method especially as this method doesn't access the classes states/variables
@@ -62,7 +62,7 @@ class RoutePlannerInputData():
 
             # Verify if these lane segs are in NAV route plan
             if road_segment_id in nav_plan.a_i_road_segment_ids:
-                self.route_lane_segments_base_as_dict[lane_segment_id] = scene_lane_segment
+                self._route_lane_segments_base_as_dict[lane_segment_id] = scene_lane_segment
 
 
         for scene_road_segment in scene.as_scene_road_segment:
@@ -70,7 +70,7 @@ class RoutePlannerInputData():
 
             # Verify if these road segs are in NAV route plan.
             if road_segment_id in nav_plan.a_i_road_segment_ids: # Empty NAV Plan error would have been caught earlier
-                self.route_road_segments_as_dict[road_segment_id] = scene_road_segment
+                self._route_road_segments_as_dict[road_segment_id] = scene_road_segment
 
 
 
@@ -91,12 +91,12 @@ class RoutePlannerInputData():
             #           insert in the dict
             #
             #  So this fails to check if all the road segs in NAV route are reported in the scene. We are doing that check and exception raise here
-            if road_segment_id in self.route_road_segments_as_dict:
-                all_lane_segment_ids_in_this_road_segment = self.route_road_segments_as_dict[road_segment_id].a_i_lane_segment_ids
+            if road_segment_id in self._route_road_segments_as_dict:
+                all_lane_segment_ids_in_this_road_segment = self._route_road_segments_as_dict[road_segment_id].a_i_lane_segment_ids
 
                 # Since this is a input validity check for which we have to loop over all road segs, it will cost O(n) extra if we do it upfront.
                 if all_lane_segment_ids_in_this_road_segment.size:
-                    self.route_lane_segments[road_segment_id] = all_lane_segment_ids_in_this_road_segment
+                    self._route_lane_segment_ids[road_segment_id] = all_lane_segment_ids_in_this_road_segment
                 else:
                     raise MissingInputInformation("Route Planner Input Data Processing:Possible no lane segments in road segment ",road_segment_id)
 
@@ -130,16 +130,23 @@ class RoutePlannerInputData():
     def get_lane_segment_base(self,lane_segment_id:int)->SceneLaneSegmentBase:
 
         """
-         This method returns lane segment base given a lane segment ID 
+         This method returns lane segment base given a lane segment ID
         """
 
-        if lane_segment_id in self.route_lane_segments_base_as_dict:
+        if lane_segment_id in self._route_lane_segments_base_as_dict:
             # Access all the lane segment lite data from lane segment dict
-            current_lane_segment_base_data = self.route_lane_segments_base_as_dict[lane_segment_id]
+            current_lane_segment_base_data = self._route_lane_segments_base_as_dict[lane_segment_id]
         else:
             raise KeyError("Cost Based Route Planner: Lane segment not found in route_lane_segments_base_as_dict. Not \
                             found lane_segment_id = ",lane_segment_id)
         return current_lane_segment_base_data
+
+    @raises(KeyError)
+    def get_route_lane_segment_ids(self)->RouteLaneSegmentOrderedDict:
+        if not self._route_lane_segment_ids:
+            raise KeyError("Cost Based Route Planner: Trying to access empty route lane segment ids ")
+        return self._route_lane_segment_ids
+
 
     def __str__(self)->str:
 
@@ -148,7 +155,7 @@ class RoutePlannerInputData():
          information we need to visualize for all road/lane segments at once ).
         """
         print_route_planner_input_data = "\n"
-        for road_segment_id in self.route_lane_segments:
+        for road_segment_id in self._route_lane_segment_ids:
             print_route_planner_input_data = print_route_planner_input_data + "roadseg:" + str(road_segment_id) + "\t"
         #    print_route_planner_input_data = print_route_planner_input_data + str(lane_segment_ids) + "\n"
 

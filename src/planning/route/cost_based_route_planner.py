@@ -260,7 +260,6 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         """
         
         valid = True
-        num_road_segments = len(route_data.route_lane_segments)
         road_segment_ids:List[int] = []
         num_lane_segments:List[int] = []
         route_plan_lane_segments:RoadRoutePlanLaneSegments = []
@@ -269,7 +268,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # key -> road_segment_id
         # value -> lane_segment_ids
-        for  (road_segment_id, lane_segment_ids) in reversed(route_data.route_lane_segments.items()):
+        for  (road_segment_id, lane_segment_ids) in reversed(route_data.get_route_lane_segment_ids().items()):
             all_route_lane_segments_in_this_road_segment:RoadSegRoutePlanLaneSegments = []
             no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = True # as the name suggests
             # if there is NO downstream lane (as defined in map) to the current road segment (any of its lanes) that is in the route
@@ -305,6 +304,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         road_segment_ids.reverse()
         num_lane_segments.reverse()
         route_plan_lane_segments.reverse()
+        num_road_segments = len(road_segment_ids)
 
         return DataRoutePlan(e_b_is_valid=valid, 
                              e_Cnt_num_road_segments=num_road_segments, 
