@@ -205,7 +205,6 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         a_Cnt_num_lane_segments:List[int] = []
         route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
-        no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = True
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # index -> reversed_roadseg_idx_in_route
@@ -213,7 +212,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # value -> laneseg_ids
         for reversed_roadseg_idx_in_route, (roadseg_id, laneseg_ids) in enumerate( reversed(route_data.route_lanesegments.items())):
             all_route_lanesegs_in_this_roadseg:RoadSegRoutePlanLaneSegments = []
-
+            no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = True # as the name suggests
+            # if there is NO downstream lane (as defined in map) to the current road segment (any of its lanes) that is in the route
 
             # Now iterate over all the lane segments inside  the enumerate(road segment)
             # index -> laneseg_idx
@@ -251,7 +251,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                     lane_end_cost_calc_from_downstream_segments, at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = \
                         CostBasedRoutePlanner.lane_end_cost_calc(laneseg_base_data=current_laneseg_base_data,
                                                                  route_plan_lane_segments=route_plan_lane_segments)
-                    no_downstream_lane_to_current_roadreversed_roadseg_idx_in_route_segment_found_in_downstream_road_segment_in_route = \
+                    no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
                         no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route and \
                         not(at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route)
 
@@ -273,10 +273,9 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                 raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current \
                     road segment (lane segments) were found in the downstream road segment described in the navigation route plan",\
                     "reversed_roadseg_idx_in_route",reversed_roadseg_idx_in_route,"roadseg_id",roadseg_id)
-                
 
-        
-            
+
+
             # append the road segment sepecific info , as the road seg iteration is reverse
             a_i_road_segment_ids.append(roadseg_id)
             a_Cnt_num_lane_segments.append(laneseg_idx+1)

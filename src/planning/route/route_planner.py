@@ -10,7 +10,8 @@ from decision_making.src.exceptions import  MissingInputInformation, RepeatedRoa
 
 RoadSegmentDict = Dict[int,SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int,SceneLaneSegmentBase]
-# RouteLaneSegmentOrderedDict = OrderedDict[int,ndarray]  Once typing.OrderedDict becomes availble (in python 3.7.2.)
+RouteLaneSegmentOrderedDict = Dict[int,ndarray] # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
+
 
 
 class RoutePlannerInputData():
@@ -24,16 +25,18 @@ class RoutePlannerInputData():
 
     def __init__(self):
 
-        self.route_lanesegments = OrderedDict()                     # dict:  key - road segment IDs (ordered as in routeplan),
-                                                                    #        value - ndarray(LaneSegmentID) (ordered as in the road segment structure )
-        self.route_lanesegs_base_as_dict:LaneSegmentBaseDict = {}   # dict: key - lane segment ID,
-                                                                    #       value - LaneSegmentBase.
-                                                                    # Should contain all the lane segments listed in Nav route road segments
-        self.route_roadsegs_as_dict: RoadSegmentDict = {}           # dict: key - road segment ID,
-                                                                    #       value - Road Segments.
-                                                                    # Should contain all the road segments listed in Nav route
+        self.route_lanesegments:RouteLaneSegmentOrderedDict = OrderedDict() # dict:  key - road segment IDs (ordered as in routeplan),
+                                                                            #        value - ndarray(LaneSegmentID)
+                                                                            #        (ordered as in the road segment structure )
+        self.route_lanesegs_base_as_dict:LaneSegmentBaseDict = {}           # dict: key - lane segment ID,
+                                                                            #       value - LaneSegmentBase.
+                                                                            # Should contain all the lane segments listed in Nav route road segments
+        self.route_roadsegs_as_dict: RoadSegmentDict = {}                   # dict: key - road segment ID,
+                                                                            #       value - Road Segments.
+                                                                            # Should contain all the road segments listed in Nav route
 
-    @staticmethod
+
+    @staticmethod # Made static method especially as this method doesn't access the classes states/variables
     @raises(MissingInputInformation)
     def check_scene_data_validity(scene: SceneStaticBase, nav_plan: NavigationPlan)->None:
         if not scene.as_scene_lane_segments:
@@ -135,8 +138,6 @@ class RoutePlannerInputData():
         #    print_route_planner_input_data = print_route_planner_input_data + str(lane_segment_ids) + "\n"
 
         return print_route_planner_input_data
-
-
 
 
 
