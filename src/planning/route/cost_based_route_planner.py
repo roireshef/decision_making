@@ -256,10 +256,42 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         return (current_route_lane_segment,no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
 
 
+    @raises(RoadSegmentLaneSegmentMismatch)
+    def road_segment_cost_calc(self,route_data: RoutePlannerInputData,lane_segment_ids:ndarray)->RoadSegRoutePlanLaneSegments:
+
+        """
+        Itreratively uses lane_cost_calc method to calculate lane costs (occupancy and end) for all lane segments in a road segment
+        :return: 
+        RoadSegRoutePlanLaneSegments, which is List[RoutePlanLaneSegments]
+        Also raises RoadSegmentLaneSegmentMismatch internally if it can't find any downstream lane segment in the route 
+        """
+
+        all_route_lane_segments_in_this_road_segment:RoadSegRoutePlanLaneSegments = []
+        no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = True # as the name suggests
+        # if there is NO downstream lane (as defined in map) to the current road segment (any of its lanes) that is in the route
+
+        # Now iterate over all the lane segments inside  the lane_segment_ids (ndarray)
+        # value -> lane_segment_id
+        for lane_segment_id in lane_segment_ids:
+
+            current_lane_segment_base_data = route_data.get_lane_segment_base(lane_segment_id)
+            
+            current_route_lane_segment, no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
+                self.lane_cost_calc(lane_segment_base_data = current_lane_segment_base_data,
+                                    no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
+                                    no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
+
+            all_route_lane_segments_in_this_road_segment.append(current_route_lane_segment)
+
+        if(no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route):
+            raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current \
+                road segment (lane segments) were found in the downstream road segment described in the navigation route plan",\
+                "road_segment_id",road_segment_id)
+        
+        return all_route_lane_segments_in_this_road_segment
 
 
     @raises(IndexError)
-    @raises(RoadSegmentLaneSegmentMismatch)
     @raises(KeyError)
     def plan(self, route_data: RoutePlannerInputData) -> DataRoutePlan:
         """
@@ -269,40 +301,17 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         :return: DataRoutePlan , the complete route plan information ready to be serialized and published
         """
         
-        valid = True
+        
         road_segment_ids:List[int] = []
         num_lane_segments:List[int] = []
-        #route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # key -> road_segment_id
         # value -> lane_segment_ids
         for  (road_segment_id, lane_segment_ids) in reversed(route_data.get_route_lane_segment_ids().items()):
-            all_route_lane_segments_in_this_road_segment:RoadSegRoutePlanLaneSegments = []
-            no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = True # as the name suggests
-            # if there is NO downstream lane (as defined in map) to the current road segment (any of its lanes) that is in the route
-
-            # Now iterate over all the lane segments inside  the lane_segment_ids (ndarray)
-            # value -> lane_segment_id
-            for lane_segment_id in lane_segment_ids:
-
-                current_lane_segment_base_data = route_data.get_lane_segment_base(lane_segment_id)
-                
-                current_route_lane_segment, no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
-                    self.lane_cost_calc(lane_segment_base_data = current_lane_segment_base_data,
-                                        no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
-                                        no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
-
-                all_route_lane_segments_in_this_road_segment.append(current_route_lane_segment)
-
-            if(no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route):
-                raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current \
-                    road segment (lane segments) were found in the downstream road segment described in the navigation route plan",\
-                    "road_segment_id",road_segment_id)
-
-
-
+            all_route_lane_segments_in_this_road_segment = self.road_segment_cost_calc(route_data=route_data,
+                                                                                       lane_segment_ids= lane_segment_ids)
             # append the road segment sepecific info , as the road seg iteration is reverse
             road_segment_ids.append(road_segment_id)
             num_lane_segments.append(len(lane_segment_ids))
@@ -314,6 +323,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         num_lane_segments.reverse()
         self.reverse_route_plan_lane_segments()
         num_road_segments = len(road_segment_ids)
+        valid = True
 
         return DataRoutePlan(e_b_is_valid=valid, 
                              e_Cnt_num_road_segments=num_road_segments, 
