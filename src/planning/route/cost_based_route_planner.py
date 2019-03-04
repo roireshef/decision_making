@@ -267,7 +267,6 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
-        # index -> reversed_road_segment_idx_in_route
         # key -> road_segment_id
         # value -> lane_segment_ids
         for  (road_segment_id, lane_segment_ids) in reversed(route_data.route_lane_segments.items()):
@@ -279,12 +278,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
             # value -> lane_segment_id
             for lane_segment_id in lane_segment_ids:
 
-                if lane_segment_id in route_data.route_lane_segments_base_as_dict:
-                    # Access all the lane segment lite data from lane segment dict
-                    current_lane_segment_base_data = route_data.route_lane_segments_base_as_dict[lane_segment_id]
-                else:
-                    raise KeyError("Cost Based Route Planner: Lane segment not found in route_lane_segments_base_as_dict. Not \
-                                    found lane_segment_id = ",lane_segment_id)
+                current_lane_segment_base_data = route_data.get_lane_segment_base(lane_segment_id)
                 
                 current_route_lane_segment, no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
                     CostBasedRoutePlanner.lane_cost_calc(lane_segment_base_data = current_lane_segment_base_data,

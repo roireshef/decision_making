@@ -126,6 +126,21 @@ class RoutePlannerInputData():
         self._update_dict_data(scene, nav_plan) # maintain the following order
         self._update_routeplan_data(nav_plan)
 
+    @raises(KeyError)
+    def get_lane_segment_base(self,lane_segment_id:int)->SceneLaneSegmentBase:
+
+        """
+         This method returns lane segment base given a lane segment ID 
+        """
+
+        if lane_segment_id in self.route_lane_segments_base_as_dict:
+            # Access all the lane segment lite data from lane segment dict
+            current_lane_segment_base_data = self.route_lane_segments_base_as_dict[lane_segment_id]
+        else:
+            raise KeyError("Cost Based Route Planner: Lane segment not found in route_lane_segments_base_as_dict. Not \
+                            found lane_segment_id = ",lane_segment_id)
+        return current_lane_segment_base_data
+
     def __str__(self)->str:
 
         """
