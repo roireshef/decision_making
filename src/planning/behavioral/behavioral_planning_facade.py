@@ -78,7 +78,6 @@ class BehavioralPlanningFacade(DmModule):
             start_time = time.time()
             state = self._get_current_state()
 
-
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
@@ -96,13 +95,11 @@ class BehavioralPlanningFacade(DmModule):
 
             navigation_plan = self._get_current_navigation_plan()
 
-            # get current route plan
             route_plan = self._get_current_route_plan()
 
             # calculate the takeover message
-            takeover_message = self.set_takeover_message(route_plan_data = route_plan.s_Data , ego_state = updated_state.ego_state , scene_static = scene_static)
+            takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
 
-            # publish takeover message
             self._publish_takeover(takeover_message)
 
             trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan)
@@ -186,20 +183,16 @@ class BehavioralPlanningFacade(DmModule):
         self.logger.debug("Received route plan: %s" % route_plan)
         return route_plan
 
-    @staticmethod
-    # @raises([EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect])
-    def set_takeover_message(route_plan_data:DataRoutePlan, ego_state:EgoState, scene_static: SceneStatic ) -> Takeover:
+    @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
+    def _set_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState) -> Takeover:
         """
         funtion to calculate the takeover message based on the static route plan
         takeover flag will be set True if all lane segments' end costs for a downstream road segment
         within a threshold distance are 1, i.e., road is blocked.
         :param route_plan_data: last route plan data
         :param ego_satte: last state for ego vehicle
-        :param scene_static: last scene static data which are used for MapUtils functions
         :return: Takeover data
         """
-
-        SceneStaticModel.get_instance().set_scene_static(scene_static)
 
         ego_lane_segment_id = ego_state.map_state.lane_id
 
@@ -208,53 +201,53 @@ class BehavioralPlanningFacade(DmModule):
         # find road segment row index in route plan 2-d array
         route_plan_idx = np.where(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
 
-        # if not route_plan_idx[0]:
-        #     raise EgoRoadSegmentNotFound("Route plan does not include data for ego road segment ID: \n", ego_road_segment_id)
-        # elif len(route_plan_idx[0]) > 1 :
-        #     raise RepeatedRoadSegments("Route Plan has repeated data for road segment ID:  \n", ego_road_segment_id)
+        if len(route_plan_idx[0]) == 0: # check if ego road segment Id is listed inside route plan data
+            raise EgoRoadSegmentNotFound('Route plan does not include data for ego road segment ID {0}'.format(ego_road_segment_id))
+        if len(route_plan_idx[0]) > 1 :
+            raise RepeatedRoadSegments("Route Plan has repeated data for road segment ID:  \n", ego_road_segment_id)
 
         row_idx = route_plan_idx[0][0]
 
         ego_station = ego_state.map_state.lane_fstate[FS_SX]
 
         #find length of the lane segment
-        for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments :
-            if lane.e_i_lane_segment_id == ego_lane_segment_id :
-                ego_lane_length = lane.e_l_length
-                break
-        # ego_lane_length = MaUptils.get_lane_length(ego_lane_segment_id)
+        lane = MapUtils.get_lane(ego_lane_segment_id)
+        ego_lane_length = lane.e_l_length
 
         dist_to_end = ego_lane_length - ego_station
 
-        # if  dist_to_end < 0 :
-            # raise EgoStationBeyondLaneLength("ego station is greater than the lane length for lane segment ID:  \n", ego_lane_segment_id)
+        if  dist_to_end < 0 :
+            raise EgoStationBeyondLaneLength("ego station is greater than the lane length for lane segment ID:  \n", ego_lane_segment_id)
 
-        # check the end costs for all road segments within DISTANCE_TO_SET_TAKEOVER_FLAG
+        # iterate through all road segments within DISTANCE_TO_SET_TAKEOVER_FLAG
         for i in range(row_idx, route_plan_data.e_Cnt_num_road_segments):
 
             road_segment_blocked = True
 
+            # check the end cost for all lane segments within a road segment
             for j in range(route_plan_data.a_Cnt_num_lane_segments[i]):
 
-                # if i == row_idx and route_plan_data.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == ego_lane_segment_id \
-                #     and  route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == 1 :
-                    # raise EgoLaneOccupancyCostIncorrect("Occupancy cost is 1 for ego lane semgnet ID: \n", ego_lane_segment_id)
+                # raise exception if ego lane occupancy cost is 1
+                if i == row_idx and route_plan_data.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == ego_lane_segment_id \
+                    and  route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == 1 :
+                    raise EgoLaneOccupancyCostIncorrect("Occupancy cost is 1 for ego lane semgnet ID: \n", ego_lane_segment_id)
 
                 if route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost < 1 :
                     road_segment_blocked = False
                     break
 
+            # continue looking at the next road segments if current road segment is not blocked
             if road_segment_blocked == False :
-                # check how many road segments are within the horizon
-                next_road_lane_id = route_plan_data.as_route_plan_lane_segments[i][0].e_i_lane_segment_id
-                # lane_length = MapUtils.get_lane_length(next_road_lane_id)
-                for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments :
-                    if lane.e_i_lane_segment_id == next_road_lane_id :
-                        lane_length = lane.e_l_length
-                        break
+
+                # find the length of the first lane segment in the next road segment,
+                # assuming that road segment length is similar to its first lane segmnet length
+                next_road_segment_lane_id = route_plan_data.as_route_plan_lane_segments[i][0].e_i_lane_segment_id
+                lane = MapUtils.get_lane(next_road_segment_lane_id)
+                lane_length = lane.e_l_length
 
                 dist_to_end += lane_length
 
+                # check if this road segment lies within the DISTANCE_TO_SET_TAKEOVER_FLAG
                 if dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG :
                     break
             else :
@@ -265,11 +258,10 @@ class BehavioralPlanningFacade(DmModule):
         else :
             takeover_flag = False
 
-        # TODO check this timestamp
-        timestamp_object = Timestamp.from_seconds(ego_state.timestamp_in_sec)
-
-        takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0) , \
-                                s_Data = DataTakeover(takeover_flag) )
+        takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,
+                                                    s_Timestamp=Timestamp.from_seconds(ego_state.timestamp_in_sec),
+                                                    e_Cnt_version=0),
+                                    s_Data=DataTakeover(takeover_flag))
 
         return takeover_message
 
