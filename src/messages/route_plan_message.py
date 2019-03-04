@@ -127,10 +127,10 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                 a_i_lane_segment_ids.append(lane_segment.e_i_lane_segment_id)
                 a_cst_lane_occupancy_costs.append(lane_segment.e_cst_lane_occupancy_cost)
                 a_cst_lane_end_costs.append(lane_segment.e_cst_lane_end_cost)
-            print_route = print_route + "lane_segment_ids "+str(a_i_lane_segment_ids)+"\n"
-            print_route = print_route + "lane_occupancy_costs "+str(a_cst_lane_occupancy_costs)+"\n"
-            print_route = print_route + "lane_end_costs "+str(a_cst_lane_end_costs)+"\n"
-            print_route = print_route +"\n"
+            print_route = print_route + "lane_segment_ids " + str(a_i_lane_segment_ids)+ "\n"
+            print_route = print_route + "lane_occupancy_costs " + str(a_cst_lane_occupancy_costs)+ "\n"
+            print_route = print_route + "lane_end_costs " + str(a_cst_lane_end_costs)+ "\n"
+            print_route = print_route + "\n"
 
         return print_route
 
