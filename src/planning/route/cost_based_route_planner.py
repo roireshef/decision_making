@@ -257,7 +257,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
 
     @raises(RoadSegmentLaneSegmentMismatch)
-    def road_segment_cost_calc(self,route_data: RoutePlannerInputData,lane_segment_ids:ndarray)->RoadSegRoutePlanLaneSegments:
+    def road_segment_cost_calc(self, route_data:RoutePlannerInputData, lane_segment_ids:ndarray)->RoadSegRoutePlanLaneSegments:
 
         """
         Itreratively uses lane_cost_calc method to calculate lane costs (occupancy and end) for all lane segments in a road segment
@@ -283,10 +283,10 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
             all_route_lane_segments_in_this_road_segment.append(current_route_lane_segment)
 
-        if(no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route):
+        if (no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route):
             raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current \
-                road segment (lane segments) were found in the downstream road segment described in the navigation route plan",\
-                "road_segment_id",road_segment_id)
+                                                 road segment (lane segments) were found in the downstream road segment described in the navigation route plan",
+                " road_segment_id", lane_segment_id)
         
         return all_route_lane_segments_in_this_road_segment
 
