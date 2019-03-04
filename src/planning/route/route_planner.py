@@ -143,6 +143,13 @@ class RoutePlannerInputData():
 
     @raises(KeyError)
     def get_route_lane_segment_ids(self)->RouteLaneSegmentOrderedDict:
+
+        """
+         This method returns entire RouteLaneSegmentOrderedDict, which is an ordered Dict of 
+                        key - road segment IDs (ordered as in routeplan), 
+                        value - ndarray(LaneSegmentID) (ordered as in the road segment structure )
+        """
+
         if not self._route_lane_segment_ids:
             raise KeyError("Cost Based Route Planner: Trying to access empty route lane segment ids ")
         return self._route_lane_segment_ids
