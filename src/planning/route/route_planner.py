@@ -25,10 +25,10 @@ class RoutePlannerInputData():
 
     def __init__(self):
 
-        self.route_lanesegments:RouteLaneSegmentOrderedDict = OrderedDict() # dict:  key - road segment IDs (ordered as in routeplan),
+        self.route_lane_segments:RouteLaneSegmentOrderedDict = OrderedDict() # dict:  key - road segment IDs (ordered as in routeplan),
                                                                             #        value - ndarray(LaneSegmentID)
                                                                             #        (ordered as in the road segment structure )
-        self.route_lanesegs_base_as_dict:LaneSegmentBaseDict = {}           # dict: key - lane segment ID,
+        self.route_lane_segments_base_as_dict:LaneSegmentBaseDict = {}      # dict: key - lane segment ID,
                                                                             #       value - LaneSegmentBase.
                                                                             # Should contain all the lane segments listed in Nav route road segments
         self.route_roadsegs_as_dict: RoadSegmentDict = {}                   # dict: key - road segment ID,
@@ -52,7 +52,7 @@ class RoutePlannerInputData():
 
     def _update_dict_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan)->None:
         """
-         This method updates route_lanesegs_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
+         This method updates route_lane_segments_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
                              route_roadsegs_as_dict : all the roadsegments in the route as a dictionary for fast access
         """
 
@@ -62,7 +62,7 @@ class RoutePlannerInputData():
 
             # Verify if these lane segs are in NAV route plan
             if road_segment_id in nav_plan.a_i_road_segment_ids:
-                self.route_lanesegs_base_as_dict[lane_segment_id] = scene_lane_segment
+                self.route_lane_segments_base_as_dict[lane_segment_id] = scene_lane_segment
 
 
         for scene_road_segment in scene.as_scene_road_segment:
@@ -80,7 +80,7 @@ class RoutePlannerInputData():
     @raises(KeyError)
     def _update_routeplan_data(self, nav_plan: NavigationPlan)->None:
         """
-        This method updates route_lanesegments : an ordered dictionary: key -> road seg ids ordered as in route
+        This method updates route_lane_segments : an ordered dictionary: key -> road seg ids ordered as in route
                                                                         value -> ndaray of lane seg ids (ordered) as stored in the road seg structure        """
         enumerated_road_segment_ids = list(enumerate(nav_plan.a_i_road_segment_ids))
         for road_segment_idx,road_segment_id in enumerated_road_segment_ids:
@@ -96,7 +96,7 @@ class RoutePlannerInputData():
 
                 # Since this is a input validity check for which we have to loop over all road segs, it will cost O(n) extra if we do it upfront.
                 if all_lane_segment_ids_in_this_road_segment.size:
-                    self.route_lanesegments[road_segment_id] = all_lane_segment_ids_in_this_road_segment
+                    self.route_lane_segments[road_segment_id] = all_lane_segment_ids_in_this_road_segment
                 else:
                     raise MissingInputInformation("Route Planner Input Data Processing:Possible no lane segments in road segment ",road_segment_id)
 
@@ -114,9 +114,9 @@ class RoutePlannerInputData():
 
     def reformat_input_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan)->None:
         """
-        This method updates route_lanesegs_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
+        This method updates route_lane_segments_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
                             route_roadsegs_as_dict : all the roadsegments in the route as a dictionary for fast access
-                            route_lanesegments : an ordered dictionary: key -> road seg ids ordered as in route
+                            route_lane_segments : an ordered dictionary: key -> road seg ids ordered as in route
                                                                         value -> ndaray of lane seg ids (ordered) as stored in the road seg structure
                             by invoking _update_dict_data and _update_routeplan_data methods in that order. Look at the method comments for more
                             details.
@@ -129,11 +129,11 @@ class RoutePlannerInputData():
     def __str__(self)->str:
 
         """
-         This method is a helper for pretty print of the RoutePlannerInputData(route_lanesegments only as the dictionaries are ususally not
+         This method is a helper for pretty print of the RoutePlannerInputData(route_lane_segments only as the dictionaries are ususally not
          information we need to visualize for all road/lane segments at once ).
         """
         print_route_planner_input_data = "\n"
-        for road_segment_id in self.route_lanesegments:
+        for road_segment_id in self.route_lane_segments:
             print_route_planner_input_data = print_route_planner_input_data + "roadseg:" + str(road_segment_id) + "\t"
         #    print_route_planner_input_data = print_route_planner_input_data + str(lane_segment_ids) + "\n"
 

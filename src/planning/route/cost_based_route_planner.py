@@ -156,14 +156,14 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # search through all downstream lanes to to current lane
         at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = False
 
-        all_route_lanesegs_in_downstream_road_segment:RoadSegRoutePlanLaneSegments = route_plan_lane_segments[-1]
+        all_route_lane_segments_in_downstream_road_segment:RoadSegRoutePlanLaneSegments = route_plan_lane_segments[-1]
         lanesegs_in_downstream_road_segment_in_route:int = [] # list of lane segment IDs in the next road segment in route
-        for route_laneseg in all_route_lanesegs_in_downstream_road_segment:
-            lanesegs_in_downstream_road_segment_in_route.append(route_laneseg.e_i_lane_segment_id)
+        for route_lane_segment in all_route_lane_segments_in_downstream_road_segment:
+            lanesegs_in_downstream_road_segment_in_route.append(route_lane_segment.e_i_lane_segment_id)
         lanesegs_in_downstream_road_segment_in_route = np.array(lanesegs_in_downstream_road_segment_in_route)
 
-        for downstream_laneseg in lane_segment_base_data.as_downstream_lanes:
-            downstream_lane_segment_id = downstream_laneseg.e_i_lane_segment_id
+        for downstream_lane_segment in lane_segment_base_data.as_downstream_lanes:
+            downstream_lane_segment_id = downstream_lane_segment.e_i_lane_segment_id
 
             # All lane IDs in downstream roadsegment in route to the currently indexed roadsegment in the loop
             if downstream_lane_segment_id in lanesegs_in_downstream_road_segment_in_route:  # verify if the downstream lane is in the route (it may not be ex: fork/exit)
@@ -171,8 +171,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                 # find the index corresponding to the lane seg ID in the road segment
                 downstream_lane_segment_idx = np.where(lanesegs_in_downstream_road_segment_in_route==downstream_lane_segment_id)[0][0]
 
-                if(downstream_lane_segment_idx <len(all_route_lanesegs_in_downstream_road_segment)):
-                    downstream_routeseg = all_route_lanesegs_in_downstream_road_segment[downstream_lane_segment_idx]  # 0 th index is the last segment pushed into this struct
+                if(downstream_lane_segment_idx <len(all_route_lane_segments_in_downstream_road_segment)):
+                    downstream_routeseg = all_route_lane_segments_in_downstream_road_segment[downstream_lane_segment_idx]  # 0 th index is the last segment pushed into this struct
                                                                                                  # which is the downstream roadseg.
                 else:
                     raise IndexError("Cost Based Route Planner: downstream_lane_segment_idx not present in route_plan_lane_segments")
@@ -240,10 +240,10 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                 lane_end_cost = lane_end_cost_calc_from_downstream_segments
 
         # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
-        current_route_laneseg = RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
+        current_route_lane_segment = RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
                                                      e_cst_lane_occupancy_cost=lane_occupancy_cost, 
                                                      e_cst_lane_end_cost=lane_end_cost)
-        return (current_route_laneseg,no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
+        return (current_route_lane_segment,no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
 
 
 
@@ -260,7 +260,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         """
         
         valid = True
-        num_road_segments = len(route_data.route_lanesegments)
+        num_road_segments = len(route_data.route_lane_segments)
         a_i_road_segment_ids:List[int] = []
         a_Cnt_num_lane_segments:List[int] = []
         route_plan_lane_segments:RoadRoutePlanLaneSegments = []
@@ -270,8 +270,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         # index -> reversed_road_segment_idx_in_route
         # key -> road_segment_id
         # value -> lane_segment_ids
-        for  (road_segment_id, lane_segment_ids) in reversed(route_data.route_lanesegments.items()):
-            all_route_lanesegs_in_this_road_segment:RoadSegRoutePlanLaneSegments = []
+        for  (road_segment_id, lane_segment_ids) in reversed(route_data.route_lane_segments.items()):
+            all_route_lane_segments_in_this_road_segment:RoadSegRoutePlanLaneSegments = []
             no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = True # as the name suggests
             # if there is NO downstream lane (as defined in map) to the current road segment (any of its lanes) that is in the route
 
@@ -279,20 +279,20 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
             # value -> lane_segment_id
             for lane_segment_id in lane_segment_ids:
 
-                if lane_segment_id in route_data.route_lanesegs_base_as_dict:
+                if lane_segment_id in route_data.route_lane_segments_base_as_dict:
                     # Access all the lane segment lite data from lane segment dict
-                    current_lane_segment_base_data = route_data.route_lanesegs_base_as_dict[lane_segment_id]
+                    current_lane_segment_base_data = route_data.route_lane_segments_base_as_dict[lane_segment_id]
                 else:
-                    raise KeyError("Cost Based Route Planner: Lane segment not found in route_lanesegs_base_as_dict. Not \
+                    raise KeyError("Cost Based Route Planner: Lane segment not found in route_lane_segments_base_as_dict. Not \
                                     found lane_segment_id = ",lane_segment_id)
                 
-                current_route_laneseg, no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
+                current_route_lane_segment, no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
                     CostBasedRoutePlanner.lane_cost_calc(lane_segment_base_data = current_lane_segment_base_data,
                                                          route_plan_lane_segments = route_plan_lane_segments,
                                    no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
                                     no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
 
-                all_route_lanesegs_in_this_road_segment.append(current_route_laneseg)
+                all_route_lane_segments_in_this_road_segment.append(current_route_lane_segment)
 
             if(no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route):
                 raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current \
@@ -304,7 +304,7 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
             # append the road segment sepecific info , as the road seg iteration is reverse
             a_i_road_segment_ids.append(road_segment_id)
             a_Cnt_num_lane_segments.append(len(lane_segment_ids))
-            route_plan_lane_segments.append(all_route_lanesegs_in_this_road_segment)
+            route_plan_lane_segments.append(all_route_lane_segments_in_this_road_segment)
         
         # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning of the list
         # at each road segment loop (of length n)
