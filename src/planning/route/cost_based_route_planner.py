@@ -241,8 +241,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
         # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
         current_route_lane_segment = RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
-                                                     e_cst_lane_occupancy_cost=lane_occupancy_cost, 
-                                                     e_cst_lane_end_cost=lane_end_cost)
+                                                          e_cst_lane_occupancy_cost=lane_occupancy_cost, 
+                                                          e_cst_lane_end_cost=lane_end_cost)
         return (current_route_lane_segment,no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
 
 
@@ -261,8 +261,8 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         
         valid = True
         num_road_segments = len(route_data.route_lane_segments)
-        a_i_road_segment_ids:List[int] = []
-        a_Cnt_num_lane_segments:List[int] = []
+        road_segment_ids:List[int] = []
+        num_lane_segments:List[int] = []
         route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
 
@@ -302,18 +302,18 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
 
 
             # append the road segment sepecific info , as the road seg iteration is reverse
-            a_i_road_segment_ids.append(road_segment_id)
-            a_Cnt_num_lane_segments.append(len(lane_segment_ids))
+            road_segment_ids.append(road_segment_id)
+            num_lane_segments.append(len(lane_segment_ids))
             route_plan_lane_segments.append(all_route_lane_segments_in_this_road_segment)
         
         # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning of the list
         # at each road segment loop (of length n)
-        a_i_road_segment_ids.reverse()
-        a_Cnt_num_lane_segments.reverse()
+        road_segment_ids.reverse()
+        num_lane_segments.reverse()
         route_plan_lane_segments.reverse()
 
         return DataRoutePlan(e_b_is_valid=valid, 
                              e_Cnt_num_road_segments=num_road_segments, 
-                             a_i_road_segment_ids=np.array(a_i_road_segment_ids),
-                             a_Cnt_num_lane_segments=np.array(a_Cnt_num_lane_segments), 
+                             a_i_road_segment_ids=np.array(road_segment_ids),
+                             a_Cnt_num_lane_segments=np.array(num_lane_segments), 
                              as_route_plan_lane_segments=route_plan_lane_segments)

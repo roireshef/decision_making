@@ -31,7 +31,7 @@ class RoutePlannerInputData():
         self.route_lane_segments_base_as_dict:LaneSegmentBaseDict = {}      # dict: key - lane segment ID,
                                                                             #       value - LaneSegmentBase.
                                                                             # Should contain all the lane segments listed in Nav route road segments
-        self.route_roadsegs_as_dict: RoadSegmentDict = {}                   # dict: key - road segment ID,
+        self.route_road_segments_as_dict: RoadSegmentDict = {}              # dict: key - road segment ID,
                                                                             #       value - Road Segments.
                                                                             # Should contain all the road segments listed in Nav route
 
@@ -53,7 +53,7 @@ class RoutePlannerInputData():
     def _update_dict_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan)->None:
         """
          This method updates route_lane_segments_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
-                             route_roadsegs_as_dict : all the roadsegments in the route as a dictionary for fast access
+                             route_road_segments_as_dict : all the roadsegments in the route as a dictionary for fast access
         """
 
         for scene_lane_segment in scene.as_scene_lane_segments:
@@ -70,7 +70,7 @@ class RoutePlannerInputData():
 
             # Verify if these road segs are in NAV route plan.
             if road_segment_id in nav_plan.a_i_road_segment_ids: # Empty NAV Plan error would have been caught earlier
-                self.route_roadsegs_as_dict[road_segment_id] = scene_road_segment
+                self.route_road_segments_as_dict[road_segment_id] = scene_road_segment
 
 
 
@@ -91,8 +91,8 @@ class RoutePlannerInputData():
             #           insert in the dict
             #
             #  So this fails to check if all the road segs in NAV route are reported in the scene. We are doing that check and exception raise here
-            if road_segment_id in self.route_roadsegs_as_dict:
-                all_lane_segment_ids_in_this_road_segment = self.route_roadsegs_as_dict[road_segment_id].a_i_lane_segment_ids
+            if road_segment_id in self.route_road_segments_as_dict:
+                all_lane_segment_ids_in_this_road_segment = self.route_road_segments_as_dict[road_segment_id].a_i_lane_segment_ids
 
                 # Since this is a input validity check for which we have to loop over all road segs, it will cost O(n) extra if we do it upfront.
                 if all_lane_segment_ids_in_this_road_segment.size:
@@ -115,7 +115,7 @@ class RoutePlannerInputData():
     def reformat_input_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan)->None:
         """
         This method updates route_lane_segments_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
-                            route_roadsegs_as_dict : all the roadsegments in the route as a dictionary for fast access
+                            route_road_segments_as_dict : all the roadsegments in the route as a dictionary for fast access
                             route_lane_segments : an ordered dictionary: key -> road seg ids ordered as in route
                                                                         value -> ndaray of lane seg ids (ordered) as stored in the road seg structure
                             by invoking _update_dict_data and _update_routeplan_data methods in that order. Look at the method comments for more
