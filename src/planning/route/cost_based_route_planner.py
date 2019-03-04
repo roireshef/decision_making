@@ -188,6 +188,52 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
         return lane_end_cost,at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route
 
 
+
+    @staticmethod
+    def lane_cost_calc(laneseg_base_data: SceneLaneSegmentBase,route_plan_lane_segments: RoadRoutePlanLaneSegments,\
+                       no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route:bool) -> (RoutePlanLaneSegment, bool):
+        laneseg_id = laneseg_base_data.e_i_lane_segment_id
+
+        # -------------------------------------------
+        # Calculate lane occupancy costs for a lane
+        # -------------------------------------------
+        lane_occupancy_cost = CostBasedRoutePlanner.lane_occupancy_cost_calc(laneseg_base_data)
+        
+        # -------------------------------------------
+        # Calculate lane end costs (from lane occupancy costs)
+        # -------------------------------------------                
+        
+        if not route_plan_lane_segments: # if route_plan_lane_segments is empty indicating the last segment in route
+            if (lane_occupancy_cost == 1):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=1)
+                lane_end_cost = 1
+            else :
+                lane_end_cost = 0
+            no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = False
+            # Because this is the last road segment in (current) route  we don't want to trigger RoadSegmentLaneSegmentMismatch 
+            # exception by running diagnostics on the downstream to the last road segment, in route.
+
+
+        else:
+
+            lane_end_cost_calc_from_downstream_segments, at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = \
+                CostBasedRoutePlanner.lane_end_cost_calc(laneseg_base_data=laneseg_base_data,
+                                                         route_plan_lane_segments=route_plan_lane_segments)
+            no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
+                no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route and \
+                not(at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route)
+
+            if (lane_occupancy_cost == 1):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=1)
+                lane_end_cost = 1 
+            else:   
+                lane_end_cost = lane_end_cost_calc_from_downstream_segments
+
+        # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
+        current_route_laneseg = RoutePlanLaneSegment(e_i_lane_segment_id=laneseg_id,
+                                                     e_cst_lane_occupancy_cost=lane_occupancy_cost, 
+                                                     e_cst_lane_end_cost=lane_end_cost)
+        return (current_route_laneseg,no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
+
+
     @raises(IndexError)
     @raises(RoadSegmentLaneSegmentMismatch)
     @raises(KeyError)
@@ -226,47 +272,13 @@ class CostBasedRoutePlanner(RoutePlanner): # Should this be named binary cost ba
                 else:
                     raise KeyError("Cost Based Route Planner: Lane segment not found in route_lanesegs_base_as_dict. Not \
                                     found laneseg_id = ",laneseg_id)
-
-                # -------------------------------------------
-                # Calculate lane occupancy costs for a lane
-                # -------------------------------------------
-                lane_occupancy_cost = CostBasedRoutePlanner.lane_occupancy_cost_calc(current_laneseg_base_data)
                 
-                # -------------------------------------------
-                # Calculate lane end costs (from lane occupancy costs)
-                # -------------------------------------------                
+                current_route_laneseg, no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
+                    CostBasedRoutePlanner.lane_cost_calc(laneseg_base_data = current_laneseg_base_data,
+                                                         route_plan_lane_segments = route_plan_lane_segments,
+                                   no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
+                                    no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route)
 
-                if (reversed_roadseg_idx_in_route == 0): # the last road segment in the route; put all endcosts to 0
-                    if (lane_occupancy_cost == 1):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=1)
-                        lane_end_cost = 1
-                    else :
-                        lane_end_cost = 0
-                    no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = False
-                    # Because this is the last road segment in (current) route  we don't want to trigger RoadSegmentLaneSegmentMismatch 
-                    # exception by running diagnostics on the downstream to the last road segment, in route.
-
-
-                elif (reversed_roadseg_idx_in_route > 0):
-
-                    lane_end_cost_calc_from_downstream_segments, at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route = \
-                        CostBasedRoutePlanner.lane_end_cost_calc(laneseg_base_data=current_laneseg_base_data,
-                                                                 route_plan_lane_segments=route_plan_lane_segments)
-                    no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route = \
-                        no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route and \
-                        not(at_least_one_downstream_lane_to_current_lane_found_in_downstream_road_segment_in_route)
-
-                    if (lane_occupancy_cost == 1):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=1)
-                        lane_end_cost = 1 
-                    else:   
-                        lane_end_cost = lane_end_cost_calc_from_downstream_segments
-                else:
-                    raise IndexError("Cost Based Route Planner: Negative value for reversed_roadseg_idx_in_route. reversed_roadseg_idx_in_route = ",\
-                                    reversed_roadseg_idx_in_route)
-
-                # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
-                current_route_laneseg = RoutePlanLaneSegment(e_i_lane_segment_id=laneseg_id,
-                                                             e_cst_lane_occupancy_cost=lane_occupancy_cost, 
-                                                             e_cst_lane_end_cost=lane_end_cost)
                 all_route_lanesegs_in_this_roadseg.append(current_route_laneseg)
 
             if(no_downstream_lane_to_current_road_segment_found_in_downstream_road_segment_in_route):
