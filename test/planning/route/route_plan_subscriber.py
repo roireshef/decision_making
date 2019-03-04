@@ -4,19 +4,21 @@ import traceback
 
 from logging import Logger
 from typing import List
+from rte.python.logger.AV_logger import AV_Logger
 
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 
 from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.global_constants import DISTANCE_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_STATIC_RECEIVED
+from decision_making.src.global_constants import DISTANCE_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_STATIC_RECEIVED, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.src.planning.types import CartesianExtendedState, C_Y, FS_SX
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.state.map_state import MapState
@@ -75,8 +77,14 @@ class RoutePlanSubscriber(DmModule):
             route_plan = self._get_current_route_plan()
 
             # calculate the takeover message
-            takeover_msg = BehavioralPlanningFacade.set_takeover_message(route_plan_data= route_plan.s_Data , ego_state = mock_state.ego_state, scene_static = scene_static_data)
-            
+            behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING), 
+                                                trajectory_params=None,
+                                                visualization_msg=None, trigger_pos=None)
+
+            takeover_msg = behavior_facade_mock._mock_takeover_message(route_plan_data=route_plan.s_Data,
+                                                                        ego_state=mock_state.ego_state,
+                                                                        scene_static=scene_static_data)
+
             # publish takeover message
             self._publish_takeover(takeover_msg)
 
