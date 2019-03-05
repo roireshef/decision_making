@@ -197,17 +197,6 @@ class RoutePlannerInputData():
 
 
     @raises(KeyError)
-    def get_lane_segment_ids_for_road_segment(self, road_segment_id:int) -> ndarray:
-        """
-         This method returns ndarray(LaneSegmentID) of a given road segment id
-        """
-        if road_segment_id not in self._route_lane_segment_ids:
-            raise KeyError("Cost Based Route Planner: No entry for road_segment_id ", road_segment_id)
-
-        return self._route_lane_segment_ids[road_segment_id]
-
-
-    @raises(KeyError)
     def get_next_road_segment(self, road_segment_id:int) -> int:
         """
          This method returns next road segment id of a given road segment id
