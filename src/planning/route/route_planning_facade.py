@@ -51,11 +51,11 @@ class RoutePlanningFacade(DmModule):
             # Read inputs
             start_time = time.time()
             ss_base, ss_nav = self._get_current_scene_static()
-            route_planner_input = RoutePlannerInputData()
+            route_planner_input = RoutePlannerInputData().get_instance()
             route_planner_input.reformat_input_data(scene=ss_base, nav_plan=ss_nav)
 
             # Plan
-            route_plan = self.__planner.plan(route_planner_input)
+            route_plan = self.__planner.plan()
 
             # Write outputs
             self._publish_results(route_plan)
