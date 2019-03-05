@@ -29,13 +29,16 @@ class CostBasedRoutePlanner(RoutePlanner):
     def __init__(self):
         self._route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
-    def get_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
+    def _reset_route_plan_lane_segments(self):
+        self._route_plan_lane_segments:RoadRoutePlanLaneSegments = []
+
+    def _get_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
         return self._route_plan_lane_segments
     
-    def reverse_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
+    def _reverse_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
         return self._route_plan_lane_segments.reverse()
 
-    def append_to_route_plan_lane_segments(self, route_lane_segments: RoadSegRoutePlanLaneSegments) -> RoadRoutePlanLaneSegments:
+    def _append_to_route_plan_lane_segments(self, route_lane_segments: RoadSegRoutePlanLaneSegments) -> RoadRoutePlanLaneSegments:
         return self._route_plan_lane_segments.append(route_lane_segments)
 
 
@@ -167,7 +170,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         # search through all downstream lanes to to current lane
         downstream_lane_found_in_route = False
 
-        downstream_route_lane_segments: RoadSegRoutePlanLaneSegments = self.get_route_plan_lane_segments()[-1]
+        downstream_route_lane_segments: RoadSegRoutePlanLaneSegments = self._get_route_plan_lane_segments()[-1]
         
         downstream_route_lane_segment_ids: int = [] # list of lane segment IDs in the next road segment in route
 
@@ -220,7 +223,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         lane_occupancy_cost = CostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
         
         # Calculate lane end costs (from lane occupancy costs)
-        if not self.get_route_plan_lane_segments(): # if route_plan_lane_segments is empty indicating the last segment in route
+        if  not self._get_route_plan_lane_segments(): # if route_plan_lane_segments is empty indicating the last segment in route
             if (lane_occupancy_cost == 1):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=1)
                 lane_end_cost = 1
             else :
@@ -256,7 +259,11 @@ class CostBasedRoutePlanner(RoutePlanner):
         route_lane_segments:RoadSegRoutePlanLaneSegments = []
 
         downstream_road_segment_not_found = True # as the name suggests
-        # if there is NO downstream lane (as defined in map) to the current road segment (any of its lanes) that is in the route
+                                                 # if there is NO downstream lane (as defined in map) to the current 
+                                                 # road segment (any of its lanes) that is in the route
+        
+        if not self._get_route_plan_lane_segments(): # check if this is the last road segment in the nav plan
+           downstream_road_segment_not_found = False
 
         downstream_lane_segment_ids_for_road_segment:List[List[int]] = []
         downstream_lane_segment_ids:List[int] = []
@@ -272,7 +279,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             lane_segment_base_data = route_data.get_lane_segment_base(lane_segment_id)
             
             route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = \
-                                                                                                       self.lane_cost_calc(lane_segment_base_data=lane_segment_base_data)
+                                                                                               self.lane_cost_calc(lane_segment_base_data=lane_segment_base_data)
 
             downstream_road_segment_not_found = downstream_road_segment_not_found and not(downstream_lane_found_in_route)
 
@@ -280,12 +287,14 @@ class CostBasedRoutePlanner(RoutePlanner):
 
             route_lane_segments.append(route_lane_segment)
 
+    
         if (downstream_road_segment_not_found):
-            raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current \
-                road segment (lane segments) were found in the downstream road segment described in the navigation route plan",\
-                "road_segment_id",road_segment_id,"lane_segment_ids",lane_segment_ids,"next(road_segment_id)",\
-                    route_data.get_next_road_segment(road_segment_id)," route_plan",route_data.get_nav_plan(),\
-                        "downstream_lane_segment_ids_for_road_segment ",downstream_lane_segment_ids_for_road_segment)
+            raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current" +
+                                                 "road segment (lane segments) were found in the downstream road segment described" +
+                                                 "in the navigation route plan road_segment_id ", road_segment_id, " lane_segment_ids", 
+                                                 lane_segment_ids, " next(road_segment_id)", 
+                                                 route_data.get_next_road_segment(road_segment_id), " route_plan", route_data.get_nav_plan(),
+                                                 "downstream_lane_segment_ids_for_road_segment ", downstream_lane_segment_ids_for_road_segment)
         
         return route_lane_segments
 
@@ -305,6 +314,9 @@ class CostBasedRoutePlanner(RoutePlanner):
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # key -> road_segment_id
         # value -> lane_segment_ids
+
+        self._reset_route_plan_lane_segments()
+
         for (road_segment_id, lane_segment_ids) in reversed(route_data.get_lane_segment_ids_for_route().items()):
             
             route_lane_segments = self.road_segment_cost_calc(road_segment_id=road_segment_id)
@@ -314,13 +326,13 @@ class CostBasedRoutePlanner(RoutePlanner):
             
             num_lane_segments.append( len(lane_segment_ids) )
 
-            self.append_to_route_plan_lane_segments(route_lane_segments=route_lane_segments)
+            self._append_to_route_plan_lane_segments(route_lane_segments=route_lane_segments)
         
         # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning of the list
         # at each road segment loop (of length n)
         road_segment_ids.reverse()
         num_lane_segments.reverse()
-        self.reverse_route_plan_lane_segments()
+        self._reverse_route_plan_lane_segments()
 
         num_road_segments = len(road_segment_ids)
 
@@ -330,4 +342,4 @@ class CostBasedRoutePlanner(RoutePlanner):
                              e_Cnt_num_road_segments=num_road_segments, 
                              a_i_road_segment_ids=np.array(road_segment_ids),
                              a_Cnt_num_lane_segments=np.array(num_lane_segments), 
-                             as_route_plan_lane_segments=self.get_route_plan_lane_segments())
+                             as_route_plan_lane_segments=self._get_route_plan_lane_segments())
