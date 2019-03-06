@@ -197,7 +197,7 @@ class WerlingPlanner(TrajectoryPlanner):
             NumpyUtils.is_in_limits(lon_velocity, cost_params.velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, cost_params.lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, cost_params.lat_acceleration_limits) &
-            (np.abs(curvature) < MAX_CURVATURE), axis=1)
+            NumpyUtils.is_in_limits(curvature, np.array([-MAX_CURVATURE, MAX_CURVATURE])), axis=1)
 
         return np.argwhere(conforms).flatten()
 
