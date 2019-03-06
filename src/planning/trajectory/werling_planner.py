@@ -157,7 +157,8 @@ class WerlingPlanner(TrajectoryPlanner):
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
         filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
-                               global_time_sample, self._predictor, self.dt, reference_route)
+                               global_time_sample, self._predictor, self.dt, reference_route,
+                               poly_coefs[refiltered_indices], T_s)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
@@ -231,7 +232,8 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame) -> np.ndarray:
+                      predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame,
+                      poly_coefs: np.array, T_s: float) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -241,17 +243,25 @@ class WerlingPlanner(TrajectoryPlanner):
                 global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
-        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :param dt: time step of ctrajectories
         :return: numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
         """
         ''' deviation from goal cost '''
-        last_fpoints = ftrajectories[:, -1, :]
-        trajectory_end_goal_diff = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
-                                             last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
-        trajectory_end_goal_dist = np.sqrt(trajectory_end_goal_diff[0] ** 2 +
-                                           (params.dist_from_goal_lat_factor * trajectory_end_goal_diff[1]) ** 2)
-        dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
+        # calculate trajectory end-point in Frenet coordinates
+        end_fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs[:, :6], np.array([T_s]))
+        end_fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs[:, 6:], np.array([T_s]))
+
+        # calculate distance from trajectory end-point to the goal
+        dist_from_goal_s = end_fstates_s[:, 0, 0] - goal_in_frenet[FS_SX]
+        dist_from_goal_d = end_fstates_d[:, 0, 0] - goal_in_frenet[FS_DX]
+        dist_from_goal = np.sqrt(dist_from_goal_s ** 2 + (params.dist_from_goal_lat_factor * dist_from_goal_d) ** 2)
+
+        # convert the distance to cost using sigmoid
+        # (subtract from it sigmoid value for dist=0 to get zero cost for dist=0)
+        dist_from_goal_costs = Math.clipped_sigmoid(dist_from_goal - params.dist_from_goal_cost.offset,
+                                                    params.dist_from_goal_cost.w, params.dist_from_goal_cost.k) - \
+                               Math.clipped_sigmoid(-params.dist_from_goal_cost.offset,
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
         ''' point-wise costs: obstacles, deviations, jerk '''
