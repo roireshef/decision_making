@@ -245,6 +245,9 @@ class WerlingPlanner(TrajectoryPlanner):
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :param dt: time step of ctrajectories
+        :param reference_route: the reference route (GFF) of TP
+        :param poly_coefs: Nx12 matrix of coefficients of polynomials for s and for d for all trajectories
+        :param T_s: TP longitudinal planning time
         :return: numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
         """
         ''' deviation from goal cost '''
