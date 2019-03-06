@@ -95,8 +95,9 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_no
                                        dist_from_goal_cost=None, dist_from_goal_lat_factor=None, lon_jerk_cost=None,
                                        lat_jerk_cost=None, velocity_limits=None, lon_acceleration_limits=None,
                                        lat_acceleration_limits=None)
-    pointwise_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, cost_params, time_points,
-                                                                    predictor, reference_route)
+    obj_fstates = dict([(obj.obj_id, obj.map_state.lane_fstate) for obj in state.dynamic_objects])
+    pointwise_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, obj_fstates, cost_params,
+                                                                    time_points, predictor, reference_route)
     total_costs = np.sum(pointwise_costs, axis=1)  # costs per trajectory
 
     assert total_costs[0] < total_costs[1]              # obstacle-free route (smallest T_d)

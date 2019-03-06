@@ -343,13 +343,15 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
     # duplicate frenet_pixels for all time samples
     frenet_pixels = np.repeat(frenet_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
 
+    obj_fstates = dict([(obj.obj_id, obj.map_state.lane_fstate) for obj in state.dynamic_objects])
     safe_traj_indices, safe_distances = \
-        planner.filter_trajectories_by_safety(state, time_samples, frenet_pixels)
+        planner.filter_trajectories_by_safety(state, obj_fstates, time_samples, frenet_pixels)
 
     # calculate cost components for all image pixels by building a static "trajectory" for every pixel
     pointwise_costs = \
-        TrajectoryPlannerCosts.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
-                                                       planner.predictor, planner.dt, frenet, safe_distances)
+        TrajectoryPlannerCosts.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, obj_fstates,
+                                                       cost_params, time_samples, planner.predictor, planner.dt,
+                                                       frenet, safe_distances)
 
     pixel_costs = (pointwise_costs[:, :, 0] + pointwise_costs[:, :, 1]).reshape(height, width, time_samples.shape[0])
     return pixels2D, pixel_costs

@@ -18,7 +18,7 @@ class Math:
 
     @staticmethod
     def clipped_sigmoid(x: np.ndarray, w: float, k: float,
-                         min_clip: float = -EXP_CLIP_TH, max_clip: float = EXP_CLIP_TH) -> np.ndarray:
+                        min_clip: float = -EXP_CLIP_TH, max_clip: float = EXP_CLIP_TH) -> np.ndarray:
         """
         compute sigmoid with clipping the exponent between [-EXP_CLIP_TH, EXP_CLIP_TH]
         :param x: sigmoid function is f(x) = w / (1 + exp(k * x))
@@ -98,6 +98,18 @@ class Math:
         rounded_val = np.round(value * (1 / step)) / (1 / step)
 
         return rounded_val
+
+    @staticmethod
+    def floor_to_step(value, step):
+        """
+        Floor the value to nearest multiple of step
+        :param value: the value to be floored.
+        :param step: the rounding step
+        :return: a value floored to a multiple of step
+        """
+        floored_val = np.floor(value * (1 / step)) / (1 / step)
+
+        return floored_val
 
     @staticmethod
     def roots(p):

@@ -1,6 +1,7 @@
 from decision_making.paths import Paths
 from decision_making.src.global_constants import FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID, \
-    SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, HOST_SAFETY_MARGIN_TIME_DELAY
+    SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, HOST_SAFETY_MARGIN_TIME_DELAY, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import TextReadWrite
 from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
@@ -18,17 +19,18 @@ against the values used in the target machine.
 
 
 def main():
-    weights = BP_JERK_S_JERK_D_TIME_WEIGHTS
     dynamic_actions = [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE]
     resources_directory = 'predicates'
     # Quintic predicates creation
     quintic_predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID,
                                                                 FILTER_V_T_GRID, T_m=SPECIFICATION_MARGIN_TIME_DELAY,
                                                                 predicates_resources_target_directory=resources_directory)
-    quintic_predicates_creator.create_predicates(weights, dynamic_actions)
+
+    quintic_predicates_creator.create_predicates(BP_JERK_S_JERK_D_TIME_WEIGHTS, dynamic_actions)
+
     # Quartic predicates creation
     quartic_predicates_creator = QuarticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_V_T_GRID, resources_directory)
-    quartic_predicates_creator.create_predicates(weights)
+    quartic_predicates_creator.create_predicates(BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE)
     # Create MetaData log file
     document_created_predicates(resources_directory)
 
@@ -44,7 +46,7 @@ def document_created_predicates(target_directory):
                 'FILTER_S_T_GRID : ' + str(FILTER_S_T_GRID),
                 'FILTER_V_T_GRID : ' + str(FILTER_V_T_GRID),
                 'SPECIFICATION_MARGIN_TIME_DELAY : ' + str(SPECIFICATION_MARGIN_TIME_DELAY),
-                'SAFETY_MARGIN_TIME_DELAY : ' + str(HOST_SAFETY_MARGIN_TIME_DELAY)]
+                'HOST_SAFETY_MARGIN_TIME_DELAY : ' + str(HOST_SAFETY_MARGIN_TIME_DELAY)]
     TextReadWrite.write(lines_in, output_predicate_file_path)
 
 

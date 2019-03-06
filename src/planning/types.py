@@ -72,6 +72,8 @@ FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA = 0, 1, 2, 3, 4, 5
 
 # [FS_X, FS_V, FS_A]
 FrenetState1D = np.ndarray
+# array of FrenetState1D
+FrenetStates1D = np.ndarray
 # A Frenet-Frame trajectory: a numpy matrix of FrenetState1D [:, [FS_X, FS_V, FS_A]]
 FrenetTrajectory1D = np.ndarray
 # Frenet-Frame trajectories: a tensor of FrenetTrajectory1D [:, :, [FS_X, FS_V, FS_A]]

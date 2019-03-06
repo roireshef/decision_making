@@ -47,7 +47,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
         :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
         """
-
         # Action specification
         # TODO: replace numpy array with fast sparse-list implementation
         action_specs = np.full(len(action_recipes), None)
@@ -63,7 +62,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
 
         # ActionSpec filtering
-        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state, state)
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
@@ -115,9 +114,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
             state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters.reference_route,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
+        print("Chosen behavioral action recipe %s (ego_timestamp: %.3f, ego_vel=%.3f, obj_vel=%.3f)" %
+              (action_recipes[selected_action_index], state.ego_state.timestamp_in_sec,
+               state.ego_state.cartesian_state[3], state.dynamic_objects[0].cartesian_state[3]))
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
                           action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
                           selected_action_spec, state.ego_state.timestamp_in_sec)
-
         return trajectory_parameters, baseline_trajectory, visualization_message

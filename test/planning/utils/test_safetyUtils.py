@@ -16,15 +16,15 @@ def default_object_size():
     'index, ego_v0, ego_vT, ego_lane0, ego_laneT, ego_T_d, obj_v0, obj_vT, obj_lane0, obj_laneT, obj_lon0, obj_T_d, expected', [
      # |           EGO          |              OBJECT         |
   # idx| v0  vT lane0 laneT T_d | v0, vT lane0 laneT lon0 T_d |expected
-     (0, 10, 10, 0, 0, T_s(), 10, 10, 0, 0, 15, T_s(), True),# move with the same velocity 10 and start on the safe distance
-     (1, 20, 20, 0, 0, T_s(), 10, 10, 0, 0, 15, T_s(), False),# the object ahead is slower, therefore unsafe
-     (2, 30, 30, 0, 1, T_s(), 30, 30, 0, 0, 35, T_s(), True),# F moves with the same velocity as ego, then safe
-     (3, 30, 30, 0, 1, T_s(), 20, 20, 0, 0, 130, T_s(), False),# becomes unsafe longitudinally, before it becomes safe laterally
-     (4, 30, 30, 0, 1, 5, 20, 20, 0, 0, 130, T_s(), True),# becomes unsafe longitudinally, after it becomes safe laterally, since T_d=5
-     (5, 30, 30, 0, 1, 3.0, 10, 10, 0, 0, 165, T_s(), False),# ego_overtakes slow obj with T_d not small enough
-     (6, 30, 30, 0, 1, 2.9, 10, 10, 0, 0, 170, T_s(), True),# ego_overtakes slow obj with small enough T_d
-     (7, 30, 30, 0, 1, 5, 10, 10, 0, 0, 190, T_s(), False),# ego_overtakes slow obj that is not far enough for T_d=5
-     (8, 30, 30, 0, 1, 5, 10, 10, 0, 0, 195, T_s(), True)# ego_overtakes slow obj that is far enough for T_d=5
+     (0, 30, 30, 0, 0, T_s(), 24, 24, 0, 0, 35, T_s(), True),# move with the same velocity 10 and start on the safe distance
+     (1, 20, 20, 0, 0, T_s(), 10, 10, 0, 0, 35, T_s(), False),# the object ahead is slower, therefore unsafe
+     (2, 30, 30, 0, 1, T_s(), 30, 30, 0, 0, 80, T_s(), True),# F moves with the same velocity as ego, then safe
+     (3, 30, 30, 0, 1, T_s(), 20, 20, 0, 0, 90, T_s(), False),# becomes unsafe longitudinally, before it becomes safe laterally
+     (4, 30, 30, 0, 1, 5, 20, 20, 0, 0, 90, T_s(), True),# becomes unsafe longitudinally, after it becomes safe laterally, since T_d=5
+     (5, 30, 30, 0, 1, 3.0, 10, 10, 0, 0, 70, T_s(), False),# ego_overtakes slow obj with T_d not small enough
+     (6, 30, 30, 0, 1, 3.0, 10, 10, 0, 0, 75, T_s(), True),# ego_overtakes slow obj with small enough T_d
+     (7, 30, 30, 0, 1, 5, 10, 10, 0, 0, 90, T_s(), False),# ego_overtakes slow obj that is not far enough for T_d=5
+     (8, 30, 30, 0, 1, 5, 10, 10, 0, 0, 100, T_s(), True)# ego_overtakes slow obj that is far enough for T_d=5
     ]
 )
 def test_calcSafetyForTrajectories_safetyWrtFrontObject_allCasesShouldComplyRSS(
@@ -60,14 +60,14 @@ def test_calcSafetyForTrajectories_safetyWrtFrontObject_allCasesShouldComplyRSS(
     'index, ego_v0, ego_vT, ego_lane0, ego_laneT, ego_T_d, obj_v0, obj_vT, obj_lane0, obj_laneT, obj_lon0, obj_T_d, expected', [
      # |           EGO          |              OBJECT         |
   # idx| v0  vT lane0 laneT T_d | v0, vT lane0 laneT lon0 T_d |expected
-     (0, 30, 30, 0, 1, T_s(), 30, 30, 1, 1, -130, T_s(), True),# fast ego is safe wrt fast LB (130 m behind ego)
-     (1, 20, 30, 0, 1, T_s(), 30, 30, 1, 1, -130, T_s(), False),# accelerating ego is unsafe wrt faster LB (130 m behind ego)
-     (2, 10, 20, 0, 1, 6, 30, 30, 1, 1, -230, T_s(), False),# ego performs dangerous cut-in of LB: ego enters to corridor while lon_unsafe
-     (3, 10, 20, 0, 1, 3, 30, 30, 1, 1, -240, T_s(), True),# ego enters to corridor of LB when it safe lon.
-     (4, 30, 30, 0, 1, T_s(), 20, 20, 1, 1, -20, T_s(), True),# safe wrt to close LB: becomes safe lon. before it becomes unsafe lat
-     (5, 30, 30, 0, 1, T_s(), 20, 20, 1, 1, -15, T_s(), False),# dangerous cut-in of LB: becomes safe lon. after it becomes unsafe laterally
+     (0, 30, 30, 0, 1, T_s(), 30, 30, 1, 1, -80, T_s(), True),# fast ego is safe wrt fast LB (130 m behind ego)
+     (1, 20, 30, 0, 1, T_s(), 30, 30, 1, 1, -70, T_s(), False),# accelerating ego is unsafe wrt faster LB (130 m behind ego)
+     (2, 10, 20, 0, 1, 6, 30, 30, 1, 1, -150, T_s(), False),# ego performs dangerous cut-in of LB: ego enters to corridor while lon_unsafe
+     (3, 10, 20, 0, 1, 3, 30, 30, 1, 1, -160, T_s(), True),# ego enters to corridor of LB when it safe lon.
+     (4, 30, 30, 0, 1, T_s(), 20, 20, 1, 1, -45, T_s(), True),# safe wrt to close LB: becomes safe lon. before it becomes unsafe lat
+     (5, 30, 30, 0, 1, T_s(), 20, 20, 1, 1, -40, T_s(), False),# dangerous cut-in of LB: becomes safe lon. after it becomes unsafe laterally
      (6, 10, 30, 0, 1, 6, 9, 9, 1, 1, -40, T_s(), True),# ego is safe wrt close slow LB (9 m/s, 40 m behind ego)
-     (7, 10, 30, 0, 1, T_s(), 30, 30, 1, 1, -20, T_s(), True),# LB moves to ego's lane behind ego on unsafe distance, but ego is safe because its rear obj's blame
+     (7, 10, 30, 0, 0, T_s(), 30, 30, 1, 0, -110, T_s(), True),# LB moves to ego's lane behind ego on unsafe distance, but ego is safe because its rear obj's blame
      (8, 30, 30, 0, 1, T_s(), 30, 30, 1, 0, -30, T_s(), False),# ego & LB move one towards another laterally; unsafe because of ego blame
      (9, 30, 30, 0, 1, T_s(), 30, 30, 1, 0, -30, 3, False)# ego & LB move one towards another laterally. At blame time ego moves laterally slower than thresh, but its actions is toward LB, then it's blamed
     ]
@@ -156,7 +156,7 @@ def test_calcSafetyForTrajectories_safetyWrtLeftFrontObject_allCasesShouldComply
      (7, 30, 30, 0, 1, T_s(), 30, 30, 1, 0, 0, T_s(), False),# obj & ego move laterally one toward another, then unsafe
      (8, 30, 30, 0, 1, T_s(), 30, 30, 1, 0, 0, 4, False),# at blame time ego moves laterally very slow, but the action is towards the object, then unsafe
      (9, 30, 30, 2, 1, T_s(), 30, 30, 1, 0, 0, T_s(), True),# obj & ego move laterally to the right, keeping lateral distance, and always safe
-    (10, 10, 20, 0, 1, T_s(), 30, 30, 1, 1, 0, T_s(), True),# ego is safe wrt close but much faster L (becomes LF)
+    (10, 10, 10, 0, 1, T_s(), 30, 30, 1, 1, 0, T_s(), True),# ego is safe wrt close but much faster L (becomes LF)
     (11, 25, 30, 0, 0, T_s(), 30, 30, 1, 0, 0, T_s(), False)# ego moves on its lane, L performs unsafe cut-in; ego is unsafe since L is not rear object
     ]
 )

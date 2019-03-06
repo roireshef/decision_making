@@ -1,12 +1,13 @@
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import HOST_SAFETY_MARGIN_TIME_DELAY, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
-    LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_RESPONSE, LAT_SAFETY_ACCEL_DURING_RESPONSE, \
-    LONGITUDINAL_SAFETY_MIN_DIST, EMERGENCY_BRAKE_ACC, ACTOR_SAFETY_MARGIN_TIME_DELAY
+from decision_making.src.global_constants import HOST_SAFETY_MARGIN_TIME_DELAY, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, \
+    LAT_VEL_BLAME_THRESH, LAT_SAFETY_ACCEL_DURING_RESPONSE, LONGITUDINAL_SAFETY_MIN_DIST, EMERGENCY_DECELERATION, \
+    ACTOR_SAFETY_MARGIN_TIME_DELAY, TRAJECTORY_TIME_RESOLUTION, EPS, LON_SAFETY_ACCEL_DURING_RESPONSE
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX, FS_SV, FS_DX, FS_DV, \
-    ObjectSizeArray, OBJ_LENGTH, OBJ_WIDTH
+    ObjectSizeArray, OBJ_LENGTH, OBJ_WIDTH, FrenetTrajectory2D
 from decision_making.src.state.state import ObjectSize
 
 
@@ -81,7 +82,7 @@ class SafetyUtils:
 
     @staticmethod
     def _get_distances_per_obj(ego_trajectories: FrenetTrajectories2D, ego_size: ObjectSizeArray,
-                               obj_trajectories: FrenetTrajectories2D, obj_size: ObjectSizeArray) -> np.array:
+                               obj_trajectory: FrenetTrajectory2D, obj_size: ObjectSizeArray) -> np.array:
         """
         Calculate safety boolean tensor for different ego Frenet trajectories and a SINGLE object.
         Safety definition by the RSS paper: an object is defined safe if it's safe either longitudinally OR laterally.
@@ -91,7 +92,7 @@ class SafetyUtils:
             (3) blame determination using the combination of the above results.
         :param ego_trajectories: ego frenet trajectories: 3D tensor of shape: trajectories_num x timestamps_num x 6
         :param ego_size: array of size 2: ego length, ego width
-        :param obj_trajectories: object's frenet trajectories: 2D matrix of shape timestamps_num x 6
+        :param obj_trajectory: object's Frenet trajectory: 2D matrix of shape timestamps_num x 6
         :param obj_size: one or array of arrays of size 2: i-th row is i-th object's size
         :return: 3D matrix of shape: trajectories_num x timestamps_num x 2
         """
@@ -100,65 +101,94 @@ class SafetyUtils:
 
         # calculate longitudinal safety
         lon_safe_dist = SafetyUtils._get_lon_safe_dist(ego_trajectories, HOST_SAFETY_MARGIN_TIME_DELAY,
-                                                       obj_trajectories, ACTOR_SAFETY_MARGIN_TIME_DELAY, lon_margin)
+                                                       obj_trajectory, ACTOR_SAFETY_MARGIN_TIME_DELAY, lon_margin)
         # calculate lateral safety
         lat_safe_dist, lat_vel_blame = \
             SafetyUtils._get_lat_safe_dist(ego_trajectories, HOST_SAFETY_MARGIN_TIME_DELAY,
-                                           obj_trajectories, ACTOR_SAFETY_MARGIN_TIME_DELAY, lat_margin)
+                                           obj_trajectory, ACTOR_SAFETY_MARGIN_TIME_DELAY, lat_margin)
 
         # calculate combined longitudinal and lateral safe distances
         safe_distances = \
-            SafetyUtils._calc_combined_distances(ego_trajectories[..., FS_SX], obj_trajectories[..., FS_SX],
+            SafetyUtils._calc_combined_distances(ego_trajectories[..., FS_SX], obj_trajectory[..., FS_SX],
                                                  lon_safe_dist, lat_safe_dist, lat_vel_blame, lon_margin)
         return safe_distances
 
     @staticmethod
     def _get_lon_safe_dist(ego_trajectories: FrenetTrajectories2D, ego_response_time: float,
-                           obj_trajectories: FrenetTrajectories2D, obj_response_time: float,
-                           margin: float, max_brake: float = -EMERGENCY_BRAKE_ACC) -> np.array:
+                           obj_trajectory: FrenetTrajectory2D, obj_response_time: float,
+                           margin: float, max_brake: float = EMERGENCY_DECELERATION) -> np.array:
         """
         Calculate longitudinal safety between ego and another object for all timestamps.
         Longitudinal safety between two objects considers only their longitudinal data: longitude and longitudinal velocity.
         Longitudinal RSS formula considers distance reduction during the reaction time and difference between
         objects' braking distances.
         An object is defined safe if it's safe either longitudinally OR laterally.
-        :param ego_trajectories: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
+        :param ego_trajectories: ego Frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_response_time: [sec] ego response time
-        :param obj_trajectories: object's frenet trajectories: 2D matrix: timestamps_num x 6
+        :param obj_trajectory: object's Frenet trajectory: 2D matrix: timestamps_num x 6
         :param obj_response_time: [sec] object's response time
         :param margin: [m] cars' lengths half sum
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: normalized longitudinal safety distance per timestamp. 2D matrix shape: traj_num x timestamps_num
         """
         # extract the relevant longitudinal data from the trajectories
-        ego_lon, ego_vel = ego_trajectories[..., FS_SX], ego_trajectories[..., FS_SV]
-        obj_lon, obj_vel = obj_trajectories[..., FS_SX], obj_trajectories[..., FS_SV]
+        ego_lon, ego_vel, ego_lat = ego_trajectories[..., FS_SX], ego_trajectories[..., FS_SV], ego_trajectories[..., FS_DX]
+        ego_trajectories_s = ego_trajectories[..., :FS_DX]
+        if ego_trajectories.ndim == 2:  # single ego trajectory
+            ego_lon = ego_lon[np.newaxis]
+            ego_vel = ego_vel[np.newaxis]
+            ego_lat = ego_lat[np.newaxis]
+            ego_trajectories_s = ego_trajectories_s[np.newaxis]
 
-        # determine which object is in front (per trajectory and timestamp)
-        lon_relative_to_obj = ego_lon - obj_lon
-        sign_of_lon_relative_to_obj = np.sign(lon_relative_to_obj)
-        ego_ahead = (sign_of_lon_relative_to_obj > 0).astype(int)
+        obj_lon, obj_vel, obj_lat = obj_trajectory[:, FS_SX], obj_trajectory[:, FS_SV], obj_trajectory[:, FS_DX]
 
-        # The worst-case velocity of the rear object (either ego or another object) may increase during its reaction
-        # time, since it may accelerate before it starts to brake.
-        ego_vel_after_reaction_time = ego_vel + (1 - ego_ahead) * ego_response_time * LON_SAFETY_ACCEL_DURING_RESPONSE
-        obj_vel_after_reaction_time = obj_vel + ego_ahead * obj_response_time * LON_SAFETY_ACCEL_DURING_RESPONSE
+        # find trajectories, for which ego is ahead the object, when they are closest laterally
+        min_lat_dist_times = np.argmin(np.abs(ego_lat - obj_lat), axis=-1)
+        ego_ahead = (ego_lon[np.arange(ego_lon.shape[0]), min_lat_dist_times] > obj_lon[min_lat_dist_times])
+        ego_behind = np.logical_not(ego_ahead)
 
-        # longitudinal RSS formula considers distance reduction during the reaction time and difference between
-        # objects' braking distances
-        ego_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * HOST_SAFETY_MARGIN_TIME_DELAY ** 2
-        obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * ACTOR_SAFETY_MARGIN_TIME_DELAY ** 2
-        min_safe_dist = np.maximum(np.divide(sign_of_lon_relative_to_obj * (obj_vel_after_reaction_time ** 2 -
-                                                                            ego_vel_after_reaction_time ** 2),
-                                             2 * max_brake), 0) + \
-                        (1 - ego_ahead) * (ego_vel * ego_response_time + ego_acceleration_dist) + \
-                        ego_ahead * (obj_vel * obj_response_time + obj_acceleration_dist) + margin
+        marginal_safe_dist = np.zeros_like(ego_lon)
 
-        return sign_of_lon_relative_to_obj * lon_relative_to_obj - min_safe_dist
+        if ego_ahead.any() > 0:
+            ego_ahead_lon = ego_lon[ego_ahead]
+            ego_ahead_vel = ego_vel[ego_ahead]
+
+            # The worst-case velocity of the rear object (either ego or another object) may increase during its reaction
+            # time, since it may accelerate before it starts to brake.
+            obj_vel_after_reaction_time = obj_vel + obj_response_time * LON_SAFETY_ACCEL_DURING_RESPONSE
+
+            # longitudinal RSS formula considers distance reduction during the reaction time and difference between
+            # objects' braking distances
+            obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * ACTOR_SAFETY_MARGIN_TIME_DELAY ** 2
+            min_safe_dist = np.maximum((obj_vel_after_reaction_time ** 2 - ego_ahead_vel ** 2) / (2 * max_brake), 0) + \
+                            (obj_vel * obj_response_time + obj_acceleration_dist) + margin
+            marginal_safe_dist[ego_ahead] = ego_ahead_lon - obj_lon - min_safe_dist
+
+        if ego_behind.any():
+            ego_behind_lon = ego_lon[ego_behind]
+            ego_behind_vel = ego_vel[ego_behind]
+
+            # extrapolate ego trajectories ego_response_time seconds beyond their end state
+            dt = TRAJECTORY_TIME_RESOLUTION
+            predictor = RoadFollowingPredictor(None)
+            extrapolated_times = np.arange(dt, ego_response_time + EPS, dt)
+            last_ego_states_s = ego_trajectories_s[ego_behind, -1]
+            ego_extrapolation = predictor.predict_1d_frenet_states(last_ego_states_s, extrapolated_times)
+
+            ext_ego_lon = np.concatenate((ego_behind_lon, ego_extrapolation[..., FS_SX]), axis=1)
+            ext_ego_vel = np.concatenate((ego_behind_vel, ego_extrapolation[..., FS_SV]), axis=1)
+
+            # we assume ego continues its trajectory during its reaction time, so we compute the difference between
+            # object's braking distance from any moment and delayed braking distance of ego
+            delay_shift = ego_extrapolation.shape[1]
+            braking_distances_diff = (ext_ego_vel[:, delay_shift:] ** 2 - obj_vel ** 2) / (2 * max_brake)
+            marginal_safe_dist[ego_behind] = obj_lon - ext_ego_lon[:, delay_shift:] - braking_distances_diff - margin
+
+        return marginal_safe_dist if ego_trajectories.ndim > 2 else marginal_safe_dist[0]
 
     @staticmethod
     def _get_lat_safe_dist(ego_trajectories: FrenetTrajectories2D, ego_response_time: float,
-                           obj_trajectories: FrenetTrajectories2D, obj_response_time: float,
+                           obj_trajectory: FrenetTrajectory2D, obj_response_time: float,
                            margin: float, max_brake: float = -LAT_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate lateral safety between ego and another object for all timestamps.
@@ -168,7 +198,7 @@ class SafetyUtils:
         An object is defined safe if it's safe either longitudinally OR laterally.
         :param ego_trajectories: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_response_time: [sec] object1 response time
-        :param obj_trajectories: object's frenet trajectories: 2D matrix: timestamps_num x 6
+        :param obj_trajectory: object's frenet trajectory: 2D matrix: timestamps_num x 6
         :param obj_response_time: [sec] object2 response time
         :param margin: [m] half sum of objects' widths + mu (mu is from Mobileye's paper)
         :param max_brake: [m/s^2] maximal deceleration of both objects
@@ -177,7 +207,7 @@ class SafetyUtils:
         """
         # extract the relevant lateral data from the trajectories
         ego_lat, ego_lat_vel = ego_trajectories[..., FS_DX], ego_trajectories[..., FS_DV]
-        obj_lat, obj_lat_vel = obj_trajectories[..., FS_DX], obj_trajectories[..., FS_DV]
+        obj_lat, obj_lat_vel = obj_trajectory[:, FS_DX], obj_trajectory[:, FS_DV]
 
         # determine which object is on the left side (per trajectory and timestamp)
         lat_relative_to_obj = ego_lat - obj_lat

@@ -110,13 +110,13 @@ class FilterLimitsViolatingTrajectory(RecipeFilter):
             ego_state = behavioral_state.ego_state
             v_0 = ego_state.map_state.lane_fstate[FS_SV]
             a_0 = ego_state.map_state.lane_fstate[FS_SA]
-            wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
 
             # The predicates currently work for follow-front car,overtake-back car or follow-lane actions.
             if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
                     or (
                     action_type == ActionType.OVERTAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
 
+                wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
                 recipe_cell = (recipe.relative_lane, recipe.relative_lon)
 
                 if recipe_cell not in behavioral_state.road_occupancy_grid:
@@ -140,6 +140,7 @@ class FilterLimitsViolatingTrajectory(RecipeFilter):
 
             elif action_type == ActionType.FOLLOW_LANE:
 
+                wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE[recipe.aggressiveness.value]
                 v_T = recipe.velocity
 
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]

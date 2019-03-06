@@ -18,7 +18,6 @@ from decision_making.src.planning.behavioral.planner.cost_based_behavioral_plann
     CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
-from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -68,13 +67,14 @@ class BehavioralPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                updated_state = self._get_state_with_expected_ego(state)
-                self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
-                                  "according to previous plan")
-            else:
-                updated_state = state
+
+            # if LocalizationUtils.is_actual_state_close_to_expected_state(
+            #         state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+            #     updated_state = self._get_state_with_expected_ego(state)
+            #     self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
+            #                       "according to previous plan")
+            # else:
+            updated_state = state
 
             navigation_plan = self._get_current_navigation_plan()
 

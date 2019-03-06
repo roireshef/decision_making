@@ -10,7 +10,8 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
     LOG_MSG_SCENE_STATIC_RECEIVED, VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
-    MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED, LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL
+    MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED, LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, \
+    BP_ACTION_T_LIMITS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic
@@ -20,14 +21,14 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
     PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, FP_SX, C_Y, FS_DX, \
-    FS_SX
+from decision_making.src.planning.types import CartesianTrajectories, FP_SX, C_Y, FS_DX, \
+    FS_SX, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import State
+from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
@@ -74,15 +75,16 @@ class TrajectoryPlanningFacade(DmModule):
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
-            state = self._get_current_state()
-
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
+
+            state = self._get_current_state()
 
             params = self._get_mission_params()
 
             # Longitudinal planning horizon (Ts)
             lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
+            minimal_required_horizon = float(params.bp_time)/1e9 + BP_ACTION_T_LIMITS[0] - state.ego_state.timestamp_in_sec
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
@@ -108,13 +110,14 @@ class TrajectoryPlanningFacade(DmModule):
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
-            projected_state = TrajectoryPlanningFacade._project_objects_on_reference_route(updated_state,
-                                                                                           params.reference_route)
+            # project all dynamic objects on the reference route
+            projected_obj_fstates = TrajectoryPlanningFacade._project_objects_on_reference_route(
+                updated_state, params.reference_route)
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(projected_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     params.cost_params)
+            samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
+                plan(updated_state, params.reference_route, projected_obj_fstates, params.target_state,
+                     lon_plan_horizon, minimal_required_horizon, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
@@ -122,9 +125,10 @@ class TrajectoryPlanningFacade(DmModule):
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
 
+            # TODO: handle viz for fixed trajectories
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
+                state, projected_obj_fstates, ctrajectories, max(lon_plan_horizon, minimal_required_horizon),
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
@@ -149,20 +153,22 @@ class TrajectoryPlanningFacade(DmModule):
                                  traceback.format_exc())
 
     @staticmethod
-    def _project_objects_on_reference_route(state: State, reference_route: GeneralizedFrenetSerretFrame):
+    def _project_objects_on_reference_route(state: State, reference_route: GeneralizedFrenetSerretFrame) -> \
+            Dict[int, FrenetState2D]:
         """
         Project all dynamic objects on the reference route. In case of failure set map_state = None.
         :param state: original state
         :param reference_route: GFF to project on
-        :return: a new state with the projected map_states
+        :return: dictionary from obj_id to its projected map_states on the reference route
         """
+        projected_obj_fstates = {}
         projected_state = copy.deepcopy(state)
         for obj in projected_state.dynamic_objects:
             try:
-                obj._cached_map_state = MapState(reference_route.cstate_to_fstate(obj.cartesian_state), 0)
-            except Exception:  # verify the object can be projected on the reference_route
-                obj._cached_map_state = None
-        return projected_state
+                projected_obj_fstates[obj.obj_id] = reference_route.cstate_to_fstate(obj.cartesian_state)
+            except Exception:  # too far object
+                pass
+        return projected_obj_fstates
 
     # TODO: add map_origin that is sent from the outside
     def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory):
@@ -230,11 +236,13 @@ class TrajectoryPlanningFacade(DmModule):
 
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
-        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
+        # TODO Move the raising of the exception to pubsub code. Do the same in behavioral facade
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
         scene_static = SceneStatic.deserialize(serialized_scene_static)
+        if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
+            raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
 
@@ -263,24 +271,26 @@ class TrajectoryPlanningFacade(DmModule):
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
         timestamp according to the last trajectory cached in the facade's self._last_trajectory.
-        Note: lateral velocity is zeroed since we don't plan for drifts and lateral components are being reflected in
-        yaw and curvature.
+        Note: 1. Lateral velocity is zeroed since we don't plan for drifts and lateral components are being reflected
+                 in yaw and curvature.
+              2. We assume that self._last_trajectory is WerlingSamplableTrajectory.
         :param state: the state to process
         :return: a new state object with a new ego-vehicle localization
         """
-        current_time = state.ego_state.timestamp_in_sec
-        expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec,
-                                                                        state.ego_state.timestamp_in_sec)
-
-        updated_state = state.clone_with(ego_state=expected_ego_state)
-
-        return updated_state
+        ego = state.ego_state
+        samplable = self._last_trajectory
+        expected_fstate = samplable.sample_frenet(np.array([ego.timestamp_in_sec]))[0]
+        expected_cstate = samplable.frenet_frame.fstate_to_cstate(expected_fstate)
+        lane_id, lane_fstate = samplable.frenet_frame.convert_to_segment_state(expected_fstate)
+        map_state = MapState(lane_fstate, lane_id)
+        expected_ego_state = EgoState(ego.obj_id, ego.timestamp, expected_cstate, map_state, map_state, ego.size, ego.confidence)
+        return state.clone_with(ego_state=expected_ego_state)
 
     @staticmethod
-    def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
-                                   planning_horizon: float, predictor: EgoAwarePredictor,
-                                   reference_route: GeneralizedFrenetSerretFrame) -> TrajectoryVisualizationMsg:
+    def _prepare_visualization_msg(state: State, objects_fstates: Dict[int, FrenetState2D],
+                                   ctrajectories: CartesianTrajectories, planning_horizon: float,
+                                   predictor: EgoAwarePredictor, reference_route: GeneralizedFrenetSerretFrame) -> \
+            TrajectoryVisualizationMsg:
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
@@ -301,15 +311,13 @@ class TrajectoryPlanningFacade(DmModule):
         # visualize objects' predictions
         # TODO: create 3 GFFs in TP and convert objects' predictions on them
         objects_visualizations = []
-        for obj in state.dynamic_objects:
-            if obj._cached_map_state is None:
-                continue
-            obj_fpredictions = predictor.predict_frenet_states(np.array([obj._cached_map_state.lane_fstate]),
-                                                               prediction_horizons)[0][:, [FS_SX, FS_DX]]
+        for obj_id, obj_fstate in objects_fstates.items():
+            obj_fpredictions = predictor.predict_2d_frenet_states(np.array([obj_fstate]),
+                                                                  prediction_horizons)[0][:, [FS_SX, FS_DX]]
             # skip objects having predictions out of reference_route
             valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
             obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
-            objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
+            objects_visualizations.append(PredictionsVisualization(obj_id, obj_cpredictions))
 
         header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
         trajectory_length = ctrajectories.shape[1]

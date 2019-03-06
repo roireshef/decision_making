@@ -77,13 +77,11 @@ class DynamicActionSpace(ActionSpace):
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds,
             a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
-        T_s = np.fmax.reduce(roots_s, axis=-1)
+        T_s = np.fmin.reduce(roots_s, axis=-1)
 
         # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
         # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
         # when setting T
-        with np.errstate(invalid='ignore'):
-            T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -93,7 +91,7 @@ class DynamicActionSpace(ActionSpace):
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
-        T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
+        T = np.maximum(T_d, T_s)
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution.
         # distance_s also takes into account the safe distance that depends on target vehicle velocity that we want

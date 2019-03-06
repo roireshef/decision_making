@@ -1,13 +1,14 @@
 from decision_making.src.planning.types import LIMIT_MAX
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D, QuarticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
+from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
 from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 
 import numpy as np
 
 from decision_making.src.global_constants import EPS, SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, LON_ACC_LIMITS, VELOCITY_LIMITS, HOST_SAFETY_MARGIN_TIME_DELAY, \
-    ACTOR_SAFETY_MARGIN_TIME_DELAY
+    ACTOR_SAFETY_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.utils.metric_logger import MetricLogger
@@ -126,7 +127,7 @@ def jerk_time_weights_optimization():
         print_comparison_between_two_weights_sets(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask)
 
 
-def jerk_time_weights_optimization_with_braking_object():
+def jerk_time_weights_optimization_for_braking():
     """
     Create 3D grid of configurations (states): initial velocity, end velocity, initial distance from object.
     Create 3D grid of Jerk-Time weights for 3 aggressiveness levels.
@@ -136,28 +137,32 @@ def jerk_time_weights_optimization_with_braking_object():
     Output detailed states coverage (3D grid of states) for the best weights set or compare two weights sets.
     """
     # states grid ranges
-    V_MIN = 10   # min velocity in the states grid
-    V_MAX = 30   # max velocity in the states grid
-    V_STEP = 2   # velocity step in the states grid
-    A_MIN = 1    # min braking deceleration of the front car
-    A_MAX = 3    # max braking deceleration of the front car
+    V0 = 30
+    V_MIN = 25
+    V_MAX = 29   # max velocity in the states grid
+    V_STEP = 1   # velocity step in the states grid
+    S_MAX = SPECIFICATION_MARGIN_TIME_DELAY * V0  # max distance between two objects in the states grid
+    S_MIN = S_MAX - 6   # min distance between two objects in the states grid
+    S_STEP = 1
 
     # weights grid ranges
-    W2_FROM = 0.01  # min of the range of w2 weight
-    W2_TILL = 0.2  # max of the range of w2 weight
-    W12_RATIO_FROM = 1.2  # min of the range of ratio w1/w2
-    W12_RATIO_TILL = 32   # max of the range of ratio w1/w2
+    W2_FROM = 0.001  # min of the range of w2 weight
+    W2_TILL = 0.02  # max of the range of w2 weight
+    W12_RATIO_FROM = 3  # min of the range of ratio w1/w2
+    W12_RATIO_TILL = 64   # max of the range of ratio w1/w2
     W01_RATIO_FROM = 1.2  # min of the range of ratio w0/w1
-    W01_RATIO_TILL = 32   # max of the range of ratio w0/w1
-    GRID_RESOLUTION = 9   # the weights grid resolution
+    W01_RATIO_TILL = 64   # max of the range of ratio w0/w1
+    GRID_RESOLUTION = 10   # the weights grid resolution
 
     # create ranges of the grid of states
-    v_range = np.arange(V_MIN, V_MAX + EPS, V_STEP)
-    a_range = np.arange(A_MIN, A_MAX + EPS, 1)
+    v0_range = np.array([V0])  # np.arange(0, V_MAX + EPS, V_STEP)
+    vT_range = np.arange(V_MIN, V_MAX + EPS, V_STEP)
+    a0_range = np.array([0])
+    s_range = np.arange(S_MIN, S_MAX + EPS, S_STEP)
 
     # create the grid of states
-    v, a = np.meshgrid(v_range, a_range)
-    v, a = np.ravel(v), np.ravel(a)
+    v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
+    v0, vT, a0, s = np.ravel(v0), np.ravel(vT), np.ravel(a0), np.ravel(s)
 
     # create grid of weights
     test_full_range = True
@@ -167,9 +172,12 @@ def jerk_time_weights_optimization_with_braking_object():
         s_weights = create_full_range_of_weights(W2_FROM, W2_TILL, W12_RATIO_FROM, W12_RATIO_TILL,
                                                  W01_RATIO_FROM, W01_RATIO_TILL, GRID_RESOLUTION)
     else:  # compare a pair of weights sets
-        s_weights = np.array([[6., 1.6, 0.2]])
+        s_weights = np.array([[6, 0.9, 0.16], [6, 0.1, 0.005]])
 
-    states_num = v.shape[0]
+    # remove trivial states, for which T_s = 0
+    non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * SPECIFICATION_MARGIN_TIME_DELAY, s)))
+    v0, vT, a0, s = v0[non_trivial_states], vT[non_trivial_states], a0[non_trivial_states], s[non_trivial_states]
+    states_num = v0.shape[0]
     print('states num = %d' % (states_num))
 
     valid_states_mask = np.full((s_weights.shape[0], states_num), False)  # states that passed all limits & safety
@@ -181,13 +189,11 @@ def jerk_time_weights_optimization_with_braking_object():
         vel_acc_in_limits = np.zeros((states_num, s_weights.shape[1]))
         safe_actions = np.zeros_like(vel_acc_in_limits)
         for aggr in range(s_weights.shape[1]):  # loop on aggressiveness levels
-            for vT in np.arange(0, V_MAX, V_STEP):
-                s =
-                # calculate time horizon for all states
-                T_s[wi, :, aggr] = T = QuinticMotionPredicatesCreator.calc_T_s(time_weights[aggr], w[aggr], v0, a0, vT, s)
-                T[np.where(T == 0)] = 0.01  # prevent zero times
-                # calculate states validity wrt velocity & acceleration limits
-                vel_acc_in_limits[:, aggr], safe_actions[:, aggr], poly_coefs = check_action_limits_and_safety(T, v0, vT, s, a0)
+            # calculate time horizon for all states
+            T_s[wi, :, aggr] = T = QuinticMotionPredicatesCreator.calc_T_s(time_weights[aggr], w[aggr], v0, a0, vT, s)
+            T[np.where(T == 0)] = 0.01  # prevent zero times
+            # calculate states validity wrt velocity & acceleration limits
+            vel_acc_in_limits[:, aggr], safe_actions[:, aggr], poly_coefs = check_action_limits_and_safety(T, v0, vT, s, a0)
 
         # combine velocity & acceleration limits with time limits and safety, to obtain states validity
         time_in_limits = (T_s[wi, :, :] <= BP_ACTION_T_LIMITS[LIMIT_MAX])
@@ -199,6 +205,98 @@ def jerk_time_weights_optimization_with_braking_object():
                (np.sum(vel_acc_in_limits, axis=0)*100/states_num).astype(np.int),
                (np.sum(safe_actions, axis=0)*100/states_num).astype(np.int),
                (np.sum(time_in_limits, axis=0)*100/states_num).astype(np.int), profile_rates[wi]))
+
+    if test_full_range:
+        # Monitor a quality of the best set of weights (maximal roots).
+        print_success_map_for_best_weights_set(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask, s_weights)
+    else:
+        # Compare between two sets of weights (maximal roots).
+        print_comparison_between_two_weights_sets(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask)
+
+
+def jerk_time_weights_optimization_quartic():
+    """
+    Create 3D grid of configurations (states): initial velocity, end velocity, initial distance from object.
+    Create 3D grid of Jerk-Time weights for 3 aggressiveness levels.
+    For each state and for each triplet of weights, check validity of the state based on acceleration limits,
+    velocity limits, action time limits and RSS safety.
+    Output brief states coverage for all weights sets (number of invalid states for each weights set).
+    Output detailed states coverage (3D grid of states) for the best weights set or compare two weights sets.
+    """
+    # states grid ranges
+    V_MAX = 30   # max velocity in the states grid
+    V_STEP = 1   # velocity step in the states grid
+    S_MIN = 10   # min distance between two objects in the states grid
+    S_MAX = 120  # max distance between two objects in the states grid
+    S_STEP = 5
+
+    # weights grid ranges
+    W2_FROM = 0.001  # min of the range of w2 weight
+    W2_TILL = 0.01  # max of the range of w2 weight
+    W12_RATIO_FROM = 1.2  # min of the range of ratio w1/w2
+    W12_RATIO_TILL = 32   # max of the range of ratio w1/w2
+    W01_RATIO_FROM = 1.2  # min of the range of ratio w0/w1
+    W01_RATIO_TILL = 32   # max of the range of ratio w0/w1
+    GRID_RESOLUTION = 9   # the weights grid resolution
+
+    # create ranges of the grid of states
+    v0_range = np.arange(0, V_MAX + EPS, V_STEP)
+    vT_range = np.arange(0, V_MAX + EPS, V_STEP)
+    a0_range = np.array([0])
+    s_range = np.arange(S_MIN, S_MAX + EPS, S_STEP)
+
+    # create the grid of states
+    v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
+    v0, vT, a0, s = np.ravel(v0), np.ravel(vT), np.ravel(a0), np.ravel(s)
+
+    # create grid of weights
+    test_full_range = False
+    # s_weights is a matrix Wx3, where W is a set of jerk weights (time weight is constant) for 3 aggressiveness levels
+    if test_full_range:
+        # test a full range of weights (~8 minutes)
+        s_weights = create_full_range_of_weights(W2_FROM, W2_TILL, W12_RATIO_FROM, W12_RATIO_TILL,
+                                                 W01_RATIO_FROM, W01_RATIO_TILL, GRID_RESOLUTION)
+    else:  # compare a pair of weights sets
+        s_weights = np.array([[0.16, 0.015, 0.005], [0.16, 0.01, 0.004]])
+
+    # remove trivial states, for which T_s = 0
+    non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * SPECIFICATION_MARGIN_TIME_DELAY, s)))
+    v0, vT, a0, s = v0[non_trivial_states], vT[non_trivial_states], a0[non_trivial_states], s[non_trivial_states]
+    not_too_far = np.where(np.logical_or((v0 - vT) * BP_ACTION_T_LIMITS[1] > s, np.logical_and(vT > v0, s > vT)))
+    v0, vT, a0, s = v0[not_too_far], vT[not_too_far], a0[not_too_far], s[not_too_far]
+    states_num = v0.shape[0]
+    print('states num = %d' % (states_num))
+
+    valid_states_mask = np.full((s_weights.shape[0], states_num), False)  # states that passed all limits & safety
+    T_s = np.zeros((s_weights.shape[0], states_num, s_weights.shape[1]))
+    profile_rates = np.zeros_like(s_weights)
+    time_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE[:, 2]
+
+    for wi, w in enumerate(s_weights):  # loop on weights' sets
+        vel_acc_in_limits = np.zeros((states_num, s_weights.shape[1]))
+        safe_actions = np.zeros_like(vel_acc_in_limits)
+        for aggr in range(s_weights.shape[1]):  # loop on aggressiveness levels
+            # calculate time horizon for all states
+            T_s[wi, :, aggr] = T = QuarticMotionPredicatesCreator.calc_T_s(time_weights[aggr], w[aggr], v0, a0, vT)
+            T[np.where(T == 0)] = 0.01  # prevent zero times
+            # calculate states validity wrt velocity & acceleration limits
+            vel_acc_in_limits[:, aggr], safe_actions[:, aggr], poly_coefs = \
+                check_action_limits_and_safety_quartic(T, v0, vT, s, a0)
+
+        # combine velocity & acceleration limits with time limits and safety, to obtain states validity
+        time_in_limits = (T_s[wi, :, :] <= BP_ACTION_T_LIMITS[LIMIT_MAX])
+        in_limits = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
+        valid_states_mask[wi] = in_limits.any(axis=-1)  # OR on aggressiveness levels
+
+        print('weight: %7.3f %.3f %.3f: passed %.1f%%\t\tvel_acc %s   safety %s   time %s;\tprofile %s' %
+              (w[0], w[1], w[2], np.sum(valid_states_mask[wi])*100./states_num,
+               (np.sum(vel_acc_in_limits, axis=0)*100/states_num).astype(np.int),
+               (np.sum(safe_actions, axis=0)*100/states_num).astype(np.int),
+               (np.sum(time_in_limits, axis=0)*100/states_num).astype(np.int), profile_rates[wi]))
+
+    best_wi = np.argmax(np.sum(valid_states_mask, axis=-1))
+    passed = np.sum(valid_states_mask[best_wi])
+    print('best weights for max: %s; passed %d (%.2f%%)' % (s_weights[best_wi], passed, 100.*passed/valid_states_mask.shape[-1]))
 
 
 def create_full_range_of_weights(w2_from: float, w2_till: float, w12_ratio_from: float, w12_ratio_till: float,
@@ -244,6 +342,26 @@ def check_action_limits_and_safety(T: np.array, v_0: np.array, v_T: np.array, s_
     return is_in_limits, is_safe, poly_coefs
 
 
+def check_action_limits_and_safety_quartic(T: np.array, v_0: np.array, v_T: np.array, s_T: np.array, a_0: np.array) -> \
+        [np.array, np.array, np.array]:
+    """
+    Given longitudinal action dynamics, calculate validity wrt velocity & acceleration limits, and safety of each action.
+    :param T: array of action times
+    :param v_0: array of initial velocities
+    :param v_T: array of final velocities
+    :param a_0: array of initial acceleration
+    :param s_T: array of initial distances from target
+    :return: (1) boolean array: are velocity & acceleration in limits,
+             (2) boolean array: is the baseline trajectory safe
+             (3) coefficients of s polynomial
+    """
+    # check limits
+    is_in_limits, poly_coefs = QuarticMotionPredicatesCreator.check_action_limits(T, v_0, v_T, a_0)
+    # check safety
+    is_safe = get_lon_safety_for_action_specs(poly_coefs, T, v_T, s_T)
+    return is_in_limits, is_safe, poly_coefs
+
+
 def get_lon_safety_for_action_specs(poly_coefs: np.array, T: np.array, v_T: np.array, s_T: np.array) -> np.array:
     """
     Given polynomial coefficients and action specs for each polynomial, calculate longitudinal safety
@@ -258,14 +376,18 @@ def get_lon_safety_for_action_specs(poly_coefs: np.array, T: np.array, v_T: np.a
 
     # sample polynomials and create ftrajectories_s
     trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
+    trajectories = np.concatenate((trajectories_s, np.zeros_like(trajectories_s)), axis=-1)
 
     ego_trajectories = [trajectory[:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
-                        for i, trajectory in enumerate(trajectories_s)]
+                        for i, trajectory in enumerate(trajectories)]
 
-    obj_trajectories = [np.c_[s_T[i] + np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION,
+    obj_trajectories = [np.c_[(s_T[i] + np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION,
                                                    len(ego_trajectory)),
                               np.full(len(ego_trajectory), v_T[i]),
-                              np.zeros(len(ego_trajectory))]
+                              np.zeros(len(ego_trajectory)),
+                              np.zeros(len(ego_trajectory)),
+                              np.zeros(len(ego_trajectory)),
+                              np.zeros(len(ego_trajectory)))]
                         for i, ego_trajectory in enumerate(ego_trajectories)]
 
     # concatenate all trajectories to a single long trajectory
@@ -344,7 +466,7 @@ def print_success_map_for_best_weights_set(v0_range: np.array, vT_range: np.arra
     """
     best_wi = np.argmax(np.sum(is_valid_state, axis=-1))
     passed = np.sum(is_valid_state[best_wi])
-    print('best weights for max: %s; passed %d (%.2f)' % (weights[best_wi], passed, float(passed)/is_valid_state.shape[-1]))
+    print('best weights for max: %s; passed %d (%.2f%%)' % (weights[best_wi], passed, 100.*passed/is_valid_state.shape[-1]))
 
     for v0_fixed in v0_range:
         success_map = np.ones((vT_range.shape[0], s_range.shape[0]))
@@ -384,72 +506,7 @@ def print_comparison_between_two_weights_sets(v0_range: np.array, vT_range: np.a
         print(success_map.astype(int))
 
 
-def calc_braking_quality_and_print_graphs():
-    """
-    Loop on list of Jerk-Time weights sets and on initial states (v0, vT, s), calculate trajectory quality,
-    according to the relative center of mass of negative accelerations (too late braking is bad).
-    Draw graphs of velocity & acceleration profiles for all above settings.
-    """
-    MetricLogger.init('VelProfiles')
-    ml = MetricLogger.get_logger()
-
-    V0_FROM = 4
-    V0_TILL = 18
-    VT_FROM = 0
-    VT_TILL_RELATIVE = -2  # terminal velocity - initial velocity
-    V_STEP = 4
-    S_FROM = 40  # 40
-    S_TILL = 100  # 100
-
-    a0 = 0.
-
-    # jerk weights list
-    jerk_weights_list = [np.array([16, 1.6, 0.08]), np.array([8.5, 0.34, 0.08])]
-    time_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 2]
-
-
-    all_acc_samples = {}
-    acc_rate = {}
-    all_T_s = {}
-
-    # loop on all jerk weights, initial and terminal velocities (v0, vT) and distances between two objects (s);
-    # calculate velocity / acceleration profile for each state in the grid
-    for wi, w_J in enumerate(jerk_weights_list):
-        for v0 in np.arange(V0_FROM, V0_TILL+EPS, V_STEP):
-            for vT in np.arange(VT_FROM, v0 + VT_TILL_RELATIVE + EPS, V_STEP):
-                for s in np.arange(S_FROM, S_TILL+EPS, 10):
-                    for aggr in range(3):  # loop on aggressiveness levels
-                        # check if the state is valid
-                        T = QuinticMotionPredicatesCreator.calc_T_s(time_weights[aggr], w_J[aggr], v0, a0, vT, s)
-                        vel_acc_in_limits, is_safe, poly_coefs = check_action_limits_and_safety(
-                            T, np.array([v0]), np.array([vT]), np.array([s]), np.array([a0]))
-                        time_in_limits = NumpyUtils.is_in_limits(T, BP_ACTION_T_LIMITS)
-                        is_valid_state = vel_acc_in_limits[0] and time_in_limits[0] and is_safe[0]
-
-                        if is_valid_state:
-                            # calculate velocity & acceleration profile
-                            times = np.arange(0, T[0] + EPS, 0.1)
-                            vel_poly = Math.polyder2d(poly_coefs, m=1)
-                            acc_poly = Math.polyder2d(poly_coefs, m=2)
-                            vel_samples = Math.polyval2d(vel_poly, times)[0]
-                            acc_samples = Math.polyval2d(acc_poly, times)[0]
-
-                            # calculate acceleration profile rate (late braking gets higher rate than early braking)
-                            all_T_s[(wi, v0, vT, s, aggr)] = T[0]
-                            all_acc_samples[(wi, v0, vT, s, aggr)] = acc_samples
-                            rate = get_braking_quality(acc_samples)
-                            acc_rate[(wi, v0, vT, s, aggr)] = rate
-
-                            # add velocity & acceleration profile to the metric logger
-                            print('wi=%d v0=%.2f vT=%.2f s=%.2f aggr=%d' % (wi, v0, vT, s, aggr))
-                            key_str = str(wi) + '_' + str(v0) + '_' + str(vT) + '_' + str(s) + '_' + str(aggr)
-                            ml.bind(key_str=key_str)
-                            ml.bind(w=wi, v0=v0, vT=vT, s=s, ag=aggr)
-                            for i, acc in enumerate(acc_samples):
-                                ml.bind(time=times[i], vel_sample=vel_samples[i], acc_sample=acc)
-                                ml.report()
-
-
 if __name__ == '__main__':
-    jerk_time_weights_optimization()
+    #jerk_time_weights_optimization_for_braking()
+    jerk_time_weights_optimization_quartic()
     #calc_braking_quality_and_print_graphs()

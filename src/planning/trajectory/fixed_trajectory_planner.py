@@ -24,7 +24,7 @@ class FixedSamplableTrajectory(SamplableTrajectory):
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
-        This function takes an array of time stamps and returns aCartesianExtendedTrajectory.
+        This function takes an array of time stamps and returns a CartesianExtendedTrajectory.
         Note: Since the trajectory is not actually samplable - the closest time points on the trajectory are returned.
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory

@@ -9,18 +9,19 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
     ActionSpecFilter
 import numpy as np
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterLimitsViolatingTrajectory
-from decision_making.src.planning.types import C_K, C_V, FS_SX, FS_DX, FrenetState2D, FrenetTrajectories2D
+from decision_making.src.planning.types import C_K, C_V, FS_SX, FS_DX, FrenetState2D, FrenetTrajectories2D, FS_SV
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.state.state import State
 from rte.python.logger.AV_logger import AV_Logger
 
 from typing import List
 
 
 class FilterIfNone(ActionSpecFilter):
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState, state: State) -> List[bool]:
         return [(action_spec and behavioral_state) is not None for action_spec in action_specs]
 
 
@@ -29,7 +30,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
         self.predicates = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'limits')
         self.distances = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'distances')
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, state: State) -> List[bool]:
         """
         Check violation of lateral acceleration for action_specs, and beyond action_specs check ability to brake
         before all future curves using any static action.
@@ -44,8 +45,9 @@ class FilterByLateralAcceleration(ActionSpecFilter):
 
             if spec is None or not meet_limits[spec_idx]:
                 continue
-
             target_lane_frenet = behavioral_state.extended_lane_frames[spec.relative_lane]  # the target GFF
+            if spec.s >= target_lane_frenet.s_max:
+                continue
             # get the Frenet point index near the goal action_spec.s
             spec_s_point_idx = target_lane_frenet.get_index_on_frame_from_s(np.array([spec.s]))[0][0]
             # find all Frenet points beyond spec.s, where velocity limit (by curvature) is lower then spec.v
@@ -94,6 +96,12 @@ class FilterByLateralAcceleration(ActionSpecFilter):
             specs_t = np.array([spec.t for spec in lane_specs])
             goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
 
+            # don't test lateral acceleration beyond spec.t, so set 0 for time_samples > spec.t
+            # create 2D time samples: a line for each spec with non-zero size according to spec.t
+            time_samples_2d = np.tile(time_samples, len(lane_specs)).reshape(len(lane_specs), len(time_samples))
+            for i, spec_samples in enumerate(time_samples_2d):
+                spec_samples[(int(specs_t[i]/TRAJECTORY_TIME_RESOLUTION) + 1):] = 0
+
             frenet = behavioral_state.extended_lane_frames[rel_lane]  # the target GFF
             ego_fstate = behavioral_state.projected_ego_fstates[rel_lane]
             ego_fstates = np.tile(ego_fstate, len(lane_specs)).reshape((len(lane_specs), -1))
@@ -103,7 +111,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
             poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, np.hstack((ego_fstates[:, FS_SX:FS_DX], goal_fstates[:, FS_SX:FS_DX])))
 
             # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
-            ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_samples)
+            ftrajectories_s = QuinticPoly1D.zip_polyval_with_derivatives(poly_coefs_s, time_samples_2d)
             # assign near-zero velocity to ftrajectories_s beyond spec.t
             for i, trajectory in enumerate(ftrajectories_s):
                 trajectory[int(specs_t[i] / TRAJECTORY_TIME_RESOLUTION) + 1:] = np.array([EPS, EPS, 0])
@@ -124,18 +132,18 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
     """
     This filter checks full safety (by RSS) toward the followed vehicle
     """
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[ActionSpec]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, state: State) -> List[ActionSpec]:
         """
         This filter checks for each action_spec if it's trajectory is safe w.r.t. the followed vehicle.
         :param action_specs:
         :param behavioral_state:
         :return: boolean array of size len(action_specs)
         """
-        safe_specs = FilterUnsafeExpectedTrajectory._check_actions_safety(action_specs, behavioral_state)
+        safe_specs = FilterUnsafeExpectedTrajectory._check_actions_safety(action_specs, behavioral_state, state)
         return [spec if safe_specs[i] else None for i, spec in enumerate(action_specs)]
 
     @staticmethod
-    def _check_actions_safety(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> np.array:
+    def _check_actions_safety(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, state: State) -> np.array:
         """
         Check RSS safety for all action specs, for which action_specs_mask is true.
         An action spec is considered safe if it's safe wrt all dynamic objects for all timestamps < spec.t.
@@ -147,6 +155,7 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
         logger = AV_Logger.get_logger('_check_actions_safety')
         predictor = RoadFollowingPredictor(logger)
         ego_size = behavioral_state.ego_state.size
+        behavioral_state.marginal_safety_per_action = np.zeros(len(action_specs))
 
         # collect action specs into at most 3 groups, according to their target lane
         safe_specs = np.full(len(action_specs), True)
@@ -168,6 +177,22 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
             front_cell = (rel_lane, RelativeLongitudinalPosition.FRONT)
             if front_cell in behavioral_state.road_occupancy_grid:
                 relevant_objects.append(behavioral_state.road_occupancy_grid[front_cell][0].dynamic_object)
+            else:
+                # if there is no front cell in behavioral state, maybe there is a far front object beyond
+                # lookahead horizon, which may be relevant for safety for long follow-lane actions
+                lane_ids = np.array([obj.map_state.lane_id if obj._cached_map_state is not None else 0
+                                     for obj in state.dynamic_objects])
+                same_lane_orig_idxs = np.where(lane_frenet.has_segment_ids(lane_ids))[0]
+                if len(same_lane_orig_idxs) > 0:
+                    same_lane_fstates = np.array([state.dynamic_objects[idx].map_state.lane_fstate
+                                                  for idx in same_lane_orig_idxs])
+                    projected_obj_fstates = lane_frenet.convert_from_segment_states(same_lane_fstates,
+                                                                                    lane_ids[same_lane_orig_idxs])
+                    front_idxs = np.where(projected_obj_fstates[:, FS_SX] > ego_init_fstate[FS_SX])[0]
+                    if len(front_idxs) > 0:
+                        closest_idx = same_lane_orig_idxs[front_idxs[np.argmin(projected_obj_fstates[front_idxs, FS_SX])]]
+                        relevant_objects.append(state.dynamic_objects[closest_idx])
+
             if rel_lane != RelativeLane.SAME_LANE:
                 for lon_cell in RelativeLongitudinalPosition:
                     if (rel_lane, lon_cell) in behavioral_state.road_occupancy_grid:
@@ -183,24 +208,23 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
 
             # predict objects' trajectories
             time_points = np.arange(0, BP_ACTION_T_LIMITS[1] + EPS, TRAJECTORY_TIME_RESOLUTION)
-            obj_trajectories = predictor.predict_frenet_states(np.array(obj_map_states), time_points)
+            obj_trajectories = predictor.predict_2d_frenet_states(np.array(obj_map_states), time_points)
 
             # generate baseline Frenet trajectories for the relative-lane actions, with T_d grid
             ftrajectories = FilterUnsafeExpectedTrajectory._generate_frenet_trajectories_for_relative_lane(
                 ego_init_fstate, lane_specs, T_d_grid_size, time_points)
 
             # calculate safety for each trajectory, each object, each timestamp
-            safe_distances = SafetyUtils.get_safe_distances(ftrajectories, ego_size, obj_trajectories, obj_sizes)
-            safe_times = (safe_distances > 0).any(axis=-1)  # OR on lon & lat safe distances
-
-            # safe_specs = safe_specs_for_any_T_d.all(axis=(1, 2))
-            # print('safe_specs: %s; specs_v %s, specs_t %s\nvel: %s\nacc: %s\ndist: %s\ncosts: %s: ' %
-            #       (safe_specs, specs_v, specs_t, ftrajectories_s[-2, ::4, 1], ftrajectories_s[-2, ::4, 2],
-            #        obj_trajectories[0, ::4, 0] - ftrajectories_s[-2, ::4, 0],
-            #        safe_specs_for_any_T_d[-2, 0, ::4]))
+            marginal_safety = SafetyUtils.get_safe_distances(ftrajectories, ego_size, obj_trajectories, obj_sizes)
+            safe_times = (marginal_safety > 0).any(axis=-1)  # OR on lon & lat safe distances
 
             # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
             safe_trajectories = safe_times.all(axis=(1, 2))
+
+            # marginal safety is the difference between actual distance from obstacle and the minimal RSS-safe distance
+            behavioral_state.marginal_safety_per_action[np.array(indices_by_rel_lane[rel_lane])] = \
+                np.max(np.min(marginal_safety[..., 0], axis=(1, 2)).reshape(len(lane_specs), T_d_grid_size), axis=1)
+
             # find trajectories that are safe for any T_d
             safe_specs[np.array(indices_by_rel_lane[rel_lane])] = \
                 safe_trajectories.reshape(len(lane_specs), T_d_grid_size).any(axis=1)  # OR on different T_d
@@ -246,10 +270,11 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
         for i, ftrajectory_d in enumerate(ftrajectories_d):
             ftrajectory_d[last_t_d_indices[i]:] = 0
 
-        # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
+        # extrapolate points beyond spec.t
         end_traj_indices = np.floor(specs_t / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
         for i, ftrajectory_s in enumerate(ftrajectories_s):
-            ftrajectory_s[end_traj_indices[i]:] = np.array([np.inf, 0, 0])
+            ftrajectory_s[end_traj_indices[i]:, FS_SX] = specs_s[i] + (time_points[end_traj_indices[i]:] - specs_t[i]) * specs_v[i]
+            ftrajectory_s[end_traj_indices[i]:, FS_SV:] = np.array([specs_v[i], 0])
 
         # duplicate each longitudinal trajectory T_d_num times to be aligned with lateral trajectories
         duplicated_ftrajectories_s = np.tile(ftrajectories_s, (1, T_d_grid_size, 1)).reshape(-1, len(time_points), 3)

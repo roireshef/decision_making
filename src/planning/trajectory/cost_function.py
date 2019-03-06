@@ -5,29 +5,31 @@ from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD
     LON_SAFETY_SIGMOID_K_PARAM, LAT_SAFETY_SIGMOID_K_PARAM
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
-    FrenetTrajectories2D, FS_DX
+    FrenetTrajectories2D, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
 from mapping.src.transformations.geometry_utils import CartesianFrame
+from typing import Dict
 
 
 class TrajectoryPlannerCosts:
 
     @staticmethod
     def compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
-                                state: State, params: TrajectoryCostParams,
-                                global_time_samples: np.ndarray, predictor: EgoAwarePredictor, dt: float,
-                                reference_route: FrenetSerret2DFrame, safe_distances: np.array) -> \
-            [np.ndarray, np.ndarray, np.ndarray]:
+                                state: State, projected_obj_fstates: Dict[int, FrenetState2D],
+                                params: TrajectoryCostParams, global_time_samples: np.ndarray,
+                                predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame,
+                                safe_distances: np.array) -> [np.ndarray, np.ndarray, np.ndarray]:
         """
         Compute obstacle, deviation and jerk costs for every trajectory point separately.
         It creates a costs tensor of size N x M x 3, where N is trajectories number, M is trajectory length.
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
         :param state: the state object (that includes obstacles, etc.)
+        :param projected_obj_fstates: dict from obj_id to projected Frenet state of the dynamic object on reference_route
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
@@ -38,9 +40,8 @@ class TrajectoryPlannerCosts:
         The tensor shape: N x M x 4, where N is trajectories number, M is trajectory length.
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
-        obstacles_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, params,
-                                                                        global_time_samples, predictor,
-                                                                        reference_route)
+        obstacles_costs = TrajectoryPlannerCosts.compute_obstacle_costs(
+            ctrajectories, state, projected_obj_fstates, params, global_time_samples, predictor, reference_route)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = TrajectoryPlannerCosts.compute_deviation_costs(ftrajectories, params)
@@ -55,11 +56,13 @@ class TrajectoryPlannerCosts:
 
     @staticmethod
     def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State,
+                               projected_obj_fstates: Dict[int, FrenetState2D],
                                params: TrajectoryCostParams, global_time_samples: np.ndarray,
                                predictor: RoadFollowingPredictor, reference_route: FrenetSerret2DFrame):
         """
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param state: the state object (that includes obstacles, etc.)
+        :param projected_obj_fstates: dict from obj_id to projected Frenet state of the dynamic object on reference_route
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
@@ -74,15 +77,12 @@ class TrajectoryPlannerCosts:
             if len(close_objects) == 0:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
-            # calculate objects' map_state
-            # TODO: consider using map_state_on_host_lane
-            objects_relative_fstates = np.array([obj.map_state.lane_fstate
-                                                 for obj in close_objects if obj.cartesian_state is not None])
+            close_objects_fstates = np.array([projected_obj_fstates[obj.obj_id] for obj in close_objects])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
-            objects_predicted_ftrajectories = predictor.predict_frenet_states(
-                objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
+            objects_predicted_ftrajectories = predictor.predict_2d_frenet_states(
+                close_objects_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])

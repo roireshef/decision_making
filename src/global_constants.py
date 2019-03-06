@@ -90,27 +90,34 @@ VELOCITY_STEP = 10/3.6
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
 
-# Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action,
+# Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of dynamic actions,
 # have to be sorted from calm to aggressive
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [6, 0.15, 0.1],
-    [1.6, 0.15, 0.1],
-    [0.2, 0.15, 0.1]
+    [6.000, 0.15, 0.1],
+    [0.100, 0.15, 0.1],
+    [0.005, 0.15, 0.1]
+])
+
+# behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of static actions
+BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE = np.array([
+    [0.160, 0.15, 0.1],
+    [0.015, 0.15, 0.1],
+    [0.005, 0.15, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-3.0, 3.0])
 
-EMERGENCY_BRAKE_ACC = 6  # LON_ACC_LIMITS[0]
-
+# maximal deceleration during emergency braking
+EMERGENCY_DECELERATION = 8
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 3.0
-HOST_SAFETY_MARGIN_TIME_DELAY = 1
+SPECIFICATION_MARGIN_TIME_DELAY = 1.0
+HOST_SAFETY_MARGIN_TIME_DELAY = 0.7
 ACTOR_SAFETY_MARGIN_TIME_DELAY = 2
 
 # [m] minimal longitudinal safe distance between objects
@@ -123,7 +130,7 @@ LATERAL_SAFETY_MU = 0.5
 LAT_VEL_BLAME_THRESH = 0.1
 
 # [m/s^2] longitudinal acceleration of object during time delay in RSS
-LON_SAFETY_ACCEL_DURING_RESPONSE = LON_ACC_LIMITS[1]
+LON_SAFETY_ACCEL_DURING_RESPONSE = 0  # LON_ACC_LIMITS[1]
 
 # [m/s^2] lateral acceleration of object during time delay in RSS
 LAT_SAFETY_ACCEL_DURING_RESPONSE = 0
@@ -257,8 +264,8 @@ VELOCITY_MINIMAL_THRESHOLD = 0.001
 FILTER_OFF_ROAD_OBJECTS = False
 
 ### DM Manager configuration ###
-BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.5
-TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.2
+TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
 
 #### NAMES OF MODULES FOR LOGGING ####
 MAP_NAME_FOR_LOGGING = "Map API"

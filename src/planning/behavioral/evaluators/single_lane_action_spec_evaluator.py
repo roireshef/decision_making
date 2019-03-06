@@ -32,12 +32,21 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         costs = np.full(len(action_recipes), 1)
 
         # first try to find a valid dynamic action for SAME_LANE
-        follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
-                                            if action_specs_mask[i]
-                                            and recipe.relative_lane == RelativeLane.SAME_LANE
-                                            and recipe.action_type == ActionType.FOLLOW_VEHICLE]
+        follow_vehicle_valid_action_idxs = np.array([[i, behavioral_state.marginal_safety_per_action[i], recipe]
+                                                     for i, recipe in enumerate(action_recipes)
+                                                     if action_specs_mask[i]
+                                                     and recipe.relative_lane == RelativeLane.SAME_LANE
+                                                     and recipe.action_type == ActionType.FOLLOW_VEHICLE])
         if len(follow_vehicle_valid_action_idxs) > 0:
-            costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
+            best_idx = np.argmax(follow_vehicle_valid_action_idxs[:, 1])
+            min_safe_dist = follow_vehicle_valid_action_idxs[best_idx, 1]
+            if min_safe_dist > 5:   # safe enough
+                chosen_idx = 0      # calm action
+            elif len(follow_vehicle_valid_action_idxs) == 3 and min_safe_dist > 3:  # moderate safety
+                chosen_idx = 1      # standard action
+            else:                   # low safety
+                chosen_idx = -1     # aggressive action
+            costs[int(follow_vehicle_valid_action_idxs[chosen_idx, 0])] = 0  # choose the found dynamic action
             return costs
 
         # if a dynamic action not found, calculate maximal valid existing velocity for same-lane static actions

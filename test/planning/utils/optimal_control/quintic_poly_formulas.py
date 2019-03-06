@@ -153,7 +153,7 @@ class QuinticMotionPredicatesCreator:
         cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
 
         # calculate T for all actions
-        return np.fmax.reduce(cost_real_roots, axis=-1)
+        return np.fmin.reduce(cost_real_roots, axis=-1)
 
     @staticmethod
     def check_action_limits(T: np.array, v_0: np.array, v_T: np.array, s_T: np.array, a_0: np.array,
@@ -198,7 +198,7 @@ class QuinticMotionPredicatesCreator:
 
             for weight in jerk_time_weights:
                 w_J, w_T = weight[0], weight[2]
-                print('weights are: %.2f,%.2f' % (w_J, w_T))
+                print('weights are: %.4f,%.4f' % (w_J, w_T))
 
                 for k, v_0 in enumerate(self.v0_grid):
                     print('v_0 is: %.1f' % v_0)
@@ -207,7 +207,7 @@ class QuinticMotionPredicatesCreator:
                     limits[k] = local_limits.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
 
                 # save 'limits' predicates to file
-                output_limits_file_name = '%s_limits_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
+                output_limits_file_name = '%s_limits_wT_%.4f_wJ_%.4f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename(
                     '%s/%s' % (self.predicates_resources_target_directory, output_limits_file_name))
                 BinaryReadWrite.save(array=limits, file_path=output_predicate_file_path)

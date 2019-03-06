@@ -106,25 +106,58 @@ class QuarticMotionPredicatesCreator:
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints and doesn't get into target vehicle safety zone.
         """
-        # Get polynomial coefficients of time-jerk cost function derivative for our settings
-        time_cost_derivative_poly_coefs = \
-            QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
-                                                              np.array([a_0]), np.array([v_0]),
-                                                              np.array([v_T]))[0]
-        # Find roots of the polynomial in order to get extremum points
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
-        extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
-
-        if len(extremum_T) == 0:
+        T = QuarticMotionPredicatesCreator.calc_T_s(w_T, w_J, np.array([v_0]), np.array([a_0]), np.array([v_T]))
+        if np.isnan(T):
             return False, np.inf
-
-        # The extrema which is the furthest from origin is our global minimum (might be our only minimum)
-        T = extremum_T.max()
 
         in_limits = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
         distance = QuarticPoly1D.distance_profile_function(a_0, v_0, v_T, T)(T) \
             if T > 0 and in_limits else 0 if T == 0 else np.inf
         return in_limits, distance
+
+    @staticmethod
+    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
+        """
+        given initial & end constraints and time-jerk weights, calculate longitudinal planning time
+        :param w_T: weight of Time component in time-jerk cost function
+        :param w_J: weight of longitudinal jerk component in time-jerk cost function
+        :param v_0: array of initial velocities [m/s]
+        :param a_0: array of initial accelerations [m/s^2]
+        :param v_T: array of final velocities [m/s]
+        :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
+        """
+        w_T_array = np.full(v_T.shape, w_T)
+        w_J_array = np.full(v_T.shape, w_J)
+
+        # Get polynomial coefficients of time-jerk cost function derivative for our settings
+        time_cost_derivative_poly_coefs = \
+            QuarticPoly1D.time_cost_function_derivative_coefs(w_T_array, w_J_array, a_0, v_0, v_T)
+
+        # Find roots of the polynomial in order to get extremum points
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
+
+        # return T as the minimal real root
+        return np.fmin.reduce(cost_real_roots, axis=-1)
+
+    @staticmethod
+    def check_action_limits(T: np.array, v_0: np.array, v_T: np.array, a_0: np.array) -> [np.array, np.array]:
+        """
+        Given longitudinal action dynamics, calculate validity wrt velocity & acceleration limits, and safety of each action.
+        :param T: array of action times
+        :param v_0: array of initial velocities
+        :param v_T: array of final velocities
+        :param a_0: array of initial acceleration
+        :return: (1) boolean array: are velocity & acceleration in limits,
+                 (2) boolean array: is the baseline trajectory safe
+                 (3) coefficients of s polynomial
+        """
+        poly_coefs = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T, T)
+        # check acc & vel limits
+        poly_coefs[np.where(poly_coefs[:, 0] == 0), 0] = EPS  # keep the polynomials to be quartic
+        acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+        vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
+        is_in_limits = np.logical_and(acc_in_limits, vel_in_limits)
+        return is_in_limits, poly_coefs
 
     @staticmethod
     def check_validity(a_0, v_0, v_T, T):
@@ -138,19 +171,7 @@ class QuarticMotionPredicatesCreator:
         if T > BP_ACTION_T_LIMITS[1] + EPS:
             return False
 
-        # Get velocity and acceleration motion functions
-        v_t_func, a_t_func = QuarticMotionPredicatesCreator.create_quartic_motion_funcs(a_0, v_0, v_T, T)
-
-        # Check for minimal/maximal values for velocity and acceleration
-        time_res_for_extremum_query = 0.01
-        t = np.arange(0, T + EPS, time_res_for_extremum_query)
-        min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
-        min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
-
-        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
-        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
-
-        return is_vel_in_range and is_acc_in_range
+        return QuarticMotionPredicatesCreator.check_action_limits(T, v_0, v_T, a_0)
 
     def create_predicates(self, jerk_time_weights: np.ndarray) -> None:
         """
@@ -165,7 +186,7 @@ class QuarticMotionPredicatesCreator:
 
         for wi, weight in enumerate(jerk_time_weights):
             w_J, w_T = weight[0], weight[2]  # w_T stays the same (0.1), w_J is now to be one of [12,2,0.01]
-            print('weights are: %.2f,%.2f' % (w_J, w_T))
+            print('weights are: %.4f,%.4f' % (w_J, w_T))
             for k, v_0 in enumerate(self.v0_grid):
                 print('v_0 is: %.2f' % v_0)
                 for m, a_0 in enumerate(self.a0_grid):
@@ -174,14 +195,14 @@ class QuarticMotionPredicatesCreator:
                             QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T)
 
             # save 'limits' predicate to file
-            output_predicate_file_name = '%s_limits_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
+            output_predicate_file_name = '%s_limits_wT_%.4f_wJ_%.4f.bin' % (action_type.name.lower(), w_T, w_J)
             output_predicate_file_path = Paths.get_resource_absolute_path_filename(
                 '%s/%s' % (self.predicates_resources_target_directory,
                            output_predicate_file_name))
             BinaryReadWrite.save(array=predicate, file_path=output_predicate_file_path)
 
             # save actions distances to file
-            output_distances_file_name = '%s_distances_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
+            output_distances_file_name = '%s_distances_wT_%.4f_wJ_%.4f.bin' % (action_type.name.lower(), w_T, w_J)
             output_distances_file_path = Paths.get_resource_absolute_path_filename(
                 '%s/%s' % (self.predicates_resources_target_directory,
                            output_distances_file_name))

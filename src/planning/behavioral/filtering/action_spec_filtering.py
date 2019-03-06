@@ -1,8 +1,8 @@
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID
-from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
+from decision_making.src.global_constants import FILTER_V_0_GRID, FILTER_A_0_GRID, \
+    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.state.state import State
 from logging import Logger
 from typing import List, Optional
 import numpy as np
@@ -21,7 +21,7 @@ class ActionSpecFilter:
     (or one of its children) and  BehavioralState (or one of its children) even if they don't actually use them.
     """
     @abstractmethod
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState, state: State) -> List[bool]:
         pass
 
     def __str__(self):
@@ -45,11 +45,7 @@ class ActionSpecFilter:
         dist_to_points = frenet.get_s_from_index_on_frame(frenet_points_idxs, delta_s=0) - action_spec.s
 
         # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
-        if 'FilterIfAggressive' in DEFAULT_STATIC_RECIPE_FILTERING._filters.__str__():
-            most_aggressive_level = AggressivenessLevel.STANDARD
-        else:
-            most_aggressive_level = AggressivenessLevel.AGGRESSIVE
-        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[most_aggressive_level.value]
+        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE[AggressivenessLevel.STANDARD.value]
         brake_dist = action_distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
             FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
         return (brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()
@@ -64,7 +60,7 @@ class ActionSpecFiltering:
         self._filters: List[ActionSpecFilter] = filters or []
         self.logger = logger
 
-    def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
+    def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState, state: State) -> List[bool]:
         """
         Filters a list of 'ActionSpec's based on the state of ego and nearby vehicles (BehavioralState).
         :param action_specs: A list of objects representing the specified actions to be considered
@@ -73,17 +69,17 @@ class ActionSpecFiltering:
         """
         mask = [True]*len(action_specs)
         for action_spec_filter in self._filters:
-            mask = action_spec_filter.filter(action_specs, behavioral_state)
+            mask = action_spec_filter.filter(action_specs, behavioral_state, state)
             action_specs = [action_specs[i] if mask[i] else None for i in range(len(action_specs))]
         return mask
 
     @prof.ProfileFunction()
-    def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
+    def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState, state: State) -> bool:
         """
         Filters an 'ActionSpec's based on the state of ego and nearby vehicles (BehavioralState).
         :param action_spec: An object representing the specified actions to be considered
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :return: A boolean , True where the action_spec is valid and false where it is filtered
         """
-        return self.filter_action_specs([action_spec], behavioral_state)[0]
+        return self.filter_action_specs([action_spec], behavioral_state, state)[0]
 
