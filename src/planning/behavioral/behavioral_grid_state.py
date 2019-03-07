@@ -195,12 +195,9 @@ class BehavioralGridState:
         # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}
         for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
-            try:
-                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
-                    lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                    lookahead_dist=frame_length, navigation_plan=nav_plan)
-            except MappingException:
-                continue
+            extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
+                lane_id=neighbor_lane_id, starting_lon=ref_route_start,
+                lookahead_dist=frame_length, navigation_plan=nav_plan)
 
         return extended_lane_frames
 
