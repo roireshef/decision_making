@@ -43,6 +43,7 @@ def plot_dynamics(path: str):
                 other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
                 other_lane.append(dyn_obj_list[0]['_cached_map_state']['lane_id']/1e9)
 
+    f = plt.figure(1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
     ego_lane_plot,  = plt.plot(timestamp_in_sec, ego_lane)
@@ -50,9 +51,17 @@ def plot_dynamics(path: str):
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
     plt.legend([ego_sv_plot, other_sv_plot, ego_lane_plot, other_lane_plot], ['ego_sv', 'other_sv', 'ego_lane', 'other_lane'])
-    plt.show()
+    f.show()
+
+    g = plt.figure(2)
+    ego_cv_plot,  = plt.plot(timestamp_in_sec, ego_cv)
+    other_cv_plot,  = plt.plot(timestamp_in_sec, other_cv)
+    plt.xlabel('time[s]')
+    plt.ylabel('velocity[m/s]')
+    plt.legend([ego_cv_plot, other_cv_plot], ['ego_cv', 'other_cv'])
+    g.show()
 
 
 if __name__ == "__main__":
     # Enter path of log file to analyze here:
-    plot_dynamics('/home/yzystl/projects/uc_workspace/ultracruise/logs/log_a.log')
+    plot_dynamics('/home/yzystl/projects/uc_workspace/ultracruise/logs/AV_Log_dm_main.log')
