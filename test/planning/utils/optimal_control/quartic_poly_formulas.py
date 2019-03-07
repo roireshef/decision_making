@@ -108,6 +108,12 @@ class QuarticMotionPredicatesCreator:
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints.
         """
+
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically.
+        if np.isclose(v_0, v_T, atol=1e-3, rtol=0) and np.isclose(a_0, 0.0, atol=1e-3, rtol=0):
+            return True
+
         time_cost_poly_coefs = \
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
