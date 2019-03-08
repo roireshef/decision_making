@@ -39,7 +39,7 @@ from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_F
 #     """
 #     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 #
-#     state_module = StateModule(pubsub=PubSub, logger=logger,
+#     state_module = StateModule(pubsub=pubsub, logger=logger,
 #                                scene_dynamic=scene_dynamic_fix)
 #     state_module.start()
 #     # Inserting an object in_fov in order to remember it.
