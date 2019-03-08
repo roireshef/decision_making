@@ -176,7 +176,7 @@ class Poly1D:
     def is_tracking_mode(v_0: float, v_T: np.array, a_0: float) -> np.array:
         """
         Checks if agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
-        zero. 
+        zero.
         :param v_0: a vector of initial velocities
         :param v_T: a vector of terminal velocities
         :param a_0: a vector of initial accelerations
