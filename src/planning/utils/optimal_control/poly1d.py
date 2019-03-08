@@ -172,6 +172,12 @@ class Poly1D:
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
 
+
+class QuarticPoly1D(Poly1D):
+    @staticmethod
+    def num_coefs():
+        return 5
+
     @staticmethod
     def is_tracking_mode(v_0: float, v_T: np.array, a_0: float) -> np.array:
         """
@@ -183,13 +189,8 @@ class Poly1D:
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.isclose(v_0, v_T, atol=1e-3, rtol=0) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(v_T.shape, False)
-
-
-class QuarticPoly1D(Poly1D):
-    @staticmethod
-    def num_coefs():
-        return 5
+        return np.isclose(v_0, v_T, atol=1e-3, rtol=0) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(
+            v_T.shape, False)
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
@@ -325,6 +326,21 @@ class QuinticPoly1D(Poly1D):
     @staticmethod
     def num_coefs():
         return 6
+
+    @staticmethod
+    def is_tracking_mode(v_0: float, v_T: np.array, a_0: float, s_0: np.array, T_m: float) -> np.array:
+        """
+        Checks if agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        zero.
+        :param v_0: initial velocity
+        :param v_T: a vector of terminal velocities
+        :param a_0: initial acceleration
+        :param s_0: a vector of initial distance to target
+        :param T_m: headway (seconds to be behind a target)
+        :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
+        its current velocity (usually when it stabilizes on the desired velocity in a following action)
+        """
+        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0), np.isclose(s_0, T_m*v_0, atol=1e-3, rtol=0)) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(v_T.shape, False)
 
     @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:

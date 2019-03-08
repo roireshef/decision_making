@@ -113,7 +113,7 @@ class QuarticMotionPredicatesCreator:
         # zero. This degenerate action is valid but can't be solved analytically.
         # Here we can't find a local minima as the equation is close to a linear line, intersecting in T=0.
 
-        if Poly1D.is_tracking_mode(v_0, np.array([v_T]), a_0)[0]:
+        if QuarticPoly1D.is_tracking_mode(v_0, np.array([v_T]), a_0)[0]:
             return True
 
         time_cost_poly_coefs = \

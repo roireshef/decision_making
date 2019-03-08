@@ -72,10 +72,12 @@ class DynamicActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (
             LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
+        T_m = SPECIFICATION_MARGIN_TIME_DELAY
+
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds,
-            a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+            a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=T_m)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
@@ -83,7 +85,7 @@ class DynamicActionSpace(ActionSpace):
         # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
         # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
         # intersecting in T=0.
-        T_s[Poly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
+        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, T_m)] = 0
 
         # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
         # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later

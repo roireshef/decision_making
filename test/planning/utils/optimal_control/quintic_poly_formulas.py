@@ -136,7 +136,7 @@ class QuinticMotionPredicatesCreator:
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
         # Here we can't find a local minima as the equation is close to a linear line, intersecting in T=0.
-        if Poly1D.is_tracking_mode(v_0, np.array([v_T]), a_0)[0]:
+        if QuinticPoly1D.is_tracking_mode(v_0, np.array([v_T]), a_0, np.array([s_T]), T_m)[0]:
             return True
 
         time_cost_poly_coefs = \

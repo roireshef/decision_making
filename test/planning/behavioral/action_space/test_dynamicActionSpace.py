@@ -33,8 +33,8 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
                for recipe in follow_vehicle_recipes_towards_front_cells]
 
     # terminal action-spec latitude equals the current latitude of target vehicle
-    expected_latitudes = [0, np.nan, np.nan, 0, np.nan, np.nan, 0, np.nan, np.nan]
-    latitudes = [action.d if action is not None else np.nan for i, action in enumerate(actions)]
+    expected_latitudes = [0]*9
+    latitudes = [action.d for i, action in enumerate(actions)]
     np.testing.assert_array_almost_equal(latitudes, expected_latitudes)
 
     # since the map is multi-segment, calculate objects longitudes relative to the corresponding GFF
@@ -55,7 +55,7 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
                            actions[i].v * SPECIFICATION_MARGIN_TIME_DELAY -
                            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT -
                            behavioral_grid_state.ego_state.size.length / 2 - targets[i].dynamic_object.size.length / 2
-                           if actions[i] is not None else np.nan for i, target in enumerate(targets)]
+                           for i, target in enumerate(targets)]
 
-    longitudes = [action.s if action is not None else np.nan for action in actions]  # also relative to the corresponding GFF
+    longitudes = [action.s for action in actions]  # also relative to the corresponding GFF
     np.testing.assert_array_almost_equal(longitudes, expected_longitudes)
