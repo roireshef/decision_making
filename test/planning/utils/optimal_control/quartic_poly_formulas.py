@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
-from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, Poly1D
 
 
 class QuarticMotionSymbolicsCreator:
@@ -111,7 +111,9 @@ class QuarticMotionPredicatesCreator:
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
-        if np.isclose(v_0, v_T, atol=1e-3, rtol=0) and np.isclose(a_0, 0.0, atol=1e-3, rtol=0):
+        # Here we can't find a local minima as the equation is close to a linear line, intersecting in T=0.
+
+        if Poly1D.is_tracking_mode(v_0, np.array([v_T]), a_0)[0]:
             return True
 
         time_cost_poly_coefs = \

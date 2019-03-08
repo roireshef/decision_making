@@ -172,6 +172,18 @@ class Poly1D:
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
 
+    @staticmethod
+    def is_tracking_mode(v_0: float, v_T: np.array, a_0: float) -> np.array:
+        """
+
+        :param v_0: a vector of initial velocities
+        :param v_T: a vector of terminal velocities
+        :param a_0: a vector of initial accelerations
+        :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
+        its current velocity (usually when it stabilizes on the desired velocity in a following action)
+        """
+        return np.isclose(v_0, v_T, atol=1e-3, rtol=0) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(v_T.shape, False)
+
 
 class QuarticPoly1D(Poly1D):
     @staticmethod
