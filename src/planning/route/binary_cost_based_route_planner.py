@@ -29,16 +29,16 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     def __init__(self):
         self._route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
-    def _reset_route_plan_lane_segments(self):
+    def reset_route_plan_lane_segments(self):
         self._route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
-    def _get_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
+    def get_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
         return self._route_plan_lane_segments
     
-    def _reverse_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
+    def reverse_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
         return self._route_plan_lane_segments.reverse()
 
-    def _append_to_route_plan_lane_segments(self, route_lane_segments: RoadSegRoutePlanLaneSegments) -> RoadRoutePlanLaneSegments:
+    def append_to_route_plan_lane_segments(self, route_lane_segments: RoadSegRoutePlanLaneSegments) -> RoadRoutePlanLaneSegments:
         return self._route_plan_lane_segments.append(route_lane_segments)
 
 
@@ -177,7 +177,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # search through all downstream lanes to to current lane
         downstream_lane_found_in_route = False
 
-        downstream_route_lane_segments: RoadSegRoutePlanLaneSegments = self._get_route_plan_lane_segments()[-1]
+        downstream_route_lane_segments: RoadSegRoutePlanLaneSegments = self.get_route_plan_lane_segments()[-1]
         
         downstream_route_lane_segment_ids: int = [] # list of lane segment IDs in the next road segment in route
 
@@ -230,7 +230,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         lane_occupancy_cost = BinaryCostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
         
         # Calculate lane end costs (from lane occupancy costs)
-        if  not self._get_route_plan_lane_segments(): # if route_plan_lane_segments is empty indicating the last segment in route
+        if  not self.get_route_plan_lane_segments(): # if route_plan_lane_segments is empty indicating the last segment in route
             if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
                 lane_end_cost = TRUE_COST
             else :
@@ -269,7 +269,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                                                  # if there is NO downstream lane (as defined in map) to the current 
                                                  # road segment (any of its lanes) that is in the route
         
-        if not self._get_route_plan_lane_segments(): # check if this is the last road segment in the nav plan
+        if not self.get_route_plan_lane_segments(): # check if this is the last road segment in the nav plan
            downstream_road_segment_not_found = False
 
         downstream_lane_segment_ids_for_road_segment:List[List[int]] = []
@@ -322,7 +322,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # key -> road_segment_id
         # value -> lane_segment_ids
 
-        self._reset_route_plan_lane_segments()
+        self.reset_route_plan_lane_segments()
 
         for (road_segment_id, lane_segment_ids) in reversed(route_data.get_lane_segment_ids_for_route().items()):
             
@@ -333,13 +333,13 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             
             num_lane_segments.append( len(lane_segment_ids) )
 
-            self._append_to_route_plan_lane_segments(route_lane_segments=route_lane_segments)
+            self.append_to_route_plan_lane_segments(route_lane_segments=route_lane_segments)
         
         # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning of the list
         # at each road segment loop (of length n)
         road_segment_ids.reverse()
         num_lane_segments.reverse()
-        self._reverse_route_plan_lane_segments()
+        self.reverse_route_plan_lane_segments()
 
         num_road_segments = len(road_segment_ids)
 
@@ -349,4 +349,4 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                              e_Cnt_num_road_segments=num_road_segments, 
                              a_i_road_segment_ids=np.array(road_segment_ids),
                              a_Cnt_num_lane_segments=np.array(num_lane_segments), 
-                             as_route_plan_lane_segments=self._get_route_plan_lane_segments())
+                             as_route_plan_lane_segments=self.get_route_plan_lane_segments())
