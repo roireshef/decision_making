@@ -177,13 +177,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         downstream_lane_found_in_route = False
 
         downstream_route_lane_segments: RoadSegRoutePlanLaneSegments = self.get_route_plan_lane_segments()[-1]
-        
-        downstream_route_lane_segment_ids: int = [] # list of lane segment IDs in the next road segment in route
 
-        for route_lane_segment in downstream_route_lane_segments:
-            downstream_route_lane_segment_ids.append(route_lane_segment.e_i_lane_segment_id)
-        
-        downstream_route_lane_segment_ids = np.array(downstream_route_lane_segment_ids)
+        downstream_route_lane_segment_ids = np.array([route_lane_segment.e_i_lane_segment_id for route_lane_segment in downstream_route_lane_segments ])
 
         for downstream_base_lane_segment in lane_segment_base_data.as_downstream_lanes:
 
