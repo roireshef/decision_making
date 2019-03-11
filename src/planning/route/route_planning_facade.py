@@ -29,6 +29,7 @@ class RoutePlanningFacade(DmModule):
         """
         super().__init__(pubsub=pubsub, logger=logger)
         self.planner = route_planner
+        self.timestamp = time.time()
         self.logger.info("Initialized Route Planner Facade.")
         MetricLogger.init(ROUTE_PLANNING_NAME_FOR_METRICS)
 
@@ -84,13 +85,13 @@ class RoutePlanningFacade(DmModule):
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
                                           pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
         scene_static = SceneStatic.deserialize(serialized_scene_static)
+        self.timestamp = scene_static.s_Header.s_Timestamp.timestamp_in_seconds
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static.s_Data.s_SceneStaticBase, scene_static.s_Data.s_NavigationPlan
 
     def _publish_results(self, s_Data: DataRoutePlan) -> None:
-        timestamp_object = scene_static.s_Header.s_Timestamp.timestamp_in_seconds
 
-        final_route_plan = RoutePlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0), s_Data = s_Data)
+        final_route_plan = RoutePlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=self.timestamp,e_Cnt_version=0), s_Data = s_Data)
 
         self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], final_route_plan.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_ROUTE_PLANNER_OUTPUT, final_route_plan))
