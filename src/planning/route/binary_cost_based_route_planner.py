@@ -26,19 +26,19 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
     """
     def __init__(self):
-        self._route_plan_lane_segments:RoadRoutePlanLaneSegments = []
+        self.__route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
     def reset_route_plan_lane_segments(self):
-        self._route_plan_lane_segments:RoadRoutePlanLaneSegments = []
+        self.__route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
     def get_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
-        return self._route_plan_lane_segments
+        return self.__route_plan_lane_segments
     
     def reverse_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
-        return self._route_plan_lane_segments.reverse()
+        return self.__route_plan_lane_segments.reverse()
 
     def append_to_route_plan_lane_segments(self, route_lane_segments: RoadSegRoutePlanLaneSegments) -> RoadRoutePlanLaneSegments:
-        return self._route_plan_lane_segments.append(route_lane_segments)
+        return self.__route_plan_lane_segments.append(route_lane_segments)
 
 
     @staticmethod
