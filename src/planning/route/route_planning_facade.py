@@ -50,9 +50,9 @@ class RoutePlanningFacade(DmModule):
         try:
             # Read inputs
             start_time = time.time()
-            ss_base, ss_nav = self._get_current_scene_static()
+            scene_static_base , scene_static_nav  = self._get_current_scene_static()
             route_planner_input = RoutePlannerInputData().get_instance()
-            route_planner_input.reformat_input_data(scene=ss_base, nav_plan=ss_nav)
+            route_planner_input.reformat_input_data(scene=scene_static_base, nav_plan=scene_static_nav )
 
             # Plan
             route_plan = self.__planner.plan()
@@ -88,7 +88,7 @@ class RoutePlanningFacade(DmModule):
         return scene_static.s_Data.s_SceneStaticBase, scene_static.s_Data.s_NavigationPlan
 
     def _publish_results(self, s_Data: DataRoutePlan) -> None:
-        timestamp_object = Timestamp.from_seconds(0)
+        timestamp_object = scene_static.s_Header.s_Timestamp.timestamp_in_seconds
 
         final_route_plan = RoutePlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0), s_Data = s_Data)
 
