@@ -8,7 +8,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
-    ActionSpec
+    ActionSpec, ActionType
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -47,6 +47,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
         :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
         """
+        # TODO: remove it
+        passed_recipe_filter = [recipe.aggressiveness for i, recipe in enumerate(action_recipes)
+                                if recipe.action_type == ActionType.FOLLOW_VEHICLE and recipes_mask[i]]
+        print('passed dynamic recipes filter: %s' % (str(passed_recipe_filter)))
+
         # Action specification
         # TODO: replace numpy array with fast sparse-list implementation
         action_specs = np.full(len(action_recipes), None)
@@ -114,9 +119,16 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
             state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters.reference_route,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
-        print("Chosen behavioral action recipe %s (ego_timestamp: %.3f, ego_vel=%.3f, obj_vel=%.3f)" %
-              (action_recipes[selected_action_index], state.ego_state.timestamp_in_sec,
-               state.ego_state.cartesian_state[3], state.dynamic_objects[0].cartesian_state[3]))
+        if len(state.dynamic_objects) > 0:
+            print("BP time %.3f: chose recipe %s (ego_vel=%.3f, obj_vel=%.3f, time_to_goal=%.3f)" %
+                  (state.ego_state.timestamp_in_sec, action_recipes[selected_action_index],
+                   state.ego_state.cartesian_state[3], state.dynamic_objects[0].cartesian_state[3],
+                   trajectory_parameters.time - state.ego_state.timestamp_in_sec))
+        else:
+            print("BP time %.3f: chose recipe %s (ego_fstate=%s, time_to_goal=%.3f)" %
+                  (state.ego_state.timestamp_in_sec, action_recipes[selected_action_index],
+                   state.ego_state.map_state.lane_fstate, trajectory_parameters.time - state.ego_state.timestamp_in_sec))
+
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
                           action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",

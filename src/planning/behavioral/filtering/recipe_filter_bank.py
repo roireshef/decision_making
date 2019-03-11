@@ -138,6 +138,12 @@ class FilterLimitsViolatingTrajectory(RecipeFilter):
                 filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
                                     FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
 
+                # TODO: remove it
+                if not filter_result[i]:
+                    print('Filtered: v_0=%f (%d), a_0=%f (%d), s_T=%f (%d), v_T=%f (%d)' %
+                          (v_0, FILTER_V_0_GRID.get_index(v_0), a_0, FILTER_A_0_GRID.get_index(a_0),
+                           s_T, FILTER_S_T_GRID.get_index(margin_sign * s_T), v_T, FILTER_V_T_GRID.get_index(v_T)))
+
             elif action_type == ActionType.FOLLOW_LANE:
 
                 wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE[recipe.aggressiveness.value]

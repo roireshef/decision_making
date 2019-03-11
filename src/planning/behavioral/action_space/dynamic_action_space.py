@@ -56,6 +56,9 @@ class DynamicActionSpace(ActionSpace):
         target_map_states = [target.dynamic_object.map_state for target in targets]
         # get desired terminal velocity
         v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in target_map_states])
+        v_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SV])
+        a_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SA])
+        zeros = np.zeros(shape=v_T.shape)
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
@@ -72,16 +75,22 @@ class DynamicActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (
             LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
+        # cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
+        #     w_T=np.array([0.1]), w_J=np.array([6]), dx=np.array([30.02]), a_0=np.array([0]),
+        #     v_0=np.array([26.822]), v_T=np.array([26.822]), T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+        # roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds,
             a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
-        # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
-        # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
-        # when setting T
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
+        # although it should be zero.
+        T_s[np.logical_and(np.isclose(v_T, v_0, atol=1e-3, rtol=0), np.isclose(a_0, zeros, atol=1e-3, rtol=0))] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(

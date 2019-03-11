@@ -88,6 +88,8 @@ class BehavioralPlanningFacade(DmModule):
             # Send visualization data
             self._publish_visualization(behavioral_visualization_message)
 
+            print('---- BP: %f sec' % (time.time() - start_time))
+
             self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
 
             MetricLogger.get_logger().report()

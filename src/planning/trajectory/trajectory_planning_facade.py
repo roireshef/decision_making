@@ -22,7 +22,7 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianTrajectories, FP_SX, C_Y, FS_DX, \
-    FS_SX, FrenetState2D
+    FS_SX, FrenetState2D, C_X, FS_SV, FS_SA, FS_DV, FS_DA
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -100,11 +100,29 @@ class TrajectoryPlanningFacade(DmModule):
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
+                # TODO: remove it
+                ego_fstate = state.ego_state.map_state.lane_fstate
+                sampled_cartesian = sampled_state.ego_state.cartesian_state
+                sampled_fstate = sampled_state.ego_state.map_state.lane_fstate
+                ego_time = state.ego_state.timestamp_in_sec
+                dist_to_goal = np.linalg.norm(params.target_state[:2] - sampled_cartesian[:2])
+                time_to_goal = params.time - ego_time
+                print('TP if: time %.3f; orig-fstate: (%.2f, %.3f, %.2f) -> (%.2f, %.3f, %.2f,  %.3f, %.3f, %.2f); '
+                      'cpoint: (%.2f, %.2f); to_goal: t=%.3f s=%.3f s/t=%.3f' %
+                      (ego_time, ego_fstate[FS_SX], ego_fstate[FS_SV], ego_fstate[FS_SA],
+                       sampled_fstate[FS_SX], sampled_fstate[FS_SV], sampled_fstate[FS_SA],
+                       sampled_fstate[FS_DX], sampled_fstate[FS_DV], sampled_fstate[FS_DA],
+                       sampled_cartesian[C_X], sampled_cartesian[C_Y], time_to_goal, dist_to_goal, dist_to_goal/time_to_goal))
                 self.logger.debug(LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED,
                                   sampled_state.ego_state.map_state,
                                   state.ego_state.map_state)
                 updated_state = sampled_state
             else:
+                # TODO: remove it
+                ego_fstate = state.ego_state.map_state.lane_fstate
+                print('TP else: time %.3f; orig-fstate: (%.2f, %.3f, %.2f); T_s=%f' %
+                      (state.ego_state.timestamp_in_sec, ego_fstate[FS_SX], ego_fstate[FS_SV], ego_fstate[FS_SA],
+                       params.time - state.ego_state.timestamp_in_sec))
                 self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.ego_state.map_state)
                 updated_state = state
 
@@ -132,6 +150,8 @@ class TrajectoryPlanningFacade(DmModule):
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
+
+            print('---- TP: %f sec' % (time.time() - start_time))
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
             MetricLogger.get_logger().report()

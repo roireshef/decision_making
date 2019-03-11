@@ -1,15 +1,18 @@
 from collections import defaultdict
 
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, EPS, LAT_ACC_LIMITS, BP_ACTION_T_LIMITS, \
-    MAX_SAFETY_T_D_GRID_SIZE
+    MAX_SAFETY_T_D_GRID_SIZE, BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE, FILTER_A_0_GRID, FILTER_V_0_GRID, \
+    FILTER_V_T_GRID
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLongitudinalPosition, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLongitudinalPosition, RelativeLane, \
+    ActionType, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 import numpy as np
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterLimitsViolatingTrajectory
 from decision_making.src.planning.types import C_K, C_V, FS_SX, FS_DX, FrenetState2D, FrenetTrajectories2D, FS_SV
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
@@ -63,7 +66,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
                 continue  # the spec passes the filter
 
             # check the ability to brake beyond the spec for all points with limited velocity
-            is_able_to_brake = ActionSpecFilter.check_ability_to_brake_beyond_spec(
+            is_able_to_brake = FilterByLateralAcceleration._check_ability_to_brake_beyond_spec(
                 spec, behavioral_state.extended_lane_frames[spec.relative_lane],
                 beyond_spec_frenet_idxs[slow_points], points_velocity_limits[slow_points], self.distances)
 
@@ -112,9 +115,22 @@ class FilterByLateralAcceleration(ActionSpecFilter):
 
             # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
             ftrajectories_s = QuinticPoly1D.zip_polyval_with_derivatives(poly_coefs_s, time_samples_2d)
-            # assign near-zero velocity to ftrajectories_s beyond spec.t
+
+            # calculate ftrajectories_s beyond spec.t
+            last_time_idxs = (np.maximum(specs_t, BP_ACTION_T_LIMITS[0]) / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
             for i, trajectory in enumerate(ftrajectories_s):
-                trajectory[int(specs_t[i] / TRAJECTORY_TIME_RESOLUTION) + 1:] = np.array([EPS, EPS, 0])
+                # calculate trajectory time index for t = max(specs_t[i], BP_ACTION_T_LIMITS[0])
+                # if spec.t < BP_ACTION_T_LIMITS[0], extrapolate trajectories between spec.t and BP_ACTION_T_LIMITS[0]
+                if specs_t[i] < last_time_idxs[i]:
+                    spec_t_idx = int(specs_t[i] / TRAJECTORY_TIME_RESOLUTION) + 1
+                    times_beyond_spec = np.arange(spec_t_idx, last_time_idxs[i]) * TRAJECTORY_TIME_RESOLUTION - specs_t[i]
+                    trajectory[spec_t_idx:last_time_idxs[i]] = np.c_[
+                        lane_specs[i].s + times_beyond_spec * lane_specs[i].v,
+                        np.full(times_beyond_spec.shape, lane_specs[i].v),
+                        np.zeros_like(times_beyond_spec)]
+                # assign near-zero velocity to ftrajectories_s beyond last_time_idx
+                trajectory[last_time_idxs[i]:] = np.array([EPS, EPS, 0])
+
             # assign zeros to the lateral movement of ftrajectories
             ftrajectories = np.concatenate((ftrajectories_s, np.zeros_like(ftrajectories_s)), axis=-1)
 
@@ -126,6 +142,29 @@ class FilterByLateralAcceleration(ActionSpecFilter):
                 lane_center_ctrajectories[..., C_K] * lane_center_ctrajectories[..., C_V] ** 2
 
         return NumpyUtils.is_in_limits(lateral_accelerations, LAT_ACC_LIMITS).all(axis=-1)
+
+    @staticmethod
+    def _check_ability_to_brake_beyond_spec(action_spec: ActionSpec, frenet: GeneralizedFrenetSerretFrame,
+                                            frenet_points_idxs: np.array, vel_limit_in_points: np.array,
+                                            action_distances: np.array):
+        """
+        Given action spec and velocity limits on a subset of Frenet points, check if it's possible to brake enough
+        before arriving to these points. The ability to brake is verified using static actions distances.
+        :param action_spec: action specification
+        :param frenet: generalized Frenet Serret frame
+        :param frenet_points_idxs: array of indices of the Frenet frame points, having limited velocity
+        :param vel_limit_in_points: array of maximal velocities at frenet_points_idxs
+        :param action_distances: dictionary of distances of static actions
+        :return: True if the agent can brake before each given point to its limited velocity
+        """
+        # create constraints for static actions per point beyond the given spec
+        dist_to_points = frenet.get_s_from_index_on_frame(frenet_points_idxs, delta_s=0) - action_spec.s
+
+        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
+        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE[AggressivenessLevel.CALM.value]
+        brake_dist = action_distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
+            FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
+        return (brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()
 
 
 class FilterUnsafeExpectedTrajectory(ActionSpecFilter):

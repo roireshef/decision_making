@@ -95,7 +95,8 @@ class QuinticMotionPredicatesCreator:
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
 
     @staticmethod
-    def generate_predicate_value(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, s_T: np.array, T_m: float):
+    def generate_predicate_value(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, s_T: np.array,
+                                 T_m: float):
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -108,23 +109,18 @@ class QuinticMotionPredicatesCreator:
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints and doesn't get into target vehicle safety zone.
         """
-        # calculate T for all actions
+        # calculate T for all non-zero actions
         T = QuinticMotionPredicatesCreator.calc_T_s(w_T, w_J, v_0, a_0, v_T, s_T, T_m)
+        is_in_limits = (T == 0)  # zero actions are valid
 
         # get indices of non-nan positive T values; for nan values of T, is_in_limits = False
-        valid_idxs = np.where(np.logical_and(T > 0, T <= BP_ACTION_T_LIMITS[1]))[0]
-        if len(valid_idxs) == 0:
-            # for T == 0 the action is "do nothing" (ego is at the goal), then such action is valid
-            return T == 0  # T is a vector of times
+        valid_non_zero = np.logical_and(T > 0, T <= BP_ACTION_T_LIMITS[1])
+        if not valid_non_zero.any():
+            return is_in_limits  # only zero actions are valid
 
-        is_in_limits = np.full(T.shape, False)
-
-        # check actions validity: velocity & acceleration limits and longitudinal safety
-        is_in_limits[valid_idxs], _ = QuinticMotionPredicatesCreator.check_action_limits(
-            T[valid_idxs], v_0[valid_idxs], v_T[valid_idxs], s_T[valid_idxs], a_0[valid_idxs], T_m)
-
-        # for T == 0 the actions are valid
-        is_in_limits[T == 0] = True
+        # check actions validity: velocity & acceleration limits
+        is_in_limits[valid_non_zero], _ = QuinticMotionPredicatesCreator.check_action_limits(
+            T[valid_non_zero], v_0[valid_non_zero], v_T[valid_non_zero], s_T[valid_non_zero], a_0[valid_non_zero], T_m)
 
         return is_in_limits
 
@@ -142,18 +138,24 @@ class QuinticMotionPredicatesCreator:
         :param T_m: specification margin from target vehicle [s]
         :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
         """
-        w_T_array = np.full(s_T.shape, w_T)
-        w_J_array = np.full(s_T.shape, w_J)
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically.
+        non_zero_actions = np.logical_not(np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
+                                                         np.isclose(a_0, 0.0, atol=1e-3, rtol=0)))
+        w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
+        w_J_array = np.full(v_0[non_zero_actions].shape, w_J)
 
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
-        time_cost_derivative_poly_coefs = \
-            QuinticPoly1D.time_cost_function_derivative_coefs(w_T_array, w_J_array, a_0, v_0, v_T, s_T, T_m)
+        time_cost_derivative_poly_coefs = QuinticPoly1D.time_cost_function_derivative_coefs(w_T_array, w_J_array,
+            a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions], s_T[non_zero_actions], T_m)
 
         # Find roots of the polynomial in order to get extremum points
         cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
 
         # calculate T for all actions
-        return np.fmin.reduce(cost_real_roots, axis=-1)
+        T = np.zeros_like(v_0)
+        T[non_zero_actions] = np.fmin.reduce(cost_real_roots, axis=-1)
+        return T
 
     @staticmethod
     def check_action_limits(T: np.array, v_0: np.array, v_T: np.array, s_T: np.array, a_0: np.array,

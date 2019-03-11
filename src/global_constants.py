@@ -80,7 +80,7 @@ LON_SAFETY_SIGMOID_K_PARAM = 6              # sigmoid k (slope) param of longitu
 LAT_SAFETY_SIGMOID_K_PARAM = 15             # sigmoid k (slope) param of lateral RSS safety cost
 
 # [m/sec] speed to plan towards by default in BP
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 23.0  # TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 30.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 VELOCITY_LIMITS = np.array([0.0, 30])
@@ -93,20 +93,20 @@ BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of dynamic actions,
 # have to be sorted from calm to aggressive
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [6.000, 0.15, 0.1],
-    [0.100, 0.15, 0.1],
-    [0.005, 0.15, 0.1]
+    [6.000, 1.0, 0.1],
+    [0.100, 0.3, 0.1],
+    [0.005, 0.1, 0.1]
 ])
 
 # behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of static actions
 BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE = np.array([
-    [0.160, 0.15, 0.1],
-    [0.015, 0.15, 0.1],
-    [0.005, 0.15, 0.1]
+    [1.000, 1.0, 0.1],
+    [0.015, 0.3, 0.1],
+    [0.005, 0.1, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-3.0, 3.0])

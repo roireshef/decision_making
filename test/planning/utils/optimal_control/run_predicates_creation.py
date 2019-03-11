@@ -31,6 +31,7 @@ def main():
     # Quartic predicates creation
     quartic_predicates_creator = QuarticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_V_T_GRID, resources_directory)
     quartic_predicates_creator.create_predicates(BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE)
+    quartic_predicates_creator.create_actions_distances(BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE)
     # Create MetaData log file
     document_created_predicates(resources_directory)
 
