@@ -1,5 +1,4 @@
 import numpy as np
-from numpy import ndarray
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import List, Dict
@@ -10,7 +9,7 @@ from decision_making.src.exceptions import  MissingInputInformation, RepeatedRoa
 
 RoadSegmentDict = Dict[int,SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int,SceneLaneSegmentBase]
-RouteLaneSegmentOrderedDict = Dict[int,ndarray] # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
+RouteLaneSegmentOrderedDict = Dict[int,np.ndarray] # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
 
 
 
@@ -27,10 +26,10 @@ class RoutePlannerInputData():
     def __init__(self,route_lane_segment_ids:RouteLaneSegmentOrderedDict = OrderedDict(), route_lane_segments_base_as_dict: LaneSegmentBaseDict = {},\
                  route_road_segments_as_dict: RoadSegmentDict = {} , next_road_segment_id: Dict[int, int] = {}, \
                  prev_road_segment_id: Dict[int, int] = {}):
-        
+
 
         self._route_lane_segment_ids =  route_lane_segment_ids                       # dict:  key - road segment IDs (ordered as in routeplan),
-                                                                                     #        value - ndarray(LaneSegmentID)
+                                                                                     #        value - np.ndarray(LaneSegmentID)
                                                                                      #        (ordered as in the road segment structure in nav. plan)
 
         self._route_lane_segments_base_as_dict = route_lane_segments_base_as_dict    # dict: key - lane segment ID,
@@ -75,7 +74,7 @@ class RoutePlannerInputData():
         if not scene.as_scene_road_segment:
             raise MissingInputInformation("Route Planner Input Data Processing: Empty scene.as_scene_road_segment")
 
-        if not nav_plan.a_i_road_segment_ids.size: # ndarray type
+        if not nav_plan.a_i_road_segment_ids.size: # np.ndarray type
             raise MissingInputInformation("Route Planner Input Data Processing: Empty NAV Plan")
 
 
@@ -188,7 +187,7 @@ class RoutePlannerInputData():
         """
          This method returns entire RouteLaneSegmentOrderedDict, which is an ordered Dict of
                         key - road segment IDs (ordered as in routeplan),
-                        value - ndarray(LaneSegmentID) (ordered as in the road segment structure )
+                        value - np.ndarray(LaneSegmentID) (ordered as in the road segment structure )
         """
         if not self._route_lane_segment_ids:
             raise KeyError("Cost Based Route Planner: Trying to access empty route lane segment ids ")
@@ -196,9 +195,9 @@ class RoutePlannerInputData():
 
 
     @raises(KeyError)
-    def get_lane_segment_ids_for_road_segment(self, road_segment_id:int) -> ndarray:
+    def get_lane_segment_ids_for_road_segment(self, road_segment_id:int) -> np.ndarray:
         """
-         This method returns ndarray(road_segment_id) (ordered as in the road segment structure )
+         This method returns np.ndarray(road_segment_id) (ordered as in the road segment structure )
         """
         if road_segment_id not in self._route_lane_segment_ids:
             raise KeyError("Cost Based Route Planner: In _route_lane_segment_ids couldn't find road_segment_id ",road_segment_id)

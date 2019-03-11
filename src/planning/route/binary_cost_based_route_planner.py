@@ -1,5 +1,4 @@
 import numpy as np
-from numpy import ndarray
 import sys
 import pprint
 import traceback
