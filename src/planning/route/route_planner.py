@@ -24,25 +24,27 @@ class RoutePlannerInputData():
 
     __instance = None
 
-    def __init__(self):
+    def __init__(self,route_lane_segment_ids:RouteLaneSegmentOrderedDict = OrderedDict(), route_lane_segments_base_as_dict: LaneSegmentBaseDict = {},\
+                 route_road_segments_as_dict: RoadSegmentDict = {} , next_road_segment_id: Dict[int, int] = {}, \
+                 prev_road_segment_id: Dict[int, int] = {}):
 
-        self._route_lane_segment_ids: RouteLaneSegmentOrderedDict = OrderedDict()    # dict:  key - road segment IDs (ordered as in routeplan),
+        self._route_lane_segment_ids =  route_lane_segment_ids                       # dict:  key - road segment IDs (ordered as in routeplan),
                                                                                      #        value - ndarray(LaneSegmentID)
                                                                                      #        (ordered as in the road segment structure in nav. plan)
 
-        self._route_lane_segments_base_as_dict: LaneSegmentBaseDict = {}             # dict: key - lane segment ID,
+        self._route_lane_segments_base_as_dict = route_lane_segments_base_as_dict    # dict: key - lane segment ID,
                                                                                      #       value - LaneSegmentBase.
                                                                                      # Should contain all the lane segments listed in nav. route road segments
 
-        self._route_road_segments_as_dict: RoadSegmentDict = {}                      # dict: key - road segment ID,
+        self._route_road_segments_as_dict = route_road_segments_as_dict              # dict: key - road segment ID,
                                                                                      #       value - Road Segments.
                                                                                      # Should contain all the road segments listed in nav. route
 
-        self._next_road_segment_id: Dict[int, int] = {}                              # Enables O(1) lookup of the next road segment.
+        self._next_road_segment_id =  next_road_segment_id                           # Enables O(1) lookup of the next road segment.
                                                                                      #                 key - road segment ID,
                                                                                      #                 value - next road segment ID in nav. route
 
-        self._prev_road_segment_id: Dict[int, int] = {}                              # Enables O(1) lookup of the prev road segment
+        self._prev_road_segment_id =  prev_road_segment_id                           # Enables O(1) lookup of the prev road segment
                                                                                      #                 key - road segment ID,
                                                                                      #                 value - prev road segment ID in nav. route
 
