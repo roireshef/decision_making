@@ -53,8 +53,15 @@ class RoutePlannerInputData():
         """
         :return: The instance
         """
+        route_lane_segment_ids:RouteLaneSegmentOrderedDict = OrderedDict()
+        route_lane_segments_base_as_dict: LaneSegmentBaseDict = {}
+        route_road_segments_as_dict: RoadSegmentDict = {}
+        next_road_segment_id: Dict[int, int] = {}
+        prev_road_segment_id: Dict[int, int] = {}
+
         if cls.__instance is None:
-            cls.__instance = RoutePlannerInputData()
+            cls.__instance = RoutePlannerInputData(route_lane_segment_ids,route_lane_segments_base_as_dict,route_road_segments_as_dict,next_road_segment_id,\
+                                                   prev_road_segment_id)
         return cls.__instance
 
 
