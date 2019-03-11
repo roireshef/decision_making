@@ -65,8 +65,15 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
         print_route_plan_lane_segment = print_route_plan_lane_segment +"\n"
 
 
-RoadSegRoutePlanLaneSegments = List[RoutePlanLaneSegment]
-RoadRoutePlanLaneSegments = List[RoadSegRoutePlanLaneSegments]
+RoadSegRoutePlanLaneSegments = List[RoutePlanLaneSegment]  # RoutePlanLaneSegment : struct -> Contains Route plan end and occupancy costs, 
+                                                           # along with the lane identifier to convey routing relevant information in a structure.
+                                                           # RoadSegRoutePlanLaneSegments:List[RoutePlanLaneSegment ] are List of RoutePlanLaneSegment(s). 
+                                                           # Contains all the RoutePlanLaneSegment in a RoadSegment.
+                                                           
+RoadRoutePlanLaneSegments = List[RoadSegRoutePlanLaneSegments] # RoadRoutePlanLaneSegments:List[RoadSegRoutePlanLaneSegments] are
+                                                               # List of ( List of RoutePlanLaneSegment(s)). 
+                                                               # Contains all the RoutePlanLaneSegment in a Road.
+
 
 class DataRoutePlan(PUBSUB_MSG_IMPL):
     e_b_is_valid = bool
