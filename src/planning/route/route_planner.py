@@ -27,6 +27,7 @@ class RoutePlannerInputData():
     def __init__(self,route_lane_segment_ids:RouteLaneSegmentOrderedDict = OrderedDict(), route_lane_segments_base_as_dict: LaneSegmentBaseDict = {},\
                  route_road_segments_as_dict: RoadSegmentDict = {} , next_road_segment_id: Dict[int, int] = {}, \
                  prev_road_segment_id: Dict[int, int] = {}):
+        
 
         self._route_lane_segment_ids =  route_lane_segment_ids                       # dict:  key - road segment IDs (ordered as in routeplan),
                                                                                      #        value - ndarray(LaneSegmentID)

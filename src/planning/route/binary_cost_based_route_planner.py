@@ -10,7 +10,7 @@ from typing import List, Dict
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
 
 from decision_making.src.exceptions import  RoadSegmentLaneSegmentMismatch, raises
-from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD
+from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST
 from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan, RoadSegRoutePlanLaneSegments, \
     RoadRoutePlanLaneSegments
 from decision_making.src.messages.scene_static_enums import (
@@ -48,12 +48,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of lane map type. Current implementation is binary cost.
         :param mapping_status_attribute: type of mapped 
-        :return: normalized cost (0 to 1)
+        :return: normalized cost (FALSE_COST to TRUE_COST)
         """
         if ( (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
              (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap) ):
-            return 0
-        return 1
+            return FALSE_COST
+        return TRUE_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -61,12 +61,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of construction zone type. Current implementation is binary cost. 
         :param construction_zone_attribute: type of lane construction
-        :return: Normalized cost (0 to 1)
+        :return: Normalized cost (FALSE_COST to TRUE_COST)
         """
         if ( (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
              (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown) ):
-            return 0
-        return 1
+            return FALSE_COST
+        return TRUE_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -74,13 +74,13 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of lane direction. Current implementation is binary cost. 
         :param lane_dir_in_route_attribute: map lane direction in respect to host
-        :return: Normalized cost (0 to 1)
+        :return: Normalized cost (FALSE_COST to TRUE_COST)
         """
         if ( (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
              (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
              (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle) ):
-            return 0
-        return 1
+            return FALSE_COST
+        return TRUE_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -88,11 +88,11 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of GM authorized driving area. Current implementation is binary cost.  
         :param gm_authority_attribute: type of GM authority
-        :return: Normalized cost (0 to 1)
+        :return: Normalized cost (FALSE_COST to TRUE_COST)
         """
         if (gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None):
-            return 0
-        return 1
+            return FALSE_COST
+        return TRUE_COST
 
     @staticmethod
     @raises(IndexError)
@@ -103,7 +103,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         according to the (input) lane attribute, which lane attribute method to invoke
         :param lane_attribute_index: pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
         :param lane_attribute_value: value of the pointed lane attribute
-        :return: Normalized lane occupancy cost based on the concerned lane attribute (0 to 1)
+        :return: Normalized lane occupancy cost based on the concerned lane attribute (FALSE_COST to TRUE_COST)
         """
         if (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus):
             return BinaryCostBasedRoutePlanner.mapping_status_based_occupancy_cost(lane_attribute_value)
@@ -115,7 +115,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             return BinaryCostBasedRoutePlanner.lane_dir_in_route_based_occupancy_cost(lane_attribute_value)
         else:
             raise IndexError("Cost Based Route Planner: lane_attribute_index not supported", lane_attribute_index)
-            return 0
+            return FALSE_COST
 
     @staticmethod
     @raises(IndexError)
@@ -126,7 +126,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
         :return: LaneOccupancyCost, cost to the AV if it occupies the lane.
         """
-        lane_occupancy_cost = 0
+        lane_occupancy_cost = FALSE_COST
 
         # Now iterate over all the active lane attributes for the lane segment
         for lane_attribute_index in lane_segment_base_data.a_i_active_lane_attribute_indices:   
@@ -152,8 +152,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             # Add costs from all lane attributes
             lane_occupancy_cost = lane_occupancy_cost + lane_attribute_occupancy_cost
 
-        # Normalize to the [0, 1] range
-        lane_occupancy_cost = max( min(lane_occupancy_cost, 1), 0)
+        # Normalize to the [FALSE_COST, TRUE_COST] range
+        lane_occupancy_cost = max( min(lane_occupancy_cost, TRUE_COST), FALSE_COST)
         return lane_occupancy_cost
 
 
@@ -170,7 +170,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                      is in the downstream route road segement
             (List[int]): list of all downstream lane segment ids 
         """
-        min_downstream_lane_segment_occupancy_cost = 1
+        min_downstream_lane_segment_occupancy_cost = TRUE_COST
 
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
         # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
@@ -231,10 +231,10 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         
         # Calculate lane end costs (from lane occupancy costs)
         if  not self._get_route_plan_lane_segments(): # if route_plan_lane_segments is empty indicating the last segment in route
-            if (lane_occupancy_cost == 1):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=1)
-                lane_end_cost = 1
+            if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
+                lane_end_cost = TRUE_COST
             else :
-                lane_end_cost = 0
+                lane_end_cost = FALSE_COST
 
             downstream_lane_found_in_route = True
             # Because this is the last road segment in (current) route  we don't want to trigger RoadSegmentLaneSegmentMismatch 
@@ -244,8 +244,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             lane_end_cost, downstream_lane_found_in_route, downstream_lane_segment_ids = \
                                                                                         self.lane_end_cost_calc(lane_segment_base_data=lane_segment_base_data)
             
-            if (lane_occupancy_cost == 1):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=1)
-                lane_end_cost = 1 
+            if (lane_occupancy_cost == TRUE_COST):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
+                lane_end_cost = TRUE_COST 
 
         # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
         current_route_lane_segment = RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
