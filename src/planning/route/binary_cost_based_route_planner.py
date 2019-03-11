@@ -22,7 +22,7 @@ from decision_making.src.messages.scene_static_enums import (
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 
-class CostBasedRoutePlanner(RoutePlanner): 
+class BinaryCostBasedRoutePlanner(RoutePlanner): 
     """
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
     """
@@ -43,6 +43,7 @@ class CostBasedRoutePlanner(RoutePlanner):
 
 
     @staticmethod
+    # Following method is kept public in order to unit test the method from outside the class
     def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
         """
         Cost of lane map type. Current implementation is binary cost.
@@ -55,6 +56,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         return 1
 
     @staticmethod
+    # Following method is kept public in order to unit test the method from outside the class
     def construction_zone_based_occupancy_cost(construction_zone_attribute: LaneConstructionType) -> float:
         """
         Cost of construction zone type. Current implementation is binary cost. 
@@ -67,6 +69,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         return 1
 
     @staticmethod
+    # Following method is kept public in order to unit test the method from outside the class
     def lane_dir_in_route_based_occupancy_cost(lane_dir_in_route_attribute: MapLaneDirection) -> float:
         """
         Cost of lane direction. Current implementation is binary cost. 
@@ -80,6 +83,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         return 1
 
     @staticmethod
+    # Following method is kept public in order to unit test the method from outside the class
     def gm_authority_based_occupancy_cost(gm_authority_attribute: GMAuthorityType) -> float:
         """
         Cost of GM authorized driving area. Current implementation is binary cost.  
@@ -92,6 +96,7 @@ class CostBasedRoutePlanner(RoutePlanner):
 
     @staticmethod
     @raises(IndexError)
+    # Following method is kept public in order to unit test the method from outside the class
     def lane_attribute_based_occupancy_cost(lane_attribute_index: int, lane_attribute_value: int) -> float:  # if else logic
         """
         This method is a wrapper on the individual lane attribute cost calculations and arbitrates
@@ -101,19 +106,20 @@ class CostBasedRoutePlanner(RoutePlanner):
         :return: Normalized lane occupancy cost based on the concerned lane attribute (0 to 1)
         """
         if (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus):
-            return CostBasedRoutePlanner.mapping_status_based_occupancy_cost(lane_attribute_value)
+            return BinaryCostBasedRoutePlanner.mapping_status_based_occupancy_cost(lane_attribute_value)
         elif (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA):
-            return CostBasedRoutePlanner.gm_authority_based_occupancy_cost(lane_attribute_value)
+            return BinaryCostBasedRoutePlanner.gm_authority_based_occupancy_cost(lane_attribute_value)
         elif (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction):
-            return CostBasedRoutePlanner.construction_zone_based_occupancy_cost(lane_attribute_value)
+            return BinaryCostBasedRoutePlanner.construction_zone_based_occupancy_cost(lane_attribute_value)
         elif (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction):
-            return CostBasedRoutePlanner.lane_dir_in_route_based_occupancy_cost(lane_attribute_value)
+            return BinaryCostBasedRoutePlanner.lane_dir_in_route_based_occupancy_cost(lane_attribute_value)
         else:
             raise IndexError("Cost Based Route Planner: lane_attribute_index not supported", lane_attribute_index)
             return 0
 
     @staticmethod
     @raises(IndexError)
+    # Following method is kept public in order to unit test the method from outside the class
     def lane_occupancy_cost_calc(lane_segment_base_data: SceneLaneSegmentBase) -> float:
         """
         Calculates lane occupancy cost for a single lane segment
@@ -141,7 +147,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             if (lane_attribute_confidence < LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD):
                 continue
             
-            lane_attribute_occupancy_cost = CostBasedRoutePlanner.lane_attribute_based_occupancy_cost(lane_attribute_index=lane_attribute_index, 
+            lane_attribute_occupancy_cost = BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost(lane_attribute_index=lane_attribute_index, 
                                                                                                       lane_attribute_value=lane_attribute_value )
             # Add costs from all lane attributes
             lane_occupancy_cost = lane_occupancy_cost + lane_attribute_occupancy_cost
@@ -152,6 +158,7 @@ class CostBasedRoutePlanner(RoutePlanner):
 
 
     @raises(IndexError)
+    # Following method is kept public in order to unit test the method from outside the class
     def lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (float, bool, List[int]):
         """
         Calculates lane end cost for a single lane segment
@@ -206,7 +213,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         lane_end_cost = min_downstream_lane_segment_occupancy_cost
         return lane_end_cost, downstream_lane_found_in_route, downstream_route_lane_segment_ids
 
-    
+    # Following method is kept public in order to unit test the method from outside the class
     def lane_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (RoutePlanLaneSegment, bool, List[int]):
         """
         Calculates lane end and occupancy cost for a single lane segment
@@ -220,7 +227,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         downstream_lane_segment_ids:List[int] = []
 
         # Calculate lane occupancy costs for a lane
-        lane_occupancy_cost = CostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
+        lane_occupancy_cost = BinaryCostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
         
         # Calculate lane end costs (from lane occupancy costs)
         if  not self._get_route_plan_lane_segments(): # if route_plan_lane_segments is empty indicating the last segment in route

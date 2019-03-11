@@ -10,7 +10,7 @@ from decision_making.src.messages.scene_static_message import (
     SceneStatic,
     SceneStaticBase,
     NavigationPlan)
-from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
+from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
 from decision_making.src.planning.route.route_planner import RoutePlannerInputData
 from decision_making.test.messages.static_scene_fixture import scene_static
 from decision_making.test.planning.route.scene_fixtures import (
@@ -33,7 +33,7 @@ def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):
     route_planner_input = RoutePlannerInputData().get_instance()
     route_planner_input.reformat_input_data(scene=scene_static_base,
                                             nav_plan=navigation_plan)
-    route_plan_obj = CostBasedRoutePlanner()
+    route_plan_obj = BinaryCostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan()
 
     # Expected Outputs
@@ -64,7 +64,7 @@ def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_
     route_planner_input = RoutePlannerInputData().get_instance()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = CostBasedRoutePlanner()
+    route_plan_obj = BinaryCostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan()
 
     print(route_plan_output)
@@ -103,7 +103,7 @@ def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: R
     route_planner_input = RoutePlannerInputData().get_instance()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = CostBasedRoutePlanner()
+    route_plan_obj = BinaryCostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan()
 
     # Assertions
@@ -132,7 +132,7 @@ def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output:
     route_planner_input = RoutePlannerInputData().get_instance()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = CostBasedRoutePlanner()
+    route_plan_obj = BinaryCostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan()
 
     # Assertions
@@ -161,7 +161,7 @@ def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_a
     route_planner_input = RoutePlannerInputData().get_instance()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = CostBasedRoutePlanner()
+    route_plan_obj = BinaryCostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan()
 
     # Assertions
@@ -190,7 +190,7 @@ def test_plan_combinedScenes_accurateRoutePlanOutput(combined_scene_and_expected
     route_planner_input = RoutePlannerInputData().get_instance()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = CostBasedRoutePlanner()
+    route_plan_obj = BinaryCostBasedRoutePlanner()
     route_plan_output = route_plan_obj.plan()
 
     # Assertions
