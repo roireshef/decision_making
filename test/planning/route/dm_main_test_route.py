@@ -19,7 +19,7 @@ from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
-from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
+from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
 # from decision_making.src.state.state_module import StateModule
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
@@ -42,7 +42,7 @@ class DmInitialization:
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
-        planner = CostBasedRoutePlanner()
+        planner = BinaryCostBasedRoutePlanner()
 
         return RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
 
