@@ -3,9 +3,19 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import List, Dict
 
-from decision_making.src.messages.route_plan_message import DataRoutePlan
-from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, SceneRoadSegment, SceneLaneSegmentBase
-from decision_making.src.exceptions import  MissingInputInformation, RepeatedRoadSegments, raises
+from decision_making.src.messages.route_plan_message import (
+    DataRoutePlan )
+
+from decision_making.src.messages.scene_static_message import (
+    SceneStaticBase, 
+    NavigationPlan, 
+    SceneRoadSegment, 
+    SceneLaneSegmentBase )
+    
+from decision_making.src.exceptions import  (
+    MissingInputInformation, 
+    RepeatedRoadSegments, 
+    raises )
 
 RoadSegmentDict = Dict[int,SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int,SceneLaneSegmentBase]

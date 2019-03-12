@@ -2,24 +2,42 @@ import numpy as np
 import sys
 import pprint
 import traceback
-
 from logging import Logger
 from typing import List, Dict
 
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
+from common_data.interface.Rte_Types.python.sub_structures import (
+    TsSYSRoutePlanLaneSegment, 
+    TsSYSDataRoutePlan)
 
-from decision_making.src.exceptions import  RoadSegmentLaneSegmentMismatch, raises
-from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST
-from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan, RoadSegRoutePlanLaneSegments, \
-    RoadRoutePlanLaneSegments
+from decision_making.src.exceptions import  (
+    RoadSegmentLaneSegmentMismatch, 
+    raises)
+
+from decision_making.src.global_constants import (
+    LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, 
+    TRUE_COST, 
+    FALSE_COST  )
+
+from decision_making.src.messages.route_plan_message import (
+    RoutePlan, 
+    RoutePlanLaneSegment, 
+    DataRoutePlan, 
+    RoadSegRoutePlanLaneSegments, 
+    RoadRoutePlanLaneSegments)
+
 from decision_making.src.messages.scene_static_enums import (
     RoutePlanLaneSegmentAttr,
     LaneMappingStatusType,
     MapLaneDirection,
     GMAuthorityType,
     LaneConstructionType)
-from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
-from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+
+from decision_making.src.messages.scene_static_message import (
+    SceneLaneSegmentBase)
+
+from decision_making.src.planning.route.route_planner import (
+    RoutePlanner, 
+    RoutePlannerInputData)
 
 class BinaryCostBasedRoutePlanner(RoutePlanner): 
     """
@@ -233,8 +251,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             # exception by running diagnostics on the downstream to the last road segment, in route.
         else:
 
-            lane_end_cost, downstream_lane_found_in_route, downstream_lane_segment_ids = \
-                                                                                        self.lane_end_cost_calc(lane_segment_base_data=lane_segment_base_data)
+            lane_end_cost, downstream_lane_found_in_route, downstream_lane_segment_ids = (self.lane_end_cost_calc
+                                                                                               (lane_segment_base_data=lane_segment_base_data))
+                                                                                        
             
             if (lane_occupancy_cost == TRUE_COST):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
                 lane_end_cost = TRUE_COST 
@@ -277,8 +296,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
             lane_segment_base_data = route_data.get_lane_segment_base(lane_segment_id)
             
-            route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = (self.
-                                                                                                lane_cost_calc(lane_segment_base_data=lane_segment_base_data))
+            route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = (self.lane_cost_calc
+                                                                                                    (lane_segment_base_data=lane_segment_base_data))
                                                                         
 
             downstream_road_segment_not_found = downstream_road_segment_not_found and not(downstream_lane_found_in_route)
