@@ -34,13 +34,7 @@ def test_frenetConversion_errors(scene_static_no_split):
 
     frenet = FrenetSerret2DFrame.init_from_components(points=points, T=T, N=N, K=k, k_tag=k_tag, ds=ds)
 
-    # Feature request - need ds to be a functiional property of FrenetSerret2DFrame
-    with pytest.raises(AttributeError):
-        assert(frenet.ds)
-    
-    # We must replace points with O - not an actual feature request
-    # We could request feature of @property points that returns self.O
-    with pytest.raises(AttributeError):
-        assert(frenet.points)
+    # Verify feature request - need ds to be a functiional property of FrenetSerret2DFrame
+    assert(frenet.ds)
 
     np.testing.assert_array_equal(frenet.O, points)

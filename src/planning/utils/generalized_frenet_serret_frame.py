@@ -41,8 +41,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segments_id: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
-        # FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
-        FrenetSerret2DFrame.init_from_components(points, T, N, k, k_tag, None)
+        # Need to __init__ base FrenetSerret2DFrame class here
+        FrenetSerret2DFrame.init_from_components(points=points, T=T, N=N, K=k, k_tag=k_tag, ds=0)
         self._segments_id = segments_id
         self._segments_s_start = segments_s_start
         self._segments_s_offsets = segments_s_offsets
@@ -103,7 +103,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             points = np.vstack((points, frame.O[start_ind:end_ind, :]))
             T = np.vstack((T, frame.T[start_ind:end_ind, :]))
             N = np.vstack((N, frame.N[start_ind:end_ind, :]))
-            k = np.vstack((k, frame.k[start_ind:end_ind, :]))
+            k = np.vstack((k, frame.K[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
 
             segments_num_points_so_far[i] = points.shape[0]
