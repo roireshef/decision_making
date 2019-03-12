@@ -14,6 +14,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
+from decision_making.src.planning.behavioral.planner.behavioral_planner import BehavioralPlannerBase
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
@@ -35,18 +36,17 @@ from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
 @six.add_metaclass(ABCMeta)
-class CostBasedBehavioralPlanner:
+class CostBasedBehavioralPlanner(BehavioralPlannerBase):
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
                  action_spec_evaluator: Optional[ActionSpecEvaluator],
-                 action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
+                 action_spec_validator: Optional[ActionSpecFiltering], value_approximator: ValueApproximator,
+                 predictor: EgoAwarePredictor, logger: Logger):
+        super().__init__(predictor, logger)
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator
         self.action_spec_validator = action_spec_validator or ActionSpecFiltering()
         self.value_approximator = value_approximator
-        self.predictor = predictor
-        self.logger = logger
 
         self._last_action: Optional[ActionRecipe] = None
         self._last_action_spec: Optional[ActionSpec] = None

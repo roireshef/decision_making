@@ -28,6 +28,8 @@ from decision_making.src.planning.behavioral.evaluators.zero_value_approximator 
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
+from decision_making.src.planning.behavioral.planner.behavior_tree_planner import BehaviorTreePlanner
+from decision_making.src.planning.behavioral.planner.behaviors import straight_one_way_generator
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -112,6 +114,22 @@ class DmInitialization:
         return behavioral_module
 
     @staticmethod
+    def create_subdivision_behavioral_planner(map_file: str=DEFAULT_MAP_FILE) -> BehavioralPlanningFacade:
+        logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+
+        pubsub = PubSub()
+        # MapService should be initialized in each process according to the given map_file
+        MapService.initialize(map_file)
+
+        predictor = RoadFollowingPredictor(logger)
+
+        planner = BehaviorTreePlanner(tree_generator=straight_one_way_generator, predictor=predictor, logger=logger)
+
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
+                                                     behavioral_planner=planner, last_trajectory=None)
+        return behavioral_module
+
+    @staticmethod
     def create_trajectory_planner(map_file: str=DEFAULT_MAP_FILE) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
@@ -147,7 +165,7 @@ def main():
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(lambda: DmInitialization.create_behavioral_planner(DEFAULT_MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_subdivision_behavioral_planner(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
