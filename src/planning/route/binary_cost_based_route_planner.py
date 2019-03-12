@@ -125,7 +125,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
         :return: LaneOccupancyCost, cost to the AV if it occupies the lane.
         """
-        lane_occupancy_cost = FALSE_COST
 
         # Now iterate over all the active lane attributes for the lane segment
         for lane_attribute_index in lane_segment_base_data.a_i_active_lane_attribute_indices:   
@@ -147,13 +146,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                 continue
             
             lane_attribute_occupancy_cost = BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost(lane_attribute_index=lane_attribute_index, 
-                                                                                                      lane_attribute_value=lane_attribute_value )
-            # Add costs from all lane attributes
-            lane_occupancy_cost = lane_occupancy_cost + lane_attribute_occupancy_cost
+                                                                                                            lane_attribute_value=lane_attribute_value )
+            # Check if the lane is unoccupiable 
+            if(lane_attribute_occupancy_cost==TRUE_COST):
+                return TRUE_COST
 
-        # Normalize to the [FALSE_COST, TRUE_COST] range
-        lane_occupancy_cost = max( min(lane_occupancy_cost, TRUE_COST), FALSE_COST)
-        return lane_occupancy_cost
+        return FALSE_COST
 
 
     @raises(IndexError)
