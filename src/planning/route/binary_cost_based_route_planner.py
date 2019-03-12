@@ -1,9 +1,10 @@
 import numpy as np
-import sys
-import pprint
-import traceback
-from logging import Logger
-from typing import List, Dict
+
+from typing import (
+    List, 
+    Dict)
+
+
 
 from common_data.interface.Rte_Types.python.sub_structures import (
     TsSYSRoutePlanLaneSegment, 

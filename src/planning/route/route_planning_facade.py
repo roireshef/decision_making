@@ -1,8 +1,13 @@
-from logging import Logger
+from logging import (
+    Logger)
+
 import time
+
 import traceback
 
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+
+
 
 from decision_making.src.exceptions import (
     MsgDeserializationError, 
@@ -39,7 +44,7 @@ from decision_making.src.messages.route_plan_message import (
 from decision_making.src.planning.route.route_planner import (
     RoutePlanner, 
     RoutePlannerInputData)
-    
+
 from decision_making.src.utils.metric_logger import (
     MetricLogger)
 
