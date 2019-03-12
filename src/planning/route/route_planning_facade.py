@@ -28,7 +28,7 @@ from decision_making.src.infra.pubsub import (
     
 from decision_making.src.messages.scene_common_messages import (
     Header, 
-    imestamp, 
+    Timestamp, 
     MapOrigin)
 
 from decision_making.src.messages.scene_static_message import (
