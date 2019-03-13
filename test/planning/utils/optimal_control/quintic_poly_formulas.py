@@ -150,7 +150,7 @@ class QuinticMotionPredicatesCreator:
             a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions], s_T[non_zero_actions], T_m)
 
         # Find roots of the polynomial in order to get extremum points
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([EPS, BP_ACTION_T_LIMITS[1]]))
 
         # calculate T for all actions
         T = np.zeros_like(v_0)

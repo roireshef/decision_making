@@ -8,7 +8,7 @@ import numpy as np
 
 from decision_making.src.global_constants import EPS, SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, LON_ACC_LIMITS, VELOCITY_LIMITS, HOST_SAFETY_MARGIN_TIME_DELAY, \
-    ACTOR_SAFETY_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE
+    ACTOR_SAFETY_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE, TRAJECTORY_NUM_POINTS
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.utils.metric_logger import MetricLogger
@@ -137,13 +137,13 @@ def jerk_time_weights_optimization_for_braking():
     Output detailed states coverage (3D grid of states) for the best weights set or compare two weights sets.
     """
     # states grid ranges
-    V0 = 30
-    V_MIN = 25
-    V_MAX = 29   # max velocity in the states grid
-    V_STEP = 1   # velocity step in the states grid
-    S_MAX = SPECIFICATION_MARGIN_TIME_DELAY * V0  # max distance between two objects in the states grid
-    S_MIN = S_MAX - 6   # min distance between two objects in the states grid
-    S_STEP = 1
+    V0 = 30.
+    V_MIN = 25.
+    V_MAX = 28.   # max velocity in the states grid
+    V_STEP = 0.2   # velocity step in the states grid
+    S_MAX = SPECIFICATION_MARGIN_TIME_DELAY * V0 - 0  # max distance between two objects in the states grid
+    S_MIN = SPECIFICATION_MARGIN_TIME_DELAY * V0 - 5  # min distance between two objects in the states grid
+    S_STEP = 0.5
 
     # weights grid ranges
     W2_FROM = 0.001  # min of the range of w2 weight
@@ -192,8 +192,10 @@ def jerk_time_weights_optimization_for_braking():
             # calculate time horizon for all states
             T_s[wi, :, aggr] = T = QuinticMotionPredicatesCreator.calc_T_s(time_weights[aggr], w[aggr], v0, a0, vT, s)
             T[np.where(T == 0)] = 0.01  # prevent zero times
+            valid_T = np.logical_not(np.isnan(T))
             # calculate states validity wrt velocity & acceleration limits
-            vel_acc_in_limits[:, aggr], safe_actions[:, aggr], poly_coefs = check_action_limits_and_safety(T, v0, vT, s, a0)
+            vel_acc_in_limits[valid_T, aggr], safe_actions[valid_T, aggr], poly_coefs = \
+                check_action_limits_and_safety(T[valid_T], v0[valid_T], vT[valid_T], s[valid_T], a0[valid_T])
 
         # combine velocity & acceleration limits with time limits and safety, to obtain states validity
         time_in_limits = (T_s[wi, :, :] <= BP_ACTION_T_LIMITS[LIMIT_MAX])
@@ -403,7 +405,7 @@ def get_lon_safety_for_action_specs(poly_coefs: np.array, T: np.array, v_T: np.a
     trajectories_lengths = [len(trajectory) for trajectory in ego_trajectories]
     safe_times_matrix = np.split(concat_safe_times, np.cumsum(trajectories_lengths[:-1]))
     # AND on all time samples for each action
-    safe_specs = [action_safe_times.all() for action_safe_times in safe_times_matrix]
+    safe_specs = [action_safe_times[:TRAJECTORY_NUM_POINTS].all() for action_safe_times in safe_times_matrix]
     return np.array(safe_specs)
 
 
@@ -507,6 +509,6 @@ def print_comparison_between_two_weights_sets(v0_range: np.array, vT_range: np.a
 
 
 if __name__ == '__main__':
-    #jerk_time_weights_optimization_for_braking()
-    jerk_time_weights_optimization_quartic()
+    jerk_time_weights_optimization_for_braking()
+    #jerk_time_weights_optimization_quartic()
     #calc_braking_quality_and_print_graphs()

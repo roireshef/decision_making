@@ -191,14 +191,14 @@ class WerlingPlanner(TrajectoryPlanner):
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             valid_lat_acc = (np.abs(lat_acc) < cost_params.lat_acceleration_limits[1]).all(axis=-1)
             valid_lon_acc = NumpyUtils.is_in_limits(ctrajectories[:, :, C_A], cost_params.lon_acceleration_limits).all(axis=-1)
-            end_fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs[:, :6], np.array([T_s]))
-            end_fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs[:, 6:], np.array([T_s]))
+            end_fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs[frenet_filtered_indices, :6], np.array([T_s]))
+            end_fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs[frenet_filtered_indices, 6:], np.array([T_s]))
             bad_lat_acc_traj = np.argmin(np.abs(end_fstates_s[:, 0, 0] - goal_frenet_state[FS_SX]) +
                                          np.abs(end_fstates_d[:, 0, 0] - goal_frenet_state[FS_DX]))
-            worst_lat_acc_time_sample = np.argmax(np.abs(lat_acc[bad_lat_acc_traj, :]))
-            worst_lat_acc = lat_acc[bad_lat_acc_traj, worst_lat_acc_time_sample]
+            worst_lat_acc_time = np.argmax(np.abs(lat_acc[bad_lat_acc_traj, :]))
+            worst_lat_acc = lat_acc[bad_lat_acc_traj, worst_lat_acc_time]
             rr_idx = reference_route.get_index_on_frame_from_s(
-                np.array([ftrajectories[bad_lat_acc_traj, worst_lat_acc_time_sample, FS_SX]]))[0][0]
+                np.array([ftrajectories[frenet_filtered_indices[bad_lat_acc_traj], worst_lat_acc_time, FS_SX]]))[0][0]
             raise NoValidTrajectoriesFound(
                 "No valid trajectories found. timestamp: %.3f horizon_time: %.3f, goal: %s, state: %s.\n"
                 "planned velocities range [%s, %s] (limits: %s); "
@@ -218,7 +218,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
                 time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV])*0.5,
                 np.sum(valid_lon_acc), np.sum(valid_lat_acc), np.sum(np.logical_and(valid_lon_acc, valid_lat_acc)),
-                worst_lat_acc_time_sample*self.dt, worst_lat_acc, reference_route.k[rr_idx-3:rr_idx+4]))
+                worst_lat_acc_time*self.dt, worst_lat_acc, reference_route.k[rr_idx-3:rr_idx+4]))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)

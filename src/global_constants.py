@@ -100,9 +100,9 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 
 # behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of static actions
 BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE = np.array([
-    [1.000, 1.0, 0.1],
-    [0.015, 0.3, 0.1],
-    [0.005, 0.1, 0.1]
+    [6.000, 1.0, 0.1],
+    [1.600, 0.3, 0.1],
+    [0.015, 0.1, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
