@@ -112,6 +112,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             return FALSE_COST
         return TRUE_COST
 
+
     @staticmethod
     @raises(IndexError)
     # Following method is kept public in order to unit test the method from outside the class
@@ -123,17 +124,29 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param lane_attribute_value: value of the pointed lane attribute
         :return: Normalized lane occupancy cost based on the concerned lane attribute (FALSE_COST to TRUE_COST)
         """
-        if (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus):
-            return BinaryCostBasedRoutePlanner.mapping_status_based_occupancy_cost(lane_attribute_value)
-        elif (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA):
-            return BinaryCostBasedRoutePlanner.gm_authority_based_occupancy_cost(lane_attribute_value)
-        elif (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction):
-            return BinaryCostBasedRoutePlanner.construction_zone_based_occupancy_cost(lane_attribute_value)
-        elif (lane_attribute_index == RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction):
-            return BinaryCostBasedRoutePlanner.lane_dir_in_route_based_occupancy_cost(lane_attribute_value)
+        if 'attribute_based_occupancy_cost_methods' not in BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost.__dict__:
+            # The above if check and then setting of attribute_based_occupancy_cost_methods within the if block is equivalent of 
+            # making attribute_based_occupancy_cost_methods a static dictionary (of [lane_attribute_index, lane attribute based occupancy_cost 
+            # calculation methods])
+            attribute_based_occupancy_cost_methods = {
+            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus:BinaryCostBasedRoutePlanner.mapping_status_based_occupancy_cost,
+            
+            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA:BinaryCostBasedRoutePlanner.gm_authority_based_occupancy_cost,
+
+            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction:BinaryCostBasedRoutePlanner.construction_zone_based_occupancy_cost,
+
+            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction: BinaryCostBasedRoutePlanner.lane_dir_in_route_based_occupancy_cost
+            }
+        
+        if lane_attribute_index in attribute_based_occupancy_cost_methods:
+            # Following is equivalent of (pythonic way) executing a switch statement 
+            occupancy_cost_method = attribute_based_occupancy_cost_methods[lane_attribute_index]                                                                                        # 
+            return occupancy_cost_method(lane_attribute_value)
         else:
             raise IndexError("Cost Based Route Planner: lane_attribute_index not supported", lane_attribute_index)
             return FALSE_COST
+
+        
 
     @staticmethod
     @raises(IndexError)
