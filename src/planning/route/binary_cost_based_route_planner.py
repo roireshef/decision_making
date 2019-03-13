@@ -179,7 +179,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
     @raises(IndexError)
     # Following method is kept public in order to unit test the method from outside the class
-    def lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (float, bool, List[int]):
+    def _lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (float, bool, List[int]):
         """
         Calculates lane end cost for a single lane segment
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
@@ -229,7 +229,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         return lane_end_cost, downstream_lane_found_in_route, downstream_route_lane_segment_ids
 
     # Following method is kept public in order to unit test the method from outside the class
-    def lane_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (RoutePlanLaneSegment, bool, List[int]):
+    def _lane_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (RoutePlanLaneSegment, bool, List[int]):
         """
         Calculates lane end and occupancy cost for a single lane segment
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
@@ -256,7 +256,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             # exception by running diagnostics on the downstream to the last road segment, in route.
         else:
 
-            lane_end_cost, downstream_lane_found_in_route, downstream_lane_segment_ids = (self.lane_end_cost_calc
+            lane_end_cost, downstream_lane_found_in_route, downstream_lane_segment_ids = (self._lane_end_cost_calc
                                                                                                (lane_segment_base_data=lane_segment_base_data))
                                                                                         
             
@@ -272,7 +272,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
 
     @raises(RoadSegmentLaneSegmentMismatch)
-    def road_segment_cost_calc(self, road_segment_id:int) -> RoadSegRoutePlanLaneSegments:
+    def _road_segment_cost_calc(self, road_segment_id:int) -> RoadSegRoutePlanLaneSegments:
         """
         Itreratively uses lane_cost_calc method to calculate lane costs (occupancy and end) for all lane segments in a road segment
         :return: 
@@ -301,7 +301,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
             lane_segment_base_data = route_data.get_lane_segment_base(lane_segment_id)
             
-            route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = (self.lane_cost_calc
+            route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = (self._lane_cost_calc
                                                                                                     (lane_segment_base_data=lane_segment_base_data))
                                                                         
 
@@ -343,7 +343,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         for (road_segment_id, lane_segment_ids) in reversed(route_data.get_lane_segment_ids_for_route().items()):
             
-            route_lane_segments = self.road_segment_cost_calc(road_segment_id=road_segment_id)
+            route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
             
             # append the road segment sepecific info , as the road seg iteration is reverse
             road_segment_ids.append(road_segment_id)
