@@ -47,17 +47,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     def __init__(self):
         self.__route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
-    def __reset_route_plan_lane_segments(self):
-        self.__route_plan_lane_segments:RoadRoutePlanLaneSegments = []
-
     def get_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
         return self.__route_plan_lane_segments
-    
-    def __reverse_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
-        return self.__route_plan_lane_segments.reverse()
-
-    def __append_to_route_plan_lane_segments(self, route_lane_segments: RoadSegRoutePlanLaneSegments) -> RoadRoutePlanLaneSegments:
-        return self.__route_plan_lane_segments.append(route_lane_segments)
 
 
     @staticmethod
@@ -348,7 +339,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # key -> road_segment_id
         # value -> lane_segment_ids
 
-        self.__reset_route_plan_lane_segments()
+        self.__route_plan_lane_segments:RoadRoutePlanLaneSegments = []
 
         for (road_segment_id, lane_segment_ids) in reversed(route_data.get_lane_segment_ids_for_route().items()):
             
@@ -359,13 +350,13 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             
             num_lane_segments.append( len(lane_segment_ids) )
 
-            self.__append_to_route_plan_lane_segments(route_lane_segments=route_lane_segments)
+            self.__route_plan_lane_segments.append(route_lane_segments)
         
         # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning of the list
         # at each road segment loop (of length n)
         road_segment_ids.reverse()
         num_lane_segments.reverse()
-        self.__reverse_route_plan_lane_segments()
+        self.__route_plan_lane_segments.reverse()
 
         num_road_segments = len(road_segment_ids)
 
