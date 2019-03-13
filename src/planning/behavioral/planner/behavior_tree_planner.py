@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.planner import blackboard
 class BehaviorTreePlanner(BehavioralPlannerBase):
     def __init__(self, tree_generator: callable, predictor: EgoAwarePredictor, logger: Logger):
         super().__init__(predictor, logger)
-        self.tree = tree_generator()
+        self.tree = py_trees.trees.BehaviourTree(tree_generator())
 
     def _prepare_data(self, state: State, nav_plan: NavigationPlanMsg):
         # get ego frenet state from state data
@@ -23,7 +23,7 @@ class BehaviorTreePlanner(BehavioralPlannerBase):
         ego_lane_id = state.ego_state.map_state.lane_id
 
         # extract nominal path
-        nominal_path = MapUtils.get_lookahead_frenet_frame(lane_id=state.ego_state.map_state.lane_id,
+        nominal_path = MapUtils.get_lookahead_frenet_frame(lane_id=ego_lane_id,
                                                            starting_lon=ego_fstate[types.FS_SX],
                                                            lookahead_dist=global_constants.MAX_HORIZON_DISTANCE,
                                                            navigation_plan=nav_plan)  # type: GeneralizedFrenetSerretFrame
@@ -35,7 +35,7 @@ class BehaviorTreePlanner(BehavioralPlannerBase):
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         self._prepare_data(state, nav_plan)
-        self.tree.tic()
+        self.tree.tick()
         trajectory_parameters, baseline_trajectory, visualization_message = blackboard.tp_input
         return trajectory_parameters, baseline_trajectory, visualization_message
 

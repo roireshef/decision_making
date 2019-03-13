@@ -41,7 +41,7 @@ class CostBasedBehavioralPlanner(BehavioralPlannerBase):
                  action_spec_evaluator: Optional[ActionSpecEvaluator],
                  action_spec_validator: Optional[ActionSpecFiltering], value_approximator: ValueApproximator,
                  predictor: EgoAwarePredictor, logger: Logger):
-        super().__init__(predictor, logger)
+        super(CostBasedBehavioralPlanner, self).__init__(predictor, logger)
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator

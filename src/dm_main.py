@@ -118,6 +118,9 @@ class DmInitialization:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
+
+        logger.debug("Initializing Subdivision planner")
+
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
