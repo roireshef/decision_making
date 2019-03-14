@@ -98,6 +98,9 @@ FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use V
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
+# Distance ahead to raise takeover flag
+DISTANCE_TO_SET_TAKEOVER_FLAG = 100
+
 # Trajectory Planner #
 
 # [m] Resolution for the interpolation of the reference route
@@ -264,6 +267,3 @@ TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
 
 PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
 PG_PICKLE_FILE_NAME = 'PG.pkl'
-
-# Distance ahead to raise takeover flag
-DISTANCE_TO_SET_TAKEOVER_FLAG = 100
