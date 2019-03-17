@@ -1,21 +1,45 @@
+from typing import Callable, Any
+
+
 class PubSub:
 
-    @classmethod
-    def subscribe(cls, topic, callback):
+    @staticmethod
+    def subscribe(topic, callback: Callable):
+        """
+        Subscribes the given callback to the given pubsub topic. Once this topic will be published, it will be received
+        and processed by the callback method.
+        :param topic:
+        :param callback:
+        :return:
+        """
         topic.register_cb(callback)
 
-    @classmethod
-    def get_latest_sample(cls, topic, timeout=0):
+    @staticmethod
+    def get_latest_sample(topic, timeout: float = 0):
+        """
+        Access the data structure holding the given topic messages and pull the latest sample from this data structure.
+        :param topic:
+        :param timeout:
+        :return:
+        """
         return topic.get_latest_sample(timeout*1000)
 
-    @classmethod
-    def publish(cls, topic, data) :
+    @staticmethod
+    def publish(topic, data: Any):
+        """
+        Publish the given data object in the given topic
+        :param topic:
+        :param data:
+        :return:
+        """
         topic.send(data)
 
-    @classmethod
-    def get_latest_samples_list(cls, topic, timeout, max_list_length) :
-        pass
-
-    @classmethod
-    def unsubscribe(cls, topic) :
+    @staticmethod
+    def unsubscribe(topic):
+        """
+        Unsuscribes ALL(!) callbacks from the topic given as argument to this method.
+        :param topic:
+        :return:
+        """
+        # TODO Implement unsubscribe from a specific callback if required
         topic.unregister_cb(None)

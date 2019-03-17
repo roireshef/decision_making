@@ -2,7 +2,6 @@ from os import getpid
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, DEFAULT_MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
