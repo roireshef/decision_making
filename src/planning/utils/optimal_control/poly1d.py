@@ -372,15 +372,16 @@ class QuinticPoly1D(Poly1D):
              for T in terminal_times], dtype=np.float)
 
     @staticmethod
-    def inverse_time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
-        return np.array([
-            [[1, 0, 0, 0, 0, 0],
-             [0, 1, 0, 0, 0, 0],
-             [0, 0, 0.5, 0, 0, 0],
-             [-10 / T ** 3, -6 / T ** 2, -3 / (2 * T), 10 / T ** 3, -4 / T ** 2, 1 / (2 * T)],
-             [15 / T ** 4, 8 / T ** 3, 3 / (2 * T ** 2), -15 / T ** 4, 7 / T ** 3, -1 / T ** 2],
-             [-6 / T ** 5, -3 / T ** 4, -1 / (2 * T ** 3), 6 / T ** 5, -3 / T ** 4, 1 / (2 * T ** 3)]]
-            for T in terminal_times], dtype=np.float)
+    def inverse_time_constraints_tensor(T: np.ndarray) -> np.ndarray:
+        zeros = np.zeros_like(T)
+        tensor = np.array([
+            [1 + zeros, zeros, zeros, zeros, zeros, zeros],
+            [zeros, 1 + zeros, zeros, zeros, zeros, zeros],
+            [zeros, zeros, 0.5 + zeros, zeros, zeros, zeros],
+            [-10 / T ** 3, -6 / T ** 2, -3 / (2 * T), 10 / T ** 3, -4 / T ** 2, 1 / (2 * T)],
+            [15 / T ** 4, 8 / T ** 3, 3 / (2 * T ** 2), -15 / T ** 4, 7 / T ** 3, -1 / T ** 2],
+            [-6 / T ** 5, -3 / T ** 4, -1 / (2 * T ** 3), 6 / T ** 5, -3 / T ** 4, 1 / (2 * T ** 3)]])
+        return np.transpose(tensor, (2, 0, 1))
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):

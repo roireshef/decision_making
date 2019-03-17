@@ -59,6 +59,14 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
         action_specs = list(action_specs)
 
+        # if aggressive follow_vehicle action for slow close object was filtered by recipes filter, try to perform
+        # another specification by finding the lowest time complying longitudinal acceleration limits
+        braking_action_idx, braking_action_spec = \
+            self.action_space.specify_aggressive_braking(action_recipes, recipes_mask, behavioral_state)
+        if braking_action_idx is not None:
+            print('NEW AGGRESSIVE SPEC: spec.t=%.3f' % (braking_action_spec.t))
+            action_specs[braking_action_idx] = braking_action_spec
+
         # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
         num_of_considered_dynamic_actions = sum(isinstance(x, DynamicActionRecipe) for x in valid_action_recipes)

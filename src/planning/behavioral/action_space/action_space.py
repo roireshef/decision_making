@@ -8,7 +8,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import raises
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.data_objects import ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 
@@ -118,6 +118,10 @@ class ActionSpaceContainer(ActionSpace):
 
         # returns action_specs, sorted by their initial recipe ordering
         return [action for idx, action in sorted(indexed_action_specs, key=lambda idx_action: idx_action[0])]
+
+    def specify_aggressive_braking(self, action_recipes: List[ActionRecipe], recipes_mask: List[bool],
+                                   behavioral_state: BehavioralGridState) -> (int, ActionSpec):
+        return self._recipe_handler[DynamicActionRecipe].specify_aggressive_braking(action_recipes, recipes_mask, behavioral_state)
 
     @raises(NotImplemented)
     def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
