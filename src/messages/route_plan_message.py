@@ -65,14 +65,14 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
         print_route_plan_lane_segment = print_route_plan_lane_segment +"\n"
 
 
-RoadSegRoutePlanLaneSegments = List[RoutePlanLaneSegment]  # RoutePlanLaneSegment : struct -> Contains Route plan end and occupancy costs, 
-                                                           # along with the lane identifier to convey routing relevant information in a structure.
-                                                           # RoadSegRoutePlanLaneSegments:List[RoutePlanLaneSegment ] are List of RoutePlanLaneSegment(s). 
-                                                           # Contains all the RoutePlanLaneSegment in a RoadSegment.
+RoutePlanRoadSegment = List[RoutePlanLaneSegment]   # RoutePlanLaneSegment : struct -> Contains Route plan end and occupancy costs, 
+                                                    # along with the lane identifier to convey routing relevant information in a structure.
+                                                    # RoutePlanRoadSegment: List[RoutePlanLaneSegment] are List of RoutePlanLaneSegment(s). 
+                                                    # Contains all the RoutePlanLaneSegment in a RoadSegment.
                                                            
-RoadRoutePlanLaneSegments = List[RoadSegRoutePlanLaneSegments] # RoadRoutePlanLaneSegments:List[RoadSegRoutePlanLaneSegments] are
-                                                               # List of ( List of RoutePlanLaneSegment(s)). 
-                                                               # Contains all the RoutePlanLaneSegment in a Road.
+RoutePlanRoadSegments = List[RoutePlanRoadSegment]  # RoutePlanRoadSegments:List[RoutePlanRoadSegment] are
+                                                    # List of (List of RoutePlanLaneSegment(s)). 
+                                                    # Contains all the RoutePlanLaneSegment in a Road.
 
 
 class DataRoutePlan(PUBSUB_MSG_IMPL):
@@ -80,10 +80,10 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
     e_Cnt_num_road_segments = int
     a_i_road_segment_ids = np.ndarray
     a_Cnt_num_lane_segments = np.ndarray
-    as_route_plan_lane_segments = RoadRoutePlanLaneSegments
+    as_route_plan_lane_segments = RoutePlanRoadSegments
 
     def __init__(self, e_b_is_valid: bool, e_Cnt_num_road_segments: int, a_i_road_segment_ids: np.ndarray,
-                 a_Cnt_num_lane_segments: np.ndarray, as_route_plan_lane_segments: RoadRoutePlanLaneSegments):
+                 a_Cnt_num_lane_segments: np.ndarray, as_route_plan_lane_segments: RoutePlanRoadSegments):
         """
         Route Plan Output Data
         :param e_b_is_valid: Set to true when the data is valid

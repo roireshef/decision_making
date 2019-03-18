@@ -23,8 +23,8 @@ from decision_making.src.messages.route_plan_message import (
     RoutePlan, 
     RoutePlanLaneSegment, 
     DataRoutePlan, 
-    RoadSegRoutePlanLaneSegments, 
-    RoadRoutePlanLaneSegments)
+    RoutePlanRoadSegment, 
+    RoutePlanRoadSegments)
 
 from decision_making.src.messages.scene_static_enums import (
     RoutePlanLaneSegmentAttr,
@@ -45,9 +45,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
     """
     def __init__(self):
-        self.__route_plan_lane_segments:RoadRoutePlanLaneSegments = []
+        self.__route_plan_lane_segments:RoutePlanRoadSegments = []
 
-    def get_route_plan_lane_segments(self) -> RoadRoutePlanLaneSegments:
+    def get_route_plan_lane_segments(self) -> RoutePlanRoadSegments:
         return self.__route_plan_lane_segments
 
 
@@ -197,7 +197,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # search through all downstream lanes to to current lane
         downstream_lane_found_in_route = False
 
-        downstream_route_lane_segments: RoadSegRoutePlanLaneSegments = self.get_route_plan_lane_segments()[-1]
+        downstream_route_lane_segments: RoutePlanRoadSegment = self.get_route_plan_lane_segments()[-1]
 
         downstream_route_lane_segment_ids = np.array([route_lane_segment.e_i_lane_segment_id for route_lane_segment in downstream_route_lane_segments ])
 
@@ -272,14 +272,14 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
 
     @raises(RoadSegmentLaneSegmentMismatch)
-    def _road_segment_cost_calc(self, road_segment_id:int) -> RoadSegRoutePlanLaneSegments:
+    def _road_segment_cost_calc(self, road_segment_id:int) -> RoutePlanRoadSegment:
         """
         Itreratively uses lane_cost_calc method to calculate lane costs (occupancy and end) for all lane segments in a road segment
         :return: 
-        RoadSegRoutePlanLaneSegments, which is List[RoutePlanLaneSegments]
+        RoutePlanRoadSegment, which is List[RoutePlanLaneSegments]
         Also raises RoadSegmentLaneSegmentMismatch internally if it can't find any downstream lane segment in the route 
         """
-        route_lane_segments:RoadSegRoutePlanLaneSegments = []
+        route_lane_segments:RoutePlanRoadSegment = []
 
         downstream_road_segment_not_found = True # as the name suggests
                                                  # if there is NO downstream lane (as defined in map) to the current 
@@ -339,7 +339,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # key -> road_segment_id
         # value -> lane_segment_ids
 
-        self.__route_plan_lane_segments:RoadRoutePlanLaneSegments = []
+        self.__route_plan_lane_segments:RoutePlanRoadSegments = []
 
         for (road_segment_id, lane_segment_ids) in reversed(route_data.get_lane_segment_ids_for_route().items()):
             
