@@ -1,8 +1,13 @@
 import numpy as np
 from typing import List
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlan, TsSYSDataRoutePlan, TsSYSRoutePlanLaneSegment
+
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_RoutePlan import TsSYSRoutePlan
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataRoutePlan import TsSYSDataRoutePlan
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_RoutePlanLaneSegment import TsSYSRoutePlanLaneSegment
+from decision_making.src.exceptions import RoadNotFound, raises
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
+
 
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
@@ -51,11 +56,7 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_cst_lane_end_cost)
 
     def __str__(self):
-        print_route_plan_lane_segment = "\n"
-        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_segment_id "+str(self.e_i_lane_segment_id)+"\n"
-        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_occupancy_cost "+str(self.e_cst_lane_occupancy_cost)+"\n"
-        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_end_cost "+str(self.e_cst_lane_end_cost)+"\n"
-        print_route_plan_lane_segment = print_route_plan_lane_segment +"\n"
+        return str(self.__dict__)
 
 
 RoutePlanRoadSegment = List[RoutePlanLaneSegment]   # RoutePlanLaneSegment : struct -> Contains Route plan end and occupancy costs,
@@ -134,6 +135,7 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
 
         return print_route
 
+
 class RoutePlan(PUBSUB_MSG_IMPL):
     s_Header = Header
     s_Data = DataRoutePlan
@@ -167,8 +169,6 @@ class RoutePlan(PUBSUB_MSG_IMPL):
         except IndexError:
             raise RoadNotFound("Road ID {} is not in clipped (indices: [{}, {}]) plan's road-IDs [{}]"
                                .format(road_id, start, end, road_ids[start:(end+1)]))
-
-
 
     def serialize(self) -> TsSYSRoutePlan:
         pubsub_msg = TsSYSRoutePlan()

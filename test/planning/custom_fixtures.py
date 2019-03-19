@@ -1,13 +1,14 @@
 import numpy as np
 import pytest
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.state.map_state import MapState
 from decision_making.paths import Paths
 import os
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    NAVIGATION_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
+    NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
+    ROUTE_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
@@ -27,9 +28,10 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable, scene_static_pg_split
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
+from decision_making.test.planning.route.route_planner_mock import RoutePlannerMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
-from decision_making.test.state.mock_state_module import StateModuleMock
+from decision_making.test.state.state_module_mock import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
@@ -43,19 +45,16 @@ def car_size():
     yield ObjectSize(length=3.0, width=2.0, height=1.2)
 
 
-#@pytest.fixture(scope='function')
-#def navigation_plan():
-#    yield NavigationPlanMsg(np.array([1, 2]))
-
-
-#@pytest.fixture(scope='function')
-#def route_plan():
-#    # TODO: Check this fixture
-#    yield RoutePlan(s_Header=Header(),
-#                       s_Data=DataRoutePlan(e_b_is_valid=True,
-#                                            e_Cnt_num_road_segments=10,
-#                                            a_i_road_segment_ids=range(20, 30),
-#                                            as_route_plan_lane_segments=None))
+@pytest.fixture(scope='function')
+def route_plan_1_2():
+    yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
+                    s_Data=DataRoutePlan(e_b_is_valid=True,
+                                         e_Cnt_num_road_segments=2,
+                                         a_i_road_segment_ids=np.array([1, 2]),
+                                         a_Cnt_num_lane_segments=np.array([3, 3]),
+                                         as_route_plan_lane_segments=[
+                                             [RoutePlanLaneSegment(10, 0, 0), RoutePlanLaneSegment(11, 0, 0), RoutePlanLaneSegment(12, 0, 0)],
+                                             [RoutePlanLaneSegment(20, 0, 0), RoutePlanLaneSegment(21, 0, 0), RoutePlanLaneSegment(22, 0, 0)]]))
 
 @pytest.fixture(scope='function')
 def dynamic_objects_not_on_road():
@@ -254,6 +253,16 @@ def pubsub():
 
 
 @pytest.fixture(scope='function')
+def route_planner_facade(state, pubsub, route_plan_1_2):
+    logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)
+
+    route_plan_mock = RoutePlannerMock(pubsub, logger, route_plan_1_2)
+    route_plan_mock.start()
+    yield route_plan_mock
+    route_plan_mock.stop()
+
+
+@pytest.fixture(scope='function')
 def state_module(state, pubsub):
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
@@ -276,11 +285,19 @@ def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg):
 
 
 @pytest.fixture(scope='function')
-def navigation_facade(pubsub, navigation_plan):
-    logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
+def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
+    logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
-    navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, navigation_plan_msg=navigation_plan)
+    trajectory_planning_module = TrajectoryPlanningFacadeMock(pubsub=pubsub, logger=logger,
+                                                              trajectory_msg=trajectory,
+                                                              visualization_msg=trajectory_visualization_msg)
 
-    navigation_module.start()
-    yield navigation_module
-    navigation_module.stop()
+    trajectory_planning_module.start()
+    yield trajectory_planning_module
+    trajectory_planning_module.stop()
+
+
+@pytest.fixture(scope='function')
+def predictor():
+    logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
+    yield RoadFollowingPredictor(logger)

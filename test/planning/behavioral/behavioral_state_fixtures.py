@@ -18,6 +18,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 
+
 @pytest.fixture(scope='function')
 def route_plan_20_30():
     yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
@@ -26,6 +27,7 @@ def route_plan_20_30():
                                          a_i_road_segment_ids=np.arange(20, 30, 1, dtype=np.int),
                                          a_Cnt_num_lane_segments=0,
                                          as_route_plan_lane_segments=[]))
+
 
 @pytest.fixture(scope='function')
 def route_plan_20():
