@@ -1,7 +1,7 @@
 import time
-
-import numpy as np
 import traceback
+from logging import Logger
+import numpy as np
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_NAVIGATION_PLAN
@@ -13,7 +13,7 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
-from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet ,\
+from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet,\
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
@@ -40,7 +40,6 @@ from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
-
 
 class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,

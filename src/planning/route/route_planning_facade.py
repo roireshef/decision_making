@@ -1,52 +1,17 @@
-from logging import (
-    Logger)
-
+from logging import Logger
 import time
-
 import traceback
-
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
-
-
-
-from decision_making.src.exceptions import (
-    MsgDeserializationError, 
-    RoutePlanningException)
-
-from decision_making.src.global_constants import (
-    LOG_MSG_ROUTE_PLANNER_OUTPUT,
-    LOG_MSG_RECEIVED_STATE,
-    LOG_MSG_ROUTE_PLANNER_IMPL_TIME,
-    ROUTE_PLANNING_NAME_FOR_METRICS,
-    LOG_MSG_SCENE_STATIC_RECEIVED)
-
-from decision_making.src.infra.dm_module import (
-    DmModule )
-
-from decision_making.src.infra.pubsub import (
-    PubSub)
-    
-from decision_making.src.messages.scene_common_messages import (
-    Header, 
-    Timestamp, 
-    MapOrigin)
-
-from decision_making.src.messages.scene_static_message import (
-    SceneStatic, 
-    SceneStaticBase, 
-    NavigationPlan)
-
-from decision_making.src.messages.route_plan_message import (
-    RoutePlan, 
-    RoutePlanLaneSegment, 
-    DataRoutePlan)
-
-from decision_making.src.planning.route.route_planner import (
-    RoutePlanner, 
-    RoutePlannerInputData)
-
-from decision_making.src.utils.metric_logger import (
-    MetricLogger)
+from decision_making.src.exceptions import MsgDeserializationError, RoutePlanningException
+from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
+    LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
+from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.infra.pubsub import PubSub
+from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
+from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, NavigationPlan
+from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan
+from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.utils.metric_logger import MetricLogger
 
 
 class RoutePlanningFacade(DmModule):

@@ -1,13 +1,8 @@
 import numpy as np
-from common_data.interface.Rte_Types.python.sub_structures import (
-    TsSYSRoutePlan,
-    TsSYSDataRoutePlan,
-    TsSYSRoutePlanLaneSegment)
-from decision_making.src.exceptions import RoadNotFound, raises
+from typing import List
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlan, TsSYSDataRoutePlan, TsSYSRoutePlanLaneSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
-from typing import List
-
 
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
@@ -28,7 +23,7 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
 
     def serialize(self) -> TsSYSRoutePlanLaneSegment:
         pubsub_msg = TsSYSRoutePlanLaneSegment()
-        
+
         # =====================================================================
         # This block of code was added due to a TypeError previously raised by the middleware.
         # At the time, the type of this variable was numpy.uint64, but the middleware was expecting an int.
@@ -36,7 +31,7 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
         # If a numpy type, convert to built-in type
         if type(self.e_i_lane_segment_id).__module__ is np.__name__:
             self.e_i_lane_segment_id = self.e_i_lane_segment_id.item()
-        
+
         # If still not type int, cast to int and print message
         if type(self.e_i_lane_segment_id) is not int:
             self.e_i_lane_segment_id = int(self.e_i_lane_segment_id)
@@ -63,13 +58,13 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
         print_route_plan_lane_segment = print_route_plan_lane_segment +"\n"
 
 
-RoutePlanRoadSegment = List[RoutePlanLaneSegment]   # RoutePlanLaneSegment : struct -> Contains Route plan end and occupancy costs, 
+RoutePlanRoadSegment = List[RoutePlanLaneSegment]   # RoutePlanLaneSegment : struct -> Contains Route plan end and occupancy costs,
                                                     # along with the lane identifier to convey routing relevant information in a structure.
-                                                    # RoutePlanRoadSegment: List[RoutePlanLaneSegment] are List of RoutePlanLaneSegment(s). 
+                                                    # RoutePlanRoadSegment: List[RoutePlanLaneSegment] are List of RoutePlanLaneSegment(s).
                                                     # Contains all the RoutePlanLaneSegment in a RoadSegment.
-                                                           
+
 RoutePlanRoadSegments = List[RoutePlanRoadSegment]  # RoutePlanRoadSegments:List[RoutePlanRoadSegment] are
-                                                    # List of (List of RoutePlanLaneSegment(s)). 
+                                                    # List of (List of RoutePlanLaneSegment(s)).
                                                     # Contains all the RoutePlanLaneSegment in a Road.
 
 
@@ -103,13 +98,13 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_num_road_segments = self.e_Cnt_num_road_segments
         pubsub_msg.a_i_road_segment_ids = self.a_i_road_segment_ids
         pubsub_msg.a_Cnt_num_lane_segments = self.a_Cnt_num_lane_segments
-        
+
         for i in range(pubsub_msg.e_Cnt_num_road_segments):
             for j in range(pubsub_msg.a_Cnt_num_lane_segments[i]):
                 pubsub_msg.as_route_plan_lane_segments[i][j] = self.as_route_plan_lane_segments[i][j].serialize()
 
         return pubsub_msg
-    
+
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataRoutePlan):
         as_route_plan_lane_segments = [[RoutePlanLaneSegment.deserialize(pubsubMsg.as_route_plan_lane_segments[i][j]) \
@@ -180,7 +175,7 @@ class RoutePlan(PUBSUB_MSG_IMPL):
 
         pubsub_msg.s_Header = self.s_Header.serialize()
         pubsub_msg.s_Data = self.s_Data.serialize()
-        
+
         return pubsub_msg
 
     @classmethod

@@ -1,41 +1,16 @@
 from time import time
 from typing import List, Dict, Tuple
 import numpy as np
-
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
-
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
-from decision_making.src.messages.scene_static_enums import (
-    MapLaneMarkerType,
-    MapRoadSegmentType,
-    MapLaneType,
-    RoadObjectType,
-    TrafficSignalState,
-    MovingDirection,
-    ManeuverType,
-    LaneMappingStatusType,
-    MapLaneDirection,
-    GMAuthorityType,
-    LaneConstructionType,
-    RoutePlanLaneSegmentAttr)
-from decision_making.src.messages.scene_static_message import (
-    SceneStatic,
-    DataSceneStatic,
-    SceneStaticGeometry,
-    SceneStaticBase,
-    NavigationPlan,
-    SceneLaneSegmentGeometry,
-    BoundaryPoint,
-    SceneLaneSegmentBase,
-    SceneRoadIntersection,
-    SceneRoadSegment,
-    MAX_NOMINAL_PATH_POINT_FIELDS,
-    StaticTrafficFlowControl,
-    DynamicTrafficFlowControl,
-    DynamicStatus,
-    AdjacentLane,
-    LaneSegmentConnectivity,
-    LaneCoupling)
+from decision_making.src.messages.scene_static_enums import MapLaneMarkerType, MapRoadSegmentType,\
+    MapLaneType, RoadObjectType, TrafficSignalState, MovingDirection, ManeuverType, LaneMappingStatusType,\
+    MapLaneDirection, GMAuthorityType, LaneConstructionType, RoutePlanLaneSegmentAttr
+from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic,\
+    SceneStaticGeometry, SceneStaticBase, NavigationPlan, SceneLaneSegmentGeometry,\
+    BoundaryPoint, SceneLaneSegmentBase, SceneRoadIntersection, SceneRoadSegment,\
+    MAX_NOMINAL_PATH_POINT_FIELDS, StaticTrafficFlowControl, DynamicTrafficFlowControl,\
+    DynamicStatus, AdjacentLane, LaneSegmentConnectivity, LaneCoupling
 
 class SceneStaticPublisher:
     RoadSegmentID = int

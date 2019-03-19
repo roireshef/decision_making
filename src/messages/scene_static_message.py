@@ -1,41 +1,14 @@
 from typing import List
 import numpy as np
-
-from common_data.interface.Rte_Types.python.sub_structures import (
-    TsSYSAdjacentLane,
-    TsSYSBoundaryPoint,
-    TsSYSLaneCoupling,
-    TsSYSStaticTrafficFlowControl,
-    TsSYSDynamicStatus,
-    TsSYSDynamicTrafficFlowControl,
-    TsSYSLaneSegmentConnectivity,
-    TsSYSSceneLaneSegmentBase,
-    TsSYSSceneLaneSegmentGeometry,
-    TsSYSNavigationPlan,
-    TsSYSSceneStaticGeometry,
-    TsSYSSceneStaticBase,
-    TsSYSSceneStatic,
-    TsSYSDataSceneStatic,
-    TsSYSSceneRoadIntersection,
-    TsSYSSceneRoadSegment)
-
-from decision_making.src.global_constants import (
-    PUBSUB_MSG_IMPL)
-
-from decision_making.src.messages.scene_common_messages import (
-    Timestamp, 
-    MapOrigin, 
-    Header)
-    
-from decision_making.src.messages.scene_static_enums import (
-    MapLaneType,
-    MapRoadSegmentType,
-    MovingDirection,
-    ManeuverType,
-    MapLaneMarkerType,
-    RoadObjectType,
-    TrafficSignalState,
-    NominalPathPoint)
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint,\
+    TsSYSLaneCoupling, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl,\
+    TsSYSLaneSegmentConnectivity, TsSYSSceneLaneSegmentBase, TsSYSSceneLaneSegmentGeometry, TsSYSNavigationPlan,\
+    TsSYSSceneStaticGeometry, TsSYSSceneStaticBase, TsSYSSceneStatic, TsSYSDataSceneStatic,\
+    TsSYSSceneRoadIntersection, TsSYSSceneRoadSegment
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header 
+from decision_making.src.messages.scene_static_enums import MapLaneType, MapRoadSegmentType, MovingDirection,\
+    ManeuverType, MapLaneMarkerType, RoadObjectType, TrafficSignalState, NominalPathPoint
 
 MAX_LANE_ATTRIBUTES = 8
 MAX_NOMINAL_PATH_POINT_FIELDS = 10

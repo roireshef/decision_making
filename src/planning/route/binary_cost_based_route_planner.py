@@ -1,44 +1,14 @@
 import numpy as np
-
-from typing import (
-    List, 
-    Dict)
-
-
-
-from common_data.interface.Rte_Types.python.sub_structures import (
-    TsSYSRoutePlanLaneSegment, 
-    TsSYSDataRoutePlan)
-
-from decision_making.src.exceptions import  (
-    RoadSegmentLaneSegmentMismatch, 
-    raises)
-
-from decision_making.src.global_constants import (
-    LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, 
-    TRUE_COST, 
-    FALSE_COST  )
-
-from decision_making.src.messages.route_plan_message import (
-    RoutePlan, 
-    RoutePlanLaneSegment, 
-    DataRoutePlan, 
-    RoutePlanRoadSegment, 
-    RoutePlanRoadSegments)
-
-from decision_making.src.messages.scene_static_enums import (
-    RoutePlanLaneSegmentAttr,
-    LaneMappingStatusType,
-    MapLaneDirection,
-    GMAuthorityType,
-    LaneConstructionType)
-
-from decision_making.src.messages.scene_static_message import (
-    SceneLaneSegmentBase)
-
-from decision_making.src.planning.route.route_planner import (
-    RoutePlanner, 
-    RoutePlannerInputData)
+from typing import List, Dict
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
+from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises
+from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST
+from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan,\
+    RoutePlanRoadSegment, RoutePlanRoadSegments
+from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType,\
+    MapLaneDirection, GMAuthorityType, LaneConstructionType
+from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
+from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 
 class BinaryCostBasedRoutePlanner(RoutePlanner): 
     """

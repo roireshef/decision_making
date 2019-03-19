@@ -11,7 +11,8 @@ from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_to
 from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.global_constants import DISTANCE_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_STATIC_RECEIVED, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.global_constants import DISTANCE_TO_SET_TAKEOVER_FLAG,\
+     LOG_MSG_SCENE_STATIC_RECEIVED, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.scene.scene_static_model import SceneStaticModel

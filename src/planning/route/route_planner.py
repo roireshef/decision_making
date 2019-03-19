@@ -1,36 +1,15 @@
 import numpy as np
+from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+from typing import List, Dict
+from decision_making.src.messages.route_plan_message import DataRoutePlan
+from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
+     SceneRoadSegment, SceneLaneSegmentBase
+from decision_making.src.exceptions import MissingInputInformation, RepeatedRoadSegments, raises
 
-from abc import (
-    ABCMeta, 
-    abstractmethod)
-
-from collections import (
-    OrderedDict )
-
-from typing import (
-    List, 
-    Dict)
-
-
-
-from decision_making.src.messages.route_plan_message import (
-    DataRoutePlan )
-
-from decision_making.src.messages.scene_static_message import (
-    SceneStaticBase, 
-    NavigationPlan, 
-    SceneRoadSegment, 
-    SceneLaneSegmentBase )
-
-from decision_making.src.exceptions import  (
-    MissingInputInformation, 
-    RepeatedRoadSegments, 
-    raises )
-
-RoadSegmentDict = Dict[int,SceneRoadSegment]
-LaneSegmentBaseDict = Dict[int,SceneLaneSegmentBase]
-RouteLaneSegmentOrderedDict = Dict[int,np.ndarray] # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
-
+RoadSegmentDict = Dict[int, SceneRoadSegment]
+LaneSegmentBaseDict = Dict[int, SceneLaneSegmentBase]
+RouteLaneSegmentOrderedDict = Dict[int, np.ndarray] # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
 
 
 class RoutePlannerInputData():
