@@ -1,14 +1,12 @@
 import numpy as np
-from typing import List
-
 from common_data.interface.Rte_Types.python.sub_structures import (
     TsSYSRoutePlan,
     TsSYSDataRoutePlan,
     TsSYSRoutePlanLaneSegment)
-
+from decision_making.src.exceptions import RoadNotFound, raises
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
-
+from typing import List
 
 
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
@@ -153,6 +151,30 @@ class RoutePlan(PUBSUB_MSG_IMPL):
         """
         self.s_Header = s_Header
         self.s_Data = s_Data
+
+
+
+    @raises(RoadNotFound)
+    def get_road_index_in_plan(self, road_id, start=None, end=None):
+        """
+        Given a road_id, returns the index of this road_id in the navigation plan (represented as list of roads)
+        :param road_id: the request road_id to look for in the plan
+        :param start: optional. starting index to look from in the plan (inclusive)
+        :param end: optional. ending index to look up to in the plan (inclusive)
+        :return: index of road_id in the plan
+        """
+        road_ids = self.s_Data.a_i_road_segment_ids
+        try:
+            if start is None:
+                start = 0
+            if end is None:
+                end = len(road_ids)
+            return np.where(road_ids[start:(end+1)] == road_id)[0][0] + start
+        except IndexError:
+            raise RoadNotFound("Road ID {} is not in clipped (indices: [{}, {}]) plan's road-IDs [{}]"
+                               .format(road_id, start, end, road_ids[start:(end+1)]))
+
+
 
     def serialize(self) -> TsSYSRoutePlan:
         pubsub_msg = TsSYSRoutePlan()

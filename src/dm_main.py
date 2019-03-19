@@ -1,12 +1,5 @@
-from logging import Logger
-from os import getpid
-
-import numpy as np
-import os
-
 from decision_making.paths import Paths
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
-    NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
     ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
@@ -15,7 +8,6 @@ from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
@@ -26,37 +18,38 @@ from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_
     SingleLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
-from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
-from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.route.cost_based_route_planner import BinaryCostBasedRoutePlanner
+from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
+from mapping.src.service.map_service import MapService
+from os import getpid
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
 
 # TODO: move this into config?
-NAVIGATION_PLAN = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
-                                              51360, 228028, 87622, 228007, 87660, 87744, 9893,
-                                              9894, 87740, 77398, 87741, 25969, 10068, 87211, 10320,
-                                              10322, 228029, 87739, 40953, 10073, 10066, 87732, 43516,
-                                              87770, 228034, 87996, 228037, 10536, 88088, 228039, 88192,
-                                              10519, 10432, 3537]))
-
-NAVIGATION_PLAN_PG = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
+#NAVIGATION_PLAN = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
+#                                              51360, 228028, 87622, 228007, 87660, 87744, 9893,
+#                                              9894, 87740, 77398, 87741, 25969, 10068, 87211, 10320,
+#                                              10322, 228029, 87739, 40953, 10073, 10066, 87732, 43516,
+#                                              87770, 228034, 87996, 228037, 10536, 88088, 228039, 88192,
+#                                              10519, 10432, 3537]))
+#
+#NAVIGATION_PLAN_PG = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
 DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
 
-class NavigationFacadeMock(NavigationFacade):
-    def __init__(self, pubsub: PubSub, logger: Logger, plan: NavigationPlanMsg):
-        super().__init__(pubsub=pubsub, logger=logger, handler=None)
-        self.plan = plan
-
-    def _periodic_action_impl(self):
-        self._publish_navigation_plan(self.plan)
+#class NavigationFacadeMock(NavigationFacade):
+#    def __init__(self, pubsub: PubSub, logger: Logger, plan: NavigationPlanMsg):
+#        super().__init__(pubsub=pubsub, logger=logger, handler=None)
+#        self.plan = plan
+#
+#    def _periodic_action_impl(self):
+#        self._publish_navigation_plan(self.plan)
 
 
 class DmInitialization:
@@ -72,14 +65,16 @@ class DmInitialization:
         state_module = StateModule(pubsub, logger, None)
         return state_module
 
-    @staticmethod
-    def create_navigation_planner(nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
-        logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
-
-        pubsub = PubSub()
-
-        navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
-        return navigation_module
+#    @staticmethod
+#    def create_navigation_planner(map_file: str=DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
+#        logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
+#
+#        pubsub = PubSub()
+#        # MapService should be initialized in each process according to the given map_file
+#        MapService.initialize(map_file)
+#
+#        navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
+#        return navigation_module
 
     @staticmethod
     def create_route_planner() -> RoutePlanningFacade:

@@ -1,8 +1,7 @@
 import time
-import traceback
-from logging import Logger
 
 import numpy as np
+import traceback
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_NAVIGATION_PLAN
@@ -17,27 +16,29 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED , DISTANCE_TO_SET_TAKEOVER_FLAG
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
+    DISTANCE_TO_SET_TAKEOVER_FLAG
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.infra.pubsub import PubSub
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
-
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
+from decision_making.src.planning.types import FS_SX
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.state.state import State, EgoState
-from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
+from decision_making.src.state.state import State, EgoState
+
 
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
-from decision_making.src.messages.takeover_message import Takeover, DataTakeover
-from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.planning.types import C_Y, FS_SX
+from decision_making.src.utils.metric_logger import MetricLogger
+from logging import Logger
 
 
 class BehavioralPlanningFacade(DmModule):
@@ -93,7 +94,7 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 updated_state = state
 
-            navigation_plan = self._get_current_navigation_plan()
+            #navigation_plan = self._get_current_navigation_plan()
 
             route_plan = self._get_current_route_plan()
 
@@ -102,7 +103,8 @@ class BehavioralPlanningFacade(DmModule):
 
             self._publish_takeover(takeover_message)
 
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan)
+            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
+                                                                                                           route_plan)
 
             self._last_trajectory = samplable_trajectory
 
@@ -159,14 +161,6 @@ class BehavioralPlanningFacade(DmModule):
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
         return state
 
-    def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        is_success, serialized_nav_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_NAVIGATION_PLAN, timeout=1)
-        if serialized_nav_plan is None:
-            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_NAVIGATION_PLAN)
-        nav_plan = NavigationPlanMsg.deserialize(serialized_nav_plan)
-        self.logger.debug("Received navigation plan: %s" % nav_plan)
-        return nav_plan
 
     def _get_current_route_plan(self) -> RoutePlan:
         """
