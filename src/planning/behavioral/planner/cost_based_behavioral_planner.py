@@ -42,7 +42,7 @@ class CostBasedBehavioralPlanner:
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator
-        self.action_spec_validator = action_spec_validator or ActionSpecFiltering()
+        self.action_spec_validator = action_spec_validator or ActionSpecFiltering(filters=None, logger=logger)
         self.value_approximator = value_approximator
         self.predictor = predictor
         self.logger = logger

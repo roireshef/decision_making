@@ -12,6 +12,7 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLA
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 
 from decision_making.src.infra.pubsub import PubSub
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet ,\
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises
