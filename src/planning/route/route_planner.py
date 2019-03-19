@@ -1,7 +1,7 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from typing import List, Dict
+from typing import List, Dict, Optional
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
      SceneRoadSegment, SceneLaneSegmentBase
@@ -16,15 +16,28 @@ class RoutePlannerInputData():
     """
         This class takes navigation and map (base) data and converts it to a more useful form of data which resembles the final
         route plan 2D lane sequences and also keeps relevant data in dictionary containers for faster access
-
-        SingleTon Implementation
     """
 
-    __instance = None
+    def __init__(self, route_lane_segment_ids: Optional[RouteLaneSegmentOrderedDict] = None,\
+                 route_lane_segments_base_as_dict: Optional[LaneSegmentBaseDict] = None,\
+                 route_road_segments_as_dict: Optional[RoadSegmentDict] = None ,\
+                 next_road_segment_id: Optional[Dict[int, int]] = None,\
+                 prev_road_segment_id: Optional[Dict[int, int]] = None) :
 
-    def __init__(self,route_lane_segment_ids:RouteLaneSegmentOrderedDict = OrderedDict(), route_lane_segments_base_as_dict: LaneSegmentBaseDict = {},\
-                 route_road_segments_as_dict: RoadSegmentDict = {} , next_road_segment_id: Dict[int, int] = {}, \
-                 prev_road_segment_id: Dict[int, int] = {}):
+        if route_lane_segment_ids is None:
+            route_lane_segment_ids = OrderedDict()
+
+        if route_lane_segments_base_as_dict is None:
+            route_lane_segments_base_as_dict = {}
+
+        if route_road_segments_as_dict is None:
+            route_road_segments_as_dict = {}
+
+        if next_road_segment_id is None:
+            next_road_segment_id = {}
+
+        if prev_road_segment_id is None:
+            prev_road_segment_id = {}
 
 
         self._route_lane_segment_ids =  route_lane_segment_ids                       # dict:  key - road segment IDs (ordered as in routeplan),
@@ -46,23 +59,6 @@ class RoutePlannerInputData():
         self._prev_road_segment_id =  prev_road_segment_id                           # Enables O(1) lookup of the prev road segment
                                                                                      #                 key - road segment ID,
                                                                                      #                 value - prev road segment ID in nav. route
-
-    @classmethod
-    def get_instance(cls) -> None:
-        """
-        :return: The instance
-        """
-        route_lane_segment_ids:RouteLaneSegmentOrderedDict = OrderedDict()
-        route_lane_segments_base_as_dict: LaneSegmentBaseDict = {}
-        route_road_segments_as_dict: RoadSegmentDict = {}
-        next_road_segment_id: Dict[int, int] = {}
-        prev_road_segment_id: Dict[int, int] = {}
-
-        if cls.__instance is None:
-            cls.__instance = RoutePlannerInputData(route_lane_segment_ids,route_lane_segments_base_as_dict,route_road_segments_as_dict,next_road_segment_id,\
-                                                   prev_road_segment_id)
-        return cls.__instance
-
 
     @staticmethod # Made static method especially as this method doesn't access the classes states/variables
     @raises(MissingInputInformation)
@@ -147,15 +143,10 @@ class RoutePlannerInputData():
                             by invoking _update_dict_data and _update_routeplan_data methods in that order. Look at the method comments for more
                             details.
         """
-        # reset needs to be done for the simpleton struct
-        self._route_lane_segment_ids:RouteLaneSegmentOrderedDict = OrderedDict()
-        self._route_lane_segments_base_as_dict:LaneSegmentBaseDict = {}
-        self._route_road_segments_as_dict: RoadSegmentDict = {}
-        self._next_road_segment_id:Dict[int,int] = {}
-        self._prev_road_segment_id:Dict[int,int] = {}
 
         RoutePlannerInputData.check_scene_data_validity(scene, nav_plan)
-        self._update_dict_data(scene, nav_plan) # maintain the following order
+        # maintain the following order
+        self._update_dict_data(scene, nav_plan)
         self._update_routeplan_data(nav_plan)
 
 
@@ -241,7 +232,7 @@ class RoutePlannerInputData():
 class RoutePlanner(metaclass=ABCMeta):
     """Abstract route planner class"""
     @abstractmethod
-    def plan(self) -> DataRoutePlan:
+    def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """Abstract route planner method. Implementation details will be in child class/methods """
         pass
 

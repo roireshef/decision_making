@@ -1,7 +1,7 @@
 from logging import Logger
 import time
 import traceback
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics 
 from decision_making.src.exceptions import MsgDeserializationError, RoutePlanningException
 from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
@@ -45,12 +45,12 @@ class RoutePlanningFacade(DmModule):
         try:
             # Read inputs
             start_time = time.time()
-            scene_static_base , scene_static_nav  = self._get_current_scene_static()
-            route_planner_input = RoutePlannerInputData().get_instance()
-            route_planner_input.reformat_input_data(scene=scene_static_base, nav_plan=scene_static_nav )
+            scene_static_base , scene_static_nav_plan  = self._get_current_scene_static()
+            route_planner_input = RoutePlannerInputData()
+            route_planner_input.reformat_input_data(scene=scene_static_base, nav_plan=scene_static_nav_plan )
 
             # Plan
-            route_plan = self.__planner.plan()
+            route_plan = self.__planner.plan(route_planner_input)
 
             # Write outputs
             self._publish_results(route_plan)

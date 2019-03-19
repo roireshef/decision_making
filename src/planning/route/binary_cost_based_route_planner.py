@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Optional
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
 from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST
@@ -14,8 +14,16 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     """
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
     """
-    def __init__(self):
-        self.__route_plan_lane_segments:RoutePlanRoadSegments = []
+    def __init__(self, route_plan_lane_segments:Optional[RoutePlanRoadSegments] = None,\
+                 route_plan_input_data: Optional[RoutePlannerInputData] = None ):
+        if route_plan_lane_segments is None:
+            route_plan_lane_segments = []
+
+        if route_plan_input_data is None:
+            route_plan_input_data = RoutePlannerInputData()
+
+        self.__route_plan_lane_segments = route_plan_lane_segments
+        self._route_plan_input_data = route_plan_input_data
 
     def get_route_plan_lane_segments(self) -> RoutePlanRoadSegments:
         return self.__route_plan_lane_segments
@@ -105,8 +113,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             return occupancy_cost_method(lane_attribute_value)
         else:
             raise IndexError("Cost Based Route Planner: lane_attribute_index not supported", lane_attribute_index)
-            return FALSE_COST
-
         
 
     @staticmethod
@@ -261,18 +267,16 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         downstream_lane_segment_ids_for_road_segment:List[List[int]] = []
         downstream_lane_segment_ids:List[int] = []
 
-        route_data:RoutePlannerInputData = RoutePlannerInputData().get_instance()
-
-        lane_segment_ids = route_data.get_lane_segment_ids_for_road_segment(road_segment_id)
+        lane_segment_ids = self._route_plan_input_data.get_lane_segment_ids_for_road_segment(road_segment_id)
 
         # Now iterate over all the lane segments inside  the lane_segment_ids (ndarray)
         # value -> lane_segment_id
         for lane_segment_id in lane_segment_ids:
 
-            lane_segment_base_data = route_data.get_lane_segment_base(lane_segment_id)
+            lane_segment_base_data = self._route_plan_input_data.get_lane_segment_base(lane_segment_id)
             
-            route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = (self._lane_cost_calc
-                                                                                                    (lane_segment_base_data=lane_segment_base_data))
+            route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = \
+                                                                                               (self._lane_cost_calc(lane_segment_base_data=lane_segment_base_data))
                                                                         
 
             downstream_road_segment_not_found = downstream_road_segment_not_found and not(downstream_lane_found_in_route)
@@ -287,14 +291,15 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                                                  "road segment (lane segments) were found in the downstream road segment described" +
                                                  "in the navigation route plan road_segment_id ", road_segment_id, " lane_segment_ids", 
                                                  lane_segment_ids, " next(road_segment_id)", 
-                                                 route_data.get_next_road_segment(road_segment_id), " route_plan", route_data.get_nav_plan(),
+                                                 self._route_plan_input_data.get_next_road_segment(road_segment_id), " route_plan",
+                                                 self._route_plan_input_data.get_nav_plan(),
                                                  "downstream_lane_segment_ids_for_road_segment ", downstream_lane_segment_ids_for_road_segment)
         
         return route_lane_segments
 
 
     @raises(IndexError, KeyError)
-    def plan(self ) -> DataRoutePlan:
+    def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """
         Calculates lane end and occupancy costs for all the lanes in the NAV plan
         :input:  RoutePlannerInputData, pre-processed data for RoutePlan cost calcualtions. More details at 
@@ -303,15 +308,15 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """  
         road_segment_ids: List[int] = []
         num_lane_segments: List[int] = []
-        route_data: RoutePlannerInputData = RoutePlannerInputData().get_instance()
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # key -> road_segment_id
         # value -> lane_segment_ids
 
         self.__route_plan_lane_segments:RoutePlanRoadSegments = []
+        self._route_plan_input_data = route_plan_input_data
 
-        for (road_segment_id, lane_segment_ids) in reversed(route_data.get_lane_segment_ids_for_route().items()):
+        for (road_segment_id, lane_segment_ids) in reversed(route_plan_input_data.get_lane_segment_ids_for_route().items()):
             
             route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
             

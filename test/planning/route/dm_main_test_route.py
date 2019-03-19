@@ -1,11 +1,8 @@
 from logging import Logger
 from os import getpid
-
 import numpy as np
 import os
-
 from decision_making.paths import Paths
-
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
