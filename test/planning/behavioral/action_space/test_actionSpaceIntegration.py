@@ -1,6 +1,4 @@
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
-from decision_making.src.messages.scene_common_messages import Header
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20
 from logging import Logger
 import numpy as np
@@ -14,10 +12,11 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, State, EgoState, DynamicObject
 
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20
 
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
-
 
 
 def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_no_split, route_plan_20):
