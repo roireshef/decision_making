@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-import pickle
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.state.map_state import MapState
 from decision_making.paths import Paths
 import os
@@ -9,7 +9,6 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
     ObjectLocalization, BoundingBoxSize, ObjectClassification, ObjectHypothesis, ObjectTrackDynamicProperty
@@ -28,7 +27,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable, scene_static_pg_split
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
-from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
+from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
@@ -44,10 +43,19 @@ def car_size():
     yield ObjectSize(length=3.0, width=2.0, height=1.2)
 
 
-@pytest.fixture(scope='function')
-def navigation_plan():
-    yield NavigationPlanMsg(np.array([1, 2]))
+#@pytest.fixture(scope='function')
+#def navigation_plan():
+#    yield NavigationPlanMsg(np.array([1, 2]))
 
+
+#@pytest.fixture(scope='function')
+#def route_plan():
+#    # TODO: Check this fixture
+#    yield RoutePlan(s_Header=Header(),
+#                       s_Data=DataRoutePlan(e_b_is_valid=True,
+#                                            e_Cnt_num_road_segments=10,
+#                                            a_i_road_segment_ids=range(20, 30),
+#                                            as_route_plan_lane_segments=None))
 
 @pytest.fixture(scope='function')
 def dynamic_objects_not_on_road():

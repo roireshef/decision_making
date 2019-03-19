@@ -1,10 +1,11 @@
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_no_split
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
+from decision_making.src.messages.scene_common_messages import Header
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20
 from logging import Logger
 import numpy as np
 import pickle
 
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -16,8 +17,11 @@ from decision_making.src.state.state import ObjectSize, State, EgoState, Dynamic
 
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
-def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_pg_no_split):
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
+
+
+
+def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_no_split, route_plan_20):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
 
     logger = Logger("test_specifyDynamicAction")
     road_segment_id = MapUtils.get_road_segment_ids()[0]
@@ -43,8 +47,8 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_pg_no_split)
     obj_cstate = frenet.fstate_to_cstate(np.array([obj_lon, obj_vel, 0, lane_lat, 0, 0]))
     obj = DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=obj_cstate, size=size, confidence=0)
 
-    state = State(False, None, [obj], ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, NavigationPlanMsg(np.array([20])), logger)
+    state = State(None, [obj], ego)
+    behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20, logger)
 
     action_recipes = action_space.recipes
     recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)

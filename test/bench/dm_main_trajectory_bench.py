@@ -1,4 +1,4 @@
-from decision_making.src.planning.navigation.default_config import NAVIGATION_PLAN_OVAL_TRACK
+from decision_making.src.messages.route_plan_message import RoutePlan
 from os import getpid
 
 import numpy as np
@@ -12,8 +12,9 @@ from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_Y
@@ -73,18 +74,14 @@ class DmMockInitialization:
         return trajectory_planning_module
 
 
-def main(fixed_trajectory_file: str = None, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN_OVAL_TRACK):
+def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.
     """
     modules_list = \
         [
-            DmProcess(lambda: DmInitialization.create_navigation_planner(nav_plan),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
-
-            DmProcess(lambda: DmMockInitialization.create_state_module(),
+            DmProcess(lambda: DmMockInitialization.create_state_module(map_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
