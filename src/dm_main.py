@@ -18,6 +18,7 @@ from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_
     SingleLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
+from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -42,16 +43,6 @@ from rte.python.parser import av_argument_parser
 #NAVIGATION_PLAN_PG = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
 DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
-
-#class NavigationFacadeMock(NavigationFacade):
-#    def __init__(self, pubsub: PubSub, logger: Logger, plan: NavigationPlanMsg):
-#        super().__init__(pubsub=pubsub, logger=logger, handler=None)
-#        self.plan = plan
-#
-#    def _periodic_action_impl(self):
-#        self._publish_navigation_plan(self.plan)
-
-
 class DmInitialization:
     """
     This class contains the module initializations
@@ -64,17 +55,6 @@ class DmInitialization:
         pubsub = PubSub()
         state_module = StateModule(pubsub, logger, None)
         return state_module
-
-#    @staticmethod
-#    def create_navigation_planner(map_file: str=DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
-#        logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
-#
-#        pubsub = PubSub()
-#        # MapService should be initialized in each process according to the given map_file
-#        MapService.initialize(map_file)
-#
-#        navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
-#        return navigation_module
 
     @staticmethod
     def create_route_planner() -> RoutePlanningFacade:
@@ -138,11 +118,6 @@ def main():
 
     modules_list = \
         [
-            DmProcess(lambda: DmInitialization.create_navigation_planner(),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
-                      name='NP'),
-
             DmProcess(lambda: DmInitialization.create_route_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD},
