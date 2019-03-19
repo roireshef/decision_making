@@ -31,8 +31,8 @@ def route_plan_20_30():
 def route_plan_20():
     yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
                     s_Data=DataRoutePlan(e_b_is_valid=True,
-                                         e_Cnt_num_road_segments=10,
-                                         a_i_road_segment_ids=np.ndarray([20]),
+                                         e_Cnt_num_road_segments=1,
+                                         a_i_road_segment_ids=np.array([20]),
                                          a_Cnt_num_lane_segments=0,
                                          as_route_plan_lane_segments=[]))
 
