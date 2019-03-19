@@ -2,13 +2,15 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
-
+from decision_making.test.constants import SCENE_STATIC_MODEL_ABSOLUTE_PATH
+from unittest.mock import patch
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
     state_with_sorrounding_objects, route_plan_20
 from rte.python.logger.AV_logger import AV_Logger
 
 
-def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects,route_plan_20):
+# @patch(target=SCENE_STATIC_MODEL_ABSOLUTE_PATH, new=map_api_mock)
+def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects, route_plan_20):
     """
     validate that 8 objects around ego create 8 grid cells in the behavioral state in multi-road map
     (a cell is created only if it contains at least one object)
