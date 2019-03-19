@@ -153,7 +153,6 @@ class RoutePlan(PUBSUB_MSG_IMPL):
         self.s_Data = s_Data
 
 
-
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):
         """
