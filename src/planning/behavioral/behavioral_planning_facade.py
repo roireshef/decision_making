@@ -94,8 +94,6 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 updated_state = state
 
-            #navigation_plan = self._get_current_navigation_plan()
-
             route_plan = self._get_current_route_plan()
 
             # calculate the takeover message
@@ -305,7 +303,3 @@ class BehavioralPlanningFacade(DmModule):
     @property
     def planner(self):
         return self._planner
-
- #   @property
- #   def predictor(self):
- #       return self._predictor
