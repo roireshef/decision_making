@@ -22,6 +22,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.state import State
 from logging import Logger
 from typing import Tuple
+import rte.python.profiler as prof
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -33,6 +34,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
+    @prof.ProfileFunction()
     def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState,
              time_horizon: float, minimal_required_horizon: float,
              bp_time: int, cost_params: TrajectoryCostParams) -> Tuple[

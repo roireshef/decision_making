@@ -14,6 +14,7 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
+import rte.python.profiler as prof
 
 
 class MapUtils:
@@ -62,6 +63,7 @@ class MapUtils:
         return ds * (nominal_points.shape[0] - 1)
 
     @staticmethod
+    @prof.ProfileFunction()
     def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
         """
         get Frenet frame of the whole center-lane for the given lane
@@ -287,6 +289,7 @@ class MapUtils:
 
     @staticmethod
     @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound)
+    @prof.ProfileFunction()
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
                                    navigation_plan: NavigationPlanMsg) -> GeneralizedFrenetSerretFrame:
         """
@@ -316,6 +319,7 @@ class MapUtils:
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
+    @prof.ProfileFunction()
     def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                          navigation_plan: NavigationPlanMsg) -> List[FrenetSubSegment]:
         """
