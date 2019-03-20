@@ -116,7 +116,7 @@ EMERGENCY_DECELERATION = 8
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 1.0
+SPECIFICATION_MARGIN_TIME_DELAY = 1.5
 HOST_SAFETY_MARGIN_TIME_DELAY = 0.7
 ACTOR_SAFETY_MARGIN_TIME_DELAY = 2
 

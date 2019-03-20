@@ -61,11 +61,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # if aggressive follow_vehicle action for slow close object was filtered by recipes filter, try to perform
         # another specification by finding the lowest time complying longitudinal acceleration limits
-        braking_action_idx, braking_action_spec = \
-            self.action_space.specify_aggressive_braking(action_recipes, recipes_mask, behavioral_state)
-        if braking_action_idx is not None:
-            print('NEW AGGRESSIVE SPEC: spec.t=%.3f' % (braking_action_spec.t))
-            action_specs[braking_action_idx] = braking_action_spec
+        # braking_action_idx, braking_action_spec = \
+        #     self.action_space.specify_aggressive_braking(action_recipes, recipes_mask, behavioral_state)
+        # if braking_action_idx is not None:
+        #     print('NEW AGGRESSIVE SPEC: spec.t=%.3f' % (braking_action_spec.t))
+        #     action_specs[braking_action_idx] = braking_action_spec
 
         # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
@@ -124,7 +124,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action_spec = selected_action_spec
 
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
-            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters.reference_route,
+            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         if len(state.dynamic_objects) > 0:
@@ -141,4 +141,5 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                           action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
                           selected_action_spec, state.ego_state.timestamp_in_sec)
+
         return trajectory_parameters, baseline_trajectory, visualization_message
