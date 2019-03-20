@@ -139,10 +139,10 @@ def jerk_time_weights_optimization_for_slower_front_car():
     # states grid ranges
     V_MIN = 20.
     V_MAX = 30.   # max velocity in the states grid
-    V_STEP = 0.5   # velocity step in the states grid
-    S_MAX = SPECIFICATION_MARGIN_TIME_DELAY * V_MAX + 5  # max distance between two objects in the states grid
+    V_STEP = 1   # velocity step in the states grid
+    S_MAX = 100  # max distance between two objects in the states grid
     S_MIN = SPECIFICATION_MARGIN_TIME_DELAY * V_MIN - 10  # min distance between two objects in the states grid
-    S_STEP = 1
+    S_STEP = 2
 
     # weights grid ranges
     W2_FROM = 0.001  # min of the range of w2 weight
@@ -161,19 +161,21 @@ def jerk_time_weights_optimization_for_slower_front_car():
 
     # create the grid of states
     v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
-    not_too_far = np.where((v0 - vT) * BP_ACTION_T_LIMITS[1] > s)
-    v0, vT, a0, s = v0[not_too_far], vT[not_too_far], a0[not_too_far], s[not_too_far]
+    braking = np.where(v0 > vT)
+    v0, vT, a0, s = v0[braking], vT[braking], a0[braking], s[braking]
+    limited_headway = np.where(np.logical_and(s >= v0 * HOST_SAFETY_MARGIN_TIME_DELAY, s < v0 * 4))
+    v0, vT, a0, s = v0[limited_headway], vT[limited_headway], a0[limited_headway], s[limited_headway]
     v0, vT, a0, s = np.ravel(v0), np.ravel(vT), np.ravel(a0), np.ravel(s)
 
     # create grid of weights
-    test_full_range = True
+    test_full_range = False
     # s_weights is a matrix Wx3, where W is a set of jerk weights (time weight is constant) for 3 aggressiveness levels
     if test_full_range:
         # test a full range of weights (~8 minutes)
         s_weights = create_full_range_of_weights(W2_FROM, W2_TILL, W12_RATIO_FROM, W12_RATIO_TILL,
                                                  W01_RATIO_FROM, W01_RATIO_TILL, GRID_RESOLUTION)
     else:  # compare a pair of weights sets
-        s_weights = np.array([[6, 0.9, 0.16], [6, 0.1, 0.005]])
+        s_weights = np.array([[6, 0.7, 0.015], [6, 0.1, 0.005]])
 
     # remove trivial states, for which T_s = 0
     non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * SPECIFICATION_MARGIN_TIME_DELAY, s)))

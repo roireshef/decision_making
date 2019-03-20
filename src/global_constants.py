@@ -32,7 +32,8 @@ MAX_HORIZON_DISTANCE = 600
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 2.0
+
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
@@ -94,8 +95,8 @@ BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
 # have to be sorted from calm to aggressive
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
     [6.000, 0.15, 0.1],
-    [0.100, 0.15, 0.1],
-    [0.005, 0.15, 0.1]
+    [0.700, 0.15, 0.1],
+    [0.015, 0.15, 0.1]
 ])
 
 # behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of static actions
@@ -265,7 +266,7 @@ FILTER_OFF_ROAD_OBJECTS = False
 
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.2
-TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
+TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
 
 #### NAMES OF MODULES FOR LOGGING ####
 MAP_NAME_FOR_LOGGING = "Map API"

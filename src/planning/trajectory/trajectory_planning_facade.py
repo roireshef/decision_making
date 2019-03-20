@@ -22,7 +22,7 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianTrajectories, FP_SX, C_Y, FS_DX, \
-    FS_SX, FrenetState2D, C_X, FS_SV, FS_SA, FS_DV, FS_DA
+    FS_SX, FrenetState2D, C_X, FS_SV, FS_SA, FS_DV, FS_DA, CartesianExtendedState
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor

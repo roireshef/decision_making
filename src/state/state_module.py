@@ -2,9 +2,7 @@ import numpy as np
 import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from decision_making.src.exceptions import ObjectHasNegativeVelocityError
-from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
-    VELOCITY_MINIMAL_THRESHOLD
+from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
@@ -65,12 +63,22 @@ class StateModule(DmModule):
 
                 state = self.create_state_from_scene_dynamic(self._scene_dynamic)
 
+                if state.ego_state.cartesian_state[C_V] < 0:
+                    state.ego_state.cartesian_state[C_V] = 0
+                    state.ego_state.map_state.lane_fstate[FS_SV] = 0
+                    self.logger.warning('Ego was received with negative velocity %f' % state.ego_state.cartesian_state[C_V])
+
+                for i in range(len(state.dynamic_objects)):
+                    if state.dynamic_objects[i].cartesian_state[C_V] < 0:
+                        state.dynamic_objects[i].cartesian_state[C_V] = 0
+                        state.dynamic_objects[i].map_state.lane_fstate[FS_SV] = 0
+                        self.logger.warning(
+                            'Dynamic object with obj_id %s was received with negative velocity %f',
+                            state.dynamic_objects[i].obj_id, state.dynamic_objects[i].cartesian_state[C_V])
+
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
                 self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state.serialize())
-
-        except ObjectHasNegativeVelocityError as e:
-            self.logger.error(e)
 
         except Exception:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
@@ -94,10 +102,6 @@ class StateModule(DmModule):
                              map_state_on_host_lane=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                              confidence=1.0)
-
-        if ego_state.cartesian_state[C_V] < 0:
-            raise ObjectHasNegativeVelocityError(
-                'Ego was received with negative velocity %f' % ego_state.cartesian_state[C_V])
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,

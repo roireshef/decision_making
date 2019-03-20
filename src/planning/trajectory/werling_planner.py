@@ -48,6 +48,9 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ego_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(state.ego_state.cartesian_state)
 
+        # define constraints for the initial state
+        fconstraints_t0 = FrenetConstraints.from_state(ego_frenet_state)
+
         # define constraints for the terminal (goal) state
         goal_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(goal)
 
@@ -67,16 +70,6 @@ class WerlingPlanner(TrajectoryPlanner):
         dx_range = np.linspace(DX_OFFSET_MIN + goal_frenet_state[FS_DX],
                                DX_OFFSET_MAX + goal_frenet_state[FS_DX],
                                DX_STEPS)
-
-        # If ego is very close to goal laterally (DX,DV,DA), set the start lateral constraints identical to the goal's.
-        # The purpose: when T_d is tiny, there is no feasible trajectory to perform the lateral maneuver.
-        if np.isclose(ego_frenet_state[FS_DX:], goal_frenet_state[FS_DX:], atol=0.01).all():
-            # define constraints for the initial state, such that d_constraints are identical to the goal
-            fconstraints_t0 = FrenetConstraints(ego_frenet_state[FS_SX], ego_frenet_state[FS_SV], ego_frenet_state[FS_SA],
-                                                goal_frenet_state[FS_DX], goal_frenet_state[FS_DV], goal_frenet_state[FS_DA])
-        else:  # not very close to goal laterally
-            # define constraints for the initial state
-            fconstraints_t0 = FrenetConstraints.from_state(ego_frenet_state)
 
         fconstraints_tT = FrenetConstraints(sx=sx_range, sv=sv_range, sa=goal_frenet_state[FS_SA],
                                             dx=dx_range, dv=goal_frenet_state[FS_DV], da=goal_frenet_state[FS_DA])
@@ -306,7 +299,7 @@ class WerlingPlanner(TrajectoryPlanner):
         lon_velocity = ctrajectories[:, :, C_V]
 
         conforms = np.all(
-            NumpyUtils.is_almost_in_limits(lon_velocity, cost_params.velocity_limits) &
+            NumpyUtils.is_in_limits(lon_velocity, cost_params.velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, cost_params.lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, cost_params.lat_acceleration_limits), axis=1)
 
@@ -475,7 +468,6 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
         horizons_d = np.empty(shape=0)
         for T_d in T_d_vals:
-
             time_samples_d = np.arange(0, T_d + EPS, dt)
 
             # solve for dimension d (with time-horizon T_d)
