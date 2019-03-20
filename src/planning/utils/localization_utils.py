@@ -8,10 +8,12 @@ from decision_making.src.planning.trajectory.samplable_trajectory import Samplab
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V
 from decision_making.src.state.state import EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
+import rte.python.profiler as prof
 
 
 class LocalizationUtils:
     @staticmethod
+    @prof.ProfileFunction()
     # TODO: can we remove calling_class_name assuming we use the right class logger?
     def is_actual_state_close_to_expected_state(current_ego_state,
                                                 last_trajectory,
