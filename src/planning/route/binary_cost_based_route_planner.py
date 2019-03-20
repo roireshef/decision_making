@@ -1,7 +1,8 @@
 import numpy as np
 from typing import List, Dict, Optional
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
-from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises
+from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
+    DownstreamLaneDataNotFound
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST
 from decision_making.src.messages.route_plan_message import RoutePlan, RoutePlanLaneSegment, DataRoutePlan,\
     RoutePlanRoadSegment, RoutePlanRoadSegments
@@ -83,7 +84,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
 
     @staticmethod
-    @raises(IndexError)
+    @raises(LaneAttributeNotFound)
     # Following method is kept public in order to unit test the method from outside the class
     def lane_attribute_based_occupancy_cost(lane_attribute_index: int, lane_attribute_value: int) -> float:  # if else logic
         """
@@ -112,11 +113,11 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             occupancy_cost_method = attribute_based_occupancy_cost_methods[lane_attribute_index]                                                                                        # 
             return occupancy_cost_method(lane_attribute_value)
         else:
-            raise IndexError("Cost Based Route Planner: lane_attribute_index not supported", lane_attribute_index)
+            raise LaneAttributeNotFound("Cost Based Route Planner: lane_attribute_index not supported", lane_attribute_index)
         
 
     @staticmethod
-    @raises(IndexError)
+    @raises(LaneAttributeNotFound)
     # Following method is kept public in order to unit test the method from outside the class
     def lane_occupancy_cost_calc(lane_segment_base_data: SceneLaneSegmentBase) -> float:
         """
@@ -131,13 +132,13 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attributes):
                 lane_attribute_value = lane_segment_base_data.a_cmp_lane_attributes[lane_attribute_index]
             else:
-                raise IndexError("Cost Based Route Planner: lane_attribute_index doesnt have corresponding lane attribute value"
+                raise LaneAttributeNotFound("Cost Based Route Planner: lane_attribute_index doesnt have corresponding lane attribute value"
                                  , lane_attribute_index)
 
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attribute_confidences):
                 lane_attribute_confidence = lane_segment_base_data.a_cmp_lane_attribute_confidences[lane_attribute_index]
             else:
-                raise IndexError("Cost Based Route Planner: lane_attribute_index doesnt have corresponding lane attribute confidence value"
+                raise LaneAttributeNotFound("Cost Based Route Planner: lane_attribute_index doesnt have corresponding lane attribute confidence value"
                                  , lane_attribute_index)
 
             
@@ -153,7 +154,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         return FALSE_COST
 
 
-    @raises(IndexError)
+    @raises(DownstreamLaneDataNotFound)
     # Following method is kept public in order to unit test the method from outside the class
     def _lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (float, bool, List[int]):
         """
@@ -192,7 +193,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                 if ( downstream_route_lane_segment_idx < len(downstream_route_lane_segments) ):
                     downstream_route_lane_segment = downstream_route_lane_segments[downstream_route_lane_segment_idx]
                 else:
-                    raise IndexError("Cost Based Route Planner: downstream_route_lane_segment_idx not present in route_plan_lane_segments")
+                    raise DownstreamLaneDataNotFound("Cost Based Route Planner: downstream_route_lane_segment_idx not present in route_plan_lane_segments")
                 
                 downstream_lane_segment_occupancy_cost = downstream_route_lane_segment.e_cst_lane_occupancy_cost
 
@@ -297,8 +298,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         
         return route_lane_segments
 
-
-    @raises(IndexError, KeyError)
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """
         Calculates lane end and occupancy costs for all the lanes in the NAV plan

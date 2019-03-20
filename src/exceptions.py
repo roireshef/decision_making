@@ -130,6 +130,21 @@ class RoadSegmentLaneSegmentMismatch(RoutePlanningException):
 class MissingInputInformation(RoutePlanningException):
     pass
 
+class NavigationSceneDataMismatch(RoutePlanningException):
+    pass
+
+class LaneSegmentDataNotFound(RoutePlanningException):
+    pass
+
+class RoadSegmentDataNotFound(RoutePlanningException):
+    pass
+
+class LaneAttributeNotFound(RoutePlanningException):
+    pass
+
+class DownstreamLaneDataNotFound(RoutePlanningException):
+    pass
+
 def raises(*e):
     # type: (Exception)
     """
