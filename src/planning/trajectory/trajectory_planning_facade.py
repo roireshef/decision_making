@@ -62,12 +62,12 @@ class TrajectoryPlanningFacade(DmModule):
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, None)
         self.pubsub.subscribe(UC_SYSTEM_STATE_LCM, None)
-        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
+        # self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
         self.pubsub.unsubscribe(UC_SYSTEM_STATE_LCM)
-        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
+        # self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _periodic_action_impl(self):
         """
@@ -78,8 +78,8 @@ class TrajectoryPlanningFacade(DmModule):
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
-            scene_static = self._get_current_scene_static()
-            SceneStaticModel.get_instance().set_scene_static(scene_static)
+            # scene_static = self._get_current_scene_static()
+            # SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             state = self._get_current_state()
 
@@ -104,12 +104,12 @@ class TrajectoryPlanningFacade(DmModule):
                 if LocalizationUtils.is_actual_state_close_to_expected_state(
                         state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                     sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
-                    self.logger.debug(LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED,
-                                      sampled_state.ego_state.map_state,
-                                      state.ego_state.map_state)
+                    # self.logger.debug(LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED,
+                    #                   sampled_state.ego_state.map_state,
+                    #                   state.ego_state.map_state)
                     updated_state = sampled_state
                 else:
-                    self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.ego_state.map_state)
+                    # self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.ego_state.map_state)
                     updated_state = state
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
