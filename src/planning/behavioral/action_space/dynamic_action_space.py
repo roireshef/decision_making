@@ -1,9 +1,4 @@
-from logging import Logger
-from typing import Optional, List, Type
-
 import numpy as np
-from sklearn.utils.extmath import cartesian
-
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_MARGIN_TIME_DELAY, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
@@ -15,9 +10,11 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, A
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.math_utils import Math
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.utils.map_utils import MapUtils
+from logging import Logger
+from sklearn.utils.extmath import cartesian
+from typing import Optional, List, Type
 
 
 class DynamicActionSpace(ActionSpace):
@@ -60,6 +57,9 @@ class DynamicActionSpace(ActionSpace):
         a_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SA])
         zeros = np.zeros(shape=v_T.shape)
 
+        v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
+        a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
+
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
@@ -75,23 +75,26 @@ class DynamicActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (
             LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
+        T_m = SPECIFICATION_MARGIN_TIME_DELAY
+
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds,
-            a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+            a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=T_m)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
-        # although it should be zero.
-        T_s[np.logical_and(np.isclose(v_T, v_0, atol=1e-3, rtol=0), np.isclose(a_0, zeros, atol=1e-3, rtol=0))] = 0
+        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
+        # intersecting in T=0.
+        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, T_m)] = 0
 
         # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
         # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
         # # when setting T
         # with np.errstate(invalid='ignore'):
-        #     T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
+        #    T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(

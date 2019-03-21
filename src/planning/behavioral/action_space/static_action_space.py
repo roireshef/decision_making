@@ -1,6 +1,4 @@
 import numpy as np
-from sklearn.utils.extmath import cartesian
-from typing import Optional, List, Type
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, EPS
@@ -13,6 +11,8 @@ from decision_making.src.planning.behavioral.filtering.recipe_filtering import R
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
+from sklearn.utils.extmath import cartesian
+from typing import Optional, List, Type
 
 
 class StaticActionSpace(ActionSpace):
@@ -50,9 +50,8 @@ class StaticActionSpace(ActionSpace):
         # get desired terminal velocity
         v_T = np.array([action_recipe.velocity for action_recipe in action_recipes])
 
-        v_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SV])
-        a_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SA])
-        zeros = np.zeros(shape=v_T.shape)
+        v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
+        a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
@@ -62,8 +61,9 @@ class StaticActionSpace(ActionSpace):
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
-        # although it should be zero.
-        T_s[np.logical_and(np.isclose(v_T, v_0, atol=1e-3, rtol=0), np.isclose(a_0, zeros, atol=1e-3, rtol=0))] = 0
+        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
+        # intersecting in T=0.
+        T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
 
         # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
         # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later

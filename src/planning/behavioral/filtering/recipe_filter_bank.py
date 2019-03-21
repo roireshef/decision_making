@@ -15,7 +15,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
 from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 from typing import List
-
+import rte.python.profiler as prof
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
@@ -87,6 +87,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 return False
         return True
 
+    @prof.ProfileFunction()
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         """
         This filter checks if recipe might cause a bad action specification, meaning velocity or acceleration are too

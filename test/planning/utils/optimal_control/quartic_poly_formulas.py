@@ -111,7 +111,9 @@ class QuarticMotionPredicatesCreator:
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
-        if np.isclose(v_0, v_T, atol=1e-3, rtol=0) and np.isclose(a_0, 0.0, atol=1e-3, rtol=0):
+        # Here we can't find a local minima as the equation is close to a linear line, intersecting in T=0.
+
+        if QuarticPoly1D.is_tracking_mode(v_0, np.array([v_T]), a_0)[0]:
             return True
 
         time_cost_poly_coefs = \
