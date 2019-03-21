@@ -83,7 +83,7 @@ class ActionSpace:
         pass
 
     @staticmethod
-    def test_cartesian_limits(behavioral_state, poly_coefs_s, poly_coefs_d, T, relative_lanes, target_s, v_T):
+    def test_cartesian_limits(behavioral_state, poly_coefs_s, poly_coefs_d, T, minimal_T, relative_lanes, target_s, v_T):
         result = []
         for poly_s, poly_d, t, lane, s_T, v_Ti in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, target_s, v_T):
             if np.isnan(t):
@@ -91,7 +91,7 @@ class ActionSpace:
                 continue
 
             time_samples = np.arange(0, t + EPS, WERLING_TIME_RESOLUTION)
-            samplable_trajectory = SamplableWerlingTrajectory(0, t, t, behavioral_state.extended_lane_frames[lane], poly_s, poly_d)
+            samplable_trajectory = SamplableWerlingTrajectory(0, t, t, minimal_T, behavioral_state.extended_lane_frames[lane], poly_s, poly_d)
             samples = samplable_trajectory.sample(time_samples)
 
             lon_acceleration = samples[:, C_A]

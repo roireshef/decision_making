@@ -126,6 +126,7 @@ class DynamicActionSpace(ActionSpace):
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
         pass_cartesian_limits = ActionSpace.test_cartesian_limits(behavioral_state, poly_coefs_s, poly_coefs_d, T,
+                                                                  BP_ACTION_T_LIMITS[LIMIT_MIN],
                                                                   relative_lanes, target_s, v_T)
 
         # lane center has latitude = 0, i.e. spec.d = 0
