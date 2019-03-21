@@ -5,13 +5,12 @@ from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas i
 from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 
 import numpy as np
+import re
 
 from decision_making.src.global_constants import EPS, SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, LON_ACC_LIMITS, VELOCITY_LIMITS, HOST_SAFETY_MARGIN_TIME_DELAY, \
     ACTOR_SAFETY_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE, TRAJECTORY_NUM_POINTS
 from decision_making.src.planning.utils.math_utils import Math
-from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.utils.metric_logger import MetricLogger
 
 
 # This file deals with finding "optimal" weights for time-jerk cost function for dynamic actions.
@@ -137,12 +136,12 @@ def jerk_time_weights_optimization_for_slower_front_car():
     Output detailed states coverage (3D grid of states) for the best weights set or compare two weights sets.
     """
     # states grid ranges
-    V_MIN = 20.
-    V_MAX = 30.   # max velocity in the states grid
-    V_STEP = 1   # velocity step in the states grid
+    V_MIN = 20
+    V_MAX = 30   # max velocity in the states grid
+    V_STEP = 0.5  # velocity step in the states grid
+    S_MIN = 20   # min distance between two objects in the states grid
     S_MAX = 100  # max distance between two objects in the states grid
-    S_MIN = SPECIFICATION_MARGIN_TIME_DELAY * V_MIN - 10  # min distance between two objects in the states grid
-    S_STEP = 2
+    S_STEP = 1.
 
     # weights grid ranges
     W2_FROM = 0.001  # min of the range of w2 weight
@@ -175,7 +174,8 @@ def jerk_time_weights_optimization_for_slower_front_car():
         s_weights = create_full_range_of_weights(W2_FROM, W2_TILL, W12_RATIO_FROM, W12_RATIO_TILL,
                                                  W01_RATIO_FROM, W01_RATIO_TILL, GRID_RESOLUTION)
     else:  # compare a pair of weights sets
-        s_weights = np.array([[6, 0.7, 0.015], [6, 0.1, 0.005]])
+        # s_weights = np.array([[0.7, 0.015, 0.005], [0.7, 0.015, 0.015]])
+        s_weights = np.array([[6, 0.7, 0.015]])
 
     # remove trivial states, for which T_s = 0
     non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * SPECIFICATION_MARGIN_TIME_DELAY, s)))
@@ -203,42 +203,43 @@ def jerk_time_weights_optimization_for_slower_front_car():
 
             # Calculate average (on all valid actions) acceleration profile rate.
             # Late braking (less pleasant for passengers) gets higher rate than early braking.
-            valid_T_idxs = np.where(valid_T)[0]
-            rate_sum = 0.
-            rate_num = 0
-            for i in valid_T_idxs:
-                if vel_acc_in_limits[i, aggr] and safe_actions[i, aggr] and T_s[wi, i, aggr] <= BP_ACTION_T_LIMITS[1]:
-                    # calculate velocity & acceleration profile
-                    time_samples = np.arange(0, T[i] + EPS, TRAJECTORY_TIME_RESOLUTION)
-                    distance_profile = QuinticPoly1D.distance_from_target(a0[i], v0[i], vT[i], s[i], T[i],
-                                                                          T_m=SPECIFICATION_MARGIN_TIME_DELAY)
-                    acc_poly_coefs = Math.polyder2d(poly_coefs[i:i + 1], m=2)
-                    acc_samples = Math.polyval2d(acc_poly_coefs, time_samples)[0]
-                    brake_rate, rate_weight = get_braking_quality(distance_profile(time_samples),
-                                                                  acc_samples)  # calculate acceleration profile rate
-                    if brake_rate is not None:  # else there was not braking
-                        rate_sum += rate_weight * brake_rate
-                        rate_num += rate_weight
-            if rate_num > 0:
-                profile_rates[wi, aggr] = rate_sum / rate_num
+            # valid_T_idxs = np.where(valid_T)[0]
+            # rate_sum = 0.
+            # rate_num = 0
+            # for i in valid_T_idxs:
+            #     if vel_acc_in_limits[i, aggr] and safe_actions[i, aggr] and T_s[wi, i, aggr] <= BP_ACTION_T_LIMITS[1]:
+            #         # calculate velocity & acceleration profile
+            #         time_samples = np.arange(0, T[i] + EPS, TRAJECTORY_TIME_RESOLUTION)
+            #         distance_profile = QuinticPoly1D.distance_from_target(a0[i], v0[i], vT[i], s[i], T[i],
+            #                                                               T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+            #         acc_poly_coefs = Math.polyder2d(poly_coefs[i:i + 1], m=2)
+            #         acc_samples = Math.polyval2d(acc_poly_coefs, time_samples)[0]
+            #         brake_rate, rate_weight = get_braking_quality(distance_profile(time_samples),
+            #                                                       acc_samples)  # calculate acceleration profile rate
+            #         if brake_rate is not None:  # else there was not braking
+            #             rate_sum += rate_weight * brake_rate
+            #             rate_num += rate_weight
+            # if rate_num > 0:
+            #     profile_rates[wi, aggr] = rate_sum / rate_num
 
         # combine velocity & acceleration limits with time limits and safety, to obtain states validity
         time_in_limits = (T_s[wi, :, :] <= BP_ACTION_T_LIMITS[LIMIT_MAX])
         in_limits = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
         valid_states_mask[wi] = in_limits.any(axis=-1)  # OR on aggressiveness levels
 
-        print('weight: %7.3f %.3f %.3f: passed %.1f%%\t\tvel_acc %s   safety %s   time %s;\tprofile %s' %
+        print('weight: %7.3f %.3f %.3f: passed %.1f%%\t\tvel_acc %s   safety %s   time %s' %
               (w[0], w[1], w[2], np.sum(valid_states_mask[wi])*100./states_num,
                (np.sum(vel_acc_in_limits, axis=0)*100/states_num).astype(np.int),
                (np.sum(safe_actions, axis=0)*100/states_num).astype(np.int),
-               (np.sum(time_in_limits, axis=0)*100/states_num).astype(np.int), profile_rates[wi]))
+               (np.sum(time_in_limits, axis=0)*100/states_num).astype(np.int)))
 
-    if test_full_range:
-        # Monitor a quality of the best set of weights (maximal roots).
-        print_success_map_for_best_weights_set(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask, s_weights)
-    else:
-        # Compare between two sets of weights (maximal roots).
-        print_comparison_between_two_weights_sets(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask)
+    print_success_map_for_best_weights_set(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask, s_weights)
+    # if test_full_range:
+    #     # Monitor a quality of the best set of weights (maximal roots).
+    #     print_success_map_for_best_weights_set(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask, s_weights)
+    # else:
+    #     # Compare between two sets of weights (maximal roots).
+    #     print_comparison_between_two_weights_sets(v0_range, vT_range, s_range, v0, vT, s, valid_states_mask)
 
 
 def jerk_time_weights_optimization_quartic():
@@ -496,12 +497,19 @@ def print_success_map_for_best_weights_set(v0_range: np.array, vT_range: np.arra
     print('best weights for max: %s; passed %d (%.2f%%)' % (weights[best_wi], passed, 100.*passed/is_valid_state.shape[-1]))
 
     for v0_fixed in v0_range:
-        success_map = np.ones((vT_range.shape[0], s_range.shape[0]))
+        success_map = 2*np.ones((vT_range.shape[0], s_range.shape[0]))
         for i, b in enumerate(is_valid_state[best_wi]):
-            if v0_grid[i] == v0_fixed and not b:
-                success_map[np.argwhere(vT_range == vT_grid[i]), np.argwhere(s_range == s_grid[i])] = 0
-        print('v0_fixed = %d' % v0_fixed)
-        print(success_map.astype(int))
+            if v0_grid[i] == v0_fixed:
+                success_map[np.argwhere(vT_range == vT_grid[i]), np.argwhere(s_range == s_grid[i])] = b
+        print('\nv0_fixed = %d' % v0_fixed)
+        s_str = np.array_repr(s_range/v0_fixed).replace('\n', '')[7:-2]
+        print('headway: %s' % s_str)
+        for vti in range(len(vT_range)):
+            arr = success_map[vti].astype(int)
+            st = np.array_repr(arr).replace('\n', '')[7:-2]
+            st = re.sub(' +', ' ', st)
+            # st = re.sub(',', '', st)
+            print('vT %.1f: %s' % (vT_range[vti], st))
 
 
 def print_comparison_between_two_weights_sets(v0_range: np.array, vT_range: np.array, s_range: np.array,
@@ -529,8 +537,14 @@ def print_comparison_between_two_weights_sets(v0_range: np.array, vT_range: np.a
             if v0_grid[i] == v0_fixed:
                 success_map[np.argwhere(vT_range == vT_grid[i]), np.argwhere(s_range == s_grid[i])] = \
                     (is_valid_state[1, i].astype(int) - is_valid_state[0, i].astype(int))  # diff between the two weights qualities
-        print('v0_fixed = %d' % v0_fixed)
-        print(success_map.astype(int))
+        print('\nv0_fixed = %d' % v0_fixed)
+        # print(success_map.astype(int))
+        for vti in range(len(vT_range)):
+            arr = success_map[vti].astype(int)
+            st = np.array_repr(arr).replace('\n', '')[7:-2]
+            st = re.sub(' +', ' ', st)
+            # st = re.sub(',', '', st)
+            print('vT %.1f: %s' % (vT_range[vti], st))
 
 
 if __name__ == '__main__':
