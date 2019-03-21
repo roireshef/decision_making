@@ -138,17 +138,17 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def generate_baseline_trajectory(timestamp: float, action_spec: ActionSpec, reference_route: FrenetSerret2DFrame,
+    def generate_baseline_trajectory(timestamp: float, action_spec: ActionSpec, trajectory_parameters: TrajectoryParams,
                                      ego_fstate: FrenetState2D) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
         :param timestamp: [s] ego timestamp in seconds
         :param action_spec: action specification that contains all relevant info about the action's terminal state
-        :param reference_route: the reference Frenet frame sent to TP
+        :param trajectory_parameters: the parameters (of the required trajectory) that will be sent to TP
         :param ego_fstate: ego Frenet state w.r.t. reference_route
         :return: a SamplableWerlingTrajectory object
         """
-        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
         goal_fstate = action_spec.as_fstate()
@@ -159,11 +159,13 @@ class CostBasedBehavioralPlanner:
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
+        minimal_horizon = trajectory_parameters.minimal_required_time - timestamp
+
         return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
-                                          total_time=action_spec.t,
-                                          frenet_frame=reference_route,
+                                          total_time=minimal_horizon,
+                                          frenet_frame=trajectory_parameters.reference_route,
                                           poly_s_coefs=poly_coefs_s,
                                           poly_d_coefs=poly_coefs_d)
 

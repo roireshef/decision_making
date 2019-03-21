@@ -76,7 +76,7 @@ class TrajectoryPlannerCosts:
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
-            objects_predicted_ftrajectories = predictor.predict_frenet_states(
+            objects_predicted_ftrajectories = predictor.predict_2d_frenet_states(
                 objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 

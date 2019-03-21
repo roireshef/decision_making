@@ -59,8 +59,14 @@ class NumpyUtils:
 
     @staticmethod
     def div(a: np.array, b: np.array):
+        """
+        simple numpy vision operation with handling of division by zero (in that case returns 0)
+        :param a: divided part
+        :param b: divisor
+        :return: a/b where b!=0, 0 otherwise
+        """
         with np.errstate(divide='ignore', invalid='ignore'):
-            c = np.true_divide(a, b)
+            c = np.divide(a, b)
             c[c == np.inf] = 0
             c = np.nan_to_num(c)
 
@@ -100,6 +106,8 @@ class UniformGrid:
         :param value: the value to be looked for on axis
         :return: index of the closest value on the equally-spaced axis
         """
-        assert self.start <= value <= self.end, "value %s is outside the grid %s" % (value, str(self))
+        # TODO: this is hacky. eps should be removed
+        eps = 0.01
+        assert self.start - eps <= value <= self.end + eps, "value %s is outside the grid %s" % (value, str(self))
         index = np.round((value - self.start) / self.resolution)
         return int(max(min(index, self.length), 0))

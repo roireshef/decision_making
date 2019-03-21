@@ -33,7 +33,7 @@ MAX_HORIZON_DISTANCE = 400
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
@@ -166,7 +166,7 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference th
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 10
+TRAJECTORY_NUM_POINTS = 20
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
@@ -187,7 +187,7 @@ SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 9, 1, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 9
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 6

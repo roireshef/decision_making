@@ -132,6 +132,13 @@ class QuinticMotionPredicatesCreator:
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints and doesn't get into target vehicle safety zone.
         """
+
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically.
+        # Here we can't find a local minima as the equation is close to a linear line, intersecting in T=0.
+        if QuinticPoly1D.is_tracking_mode(v_0, np.array([v_T]), a_0, np.array([s_T]), T_m)[0]:
+            return True
+
         time_cost_poly_coefs = \
             QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),

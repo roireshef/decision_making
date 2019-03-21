@@ -11,6 +11,7 @@ from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, F
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.exceptions import OutOfSegmentFront
 from mapping.src.transformations.geometry_utils import Euclidean
+import rte.python.profiler as prof
 
 
 class FrenetSubSegment(PUBSUB_MSG_IMPL):
@@ -60,6 +61,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         return self._segments_s_offsets[-1]
 
     @classmethod
+    @prof.ProfileFunction()
     def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
         """
         Create a generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
