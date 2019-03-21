@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
-from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D
 
 
 class QuarticMotionSymbolicsCreator:

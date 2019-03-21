@@ -6,7 +6,7 @@ import numpy as np
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ
+    WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, EPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
@@ -18,8 +18,8 @@ from decision_making.test.exceptions import NotTriggeredException
 
 class FixedSamplableTrajectory(SamplableTrajectory):
 
-    def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0):
-        super().__init__(timestamp_in_sec, T=np.inf)
+    def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0, T:float = np.inf):
+        super().__init__(timestamp_in_sec, T)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
@@ -29,7 +29,15 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory
         """
-        indices_of_closest_time_points = np.round((time_points - self.timestamp_in_sec) / WERLING_TIME_RESOLUTION).astype(int)
+
+        relative_time_points = time_points - self.timestamp_in_sec
+
+        # Make sure no unplanned extrapolation will occur due to overreaching time points
+        # This check is done in relative-to-ego units
+        assert max(relative_time_points) <= self.T + EPS, \
+            'self.total_trajectory_time=%f, max(relative_time_points)=%f' % (self.T, max(relative_time_points))
+
+        indices_of_closest_time_points = np.round(relative_time_points / WERLING_TIME_RESOLUTION).astype(int)
 
         return self._fixed_trajectory[indices_of_closest_time_points]
 

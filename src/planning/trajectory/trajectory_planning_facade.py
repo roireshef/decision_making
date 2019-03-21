@@ -16,6 +16,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     LOG_MSG_SCENE_STATIC_RECEIVED, VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED, LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -34,6 +35,7 @@ from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
+import rte.python.profiler as prof
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -60,12 +62,12 @@ class TrajectoryPlanningFacade(DmModule):
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, None)
         self.pubsub.subscribe(UC_SYSTEM_STATE_LCM, None)
-        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
+        # self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
         self.pubsub.unsubscribe(UC_SYSTEM_STATE_LCM)
-        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
+        # self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _periodic_action_impl(self):
         """
@@ -76,15 +78,16 @@ class TrajectoryPlanningFacade(DmModule):
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
-            state = self._get_current_state()
+            # scene_static = self._get_current_scene_static()
+            # SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            scene_static = self._get_current_scene_static()
-            SceneStaticModel.get_instance().set_scene_static(scene_static)
+            state = self._get_current_state()
 
             params = self._get_mission_params()
 
             # Longitudinal planning horizon (Ts)
             lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
+            minimal_required_horizon = params.minimal_required_time - state.ego_state.timestamp_in_sec
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
@@ -97,23 +100,24 @@ class TrajectoryPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
-                self.logger.debug(LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED,
-                                  sampled_state.ego_state.map_state,
-                                  state.ego_state.map_state)
-                updated_state = sampled_state
-            else:
-                self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.ego_state.map_state)
-                updated_state = state
+            with prof.time_range('TP-IF'):
+                if LocalizationUtils.is_actual_state_close_to_expected_state(
+                        state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                    sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
+                    # self.logger.debug(LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED,
+                    #                   sampled_state.ego_state.map_state,
+                    #                   state.ego_state.map_state)
+                    updated_state = sampled_state
+                else:
+                    # self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.ego_state.map_state)
+                    updated_state = state
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
+            samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     params.cost_params)
+                     minimal_required_horizon, params.bp_time, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
@@ -121,9 +125,10 @@ class TrajectoryPlanningFacade(DmModule):
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
 
+            # TODO: handle viz for fixed trajectories
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
+                state, ctrajectories, max(lon_plan_horizon, minimal_required_horizon),
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
@@ -148,6 +153,7 @@ class TrajectoryPlanningFacade(DmModule):
                                  traceback.format_exc())
 
     # TODO: add map_origin that is sent from the outside
+    @prof.ProfileFunction()
     def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory):
         """
         sample trajectory points from the samplable-trajectory, translate them according to ego's reference point and
@@ -196,7 +202,9 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
+        with prof.time_range('_get_current_state.get_latest_sample'):
+            is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
+
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_state is None:
             if self._started_receiving_states:
@@ -212,12 +220,17 @@ class TrajectoryPlanningFacade(DmModule):
         return state
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
-        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
+        with prof.time_range('_get_current_scene_static.get_latest_sample'):
+            is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
+
+        # TODO Move the raising of the exception to pubsub code. Do the same in behavioral facade
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
-        scene_static = SceneStatic.deserialize(serialized_scene_static)
+        with prof.time_range('_get_current_scene_static.SceneStatic.deserialize'):
+            scene_static = SceneStatic.deserialize(serialized_scene_static)
+        if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
+            raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
 
@@ -228,7 +241,8 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
+        with prof.time_range('_get_mission_params.get_latest_sample'):
+            is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
         if serialized_params is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed' %
                                           UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
@@ -242,6 +256,7 @@ class TrajectoryPlanningFacade(DmModule):
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_VISUALIZATION, debug_msg.serialize())
 
+    @prof.ProfileFunction()
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
@@ -261,6 +276,7 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
+    @prof.ProfileFunction()
     def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
                                    planning_horizon: float, predictor: EgoAwarePredictor,
                                    reference_route: GeneralizedFrenetSerretFrame) -> TrajectoryVisualizationMsg:
@@ -287,8 +303,8 @@ class TrajectoryPlanningFacade(DmModule):
         for obj in state.dynamic_objects:
             try:
                 obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
-                obj_fpredictions = predictor.predict_frenet_states(np.array([obj_fstate]),
-                                                                   prediction_horizons)[0][:, [FS_SX, FS_DX]]
+                obj_fpredictions = predictor.predict_2d_frenet_states(np.array([obj_fstate]),
+                                                                      prediction_horizons)[0][:, [FS_SX, FS_DX]]
                 # skip objects having predictions out of reference_route
                 valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
                 obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)

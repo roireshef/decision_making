@@ -10,7 +10,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT, BP_ACTION_T_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -24,7 +24,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, LIMIT_MIN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -121,29 +121,33 @@ class CostBasedBehavioralPlanner:
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
+        minimal_required_time = BP_ACTION_T_LIMITS[LIMIT_MIN] + ego.timestamp_in_sec
+
+        # TODO: add a parameter for the total planning time (including TP padding instead/in addition to bp_time)
         # create TrajectoryParams for TP
         trajectory_parameters = TrajectoryParams(reference_route=action_frame,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
+                                                 minimal_required_time=minimal_required_time,
                                                  bp_time=ego.timestamp)
 
         return trajectory_parameters
 
     @staticmethod
     @prof.ProfileFunction()
-    def generate_baseline_trajectory(timestamp: float, action_spec: ActionSpec, reference_route: FrenetSerret2DFrame,
+    def generate_baseline_trajectory(timestamp: float, action_spec: ActionSpec, trajectory_parameters: TrajectoryParams,
                                      ego_fstate: FrenetState2D) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
         :param timestamp: [s] ego timestamp in seconds
         :param action_spec: action specification that contains all relevant info about the action's terminal state
-        :param reference_route: the reference Frenet frame sent to TP
+        :param trajectory_parameters: the parameters (of the required trajectory) that will be sent to TP
         :param ego_fstate: ego Frenet state w.r.t. reference_route
         :return: a SamplableWerlingTrajectory object
         """
-        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
         goal_fstate = action_spec.as_fstate()
@@ -154,10 +158,13 @@ class CostBasedBehavioralPlanner:
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
+        minimal_horizon = trajectory_parameters.minimal_required_time - timestamp
+
         return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
-                                          frenet_frame=reference_route,
+                                          total_time=minimal_horizon,
+                                          frenet_frame=trajectory_parameters.reference_route,
                                           poly_s_coefs=poly_coefs_s,
                                           poly_d_coefs=poly_coefs_d)
 

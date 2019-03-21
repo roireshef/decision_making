@@ -100,6 +100,18 @@ class Math:
         return rounded_val
 
     @staticmethod
+    def floor_to_step(value, step):
+        """
+        Floor the value to nearest multiple of step
+        :param value: the value to be floored.
+        :param step: the rounding step
+        :return: a value floored to a multiple of step
+        """
+        floored_val = np.floor(value * (1 / step)) / (1 / step)
+
+        return floored_val
+
+    @staticmethod
     def roots(p):
         """
         Return the roots of polynomials with coefficients given in the rows of p.

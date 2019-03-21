@@ -54,6 +54,9 @@ class DynamicActionSpace(ActionSpace):
         target_map_states = [target.dynamic_object.map_state for target in targets]
         # get desired terminal velocity
         v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in target_map_states])
+        v_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SV])
+        a_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SA])
+        zeros = np.zeros(shape=v_T.shape)
 
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
@@ -88,11 +91,11 @@ class DynamicActionSpace(ActionSpace):
         # intersecting in T=0.
         T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, T_m)] = 0
 
-        # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
-        # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
-        # when setting T
-        with np.errstate(invalid='ignore'):
-            T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
+        # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
+        # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
+        # # when setting T
+        # with np.errstate(invalid='ignore'):
+        #    T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -102,7 +105,7 @@ class DynamicActionSpace(ActionSpace):
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
-        T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
+        T = np.maximum(T_d, T_s)
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution.
         # distance_s also takes into account the safe distance that depends on target vehicle velocity that we want

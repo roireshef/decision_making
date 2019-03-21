@@ -1,4 +1,5 @@
 import numpy as np
+
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
     EPS, WERLING_TIME_RESOLUTION, LON_ACC_LIMITS, LAT_ACC_LIMITS
@@ -13,7 +14,7 @@ from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_S
     C_K
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from sklearn.utils.extmath import cartesian
 from typing import Optional, List, Type
 
@@ -21,7 +22,7 @@ from typing import Optional, List, Type
 class StaticActionSpace(ActionSpace):
     def __init__(self, logger, filtering: RecipeFiltering):
         self._velocity_grid = np.arange(VELOCITY_LIMITS[LIMIT_MIN],
-                                        VELOCITY_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                                        VELOCITY_LIMITS[LIMIT_MAX] + EPS,
                                         VELOCITY_STEP)
         super().__init__(logger,
                          recipes=[StaticActionRecipe.from_args_list(comb)
@@ -69,11 +70,11 @@ class StaticActionSpace(ActionSpace):
         # intersecting in T=0.
         T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
 
-        # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
-        # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
-        # when setting T
-        with np.errstate(invalid='ignore'):
-            T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
+        # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
+        # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
+        # # when setting T
+        # with np.errstate(invalid='ignore'):
+        #     T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -83,7 +84,7 @@ class StaticActionSpace(ActionSpace):
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
-        T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
+        T = np.maximum(T_d, T_s)
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuarticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],

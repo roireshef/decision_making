@@ -120,7 +120,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
 
         return predicted_objects_states_dict
 
-    def predict_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
+    def predict_2d_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
         """
         Constant velocity prediction for all timestamps and objects in a matrix computation
         :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
