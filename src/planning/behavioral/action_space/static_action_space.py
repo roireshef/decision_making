@@ -1,10 +1,9 @@
-from typing import Optional, List, Type, Dict
-
 import numpy as np
 from sklearn.utils.extmath import cartesian
+from typing import Optional, List, Type
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, EPS
 from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -12,16 +11,14 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Sta
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.utils.map_utils import MapUtils
 
 
 class StaticActionSpace(ActionSpace):
     def __init__(self, logger, filtering: RecipeFiltering):
         self._velocity_grid = np.arange(VELOCITY_LIMITS[LIMIT_MIN],
-                                        VELOCITY_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                                        VELOCITY_LIMITS[LIMIT_MAX] + EPS,
                                         VELOCITY_STEP)
         super().__init__(logger,
                          recipes=[StaticActionRecipe.from_args_list(comb)
