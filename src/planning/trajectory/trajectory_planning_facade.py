@@ -2,12 +2,10 @@ import time
 
 import numpy as np
 import traceback
-from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
+from logging import Logger
+from typing import Dict
+
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound, StateHasNotArrivedYet
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
@@ -16,6 +14,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     LOG_MSG_SCENE_STATIC_RECEIVED, VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED, LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -32,8 +31,6 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
-from logging import Logger
-from typing import Dict
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -58,14 +55,14 @@ class TrajectoryPlanningFacade(DmModule):
         self._started_receiving_states = False
 
     def _start_impl(self):
-        self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, None)
-        self.pubsub.subscribe(UC_SYSTEM_STATE_LCM, None)
-        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
 
     def _stop_impl(self):
-        self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
-        self.pubsub.unsubscribe(UC_SYSTEM_STATE_LCM)
-        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
+        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"])
+        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
+        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
 
     def _periodic_action_impl(self):
         """
@@ -78,8 +75,9 @@ class TrajectoryPlanningFacade(DmModule):
 
             state = self._get_current_state()
 
-            scene_static = self._get_current_scene_static()
-            SceneStaticModel.get_instance().set_scene_static(scene_static)
+            # TODO: can we remove usage in scene static??
+            # scene_static = self._get_current_scene_static()
+            # SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             params = self._get_mission_params()
 
@@ -196,27 +194,30 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
+        topic = pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"]
+        is_success, serialized_state = self.pubsub.get_latest_sample(topic=topic, timeout=1.0)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
-        if serialized_state is None:
+        if (not is_success) or (serialized_state is None):
             if self._started_receiving_states:
                 # PubSub queue is empty after being non-empty for a while
-                raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_STATE_LCM)
+                raise MsgDeserializationError(
+                    "Pubsub message queue for %s topic is empty or topic isn\'t subscribed" % topic)
             else:
                 # Pubsub queue is empty since planning module is up
                 raise StateHasNotArrivedYet("Waiting for data from SceneProvider/StateModule")
+
         self._started_receiving_states = True
         state = State.deserialize(serialized_state)
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
         return state
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
+        topic = pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"]
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=topic, timeout=1.0)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
-        if serialized_scene_static is None:
-            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_SCENE_STATIC)
+        if (not is_success) or (serialized_scene_static is None):
+            raise MsgDeserializationError(
+                "Pubsub message queue for %s topic is empty or topic isn\'t subscribed" % topic)
         scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
@@ -228,19 +229,20 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
-        if serialized_params is None:
-            raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed' %
-                                          UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
+        topic = pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"]
+        is_success, serialized_params = self.pubsub.get_latest_sample(topic=topic, timeout=1.0)
+        if (not is_success) or (serialized_params is None):
+            raise MsgDeserializationError(
+                "Pubsub message queue for %s topic is empty or topic isn\'t subscribed" % topic)
         trajectory_params = TrajectoryParams.deserialize(serialized_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, trajectory_params)
         return trajectory_params
 
-    def _publish_trajectory(self, results: TrajectoryPlan) -> None:
-        self.pubsub.publish(UC_SYSTEM_TRAJECTORY_PLAN, results.serialize())
+    def _publish_trajectory(self, trajectory_plan: TrajectoryPlan) -> None:
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PLAN"], trajectory_plan.serialize())
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
-        self.pubsub.publish(UC_SYSTEM_TRAJECTORY_VISUALIZATION, debug_msg.serialize())
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_VISUALIZATION"], debug_msg.serialize())
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """

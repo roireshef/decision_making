@@ -22,7 +22,7 @@ class PubSub:
         :param timeout:
         :return:
         """
-        return topic.get_latest_sample(timeout*1000)
+        return topic.get_latest_sample(int(timeout*1000))
 
     @staticmethod
     def publish(topic, data: Any):

@@ -1,8 +1,7 @@
 import numpy as np
 import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from decision_making.src.exceptions import ObjectHasNegativeVelocityError
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
     VELOCITY_MINIMAL_THRESHOLD
@@ -45,14 +44,14 @@ class StateModule(DmModule):
         """
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
-        self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC, self._scene_dynamic_callback)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_DYNAMIC"], None)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
         """
         Unsubscribe from process communication services.
         """
-        pass
+        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_DYNAMIC"])
 
     def _periodic_action_impl(self) -> None:
         pass
@@ -66,9 +65,9 @@ class StateModule(DmModule):
 
                 state = self.create_state_from_scene_dynamic(self._scene_dynamic)
 
+                topic = pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"]
+                self.pubsub.publish(topic, state.serialize())
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
-
-                self.pubsub.publish(UC_SYSTEM_STATE_LCM, state.serialize())
 
         except ObjectHasNegativeVelocityError as e:
             self.logger.error(e)
