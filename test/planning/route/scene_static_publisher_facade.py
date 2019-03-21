@@ -1,6 +1,6 @@
 from traceback import format_exc
 from logging import Logger
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_static_message import SceneStatic
@@ -34,4 +34,4 @@ class SceneStaticPublisherFacade(DmModule):
 
     def _publish_scene_static(self, scene_static: SceneStatic) -> None:
         """ Publish SCENE_STATIC message """
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], scene_static.serialize())
+        self.pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static.serialize())

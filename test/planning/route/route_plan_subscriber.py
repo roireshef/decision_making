@@ -6,7 +6,7 @@ from logging import Logger
 from typing import List
 from rte.python.logger.AV_logger import AV_Logger
 
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN, UC_SYSTEM_SCENE_STATIC, UC_SYSTEM_TAKEOVER
 
 from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.infra.pubsub import PubSub
@@ -51,9 +51,8 @@ class RoutePlanSubscriber(DmModule):
         self.logger.info("Initialized Behavioral Planner Facade.")
 
     def _start_impl(self):
-        #self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"],None)
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"],None)
+        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
+        self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN, None)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
@@ -97,26 +96,32 @@ class RoutePlanSubscriber(DmModule):
                                  (e, traceback.format_exc()))
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample( topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
-            raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_SCENE_STATIC)
         scene_static = SceneStatic.deserialize(serialized_scene_static)
-        self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
+        self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
 
     def _get_current_route_plan(self) -> RoutePlan:
-        is_success, input_route_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], timeout=1)
+        """
+        Returns the last received route plan data
+        We assume that if no updates have been received since the last call,
+        then we will output the last received state.
+        :return: deserialized RoutePlan 
+        """
+        is_success, input_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN, timeout=1)
         if input_route_plan is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"])
+                                          UC_SYSTEM_ROUTE_PLAN)
         object_route_plan = RoutePlan.deserialize(input_route_plan)
         self.logger.debug("Received route plan: %s" % object_route_plan)
         return object_route_plan
 
     def _publish_takeover(self, takeover_msg:Takeover) -> None :
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TAKEOVER"], takeover_msg.serialize())
+        self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_msg.serialize())
 
     def _print_results(self, route_plan:RoutePlan, takeover_msg:Takeover) :
         

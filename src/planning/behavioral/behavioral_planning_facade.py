@@ -12,7 +12,6 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLA
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 
 from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet,\
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises
@@ -167,10 +166,10 @@ class BehavioralPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized RoutePlan
         """
-        is_success, serialized_route_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], timeout=1)
+        is_success, serialized_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN, timeout=1)
         if serialized_route_plan is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"])
+                                          UC_SYSTEM_ROUTE_PLAN)
         route_plan = RoutePlan.deserialize(serialized_route_plan)
         self.logger.debug("Received route plan: %s" % route_plan)
         return route_plan
@@ -298,7 +297,7 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.publish(UC_SYSTEM_VISUALIZATION, visualization_message.serialize())
 
     def _publish_takeover(self, takeover_message:Takeover) -> None :
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TAKEOVER"], takeover_message.serialize())
+        self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_message.serialize())
 
     @property
     def planner(self):
