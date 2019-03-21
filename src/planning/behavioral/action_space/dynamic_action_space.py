@@ -44,7 +44,8 @@ class DynamicActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         # pick ego initial fstates projected on all target frenet_frames
-        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
+        relative_lanes = np.array([recipe.relative_lane for recipe in action_recipes])
+        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
 
         # collect targets' lengths, lane_ids and fstates
         targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
@@ -113,9 +114,20 @@ class DynamicActionSpace(ActionSpace):
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
+        constraints_s = np.c_[projected_ego_fstates[:, FS_SX], projected_ego_fstates[:, FS_SV], projected_ego_fstates[:, FS_SA],
+                              target_s, v_T, np.zeros(len(action_recipes))]
+        constraints_d = np.c_[projected_ego_fstates[:, FS_DX], projected_ego_fstates[:, FS_DV], projected_ego_fstates[:, FS_DA],
+                              np.zeros(len(action_recipes)), np.zeros(len(action_recipes)), np.zeros(len(action_recipes))]
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T))
+        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+
+        pass_cartesian_limits = ActionSpace.test_cartesian_limits(behavioral_state, poly_coefs_s, poly_coefs_d, T,
+                                                                  relative_lanes, target_s, v_T)
+
         # lane center has latitude = 0, i.e. spec.d = 0
         action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, action_recipes[i].relative_lane)
-                        if ~np.isnan(t) else None
+                        if pass_cartesian_limits else None
                         for i, t in enumerate(T)]
 
         return action_specs

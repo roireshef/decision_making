@@ -1,14 +1,18 @@
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
+    EPS, WERLING_TIME_RESOLUTION, LON_ACC_LIMITS, LAT_ACC_LIMITS
 from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, StaticActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
+from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
+from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX, C_A, C_V, \
+    C_K
 from decision_making.src.planning.utils.math_utils import Math
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
 from sklearn.utils.extmath import cartesian
 from typing import Optional, List, Type
@@ -40,7 +44,8 @@ class StaticActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         # pick ego initial fstates projected on all target frenet_frames
-        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
+        relative_lanes = np.array([recipe.relative_lane for recipe in action_recipes])
+        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
@@ -86,9 +91,20 @@ class StaticActionSpace(ActionSpace):
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
+        constraints_s = np.c_[projected_ego_fstates[:, FS_SX], projected_ego_fstates[:, FS_SV], projected_ego_fstates[:, FS_SA],
+                              target_s, v_T, np.zeros(len(action_recipes))]
+        constraints_d = np.c_[projected_ego_fstates[:, FS_DX], projected_ego_fstates[:, FS_DV], projected_ego_fstates[:, FS_DA],
+                              np.zeros(len(action_recipes)), np.zeros(len(action_recipes)), np.zeros(len(action_recipes))]
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T))
+        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+
+        pass_cartesian_limits = ActionSpace.test_cartesian_limits(behavioral_state, poly_coefs_s, poly_coefs_d, T,
+                                                                  relative_lanes, target_s, v_T)
+
         # lane center has latitude = 0, i.e. spec.d = 0
         action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, action_recipes[i].relative_lane)
-                        if ~np.isnan(t) else None
+                        if pass_cartesian_limits[i] else None
                         for i, t in enumerate(T)]
 
         return action_specs
