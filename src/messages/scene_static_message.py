@@ -659,8 +659,8 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneLaneSegment):
 
-        pubsubMsg.e_Cnt_left_boundary_points_count = max(pubsubMsg.e_Cnt_left_boundary_points_count, 32)
-        pubsubMsg.e_Cnt_right_boundary_points_count = max(pubsubMsg.e_Cnt_right_boundary_points_count, 32)
+        pubsubMsg.e_Cnt_left_boundary_points_count = max(len(pubsubMsg.as_left_boundary_points), 32)
+        pubsubMsg.e_Cnt_right_boundary_points_count = max(len(pubsubMsg.as_right_boundary_points), 32)
 
         as_static_traffic_flow_control = list()
         for i in range(pubsubMsg.e_Cnt_static_traffic_flow_control_count):

@@ -99,8 +99,10 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug("Lateral horizon grid considered is: {}".format(str(T_d_grid)))
 
         # solve problem in frenet-frame
-        ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
+        deviated_ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                  T_s, T_d_grid, self.dt)
+
+        ftrajectories = self._correct_boundary_values(deviated_ftrajectories, ego_frenet_state, goal_frenet_state)
 
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
         frenet_filtered_indices = self._filter_by_frenet_limits(ftrajectories, poly_coefs[:, D5:], T_d_vals,
@@ -177,6 +179,37 @@ class WerlingPlanner(TrajectoryPlanner):
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
 
+    def _correct_boundary_values(self, ftrajectories: FrenetTrajectories2D, init_state: FrenetState2D,
+                                 final_state: FrenetState2D) -> FrenetTrajectories2D:
+        """
+        Boundary values (initial and finite) of werling trajectories can be received with minor numerical deviations.
+        This method verifies that if such deviations exist, they are indeed minor, corrects them to the right accurate
+        values and raises a warning if the deviations are not so small.
+        :param ftrajectories:
+        :param init_state: initial state
+        :param final_state: final state
+        :return:
+        """
+        init_vels = ftrajectories[:, 0, FS_SV]
+        is_init_vels_consistent = np.isclose(init_vels, init_state[FS_SV], atol=1e-3, rtol=0)
+        ftrajectories[is_init_vels_consistent, 0, FS_SV] = init_state[FS_SV]
+        target_vels = ftrajectories[:, -1, FS_SV]
+        is_target_vels_consistent = np.isclose(target_vels, final_state[FS_SV], atol=1e-3, rtol=0)
+        ftrajectories[is_target_vels_consistent, -1, FS_SV] = final_state[FS_SV]
+
+        init_lon_accs = ftrajectories[:, 0, FS_SA]
+        is_init_lon_accs_consistent = np.isclose(init_lon_accs, init_state[FS_SA], atol=1e-3, rtol=0)
+        ftrajectories[is_init_lon_accs_consistent, 0, FS_SA] = init_state[FS_SA]
+        target_lon_accs = ftrajectories[:, -1, FS_SA]
+        is_target_lon_accs_consistent = np.isclose(target_lon_accs, final_state[FS_SA], atol=1e-3, rtol=0)
+        ftrajectories[is_target_lon_accs_consistent, -1, FS_SA] = final_state[FS_SA]
+
+        if not np.all(is_init_vels_consistent) or not np.all(is_target_vels_consistent) \
+                or not np.all(is_init_lon_accs_consistent) or not np.all(is_target_lon_accs_consistent):
+            self._logger.warning("Some resulting Werling trajectories don't meet constraints")
+
+        return ftrajectories
+
     @staticmethod
     def _filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories,
                                     cost_params: TrajectoryCostParams) -> np.ndarray:
@@ -214,8 +247,6 @@ class WerlingPlanner(TrajectoryPlanner):
         in the frenet frame used for planning
         :return: Indices along the 1st dimension in <ctrajectories> (trajectory index) for valid trajectories
         """
-        init_vels = ftrajectories[:, 0, FS_SV]
-        finite_vels = ftrajectories[:, -1, FS_SV]
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
         conforms = np.all(
             NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
