@@ -137,13 +137,19 @@ class QuarticMotionPredicatesCreator:
         v_t_func, a_t_func = QuarticMotionPredicatesCreator.create_quartic_motion_funcs(a_0, v_0, v_T, T)
 
         time_res_for_extremum_query = 0.01
-        t = np.arange(0, T+EPS, time_res_for_extremum_query)
+        t = np.arange(time_res_for_extremum_query, T-EPS, time_res_for_extremum_query)
+
         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
+        if not (np.isclose(v_0, v_t_func(0), atol=1e-3, rtol=0) and np.isclose(v_T, v_t_func(T), atol=1e-3, rtol=0)):
+            return False
+
         min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
+        if not (np.isclose(a_0, a_t_func(0), atol=1e-3, rtol=0) and np.isclose(0.0, a_t_func(T), atol=1e-3, rtol=0)):
+            return False
 
         is_T_in_range = (T <= BP_ACTION_T_LIMITS[1] + EPS)
-        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
-        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
+        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0]) and (max_v <= VELOCITY_LIMITS[1])
+        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0]) and (max_a <= LON_ACC_LIMITS[1])
 
         return is_T_in_range and is_vel_in_range and is_acc_in_range
 

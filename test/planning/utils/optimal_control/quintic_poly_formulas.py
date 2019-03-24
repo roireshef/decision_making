@@ -168,13 +168,19 @@ class QuinticMotionPredicatesCreator:
             [time_res_for_extremum_query, T - time_res_for_extremum_query]))
         extremum_delta_s_val = delta_s_t_func(s_roots_reals[np.isfinite(s_roots_reals)])
 
-        t = np.arange(0, T + EPS, time_res_for_extremum_query)
+        t = np.arange(time_res_for_extremum_query, T-EPS, time_res_for_extremum_query)
         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
+        if not (np.isclose(v_0, v_t_func(0), atol=1e-3, rtol=0) and np.isclose(v_T, v_t_func(T), atol=1e-3, rtol=0)):
+            return False
+
         min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
+        if not (np.isclose(a_0, a_t_func(0), atol=1e-3, rtol=0) and np.isclose(0.0, a_t_func(T), atol=1e-3, rtol=0)):
+            return False
 
         is_T_in_range = (T <= BP_ACTION_T_LIMITS[1] + EPS)
-        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
-        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
+        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0]) and (max_v <= VELOCITY_LIMITS[1])
+        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0]) and (max_a <= LON_ACC_LIMITS[1])
+
         if action_type == ActionType.FOLLOW_VEHICLE:
             is_dist_safe = np.all(extremum_delta_s_val >= T_safety * v_T)
         elif action_type == ActionType.OVERTAKE_VEHICLE:
