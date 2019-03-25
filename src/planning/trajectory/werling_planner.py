@@ -98,13 +98,13 @@ class WerlingPlanner(TrajectoryPlanner):
             ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                      T_s, T_d_grid, self.dt)
 
-            final_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
-            final_s = fconstraints_tT.get_grid_s()
-            final_states = NumpyUtils.cartesian_product_matrix_rows(final_s, final_d)
+            terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
+            terminal_s = fconstraints_tT.get_grid_s()
+            terminal_states = NumpyUtils.cartesian_product_matrix_rows(terminal_s, terminal_d)
 
             if planning_horizon > T_s:
-                time_samples = np.arange(Math.ceil_to_step(T_s, self.dt) - T_s, planning_horizon + EPS, self.dt)
-                extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(final_states, time_samples)
+                time_samples = np.arange(Math.ceil_to_step(T_s, self.dt) - T_s, planning_horizon - T_s + EPS, self.dt)
+                extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(terminal_states, time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
 
             lat_frenet_filtered_indices = self._filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
@@ -180,13 +180,17 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
-        planning_time_points = np.arange(0, planning_horizon, self.dt)
+        total_planning_time_points = np.arange(0, planning_horizon, self.dt)
 
-        # compute trajectory costs at sampled times
-        global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        filtered_trajectory_costs = \
-            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
-                               global_time_sample, self._predictor, self.dt, reference_route)
+        try:
+            # compute trajectory costs at sampled times
+            global_time_samples = total_planning_time_points + state.ego_state.timestamp_in_sec
+            filtered_trajectory_costs = \
+                self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
+                                   global_time_samples, self._predictor, self.dt, reference_route)
+
+        except ValueError:
+            gviz=1
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
