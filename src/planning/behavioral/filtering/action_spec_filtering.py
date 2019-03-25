@@ -1,3 +1,4 @@
+import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
@@ -39,10 +40,14 @@ class ActionSpecFiltering:
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :return: A boolean List , True where the respective action_spec is valid and false where it is filtered
         """
-        mask = [True for i in range(len(action_specs))]
+        mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
+        current_mask = mask.copy()
+        current_action_specs = action_specs.copy()
         for action_spec_filter in self._filters:
-            mask = action_spec_filter.filter(action_specs, behavioral_state)
-            action_specs = [action_specs[i] if mask[i] else None for i in range(len(action_specs))]
+            previous_mask = current_mask
+            current_mask = action_spec_filter.filter(current_action_specs, behavioral_state)
+            mask[previous_mask] = current_mask
+            current_action_specs = [action_specs[i] for i in range(len(action_specs)) if mask[i]]
         return mask
 
     @prof.ProfileFunction()

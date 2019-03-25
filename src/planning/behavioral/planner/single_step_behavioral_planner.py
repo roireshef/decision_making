@@ -13,6 +13,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
+from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -64,6 +65,12 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+
+
+        # TODO: remove (FOR DEBUG PUERPOSES)
+        if not np.array_equal(np.array(action_specs_mask), np.logical_and(np.array([spec is not None for spec in action_specs]),
+                           np.array(FilterBadExpectedTrajectory('predicates').filter(action_recipes, behavioral_state)))):
+            print('hey!')
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)

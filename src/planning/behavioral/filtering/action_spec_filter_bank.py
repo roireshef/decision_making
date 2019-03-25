@@ -31,37 +31,30 @@ class FilterForKinematics(ActionSpecFilter):
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
         T = np.array([spec.t for spec in action_specs])
 
-        constraints_s = np.concatenate((initial_fstates[:, :(FS_SA+1)], terminal_fstates[:, :(FS_SA+1)]))
-        constraints_d = np.concatenate((initial_fstates[:, FS_DX:], terminal_fstates[:, FS_DX:]))
+        constraints_s = np.concatenate((initial_fstates[:, :(FS_SA+1)], terminal_fstates[:, :(FS_SA+1)]), axis=1)
+        constraints_d = np.concatenate((initial_fstates[:, FS_DX:], terminal_fstates[:, FS_DX:]), axis=1)
 
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T))
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
-        pass_cartesian_limits = []
+        are_valid = []
         for poly_s, poly_d, t, lane, s_T, v_T in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes,
                                                      terminal_fstates[:, FS_SX], terminal_fstates[:, FS_SV]):
             if np.isnan(t):
-                pass_cartesian_limits.append(False)
+                are_valid.append(False)
                 continue
 
             time_samples = np.arange(0, t + EPS, WERLING_TIME_RESOLUTION)
             frenet_frame = behavioral_state.extended_lane_frames[lane]
             total_time = max(BP_ACTION_T_LIMITS[LIMIT_MIN], t)
+
             samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
             samples = samplable_trajectory.sample(time_samples)
 
-            KinematicUtils.filter_by_cartesian_limits(samples, )
+            is_valid = KinematicUtils.filter_by_cartesian_limits(samples[np.newaxis,...],
+                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
 
-            lon_acceleration = samples[:, C_A]
-            lat_acceleration = samples[:, C_V] ** 2 * samples[:, C_K]
-            lon_velocity = samples[:, C_V]
+            are_valid.append(is_valid)
 
-            conforms = np.all(
-                NumpyUtils.is_in_limits(lon_velocity, VELOCITY_LIMITS) &
-                NumpyUtils.is_in_limits(lon_acceleration, LON_ACC_LIMITS) &
-                NumpyUtils.is_in_limits(lat_acceleration, LAT_ACC_LIMITS), axis=0)
-
-            pass_cartesian_limits.append(conforms)
-
-        return pass_cartesian_limits
+        return are_valid
