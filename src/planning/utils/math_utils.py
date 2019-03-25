@@ -112,6 +112,18 @@ class Math:
         return floored_val
 
     @staticmethod
+    def ceil_to_step(value, step):
+        """
+        Ceils the value to nearest multiple of step
+        :param value: the value to be ceiled.
+        :param step: the rounding step
+        :return: a value ceiled to a multiple of step
+        """
+        ceiled_val = np.ceil(value * (1 / step)) / (1 / step)
+
+        return ceiled_val
+
+    @staticmethod
     def roots(p):
         """
         Return the roots of polynomials with coefficients given in the rows of p.
