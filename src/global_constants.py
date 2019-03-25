@@ -97,14 +97,15 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-3.0, 3.0])
+LAT_ACC_LIMITS = np.array([-4.0, 4.0])
+
 
 # maximal deceleration during emergency braking
 EMERGENCY_DECELERATION = 8
-
+SAFETY_MARGIN_TIME_DELAY = 1
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 1.5
+SPECIFICATION_MARGIN_TIME_DELAY = 2
 HOST_SAFETY_MARGIN_TIME_DELAY = 0.7
 ACTOR_SAFETY_MARGIN_TIME_DELAY = 2
 
