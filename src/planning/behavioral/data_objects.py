@@ -61,8 +61,7 @@ class StaticActionRecipe(ActionRecipe):
         self.velocity = velocity
 
     def __str__(self):
-        return 'StaticActionRecipe(type: %s, lane: %s, velocity: %.2f [KM/h], agg: %s)' % \
-               (self.action_type.name, self.relative_lane.name, self.velocity * 3.6, self.aggressiveness.name)
+        return 'DynamicActionRecipe: %s' % self.__dict__
 
 
 class DynamicActionRecipe(ActionRecipe):
@@ -75,8 +74,7 @@ class DynamicActionRecipe(ActionRecipe):
         self.relative_lon = relative_lon
 
     def __str__(self):
-        return 'DynamicActionRecipe(type: %s, towards: (%s, %s), agg: %s)' % \
-               (self.action_type.name, self.relative_lane.name, self.relative_lon.name, self.aggressiveness.name)
+        return 'DynamicActionRecipe: %s' % self.__dict__
 
 
 class ActionSpec:
