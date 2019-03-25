@@ -97,12 +97,33 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-4.0, 4.0])
+LAT_ACC_LIMITS = np.array([-3.0, 3.0])
+
+# maximal deceleration during emergency braking
+EMERGENCY_DECELERATION = 8
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 1
+SPECIFICATION_MARGIN_TIME_DELAY = 1.5
+HOST_SAFETY_MARGIN_TIME_DELAY = 0.7
+ACTOR_SAFETY_MARGIN_TIME_DELAY = 2
+
+# [m] minimal longitudinal safe distance between objects
+LONGITUDINAL_SAFETY_MIN_DIST = 0.5
+# [m] minimal lateral safe distance between objects
+LATERAL_SAFETY_MU = 0.5
+
+# [m/sec] lateral velocity blame threshold: in case of lateral danger,
+# if ego_lat_vel >= min(obj_lat_vel, LAT_VEL_BLAME_THRESH), then ego is blamed
+LAT_VEL_BLAME_THRESH = 0.1
+
+# [m/s^2] longitudinal acceleration of object during time delay in RSS
+LON_SAFETY_ACCEL_DURING_RESPONSE = 0  # LON_ACC_LIMITS[1]
+
+# [m/s^2] lateral acceleration of object during time delay in RSS
+LAT_SAFETY_ACCEL_DURING_RESPONSE = 0
+
+MAX_SAFETY_T_D_GRID_SIZE = 3
 
 
 # [m/sec] Minimal difference of velocities to justify an overtake
