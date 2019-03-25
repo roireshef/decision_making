@@ -3,6 +3,7 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
+from decision_making.src.state.state import State
 from logging import Logger
 from typing import List, Optional
 
@@ -15,7 +16,7 @@ class ActionSpecFilter:
     (or one of its children) and  BehavioralState (or one of its children) even if they don't actually use them.
     """
     @abstractmethod
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState, state: State) -> List[bool]:
         pass
 
     def __str__(self):
@@ -31,7 +32,7 @@ class ActionSpecFiltering:
         self._filters: List[ActionSpecFilter] = filters or []
         self.logger = logger
 
-    def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
+    def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState, state: State) -> List[bool]:
         """
         Filters a list of 'ActionSpec's based on the state of ego and nearby vehicles (BehavioralState).
         :param action_specs: A list of objects representing the specified actions to be considered
@@ -40,17 +41,17 @@ class ActionSpecFiltering:
         """
         mask = [True for i in range(len(action_specs))]
         for action_spec_filter in self._filters:
-            mask = action_spec_filter.filter(action_specs, behavioral_state)
+            mask = action_spec_filter.filter(action_specs, behavioral_state, state)
             action_specs = [action_specs[i] if mask[i] else None for i in range(len(action_specs))]
         return mask
 
     @prof.ProfileFunction()
-    def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
+    def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState, state: State) -> bool:
         """
         Filters an 'ActionSpec's based on the state of ego and nearby vehicles (BehavioralState).
         :param action_spec: An object representing the specified actions to be considered
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :return: A boolean , True where the action_spec is valid and false where it is filtered
         """
-        return self.filter_action_specs([action_spec], behavioral_state)[0]
+        return self.filter_action_specs([action_spec], behavioral_state, state)[0]
 

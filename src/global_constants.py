@@ -117,6 +117,7 @@ FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use V
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
+MAX_SAFETY_T_D_GRID_SIZE = 3
 # Trajectory Planner #
 
 # [m] length of reference trajectory provided by behavioral planner
