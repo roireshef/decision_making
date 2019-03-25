@@ -1,4 +1,5 @@
 import numpy as np
+import rte.python.profiler as prof
 from decision_making.src.exceptions import CartesianLimitsViolated, FrenetLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
@@ -22,7 +23,6 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.state import State
 from logging import Logger
 from typing import Tuple
-import rte.python.profiler as prof
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -146,42 +146,42 @@ class WerlingPlanner(TrajectoryPlanner):
 
         if len(ctrajectories) == 0:
             raise FrenetLimitsViolated("No valid cartesian trajectories. timestamp_in_sec: %f, "
-                                               "time horizon: %f, "
-                                               "extrapolated time horizon: %f.  goal: %s, "
-                                               "state: %s. Longitudes range: [%s, %s] (limits: %s)"
-                                               "Min frenet velocity: %s"
-                                               "number of trajectories passed according to Frenet limits: %s/%s;" %
+                                       "time horizon: %f, "
+                                       "extrapolated time horizon: %f.  goal: %s, "
+                                       "state: %s. Longitudes range: [%s, %s] (limits: %s)"
+                                       "Min frenet velocity: %s"
+                                       "number of trajectories passed according to Frenet limits: %s/%s;" %
                                        (state.ego_state.timestamp_in_sec, T_s, planning_horizon,
-                                                NumpyUtils.str_log(goal), str(state).replace('\n', ''),
-                                                np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
-                                                reference_route.s_limits,
-                                                np.min(ftrajectories[:, :, FS_SV]),
-                                                len(frenet_filtered_indices), len(ftrajectories)))
+                                        NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                        np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
+                                        reference_route.s_limits,
+                                        np.min(ftrajectories[:, :, FS_SV]),
+                                        len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             raise CartesianLimitsViolated("No valid trajectories found. timestamp_in_sec: %f, time horizon: %f, "
-                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
-                                           "planned velocities range [%s, %s] (limits: %s); "
-                                           "planned lon. accelerations range [%s, %s] (limits: %s); "
-                                           "planned lat. accelerations range [%s, %s] (limits: %s); "
-                                           "number of trajectories passed according to Frenet limits: %s/%s;"
-                                           "number of trajectories passed according to Cartesian limits: %s/%s;"
-                                           "number of trajectories passed according to all limits: %s/%s;\n"
-                                           "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
+                                          "extrapolated time horizon: %f. goal: %s, state: %s.\n"
+                                          "planned velocities range [%s, %s] (limits: %s); "
+                                          "planned lon. accelerations range [%s, %s] (limits: %s); "
+                                          "planned lat. accelerations range [%s, %s] (limits: %s); "
+                                          "number of trajectories passed according to Frenet limits: %s/%s;"
+                                          "number of trajectories passed according to Cartesian limits: %s/%s;"
+                                          "number of trajectories passed according to all limits: %s/%s;\n"
+                                          "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
                                           (state.ego_state.timestamp_in_sec, T_s, planning_horizon,
-                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
-                                            np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
-                                            NumpyUtils.str_log(cost_params.velocity_limits),
-                                            np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
-                                            NumpyUtils.str_log(cost_params.lon_acceleration_limits),
-                                            np.min(lat_acc), np.max(lat_acc),
-                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
-                                            len(frenet_filtered_indices), len(ftrajectories),
-                                            len(cartesian_refiltered_indices), len(ctrajectories),
-                                            len(refiltered_indices), len(ftrajectories),
-                                            goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                            planning_horizon * (
-                                                    ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+                                           NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                           np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
+                                           NumpyUtils.str_log(cost_params.velocity_limits),
+                                           np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
+                                           NumpyUtils.str_log(cost_params.lon_acceleration_limits),
+                                           np.min(lat_acc), np.max(lat_acc),
+                                           NumpyUtils.str_log(cost_params.lat_acceleration_limits),
+                                           len(frenet_filtered_indices), len(ftrajectories),
+                                           len(cartesian_refiltered_indices), len(ctrajectories),
+                                           len(refiltered_indices), len(ftrajectories),
+                                           goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
+                                           planning_horizon * (
+                                                   ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
