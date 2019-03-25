@@ -145,7 +145,7 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories) == 0:
-            raise CouldNotGenerateTrajectories("No valid cartesian trajectories. timestamp_in_dec: %f, "
+            raise CouldNotGenerateTrajectories("No valid cartesian trajectories. timestamp_in_sec: %f, "
                                                "time horizon: %f, "
                                                "extrapolated time horizon: %f.  goal: %s, "
                                                "state: %s. Longitudes range: [%s, %s] (limits: %s)"
@@ -159,7 +159,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                 len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise NoValidTrajectoriesFound("No valid trajectories found. timestamp_in_dec: %f, time horizon: %f, "
+            raise NoValidTrajectoriesFound("No valid trajectories found. timestamp_in_sec: %f, time horizon: %f, "
                                            "extrapolated time horizon: %f. goal: %s, state: %s.\n"
                                            "planned velocities range [%s, %s] (limits: %s); "
                                            "planned lon. accelerations range [%s, %s] (limits: %s); "
