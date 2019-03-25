@@ -1,20 +1,17 @@
 import copy
-from typing import List, Optional, Dict
-
 import numpy as np
-
-from common_data.interface.Rte_Types.python.sub_structures.LcmState import LcmState
 from common_data.interface.Rte_Types.python.sub_structures.LcmDynamicObject import LcmDynamicObject
 from common_data.interface.Rte_Types.python.sub_structures.LcmEgoState import LcmEgoState
 from common_data.interface.Rte_Types.python.sub_structures.LcmObjectSize import LcmObjectSize
 from common_data.interface.Rte_Types.python.sub_structures.LcmOccupancyState import LcmOccupancyState
+from common_data.interface.Rte_Types.python.sub_structures.LcmState import LcmState
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FrenetState2D
+from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
+from typing import List, Optional
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
@@ -294,31 +291,34 @@ class State(PUBSUB_MSG_IMPL):
     dynamic_objects = List[DynamicObject]
     ego_state = EgoState
 
-    def __init__(self, occupancy_state, dynamic_objects, ego_state):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> None
+    def __init__(self, is_sampled, occupancy_state, dynamic_objects, ego_state):
+        # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> None
         """
         main class for the world state. deep copy is required by self.clone_with!
+        :param is_sampled: indicates if this state is sampled from a trajectory (and wasn't received from state_module)
         :param occupancy_state: free space
         :param dynamic_objects:
         :param ego_state:
         """
+        self.is_sampled = is_sampled
         self.occupancy_state = occupancy_state
         self.dynamic_objects = dynamic_objects
         self.ego_state = ego_state
 
-    def clone_with(self, occupancy_state=None, dynamic_objects=None, ego_state=None):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> State
+    def clone_with(self, is_sampled=None, occupancy_state=None, dynamic_objects=None, ego_state=None):
+        # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> State
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
         """
-        return State(occupancy_state or self.occupancy_state,
+        return State(is_sampled or self.is_sampled, occupancy_state or self.occupancy_state,
                      dynamic_objects if dynamic_objects is not None else self.dynamic_objects,
                      ego_state or self.ego_state)
 
     def serialize(self):
         # type: () -> LcmState
         lcm_msg = LcmState()
+        lcm_msg.is_sampled = self.is_sampled
         lcm_msg.occupancy_state = self.occupancy_state.serialize()
         ''' resize the list at once to the right length '''
         lcm_msg.num_obj = len(self.dynamic_objects)
@@ -335,7 +335,7 @@ class State(PUBSUB_MSG_IMPL):
         for i in range(lcmMsg.num_obj):
             dynamic_objects.append(DynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
         ''' [DynamicObject.deserialize(lcmMsg.dynamic_objects[i]) for i in range(lcmMsg.num_obj)] '''
-        return cls(OccupancyState.deserialize(lcmMsg.occupancy_state)
+        return cls(lcmMsg.is_sampled, OccupancyState.deserialize(lcmMsg.occupancy_state)
                    , dynamic_objects
                    , EgoState.deserialize(lcmMsg.ego_state))
 
