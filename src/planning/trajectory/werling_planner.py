@@ -79,10 +79,6 @@ class WerlingPlanner(TrajectoryPlanner):
         assert planning_horizon >= self.dt + EPS, 'planning_horizon (=%f) is too short and is less than one trajectory' \
                                                   ' timestamp (=%f)' % (planning_horizon, self.dt)
 
-        # TODO: should we make sure T_s values are multiples of dt?
-        # (Otherwise the matrix, calculated using T_s,and the longitudinal time axis, lon_time_samples, won't fit).
-        # T_s = Math.round_to_step(T_s, self.dt)
-
         # Lateral planning horizon(Td) lower bound, now approximated from x=a*t^2
         lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T_s, self.dt)
 
@@ -101,9 +97,14 @@ class WerlingPlanner(TrajectoryPlanner):
             # solve problem in frenet-frame
             ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                      T_s, T_d_grid, self.dt)
+
+            terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
+            terminal_s = fconstraints_tT.get_grid_s()
+            terminal_states = NumpyUtils.cartesian_product_matrix_rows(terminal_s, terminal_d)
+
             if planning_horizon > T_s:
-                time_samples = np.arange(self.dt, planning_horizon - Math.floor_to_step(T_s, self.dt) + EPS, self.dt)
-                extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(ftrajectories[:, -1, :], time_samples)
+                time_samples = np.arange(Math.ceil_to_step(T_s, self.dt) - T_s, planning_horizon - T_s + EPS, self.dt)
+                extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(terminal_states, time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
 
             lat_frenet_filtered_indices = self._filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
@@ -128,9 +129,6 @@ class WerlingPlanner(TrajectoryPlanner):
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(
             ftrajectories[frenet_filtered_indices])
-
-        # TODO: Hack! Remove and apply inside frenet and CTM conversions!
-        # ctrajectories[:, :, C_V] += EPS
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
@@ -182,13 +180,17 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
-        planning_time_points = np.arange(0, planning_horizon, self.dt)
+        total_planning_time_points = np.arange(0, planning_horizon, self.dt)
 
-        # compute trajectory costs at sampled times
-        global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        filtered_trajectory_costs = \
-            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
-                               global_time_sample, self._predictor, self.dt, reference_route)
+        try:
+            # compute trajectory costs at sampled times
+            global_time_samples = total_planning_time_points + state.ego_state.timestamp_in_sec
+            filtered_trajectory_costs = \
+                self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
+                                   global_time_samples, self._predictor, self.dt, reference_route)
+
+        except ValueError:
+            gviz=1
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
@@ -288,7 +290,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
-        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :param dt: time step of ctrajectories
         :return: numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
         """
