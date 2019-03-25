@@ -74,7 +74,9 @@ class WerlingPlanner(TrajectoryPlanner):
                                             dx=dx_range, dv=goal_frenet_state[FS_DV], da=goal_frenet_state[FS_DA])
 
         T_s = max(time_horizon, 0)
-        planning_horizon = max(minimal_required_horizon, T_s) + EPS
+        planning_horizon = max(minimal_required_horizon, T_s)
+
+        is_target_ahead = T_s > 0 and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
         assert planning_horizon >= self.dt + EPS, 'planning_horizon (=%f) is too short and is less than one trajectory' \
                                                   ' timestamp (=%f)' % (planning_horizon, self.dt)
@@ -92,11 +94,14 @@ class WerlingPlanner(TrajectoryPlanner):
             NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
             T_s, planning_horizon)
 
-        if T_s > 0 and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]:
+        if is_target_ahead:
 
             # solve problem in frenet-frame
-            ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
-                                                                                     T_s, T_d_grid, self.dt)
+            deviated_ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
+                                                                                              fconstraints_tT,
+                                                                                              T_s, T_d_grid, self.dt)
+
+            ftrajectories = self._correct_boundary_values(deviated_ftrajectories, ego_frenet_state)
 
             terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
             terminal_s = fconstraints_tT.get_grid_s()
@@ -109,7 +114,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
             lat_frenet_filtered_indices = self._filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
                                                                                 cost_params)
-
         else:
             # Goal is behind us
             time_samples = np.arange(0, planning_horizon + EPS, self.dt)
@@ -176,25 +180,21 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(refiltered_indices), len(ftrajectories),
                                             goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
                                             planning_horizon * (
-                                                        ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+                                                    ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
-        total_planning_time_points = np.arange(0, planning_horizon, self.dt)
+        total_planning_time_points = np.arange(0, planning_horizon + EPS, self.dt)
 
-        try:
-            # compute trajectory costs at sampled times
-            global_time_samples = total_planning_time_points + state.ego_state.timestamp_in_sec
-            filtered_trajectory_costs = \
-                self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
-                                   global_time_samples, self._predictor, self.dt, reference_route)
-
-        except ValueError:
-            gviz=1
+        # compute trajectory costs at sampled times
+        global_time_samples = total_planning_time_points + state.ego_state.timestamp_in_sec
+        filtered_trajectory_costs = \
+            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
+                               global_time_samples, self._predictor, self.dt, reference_route)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
-        if T_s > 0 and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]:
+        if is_target_ahead:
 
             samplable_trajectory = SamplableWerlingTrajectory(
                 timestamp_in_sec=state.ego_state.timestamp_in_sec,
@@ -217,6 +217,29 @@ class WerlingPlanner(TrajectoryPlanner):
         return samplable_trajectory, \
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
+
+    def _correct_boundary_values(self, ftrajectories: FrenetTrajectories2D, init_state: FrenetState2D) -> \
+            FrenetTrajectories2D:
+        """
+        Boundary values (initial) of werling trajectories can be received with minor numerical deviations.
+        This method verifies that if such deviations exist, they are indeed minor, corrects them to the right accurate
+        values and raises a warning if the deviations are not so small.
+        :param ftrajectories: trajectories in frenet frame
+        :param init_state: initial state
+        :return:Corrected trajectories in frenet frame
+        """
+        init_vels = ftrajectories[:, 0, FS_SV]
+        is_init_vels_consistent = np.isclose(init_vels, init_state[FS_SV], atol=1e-3, rtol=0)
+        ftrajectories[is_init_vels_consistent, 0, FS_SV] = init_state[FS_SV]
+
+        init_lon_accs = ftrajectories[:, 0, FS_SA]
+        is_init_lon_accs_consistent = np.isclose(init_lon_accs, init_state[FS_SA], atol=1e-3, rtol=0)
+        ftrajectories[is_init_lon_accs_consistent, 0, FS_SA] = init_state[FS_SA]
+
+        if not np.all(is_init_vels_consistent) or not np.all(is_init_lon_accs_consistent):
+            self._logger.warning("Some resulting Werling trajectories don't meet constraints")
+
+        return ftrajectories
 
     @staticmethod
     def _filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories,
@@ -253,7 +276,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
         conforms = np.all(
             NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
-            np.greater_equal(ftrajectories[:, :, FS_SV], VELOCITY_LIMITS[LIMIT_MIN]), axis=1)
+            np.greater_equal(ftrajectories[:, :, FS_SV], VELOCITY_LIMITS[LIMIT_MIN] - 1e-3), axis=1)
 
         return np.argwhere(conforms).flatten()
 
