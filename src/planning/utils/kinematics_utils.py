@@ -12,23 +12,12 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPol
 class KinematicUtils:
     @staticmethod
     def is_maintaining_distance(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):
-        """
-
-        :param poly_host:
-        :param poly_target:
-        :param margin:
-        :param time_range:
-        :return:
-        """
         # coefficients of host vehicle velocity v_h(t) of host
         vel_poly = np.polyder(poly_host, 1)
 
         # poly_diff is the polynomial of the distance between poly2 and poly1 with subtracting the required distance also
         poly_diff = poly_target - poly_host
-        poly_diff[-1] -= margin
-
-        # add to the the required distance the headway distance (HEADWAY[s] * v_h(t))
-        poly_diff[1:] -= vel_poly * headway
+        poly_diff[-1] -= (margin + poly_host[-2] * headway)
 
         roots = Math.find_real_roots_in_limits(poly_diff, time_range)
 
