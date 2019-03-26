@@ -85,7 +85,7 @@ class WerlingPlanner(TrajectoryPlanner):
         lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T_s, self.dt)
 
         # create a grid on T_d (lateral movement time-grid)
-        T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
+        T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d)
 
         self._logger.debug("Lateral horizon grid considered is: {}".format(str(T_d_grid)))
 
@@ -354,13 +354,12 @@ class WerlingPlanner(TrajectoryPlanner):
         return min(max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt), T_s)
 
     @staticmethod
-    def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float, dt: float) -> np.ndarray:
+    def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float) -> np.ndarray:
         """
         Receives the lower bound of the lateral time horizon T_d_low_bound and the longitudinal time horizon T_s
         and returns a grid of possible lateral planning time values.
         :param T_s: longitudinal trajectory duration (sec.), relative to ego.
         :param T_d_low_bound: lower bound on lateral trajectory duration (sec.), relative to ego. Higher bound is Ts.
-        :param dt: [sec] basic time unit from constructor.
         :return: numpy array (1D) of the possible lateral planning horizons
         """
         T_d_vals = np.array([T_d_low_bound])
