@@ -145,24 +145,26 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories) == 0:
-            raise FrenetLimitsViolated("No valid cartesian trajectories. timestamp_in_sec: %f, "
+            raise FrenetLimitsViolated("Frenet Limits Violation - No valid trajectories. "
+                                       "timestamp_in_sec: %f, "
                                        "time horizon: %f, "
                                        "extrapolated time horizon: %f.  goal: %s, "
                                        "state: %s. Longitudes range: [%s, %s] (limits: %s)"
-                                       "Min frenet velocity: %s"
+                                       "Highest min frenet velocity: %s"
                                        "number of trajectories passed according to Frenet limits: %s/%s;" %
                                        (state.ego_state.timestamp_in_sec, T_s, planning_horizon,
                                         NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                         np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                         reference_route.s_limits,
-                                        np.min(ftrajectories[:, :, FS_SV]),
+                                        np.max(np.min(ctrajectories[:, :, FS_SV], axis=1)),
                                         len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise CartesianLimitsViolated("No valid trajectories found. timestamp_in_sec: %f, time horizon: %f, "
+            raise CartesianLimitsViolated("Cartesian Limits Violation - No valid trajectories. "
+                                          "timestamp_in_sec: %f, time horizon: %f, "
                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
-                                          "planned velocities range [%s, %s] (limits: %s); "
-                                          "planned lon. accelerations range [%s, %s] (limits: %s); "
+                                          "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
+                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s); "
                                           "planned lat. accelerations range [%s, %s] (limits: %s); "
                                           "number of trajectories passed according to Frenet limits: %s/%s;"
                                           "number of trajectories passed according to Cartesian limits: %s/%s;"
@@ -170,9 +172,11 @@ class WerlingPlanner(TrajectoryPlanner):
                                           "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
                                           (state.ego_state.timestamp_in_sec, T_s, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
-                                           np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
+                                           np.max(np.min(ctrajectories[:, :, C_V], axis=1)),
+                                           np.min(np.max(ctrajectories[:, :, C_V], axis=1)),
                                            NumpyUtils.str_log(cost_params.velocity_limits),
-                                           np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
+                                           np.max(np.min(ctrajectories[:, :, C_A], axis=1)),
+                                           np.min(np.max(ctrajectories[:, :, C_A], axis=1)),
                                            NumpyUtils.str_log(cost_params.lon_acceleration_limits),
                                            np.min(lat_acc), np.max(lat_acc),
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
