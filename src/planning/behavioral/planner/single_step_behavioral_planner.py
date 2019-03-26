@@ -68,8 +68,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
 
         # TODO: remove (FOR DEBUG PUERPOSES)
-        if np.any(np.less(np.array(action_specs_mask), np.logical_and(np.array([spec is not None for spec in action_specs]),
-                           np.array(FilterBadExpectedTrajectory('predicates').filter(action_recipes, behavioral_state))))):
+        if sum(np.not_equal(np.array(action_specs_mask), np.logical_and(np.array([spec is not None for spec in action_specs]),
+                           np.array(FilterBadExpectedTrajectory('predicates').filter(action_recipes, behavioral_state)))))>=3:
             print('hey!')
 
         # State-Action Evaluation
