@@ -1,7 +1,7 @@
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_MARGIN_TIME_DELAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
@@ -73,8 +73,8 @@ class DynamicActionSpace(ActionSpace):
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
 
-        ds = longitudinal_differences + margin_sign * (
-            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + behavioral_state.ego_state.size.length / 2 + target_length / 2)
+        ds = longitudinal_differences + margin_sign * (LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT +
+                                                       behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
         T_m = SPECIFICATION_MARGIN_TIME_DELAY
 

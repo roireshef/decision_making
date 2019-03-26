@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List
 
+import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
@@ -11,13 +12,11 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import C_A, C_V, C_K, FS_SX, FS_SV, LAT_CELL
 from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN
+from decision_making.src.planning.types import FS_SX, FS_SV, LAT_CELL
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
-from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-import rte.python.profiler as prof
-
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
 
 class FilterIfNone(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
@@ -54,6 +53,10 @@ class FilterForKinematics(ActionSpecFilter):
                                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
 
             are_valid.append(is_valid)
+
+        # TODO: remove - for debug onlyadd
+        had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
+        valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
 
         return are_valid
 
@@ -93,5 +96,9 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_MARGIN_TIME_DELAY, np.array([0, t]))
 
             are_valid.append(is_safe)
+
+        # TODO: remove - for debug only
+        had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
+        valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
 
         return are_valid

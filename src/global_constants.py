@@ -33,8 +33,6 @@ MAX_HORIZON_DISTANCE = 400
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
-
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
 # currently unused
@@ -95,7 +93,7 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
@@ -103,8 +101,10 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
 SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 1
+SAFETY_MARGIN_TIME_DELAY = 0.7
 
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
@@ -175,7 +175,7 @@ MAX_TRAJECTORY_WAYPOINTS = 100
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -8, 0
+SX_OFFSET_MIN, SX_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (long. velocity)
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
@@ -232,8 +232,8 @@ VELOCITY_MINIMAL_THRESHOLD = 0.001
 FILTER_OFF_ROAD_OBJECTS = False
 
 ### DM Manager configuration ###
-BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.5
-TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.3
+TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
 
 #### NAMES OF MODULES FOR LOGGING ####
 MAP_NAME_FOR_LOGGING = "Map API"
