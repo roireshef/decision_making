@@ -99,13 +99,13 @@ def plot_dynamics(path: str):
     plt.legend([ego_cx_plot, other_cx_plot], ['ego_s', 'other_s'])
 
     ax3 = plt.subplot(4, 1, 3, sharex=ax1)
-    plt.plot(recipe_time, recipe_desc)
+    plt.plot(recipe_time, recipe_desc, 'o--')
     plt.xlabel('time[s]')
     plt.ylabel('recipe')
 
     ax4 = plt.subplot(4, 1, 4, sharex=ax1)
-    spec_t_plot,  = plt.plot(spec_time, spec_t)
-    spec_v_plot,  = plt.plot(spec_time, spec_v)
+    spec_t_plot,  = plt.plot(spec_time, spec_t, 'o-')
+    spec_v_plot,  = plt.plot(spec_time, spec_v, 'o-')
     # spec_s_plot,  = plt.plot(spec_time, spec_s)
 
     plt.xlabel('time[s]')
