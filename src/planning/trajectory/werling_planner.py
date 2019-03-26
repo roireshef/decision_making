@@ -76,8 +76,6 @@ class WerlingPlanner(TrajectoryPlanner):
         T_s = max(time_horizon, 0)
         planning_horizon = max(minimal_required_horizon, T_s)
 
-        is_target_ahead = T_s > 0 and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
-
         assert planning_horizon >= self.dt + EPS, 'planning_horizon (=%f) is too short and is less than one trajectory' \
                                                   ' timestamp (=%f)' % (planning_horizon, self.dt)
 
@@ -94,7 +92,8 @@ class WerlingPlanner(TrajectoryPlanner):
             NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
             T_s, planning_horizon)
 
-        if is_target_ahead:
+        if T_s > 0: # TODO: why "goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]" ??
+            first_trajectory =
 
             # solve problem in frenet-frame
             deviated_ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,

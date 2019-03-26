@@ -3,20 +3,18 @@ import numpy as np
 from decision_making.src.global_constants import EPS
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
-from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D, FS_DX, FS_SX, FS_1D_LEN
+from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, total_time: float, frenet_frame: FrenetSerret2DFrame,
+    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, frenet_frame: FrenetSerret2DFrame,
                  poly_s_coefs: np.ndarray, poly_d_coefs: np.ndarray):
         """To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
         two polynomial coefficients vectors (for dimensions s and d)"""
         super().__init__(timestamp_in_sec, T_s)
         self.T_d = T_d
-        self.total_trajectory_time = total_time
         self.frenet_frame = frenet_frame
         self.poly_s_coefs = poly_s_coefs
         self.poly_d_coefs = poly_d_coefs
@@ -24,10 +22,6 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
     @property
     def T_s(self):
         return self.T
-
-    @property
-    def max_sample_time(self):
-        return self.timestamp_in_sec + self.total_trajectory_time
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """See base method for API. In this specific representation of the trajectory, we sample from s-axis polynomial
@@ -56,29 +50,11 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         # Make sure no unplanned extrapolation will occur due to overreaching time points
         # This check is done in relative-to-ego units
-        assert max(relative_time_points) <= self.total_trajectory_time + EPS, \
-            'self.total_trajectory_time=%f, max(relative_time_points)=%f' % (self.total_trajectory_time, max(relative_time_points))
+        assert max(relative_time_points) <= self.T_s + EPS, \
+            'self.T_s=%f, max(relative_time_points)=%f' % (self.T_s, max(relative_time_points))
 
-        # Handle the longitudinal(s) axis
-
-        in_traj_time_points = relative_time_points[relative_time_points <= self.T_s+EPS]
-        extrapolated_time_points = relative_time_points[np.logical_and(relative_time_points > self.T_s + EPS,
-                                                                       relative_time_points <= self.total_trajectory_time + EPS)]
-
-        fstates_s = np.empty((0, FS_1D_LEN))
-
-        if len(in_traj_time_points) > 0:
-            # assign values from <time_points> in s-axis polynomial
-            in_traj_fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), in_traj_time_points)[0]
-            fstates_s = np.vstack((fstates_s, in_traj_fstates_s))
-
-        if len(extrapolated_time_points) > 0:
-            road_following_predictor = RoadFollowingPredictor(None)
-            fstate_in_T_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), np.array([self.T_s]))[0]
-            extrapolated_fstates_s = road_following_predictor.predict_1d_frenet_states(fstate_in_T_s, extrapolated_time_points - self.T_s)[0]
-            fstates_s = np.vstack((fstates_s, extrapolated_fstates_s))
-
-        # Now handle the lateral(d) axis:
+        # assign values from <time_points> in s-axis polynomial
+        fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
 
         fstates_d = np.empty(shape=np.append(time_points.shape, 3))
 
@@ -101,4 +77,6 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         fstates_d[np.logical_not(is_within_horizon_d)] = extrapolation_state_d
 
         # Return trajectory in Frenet coordinates
-        return np.hstack((fstates_s, fstates_d))
+        fstates = np.hstack((fstates_s, fstates_d))
+
+        return fstates
