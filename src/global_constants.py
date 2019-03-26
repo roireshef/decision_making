@@ -154,10 +154,10 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 2
 
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
-# iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
+# iterations. If the distance is lower than this threshold, the TP plans the trajectory as if the ego vehicle is
 # currently in the desired location and not in its actual location.
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference threshold
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
@@ -184,10 +184,10 @@ SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 DX_OFFSET_MIN, DX_OFFSET_MAX = 0, 0
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 9
+SX_STEPS, SV_STEPS, DX_STEPS = 1, 1, 1
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
-TD_STEPS = 6
+TD_STEPS = 1
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3

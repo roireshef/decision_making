@@ -54,10 +54,11 @@ class LocalizationUtils:
 
         logger.debug(("is_actual_state_close_to_expected_state stats called from %s: "
                       "{desired_localization: %s, actual_localization(x,y,z): %s, desired_velocity: %s, "
-                      "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
+                      "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s, timestamp is: %f}" %
                       (calling_class_name, current_expected_state, current_actual_location, current_expected_state[C_V],
                        current_ego_state.velocity, distances_in_expected_frame,
-                       current_ego_state.velocity - current_expected_state[C_V])).replace('\n', ' '))
+                       current_ego_state.velocity - current_expected_state[C_V],
+                       current_ego_state.timestamp_in_sec)).replace('\n', ' '))
 
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT

@@ -54,7 +54,7 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     ego_map_state = MapState(init_fstate, lane_id)
     ego = EgoState.create_from_map_state(0, 0, ego_map_state, obj_size, 0)
     obj = DynamicObject.create_from_map_state(1, 0, obj_map_state, obj_size, 0)
-    state = State(None, [obj], ego)
+    state = State(False, None, [obj], ego)
 
     # calculate polynomials for s & d
     constraints_s = np.concatenate((init_fstates[:, :FS_DX], target_fstates[:, :FS_DX]), axis=-1)
