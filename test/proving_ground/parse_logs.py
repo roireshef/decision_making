@@ -82,7 +82,7 @@ def plot_dynamics(path: str):
 
     f = plt.figure(1)
     plt.plot(411)
-    plt.subplot(4, 1, 1)
+    ax1 = plt.subplot(4, 1, 1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
     ego_lane_plot,  = plt.plot(timestamp_in_sec, ego_lane)
@@ -91,21 +91,21 @@ def plot_dynamics(path: str):
     plt.ylabel('velocity[m/s]')
     plt.legend([ego_sv_plot, other_sv_plot, ego_lane_plot, other_lane_plot], ['ego_sv', 'other_sv', 'ego_lane', 'other_lane'])
 
-    plt.subplot(4, 1, 2)
+    ax2 = plt.subplot(4, 1, 2, sharex=ax1)
     ego_cx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
     other_cx_plot,  = plt.plot(timestamp_in_sec, other_sx)
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]')
     plt.legend([ego_cx_plot, other_cx_plot], ['ego_s', 'other_s'])
 
-    plt.subplot(4, 1, 3)
-    plt.plot(recipe_time, recipe_desc)
+    ax3 = plt.subplot(4, 1, 3, sharex=ax1)
+    plt.plot(recipe_time, recipe_desc, 'o--')
     plt.xlabel('time[s]')
     plt.ylabel('recipe')
 
-    plt.subplot(4, 1, 4)
-    spec_t_plot,  = plt.plot(spec_time, spec_t)
-    spec_v_plot,  = plt.plot(spec_time, spec_v)
+    ax4 = plt.subplot(4, 1, 4, sharex=ax1)
+    spec_t_plot,  = plt.plot(spec_time, spec_t, 'o-')
+    spec_v_plot,  = plt.plot(spec_time, spec_v, 'o-')
     # spec_s_plot,  = plt.plot(spec_time, spec_s)
 
     plt.xlabel('time[s]')
