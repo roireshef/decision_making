@@ -41,7 +41,7 @@ def plot_dynamics(path: str):
             else:
                 other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
                 other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
-                other_lane.append(dyn_obj_list[0]['_cached_map_state']['lane_id']/1e9)
+                other_lane.append(dyn_obj_list[0]['_cached_map_state']['lane_id']/1e8)
 
     f = plt.figure(1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
@@ -59,7 +59,7 @@ def plot_dynamics(path: str):
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
     plt.legend([ego_cv_plot, other_cv_plot], ['ego_cv', 'other_cv'])
-    g.show()
+    plt.show()
 
 
 if __name__ == "__main__":

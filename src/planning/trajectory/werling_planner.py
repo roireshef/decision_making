@@ -156,7 +156,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                         NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                         np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                         reference_route.s_limits,
-                                        np.max(np.min(ctrajectories[:, :, FS_SV], axis=1)),
+                                        np.max(np.min(ftrajectories[:, :, FS_SV], axis=1)),
                                         len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
@@ -362,11 +362,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param T_d_low_bound: lower bound on lateral trajectory duration (sec.), relative to ego. Higher bound is Ts.
         :return: numpy array (1D) of the possible lateral planning horizons
         """
-        T_d_vals = np.array([T_d_low_bound])
-        if T_s != T_d_low_bound:
-            T_d_vals = np.linspace(T_d_low_bound, T_s, TD_STEPS)
-
-        return T_d_vals
+        return np.flip(np.linspace(T_s, T_d_low_bound, TD_STEPS), axis=0)
 
     @staticmethod
     def _solve_1d_poly(constraints: np.ndarray, T: float, poly_impl: Poly1D) -> np.ndarray:
