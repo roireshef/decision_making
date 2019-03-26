@@ -35,7 +35,8 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         # Make sure no unplanned extrapolation will occur due to overreaching time points
         # This check is done in relative-to-ego units
         assert max(relative_time_points) <= self.T + EPS, \
-            'self.total_trajectory_time=%f, max(relative_time_points)=%f' % (self.T, max(relative_time_points))
+            'In timestamp %f : self.total_trajectory_time=%f <= max(relative_time_points)=%f' % \
+            (self.timestamp_in_sec, self.T, max(relative_time_points))
 
         indices_of_closest_time_points = np.round(relative_time_points / WERLING_TIME_RESOLUTION).astype(int)
 
