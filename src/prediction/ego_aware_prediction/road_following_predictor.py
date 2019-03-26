@@ -4,7 +4,7 @@ from typing import List, Dict
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX, FrenetTrajectories2D, \
-    FrenetStates2D
+    FrenetStates2D, FrenetTrajectories1D, FrenetStates1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, DynamicObject
@@ -99,6 +99,28 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return future_states
 
+    def predict_1d_frenet_states(self, objects_fstates: FrenetStates1D, horizons: np.ndarray) -> FrenetTrajectories1D:
+        """
+        Constant velocity prediction for all timestamps and objects in a matrix computation
+        :param objects_fstates: numpy 2D array [Nx3] where N is the number of objects, each row is a 1D FSTATE
+        :param horizons: numpy 1D array [T] with T horizons (relative time for prediction into the future)
+        :return: numpy 3D array [NxTx3]
+        """
+        T = horizons.shape[0]
+        N = objects_fstates.shape[0]
+        if N == 0:
+            return []
+        zero_slice = np.zeros([N, T])
+
+        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons
+        v = np.tile(objects_fstates[:, np.newaxis, FS_SV], T)
+
+        return np.dstack((s, v, zero_slice))
+
+    # TODO: Remove this, added for avoiding compilation errors
+    def predict_2d_frenet_states(self, objects_fstates: FrenetStates2D, horizons: np.ndarray) -> FrenetTrajectories2D:
+        return self.predict_frenet_states(objects_fstates, horizons)
+
     def predict_frenet_states(self, objects_fstates: FrenetStates2D, horizons: np.ndarray) -> FrenetTrajectories2D:
         """
         Constant velocity prediction for all timestamps and objects in a matrix computation
@@ -109,7 +131,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         T = horizons.shape[0]
         N = objects_fstates.shape[0]
         if N == 0:
-            return []
+            return np.array([])
         zero_slice = np.zeros([N, T])
 
         s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons

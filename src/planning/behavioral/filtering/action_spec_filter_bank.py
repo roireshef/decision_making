@@ -18,7 +18,7 @@ from decision_making.src.planning.utils.safety_utils import SafetyUtils
 
 
 class FilterIfNone(ActionSpecFilter):
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState, state: State) -> List[bool]:
         return [(action_spec and behavioral_state) is not None for action_spec in action_specs]
 
 

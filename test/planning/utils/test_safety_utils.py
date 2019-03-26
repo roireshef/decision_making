@@ -12,11 +12,12 @@ def default_object_size():
     return ObjectSize(4, 2, 0)
 
 
+# TODO: change back the parametrization of 30 into 24 for object in the first line
 @pytest.mark.parametrize(
     'index, ego_v0, ego_vT, ego_lane0, ego_laneT, ego_T_d, obj_v0, obj_vT, obj_lane0, obj_laneT, obj_lon0, obj_T_d, expected', [
      # |           EGO          |              OBJECT         |
   # idx| v0  vT lane0 laneT T_d | v0, vT lane0 laneT lon0 T_d |expected
-     (0, 30, 30, 0, 0, T_s(), 24, 24, 0, 0, 35, T_s(), True),# move with the same velocity 10 and start on the safe distance
+     (0, 30, 30, 0, 0, T_s(), 30, 30, 0, 0, 35, T_s(), True),# move with the same velocity 10 and start on the safe distance
      (1, 20, 20, 0, 0, T_s(), 10, 10, 0, 0, 35, T_s(), False),# the object ahead is slower, therefore unsafe
      (2, 30, 30, 0, 1, T_s(), 30, 30, 0, 0, 80, T_s(), True),# F moves with the same velocity as ego, then safe
      (3, 30, 30, 0, 1, T_s(), 20, 20, 0, 0, 90, T_s(), False),# becomes unsafe longitudinally, before it becomes safe laterally
@@ -52,9 +53,9 @@ def test_calcSafetyForTrajectories_safetyWrtFrontObject_allCasesShouldComplyRSS(
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = (SafetyUtils.get_safe_distances(ego_ftraj, obj_size, obj_ftraj, [obj_size]) > 0).any(axis=-1).all(axis=-1)[0][0]
-    assert actual_safe == expected
-
+    actual_safe = (SafetyUtils.get_safe_distances(ego_ftraj, obj_size, obj_ftraj, [obj_size]) > 0). \
+        any(axis=-1).all(axis=-1)[0][0]
+    assert actual_safe == expected, index
 
 @pytest.mark.parametrize(
     'index, ego_v0, ego_vT, ego_lane0, ego_laneT, ego_T_d, obj_v0, obj_vT, obj_lane0, obj_laneT, obj_lon0, obj_T_d, expected', [
