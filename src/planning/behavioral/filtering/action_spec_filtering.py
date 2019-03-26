@@ -7,7 +7,7 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from logging import Logger
 from typing import List, Optional
-
+from itertools import compress
 
 @six.add_metaclass(ABCMeta)
 class ActionSpecFilter:
@@ -41,13 +41,9 @@ class ActionSpecFiltering:
         :return: A boolean List , True where the respective action_spec is valid and false where it is filtered
         """
         mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
-        current_mask = mask.copy()
-        current_action_specs = action_specs.copy()
         for action_spec_filter in self._filters:
-            previous_mask = current_mask
-            current_mask = action_spec_filter.filter(current_action_specs, behavioral_state)
-            mask[previous_mask] = current_mask
-            current_action_specs = [action_specs[i] for i in range(len(action_specs)) if mask[i]]
+            current_mask = action_spec_filter.filter(list(compress(action_specs, mask)), behavioral_state)
+            mask[mask] = current_mask
         return mask
 
     @prof.ProfileFunction()

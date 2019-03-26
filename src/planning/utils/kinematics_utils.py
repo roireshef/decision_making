@@ -1,15 +1,39 @@
 import numpy as np
 
 from decision_making.src.global_constants import VELOCITY_LIMITS
-from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_V, FS_SV, \
     FS_SX, LIMIT_MIN, C_A, C_K, Limits
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
 class KinematicUtils:
+    @staticmethod
+    def is_maintaining_distance(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):
+        """
+
+        :param poly_host:
+        :param poly_target:
+        :param margin:
+        :param time_range:
+        :return:
+        """
+        # coefficients of host vehicle velocity v_h(t) of host
+        vel_poly = np.polyder(poly_host, 1)
+
+        # poly_diff is the polynomial of the distance between poly2 and poly1 with subtracting the required distance also
+        poly_diff = poly_target - poly_host
+        poly_diff[-1] -= margin
+
+        # add to the the required distance the headway distance (HEADWAY[s] * v_h(t))
+        poly_diff[1:] -= vel_poly * headway
+
+        roots = Math.find_real_roots_in_limits(poly_diff, time_range)
+
+        return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
+
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
                                    lon_acceleration_limits: Limits, lat_acceleration_limits: Limits) -> np.ndarray:

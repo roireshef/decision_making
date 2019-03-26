@@ -93,8 +93,8 @@ class StaticActionSpace(ActionSpace):
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, action_recipes[i].relative_lane)
+        action_specs = [ActionSpec(t, vt, st, 0, recipe)
                         if ~np.isnan(t) else None
-                        for i, t in enumerate(T)]
+                        for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
 
         return action_specs
