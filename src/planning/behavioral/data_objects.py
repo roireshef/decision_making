@@ -61,7 +61,7 @@ class StaticActionRecipe(ActionRecipe):
         self.velocity = velocity
 
     def __str__(self):
-        return 'DynamicActionRecipe: %s' % self.__dict__
+        return 'StaticActionRecipe: %s' % self.__dict__
 
 
 class DynamicActionRecipe(ActionRecipe):
