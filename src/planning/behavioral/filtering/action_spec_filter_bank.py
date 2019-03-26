@@ -16,9 +16,12 @@ from typing import List
 import numpy as np
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 
+
 class FilterIfNone(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
         return [(action_spec and behavioral_state) is not None for action_spec in action_specs]
+
+
 class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
     """
     This filter checks full safety (by RSS) toward the followed vehicle
@@ -47,6 +50,10 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
         predictor = RoadFollowingPredictor(logger)
         ego_size = behavioral_state.ego_state.size
         behavioral_state.marginal_safety_per_action = np.zeros(len(action_specs))
+
+        # TODO: Use dynamic objects and remove state from the Filter signature
+        dynamic_objects = [dynamic_object for cell_objects in behavioral_state.road_occupancy_grid.values()
+                           for dynamic_object in cell_objects]
 
         # collect action specs into at most 3 groups, according to their target lane
         safe_specs = np.full(len(action_specs), True)
