@@ -104,7 +104,8 @@ class DmInitialization:
         action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
-        action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone(), FilterUnsafeExpectedTrajectory()],
+        # TODO: make sure there is no dependency in the order of the filters.
+        action_spec_filtering = ActionSpecFiltering(filters=[FilterUnsafeExpectedTrajectory(), FilterIfNone()],
                                                     logger=logger)
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)

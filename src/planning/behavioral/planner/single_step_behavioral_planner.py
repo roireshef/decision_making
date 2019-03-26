@@ -64,6 +64,10 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state, state)
+        if not np.any(action_specs_mask):
+            raise Exception(' No valid action specs found')
+        if len([1 for (valid, spec) in zip(action_specs_mask, action_specs) if valid and spec is None]) > 0:
+            raise Exception(' Inconsistency between action_specs and the action_mask ')
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
@@ -83,7 +87,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         valid_idxs = np.where(action_specs_mask)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
-
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()

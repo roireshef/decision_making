@@ -26,7 +26,7 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
     """
     This filter checks full safety (by RSS) toward the followed vehicle
     """
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, state: State) -> List[ActionSpec]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, state: State) -> List[bool]:
         """
         This filter checks for each action_spec if it's trajectory is safe w.r.t. the followed vehicle.
         :param action_specs:
@@ -34,7 +34,7 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
         :return: boolean array of size len(action_specs)
         """
         safe_specs = FilterUnsafeExpectedTrajectory._check_actions_safety(action_specs, behavioral_state, state)
-        return [spec if safe_specs[i] else None for i, spec in enumerate(action_specs)]
+        return safe_specs.tolist()
 
     @staticmethod
     def _check_actions_safety(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, state: State) -> np.array:

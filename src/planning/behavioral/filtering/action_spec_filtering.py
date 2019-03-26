@@ -39,7 +39,8 @@ class ActionSpecFiltering:
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :return: A boolean List , True where the respective action_spec is valid and false where it is filtered
         """
-        mask = [True for i in range(len(action_specs))]
+        # TODO: make each filter a standalone (i.e., add an 'and' on mask)
+        mask = [True] * len(action_specs)
         for action_spec_filter in self._filters:
             mask = action_spec_filter.filter(action_specs, behavioral_state, state)
             action_specs = [action_specs[i] if mask[i] else None for i in range(len(action_specs))]
