@@ -44,7 +44,7 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_no_split):
                                                     cartesian_state=np.array([obj_cpoint[0], obj_cpoint[1], obj_yaw, obj_vel, 0.0, 0.0]),
                                                     size=size, confidence=0)
 
-    state = State(None, [obj], ego)
+    state = State(False, None, [obj], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, NavigationPlanMsg(np.array([20])), logger)
 
     action_recipes = action_space.recipes

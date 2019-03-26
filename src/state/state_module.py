@@ -110,7 +110,7 @@ class StateModule(DmModule):
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,
                                           timestamp=timestamp)
         dynamic_objects = StateModule.create_dyn_obj_list(dyn_obj_data)
-        return State(occupancy_state, dynamic_objects, ego_state)
+        return State(False, occupancy_state, dynamic_objects, ego_state)
 
     @staticmethod
     def create_dyn_obj_list(dyn_obj_data: DynamicObjectsData) -> List[DynamicObject]:

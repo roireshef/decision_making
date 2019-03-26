@@ -2,11 +2,10 @@ import numpy as np
 from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import Tuple
-
 from decision_making.src.exceptions import raises, CartesianLimitsViolated, FrenetLimitsViolated
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianPath2D, CartesianTrajectories, \
+from decision_making.src.planning.types import CartesianTrajectories, \
     CartesianExtendedState
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor

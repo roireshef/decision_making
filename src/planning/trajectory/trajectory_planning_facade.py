@@ -272,6 +272,8 @@ class TrajectoryPlanningFacade(DmModule):
                                                                         state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
+        # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
+        updated_state.is_sampled = True
 
         return updated_state
 
