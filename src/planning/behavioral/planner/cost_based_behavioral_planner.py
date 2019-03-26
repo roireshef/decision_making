@@ -219,7 +219,6 @@ class CostBasedBehavioralPlanner:
                                                     offset=GOAL_SIGMOID_OFFSET)
         dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_LON_RATIO
 
-        # TODO: remove hack in velocity limits!
         cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x,
                                            obstacle_cost_y=objects_cost_y,
                                            left_lane_cost=left_lane_cost,
@@ -232,7 +231,7 @@ class CostBasedBehavioralPlanner:
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
                                            lon_jerk_cost=LON_JERK_COST_WEIGHT,
                                            lat_jerk_cost=LAT_JERK_COST_WEIGHT,
-                                           velocity_limits=VELOCITY_LIMITS + np.array([-1e-3, +1e-3]),
+                                           velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
 
