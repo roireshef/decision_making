@@ -152,7 +152,7 @@ def state(short_testable_map_api):
                          map_state=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
                          map_state_on_host_lane=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
                          size=size, confidence=0)
-    yield State(occupancy_state, dynamic_objects, ego_state)
+    yield State(False, occupancy_state, dynamic_objects, ego_state)
 
 
 @pytest.fixture(scope='function')
@@ -177,7 +177,7 @@ def state_with_old_object(request) -> State:
     ego_state = EgoState.create_from_cartesian_state(obj_id=1, timestamp=old_timestamp, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]),
                                                      size=size, confidence=0)
 
-    yield State(occupancy_state, dynamic_objects, ego_state)
+    yield State(False, occupancy_state, dynamic_objects, ego_state)
 
 
 @pytest.fixture(scope='function')

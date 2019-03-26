@@ -1,8 +1,5 @@
 import numpy as np
-from logging import Logger
-from typing import Tuple
-
-from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
+from decision_making.src.exceptions import CartesianLimitsViolated, FrenetLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS
@@ -22,6 +19,8 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from logging import Logger
+from typing import Tuple
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -121,18 +120,18 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories) == 0:
-            raise CouldNotGenerateTrajectories("No valid cartesian trajectories. time: %f, goal: %s, state: %s. "
+            raise FrenetLimitsViolated("No valid cartesian trajectories. time: %f, goal: %s, state: %s. "
                                                "Longitudes range: [%s, %s] (limits: %s)"
                                                "Min frenet velocity: %s"
                                                "number of trajectories passed according to Frenet limits: %s/%s;" %
-                                               (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                       (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                                 np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                                 reference_route.s_limits,
                                                 np.min(ftrajectories[:, :, FS_SV]),
                                                 len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s.\n"
+            raise CartesianLimitsViolated("No valid trajectories found. time: %f, goal: %s, state: %s.\n"
                                            "planned velocities range [%s, %s] (limits: %s); "
                                            "planned lon. accelerations range [%s, %s] (limits: %s); "
                                            "planned lat. accelerations range [%s, %s] (limits: %s); "
@@ -140,7 +139,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
                                            "number of trajectories passed according to all limits: %s/%s;\n"
                                            "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
-                                           (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                          (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
                                             NumpyUtils.str_log(cost_params.velocity_limits),
                                             np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),

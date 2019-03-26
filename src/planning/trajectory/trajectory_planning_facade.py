@@ -8,7 +8,7 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTOR
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
-from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound, StateHasNotArrivedYet
+from decision_making.src.exceptions import MsgDeserializationError, CartesianLimitsViolated, StateHasNotArrivedYet
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
@@ -139,7 +139,7 @@ class TrajectoryPlanningFacade(DmModule):
                               traceback.format_exc())
 
         # TODO - we need to handle this as an emergency.
-        except NoValidTrajectoriesFound:
+        except CartesianLimitsViolated:
             self.logger.error("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s",
                               traceback.format_exc())
 
@@ -257,6 +257,8 @@ class TrajectoryPlanningFacade(DmModule):
                                                                         state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
+        # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
+        updated_state.is_sampled = True
 
         return updated_state
 
