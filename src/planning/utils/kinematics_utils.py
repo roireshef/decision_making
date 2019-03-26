@@ -17,7 +17,10 @@ class KinematicUtils:
 
         # poly_diff is the polynomial of the distance between poly2 and poly1 with subtracting the required distance also
         poly_diff = poly_target - poly_host
-        poly_diff[-1] -= (margin + poly_host[-2] * headway)
+        poly_diff[-1] -= margin
+
+        # add headway
+        poly_diff[1:] -= vel_poly * headway
 
         roots = Math.find_real_roots_in_limits(poly_diff, time_range)
 
