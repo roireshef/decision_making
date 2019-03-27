@@ -27,6 +27,46 @@ class FilterActionsTowardsOtherLanes(RecipeFilter):
                 if recipe is not None else False for recipe in recipes]
 
 
+class FilterLimitsViolatingTrajectory(RecipeFilter):
+    """
+    This filter checks velocity, acceleration and time limits
+    """
+    def __init__(self, predicates_dir: str):
+        if not self.validate_predicate_constants(predicates_dir):
+            raise ResourcesNotUpToDateException('Predicates files were creates with other set of constants')
+        self.predicates = self.read_predicates(predicates_dir, 'limits')
+
+    @staticmethod
+    def read_predicates(predicates_dir, filter_name):
+        """
+        This method reads boolean maps from file into a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        :param predicates_dir: The directory holding all binary maps (.bin files)
+        :param filter_name: either 'limits' or 'safety'
+        :return: a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        """
+        directory = Paths.get_resource_absolute_path_filename(predicates_dir)
+        predicates = {}
+        for filename in os.listdir(directory):
+            if (filename.endswith(".bin") or filename.endswith(".npy")) and filter_name in filename:
+                predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (predicates_dir, filename))
+                action_type = filename.split('.bin')[0].split('_' + filter_name)[0]
+                wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
+                          float(filename.split('.bin')[0].split('_')[6])]
+                if action_type == 'follow_lane':
+                    predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID))
+                else:
+                    predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
+                if filename.endswith(".npy"):
+                    predicates[(action_type, wT, wJ)] = np.load(file=predicate_path)
+                else:
+                    predicates[(action_type, wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
+        return predicates
+
+
+
+
+
+
 class FilterBadExpectedTrajectory(RecipeFilter):
     def __init__(self, predicates_dir: str):
         if not self.validate_predicate_constants(predicates_dir):
