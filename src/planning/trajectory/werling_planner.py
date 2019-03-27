@@ -113,9 +113,16 @@ class WerlingPlanner(TrajectoryPlanner):
                 extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(terminal_states, time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
 
+            # TODO: those test do not test the padding at the end of trajectory.
             lat_frenet_filter_results = KinematicUtils.filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
                                                                                        cost_params.lat_acceleration_limits)
             lat_frenet_filtered_indices = np.argwhere(lat_frenet_filter_results).flatten()
+
+            # TODO: those test do not test the padding at the end of trajectory.
+            lon_frenet_filter_results = KinematicUtils.filter_by_longitudinal_frenet_limits(
+                poly_coefs[:, :D5], np.full(len(poly_coefs),T_s), cost_params.lon_acceleration_limits,
+                cost_params.velocity_limits, reference_route.s_limits)
+            lon_frenet_filtered_indices = np.argwhere(lon_frenet_filter_results).flatten()
         else:
             # Goal is behind us
             time_samples = np.arange(0, planning_horizon + EPS, self.dt)
@@ -126,11 +133,8 @@ class WerlingPlanner(TrajectoryPlanner):
             # meaning no lateral motion is carried out.
             T_d_vals = np.array([0])
             lat_frenet_filtered_indices = np.array([0])
+            lon_frenet_filtered_indices = np.array([0])
 
-        # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
-        lon_frenet_filter_results = KinematicUtils.filter_by_longitudinal_frenet_limits(ftrajectories,
-                                                                                        reference_route.s_limits)
-        lon_frenet_filtered_indices = np.argwhere(lon_frenet_filter_results).flatten()
         frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame

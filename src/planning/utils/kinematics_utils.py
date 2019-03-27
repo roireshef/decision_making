@@ -50,20 +50,26 @@ class KinematicUtils:
         return conforms
 
     @staticmethod
-    def filter_by_longitudinal_frenet_limits(ftrajectories: FrenetTrajectories2D,
+    # TODO: fill docstring, remove comments
+    def filter_by_longitudinal_frenet_limits(poly_coefs_s: np.ndarray, T_s_vals: np.ndarray,
+                                             lon_acceleration_limits: Limits,
+                                             lon_velocity_limits: Limits,
                                              reference_route_limits: Limits) -> np.ndarray:
         """
         Given a set of trajectories in Frenet coordinate-frame, it validates them against the following limits:
         (longitudinal progress on the frenet frame curve, positive longitudinal velocity)
-        :param ftrajectories: FrenetTrajectories2D object of trajectories to validate
+
         :param reference_route_limits: the minimal and maximal progress (s value) on the reference route used
         in the frenet frame used for planning
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
+        #     NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
+        #     np.greater_equal(ftrajectories[:, :, FS_SV], VELOCITY_LIMITS[LIMIT_MIN]), axis=1)
         conforms = np.all(
-            NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
-            np.greater_equal(ftrajectories[:, :, FS_SV], VELOCITY_LIMITS[LIMIT_MIN]), axis=1)
+            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) &
+            QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) &
+            QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits), axis=-1)
 
         return conforms
 

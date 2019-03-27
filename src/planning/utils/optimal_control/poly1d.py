@@ -112,14 +112,14 @@ class Poly1D:
                 """
         # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
-        jerk_poly = Math.polyder2d(poly_coefs, m=degree+1)
-        acc_poly = Math.polyder2d(poly_coefs, m=degree)
+        poly_der = Math.polyder2d(poly_coefs, m=degree+1)
+        poly = Math.polyder2d(poly_coefs, m=degree)
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't
         # have extrema in range).
 
         #  Find roots of jerk_poly (nan for complex or negative roots).
-        acc_suspected_points = Math.find_real_roots_in_limits(jerk_poly, value_limits=np.array([0, np.inf]))
-        acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
+        acc_suspected_points = Math.find_real_roots_in_limits(poly_der, value_limits=np.array([0, np.inf]))
+        acc_suspected_values = Math.zip_polyval2d(poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range and are they non-complex
         is_suspected_point_in_time_range = (acc_suspected_points <= T_vals[:, np.newaxis])
@@ -128,8 +128,7 @@ class Poly1D:
         is_suspected_value_in_limits = NumpyUtils.is_almost_in_limits(acc_suspected_values, limits)
 
         # for all non-complex extrema points that are inside the time range, verify their values are in [a_min, a_max]
-        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits),
-                      axis=1)
+        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1, keepdims=True)
 
     @classmethod
     def are_accelerations_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:

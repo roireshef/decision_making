@@ -150,7 +150,10 @@ class Math:
         :param value_limits: Boundaries for desired roots to look for.
         :return: 2D numpy array [Nx(K-1)]
         """
-        roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
+        try:
+            roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
+        except Exception as e:
+            print('hi')
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
         is_in_limits = NumpyUtils.is_in_limits(real_roots, value_limits)

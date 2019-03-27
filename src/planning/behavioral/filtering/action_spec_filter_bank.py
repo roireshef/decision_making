@@ -8,7 +8,7 @@ from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, V
     LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition
+    RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -16,11 +16,11 @@ from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN
 from decision_making.src.planning.types import FS_SX, FS_SV, LAT_CELL
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
+
 
 class FilterIfNone(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [(action_spec and behavioral_state) is not None for action_spec in action_specs]
+        return [(action_spec and behavioral_state) is not None and ~np.isnan(action_spec.t) for action_spec in action_specs]
 
 
 class FilterForKinematics(ActionSpecFilter):
@@ -40,7 +40,7 @@ class FilterForKinematics(ActionSpecFilter):
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
         are_valid = []
-        for poly_s, poly_d, t, lane in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes):
+        for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
 
             time_samples = np.arange(0, t + EPS, WERLING_TIME_RESOLUTION)
             frenet_frame = behavioral_state.extended_lane_frames[lane]
@@ -49,12 +49,18 @@ class FilterForKinematics(ActionSpecFilter):
             samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
             samples = samplable_trajectory.sample(time_samples)
 
-            is_valid = KinematicUtils.filter_by_cartesian_limits(samples[np.newaxis, ...],
+            is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(samples[np.newaxis, ...],
                                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
 
-            are_valid.append(is_valid)
+            # if the action is static, there's a chance the first coefficient is zero, and this is a problem for the
+            # Math.roots function
+            is_static = 1 if isinstance(spec.recipe, StaticActionRecipe) else 0
+            is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, is_static:], np.array([t]),
+                                                                                     LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)
 
-        # TODO: remove - for debug onlyadd
+            are_valid.append(np.logical_and(is_valid_in_cartesian, is_valid_in_frenet)[0])
+
+        # TODO: remove - for debug only
         had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
         valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
 
