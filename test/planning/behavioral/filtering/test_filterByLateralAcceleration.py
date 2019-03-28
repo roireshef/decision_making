@@ -1,7 +1,7 @@
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone, \
-    FilterByLateralAcceleration
+    FilterByLateralAcceleration, FilterForKinematics
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from logging import Logger
@@ -22,6 +22,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import s
 from decision_making.test.messages.static_scene_fixture import scene_static_ovalmilford
 
 
+
 def test_filter_FollowLaneFilterActionsWithTooHighLateralAcceleration_FilteredAccordingly(
         scene_static_ovalmilford,
         state_without_objects_ovalmilford,
@@ -35,9 +36,11 @@ def test_filter_FollowLaneFilterActionsWithTooHighLateralAcceleration_FilteredAc
     static_action_space = StaticActionSpace(logger, filtering=DEFAULT_STATIC_RECIPE_FILTERING)
     action_specs = static_action_space.specify_goals(all_follow_lane_recipes, behavioral_state)
 
-    filtering = ActionSpecFiltering(filters=[FilterIfNone(), FilterByLateralAcceleration('predicates')], logger=logger)
+    filtering = ActionSpecFiltering(filters=[FilterIfNone(),
+                                             FilterForKinematics(),
+                                             FilterByLateralAcceleration('predicates')], logger=logger)
 
-    #mask = filtering.filter_action_specs(action_specs, behavioral_state, state_without_objects_ovalmilford)
+    #action_specs = action_specs[45:47]
     mask = filtering.filter_action_specs(action_specs, behavioral_state)
     expected_mask = [False if spec is None else spec.v < 30 for spec in action_specs]
     assert mask == expected_mask

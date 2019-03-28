@@ -1,27 +1,28 @@
-from typing import Optional, List, Type, Dict
-
 import numpy as np
-from sklearn.utils.extmath import cartesian
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
+    EPS, WERLING_TIME_RESOLUTION, LON_ACC_LIMITS, LAT_ACC_LIMITS
 from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, StaticActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
+from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX, C_A, C_V, \
+    C_K
 from decision_making.src.planning.utils.math_utils import Math
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.utils.map_utils import MapUtils
+from sklearn.utils.extmath import cartesian
+from typing import Optional, List, Type
 
 
 class StaticActionSpace(ActionSpace):
     def __init__(self, logger, filtering: RecipeFiltering):
         self._velocity_grid = np.arange(VELOCITY_LIMITS[LIMIT_MIN],
-                                        VELOCITY_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                                        VELOCITY_LIMITS[LIMIT_MAX] + EPS,
                                         VELOCITY_STEP)
         super().__init__(logger,
                          recipes=[StaticActionRecipe.from_args_list(comb)
@@ -44,7 +45,8 @@ class StaticActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         # pick ego initial fstates projected on all target frenet_frames
-        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
+        relative_lanes = np.array([recipe.relative_lane for recipe in action_recipes])
+        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
@@ -53,17 +55,26 @@ class StaticActionSpace(ActionSpace):
         # get desired terminal velocity
         v_T = np.array([action_recipe.velocity for action_recipe in action_recipes])
 
+        v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
+        a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
+
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
-        # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
-        # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
-        # when setting T
-        with np.errstate(invalid='ignore'):
-            T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
+        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
+        # intersecting in T=0.
+        T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
+
+        # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
+        # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
+        # # when setting T
+        # with np.errstate(invalid='ignore'):
+        #     T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -73,7 +84,7 @@ class StaticActionSpace(ActionSpace):
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
-        T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
+        T = np.maximum(T_d, T_s)
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuarticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
@@ -82,8 +93,8 @@ class StaticActionSpace(ActionSpace):
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, action_recipes[i].relative_lane)
+        action_specs = [ActionSpec(t, vt, st, 0, recipe)
                         if ~np.isnan(t) else None
-                        for i, t in enumerate(T)]
+                        for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
 
         return action_specs

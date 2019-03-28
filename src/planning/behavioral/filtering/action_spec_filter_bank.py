@@ -16,6 +16,7 @@ from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_DX, FS_SX, C_V, C_K, FS_SA, LIMIT_MIN
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from typing import List
@@ -163,8 +164,8 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
 
 class FilterForKinematics(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        relative_lanes = np.array([spec.relative_lane for spec in action_specs])
 
+        relative_lanes = np.array([spec.relative_lane for spec in action_specs])
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
         T = np.array([spec.t for spec in action_specs])
@@ -216,13 +217,14 @@ class FilterByLateralAcceleration(ActionSpecFilter):
         :return: specs list that passed the lateral acceleration filter
         """
         # first check lateral acceleration limits for all baseline trajectories of all action_specs
-        meet_limits = FilterByLateralAcceleration.check_lateral_acceleration_limits(action_specs, behavioral_state)
+        #meet_limits = FilterByLateralAcceleration.check_lateral_acceleration_limits(action_specs, behavioral_state)
+        # Using the FilterForKinematics so no need
 
         # now check ability to break before future curves beyond the baseline specs' trajectories
         filtering_res = [False] * len(action_specs)
         for spec_idx, spec in enumerate(action_specs):
-
-            if spec is None or not meet_limits[spec_idx]:
+            # this should be taken care of by the kineatic_filter
+            if spec is None:
                 continue
             target_lane_frenet = behavioral_state.extended_lane_frames[spec.relative_lane]  # the target GFF
             if spec.s >= target_lane_frenet.s_max:

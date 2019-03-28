@@ -32,7 +32,6 @@ MAX_HORIZON_DISTANCE = 400
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 2.0
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
@@ -111,6 +110,8 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 SPECIFICATION_MARGIN_TIME_DELAY = 2
 SAFETY_MARGIN_TIME_DELAY = 1
 
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5

@@ -39,12 +39,16 @@ class StateHasNotArrivedYet(Warning):
 class TrajectoryPlanningException(Exception):
     pass
 
-
 class NoValidTrajectoriesFound(TrajectoryPlanningException):
     pass
 
+class CartesianLimitsViolated(TrajectoryPlanningException):
+    pass
 
 class CouldNotGenerateTrajectories(TrajectoryPlanningException):
+    pass
+
+class FrenetLimitsViolated(TrajectoryPlanningException):
     pass
 
 
