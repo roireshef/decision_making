@@ -82,7 +82,7 @@ VELOCITY_LIMITS = np.array([0.0, 100/3.6])
 VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
-BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
+BP_ACTION_T_LIMITS = np.array([2.0, 15.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
