@@ -101,21 +101,29 @@ class Poly1D:
     @staticmethod
     def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
         """
-                Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
-                polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
-                False otherwise
-                :param degree:
-                :param poly_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
-                :param T_vals: 1D numpy array of planning-times [N]
-                :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
-                :return: 1D numpy array of booleans where True means the restrictions are met.
-                """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
+        False otherwise
+        :param degree:
+        :param poly_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
         # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
         poly_der = Math.polyder2d(poly_coefs, m=degree+1)
         poly = Math.polyder2d(poly_coefs, m=degree)
-        # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't
-        # have extrema in range).
+
+        # # untested explicitly, should work
+        if poly_der.shape[-1] == 0:
+            # No derivative - polynomial is constant
+            # return NumpyUtils.is_in_limits(poly[:, 0], limits)
+            raise NotImplementedError("are_derivatives_in_limits recieves a null (zero) derivative")
+        elif poly_der.shape[-1] == 1:  # 1st order derivative is constant - Polynomial is a*x+b
+            # No need to test for t=0 (assuming it's valid), only t=T
+            # return NumpyUtils.is_in_limits(np.polyval(poly, T_vals), limits)
+            raise NotImplementedError("are_derivatives_in_limits recieves a constant derivative")
 
         #  Find roots of jerk_poly (nan for complex or negative roots).
         acc_suspected_points = Math.find_real_roots_in_limits(poly_der, value_limits=np.array([0, np.inf]))

@@ -64,8 +64,6 @@ class KinematicUtils:
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
-        #     NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
-        #     np.greater_equal(ftrajectories[:, :, FS_SV], VELOCITY_LIMITS[LIMIT_MIN]), axis=1)
         conforms = np.all(
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) &
             QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) &

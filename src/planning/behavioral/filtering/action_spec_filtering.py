@@ -42,9 +42,11 @@ class ActionSpecFiltering:
         """
         mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
         for action_spec_filter in self._filters:
+            if ~np.all(mask):
+                break
             current_mask = action_spec_filter.filter(list(compress(action_specs, mask)), behavioral_state)
             mask[mask] = current_mask
-        return mask
+        return mask.tolist()
 
     @prof.ProfileFunction()
     def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:

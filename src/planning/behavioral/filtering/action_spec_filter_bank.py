@@ -54,8 +54,8 @@ class FilterForKinematics(ActionSpecFilter):
 
             # if the action is static, there's a chance the first coefficient is zero, and this is a problem for the
             # Math.roots function
-            is_static = 1 if isinstance(spec.recipe, StaticActionRecipe) else 0
-            is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, is_static:], np.array([t]),
+            first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
+            is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
                                                                                      LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)
 
             are_valid.append(np.logical_and(is_valid_in_cartesian, is_valid_in_frenet)[0])
