@@ -165,8 +165,8 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
     POSITION_ACCURACY_TH = 1e-1  # up to 10 [cm] error in euclidean distance
 
     upsampling_factor_for_test = 4
-
-    route_points = MapService.get_instance().get_road(20)._points
+    road_id = 20
+    route_points = MapService.get_instance().get_road(road_id)._points
 
     # "Train" points: assumed to be sampled sufficiently dense (according to ROAD_MAP_REQUIRED_RES)
     _, route_points_upsampled_to_required_res, _ = \

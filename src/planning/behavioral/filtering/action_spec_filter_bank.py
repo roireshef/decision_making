@@ -1,9 +1,10 @@
 from collections import defaultdict
 
+import numpy as np
 import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import LAT_ACC_LIMITS, EPS, FILTER_A_0_GRID, FILTER_V_0_GRID, \
-    TRAJECTORY_TIME_RESOLUTION, BP_ACTION_T_LIMITS, FILTER_V_T_GRID
+    TRAJECTORY_TIME_RESOLUTION, BP_ACTION_T_LIMITS, FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionType, AggressivenessLevel
@@ -15,7 +16,6 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from typing import List
-import numpy as np
 
 
 class FilterIfNone(ActionSpecFilter):
@@ -84,6 +84,7 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
     """
 
     def __init__(self, predicates_dir: str):
+        # TODO: Change this
         self.limit_predicates = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'limits')
         self.distance_predicates = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'distances')
 
@@ -140,7 +141,7 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
         :param points:
         :return:
         """
-
+        pass
 
     def _constraint(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                     points: np.ndarray) -> np.ndarray:
@@ -151,6 +152,7 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
         :param points:
         :return:
         """
+        pass
 
     def _condition(self, target_values, constraints_values) -> bool:
         return target_values <= constraints_values
@@ -161,7 +163,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
         self.predicates = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'limits')
         self.distances = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'distances')
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, state: State) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
         Check violation of lateral acceleration for action_specs, and beyond action_specs check ability to brake
         before all future curves using any static action.
