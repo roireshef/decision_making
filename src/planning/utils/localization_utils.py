@@ -5,13 +5,16 @@ import numpy as np
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, NEGLIGIBLE_DISPOSITION_LAT, \
     NEGLIGIBLE_DISPOSITION_LON, LOG_INVALID_TRAJECTORY_SAMPLING_TIME
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V
+from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V, \
+    C_A
 from decision_making.src.state.state import EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
+import rte.python.profiler as prof
 
 
 class LocalizationUtils:
     @staticmethod
+    @prof.ProfileFunction()
     # TODO: can we remove calling_class_name assuming we use the right class logger?
     def is_actual_state_close_to_expected_state(current_ego_state,
                                                 last_trajectory,
@@ -51,11 +54,14 @@ class LocalizationUtils:
         distances_in_expected_frame = np.abs(errors_in_expected_frame)  # type: FrenetPoint
 
         logger.debug(("is_actual_state_close_to_expected_state stats called from %s: "
-                      "{desired_localization: %s, actual_localization: %s, desired_velocity: %s, "
-                      "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
+                      "{desired_localization: %s, actual_localization(x,y,z): %s, desired_velocity: %s, "
+                      "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s, acceleration: %s"
+                      ", timestamp is: %f}" %
                       (calling_class_name, current_expected_state, current_actual_location, current_expected_state[C_V],
                        current_ego_state.velocity, distances_in_expected_frame,
-                       current_ego_state.velocity - current_expected_state[C_V])).replace('\n', ' '))
+                       current_ego_state.velocity - current_expected_state[C_V],
+                       current_ego_state.acceleration - current_expected_state[C_A],
+                       current_ego_state.timestamp_in_sec)).replace('\n', ' '))
 
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT

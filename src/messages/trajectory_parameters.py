@@ -138,20 +138,20 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryCostParams)-> TrajectoryCostParams
         return cls(SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_x)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_y)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_lane_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_lane_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_shoulder_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
-                 , lcmMsg.dist_from_goal_lat_factor
-                 , lcmMsg.lon_jerk_cost
-                 , lcmMsg.lat_jerk_cost
-                 , lcmMsg.velocity_limits
-                 , lcmMsg.lon_acceleration_limits
-                 , lcmMsg.lat_acceleration_limits)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_y)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.left_lane_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.right_lane_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.left_shoulder_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
+                   , lcmMsg.dist_from_goal_lat_factor
+                   , lcmMsg.lon_jerk_cost
+                   , lcmMsg.lat_jerk_cost
+                   , lcmMsg.velocity_limits
+                   , lcmMsg.lon_acceleration_limits
+                   , lcmMsg.lat_acceleration_limits)
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
@@ -161,9 +161,10 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
     time = float
+    bp_time = int
 
-    def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float)->None
+    def __init__(self, strategy, reference_route, target_state, cost_params, time, minimal_required_time, bp_time):
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float, float, int)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)
@@ -171,12 +172,15 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
+        :param minimal_required_time: minimal required trajectory planning time-frame
+        :param bp_time: absolute time of the state that BP planned on.
         """
         self.reference_route = reference_route
         self.target_state = target_state
         self.cost_params = cost_params
         self.strategy = strategy
         self.time = time
+        self.minimal_required_time = minimal_required_time
         self.bp_time = bp_time
 
     def __str__(self):
@@ -198,6 +202,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         lcm_msg.cost_params = self.cost_params.serialize()
 
         lcm_msg.time = self.time
+        lcm_msg.minimal_required_time = self.minimal_required_time
         lcm_msg.bp_time = self.bp_time
 
         return lcm_msg
@@ -206,9 +211,9 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryParameters)->TrajectoryParams
         return cls(TrajectoryPlanningStrategy(lcmMsg.strategy)
-                 , GeneralizedFrenetSerretFrame.deserialize(lcmMsg.reference_route)
-                 , lcmMsg.target_state
-                 , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
-                 , lcmMsg.time
-                 , lcmMsg.bp_time)
-
+                   , GeneralizedFrenetSerretFrame.deserialize(lcmMsg.reference_route)
+                   , lcmMsg.target_state
+                   , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
+                   , lcmMsg.time
+                   , lcmMsg.minimal_required_time
+                   , lcmMsg.bp_time)

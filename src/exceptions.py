@@ -45,7 +45,10 @@ class NoValidTrajectoriesFound(TrajectoryPlanningException):
 class CartesianLimitsViolated(TrajectoryPlanningException):
     pass
 
-class CouldNotGenerateTrajectories(TrajectoryPlanningException):
+class CartesianLimitsViolated(TrajectoryPlanningException):
+    pass
+
+class FrenetLimitsViolated(TrajectoryPlanningException):
     pass
 
 class FrenetLimitsViolated(TrajectoryPlanningException):

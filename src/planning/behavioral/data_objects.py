@@ -96,8 +96,6 @@ class ActionSpec:
         self.s = s
         self.d = d
         self.recipe = recipe
-        # TODO: Remove when merge is working
-        assert isinstance(self.recipe, ActionRecipe)
 
     @property
     def relative_lane(self):

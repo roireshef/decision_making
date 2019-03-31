@@ -64,7 +64,7 @@ def state_with_sorrounding_objects():
             dynamic_objects.append(dynamic_object)
             obj_id += 1
 
-    yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
@@ -102,7 +102,7 @@ def state_with_objects_for_filtering_tracking_mode():
 
     dynamic_objects.append(dynamic_object)
 
-    yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
@@ -140,7 +140,7 @@ def state_with_objects_for_filtering_negative_sT():
 
     dynamic_objects.append(dynamic_object)
 
-    yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
@@ -178,7 +178,7 @@ def state_with_objects_for_filtering_too_aggressive():
 
     dynamic_objects.append(dynamic_object)
 
-    yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
@@ -204,7 +204,7 @@ def state_without_objects_ovalmilford():
 
     dynamic_objects: List[DynamicObject] = list()
 
-    yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
 

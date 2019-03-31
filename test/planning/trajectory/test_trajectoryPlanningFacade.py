@@ -28,8 +28,7 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
     poly_d_coefs = np.array([5.58098455e-01, -2.05184044e+00, 1.97018719e+00,
                              3.80399214e-08, -1.14119374e-08, 5.00000000e-01])
 
-    total_time = 0 # TODO
-    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
+    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
@@ -52,8 +51,7 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
     poly_d_coefs = np.array([5.58098455e-01, -2.05184044e+00, 1.97018719e+00,
                              3.80399214e-08, -1.14119374e-08, 5.00000000e-01])
 
-    total_time = 0 # TODO
-    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
+    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
@@ -77,8 +75,7 @@ def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
     poly_d_coefs = np.array([5.58098455e-01, -2.05184044e+00, 1.97018719e+00,
                              3.80399214e-08, -1.14119374e-08, 5.00000000e-01])
 
-    total_time = 0 # TODO
-    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
+    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 

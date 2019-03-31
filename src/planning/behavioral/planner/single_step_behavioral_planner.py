@@ -13,6 +13,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
+from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -112,7 +113,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action_spec = selected_action_spec
 
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
-            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters.reference_route,
+            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",

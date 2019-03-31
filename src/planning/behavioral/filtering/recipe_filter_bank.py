@@ -12,8 +12,10 @@ from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextR
 
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
+from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 from typing import List
-
+import rte.python.profiler as prof
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
@@ -61,10 +63,6 @@ class FilterLimitsViolatingTrajectory(RecipeFilter):
                 else:
                     predicates[(action_type, wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
         return predicates
-
-
-
-
 
 
 class FilterBadExpectedTrajectory(RecipeFilter):
@@ -125,6 +123,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 return False
         return True
 
+    @prof.ProfileFunction()
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         """
         This filter checks if recipe might cause a bad action specification, meaning velocity or acceleration are too
@@ -166,22 +165,31 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
                 # compute distance from target vehicle +/- safety margin
                 s_T = relative_dynamic_object.longitudinal_distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
-                                                          ego_state.size.length / 2 + dynamic_object.size.length / 2)
+                                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
                 v_T = dynamic_object.map_state.lane_fstate[FS_SV]
 
-                predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+                filter_result[i] = QuinticMotionPredicatesCreator.generate_predicate_value(recipe.action_type, wT, wJ,
+                                                                                           a_0, v_0, v_T, s_T,
+                                                                                           SPECIFICATION_HEADWAY * margin_sign,
+                                                                                           SAFETY_HEADWAY * margin_sign)
 
-                filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                                    FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+                # predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+                #
+                # filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                #                              FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(
+                #     v_T)] > 0
 
             elif action_type == ActionType.FOLLOW_LANE:
 
                 v_T = recipe.velocity
 
-                predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+                # predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+                #
+                # filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                #                              FILTER_V_T_GRID.get_index(v_T)] > 0
 
-                filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                                    FILTER_V_T_GRID.get_index(v_T)] > 0
+                filter_result[i] = QuarticMotionPredicatesCreator.generate_predicate_value(wT, wJ, a_0, v_0, v_T)
+
             else:
                 filter_result[i] = False
 

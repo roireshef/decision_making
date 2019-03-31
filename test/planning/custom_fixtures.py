@@ -152,7 +152,7 @@ def state(short_testable_map_api):
                          map_state=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
                          map_state_on_host_lane=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
                          size=size, confidence=0)
-    yield State(occupancy_state, dynamic_objects, ego_state)
+    yield State(False, occupancy_state, dynamic_objects, ego_state)
 
 
 @pytest.fixture(scope='function')
@@ -177,7 +177,7 @@ def state_with_old_object(request) -> State:
     ego_state = EgoState.create_from_cartesian_state(obj_id=1, timestamp=old_timestamp, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]),
                                                      size=size, confidence=0)
 
-    yield State(occupancy_state, dynamic_objects, ego_state)
+    yield State(False, occupancy_state, dynamic_objects, ego_state)
 
 
 @pytest.fixture(scope='function')
@@ -236,7 +236,7 @@ def trajectory_params():
                                                   mock_sigmoid, 3.0, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT,
                                                   VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
-                           cost_params=trajectory_cost_params, time=16,
+                           cost_params=trajectory_cost_params, time=16, minimal_required_time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY,
                            bp_time=0)
 

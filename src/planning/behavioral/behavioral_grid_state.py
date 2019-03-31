@@ -1,14 +1,13 @@
 from collections import defaultdict
-from logging import Logger
-from typing import Dict, List, Tuple, Optional
 
 import numpy as np
+from logging import Logger
+from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
@@ -42,7 +41,7 @@ SemanticGridCell = Tuple[RelativeLane, RelativeLongitudinalPosition]
 RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
 
 
-class BehavioralGridState(BehavioralState):
+class BehavioralGridState:
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                  projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
@@ -76,13 +75,15 @@ class BehavioralGridState(BehavioralState):
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
         extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan)
 
-        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
-                                 for rel_lane in extended_lane_frames}
+        with prof.time_range('create_from_state.cstate_to_fstate'):
+            projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
+                                     for rel_lane in extended_lane_frames}
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
-        dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
-                   key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
+        with prof.time_range('create_from_state._add_road_semantics'):
+            dynamic_objects_with_road_semantics = \
+                sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
+                       key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
@@ -169,6 +170,7 @@ class BehavioralGridState(BehavioralState):
         return longitudinal_differences
 
     @staticmethod
+    @prof.ProfileFunction()
     def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """

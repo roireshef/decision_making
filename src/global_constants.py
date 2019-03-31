@@ -75,15 +75,14 @@ LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
-VELOCITY_LIMITS = np.array([0.0, 20])
+VELOCITY_LIMITS = np.array([0.0, 100/3.6])
 VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
-# Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
+BP_ACTION_T_LIMITS = np.array([2.0, 15.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -100,7 +99,7 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
@@ -108,10 +107,16 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
 SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 1
 
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+# Headway [sec] from a leading vehicle, used for specification target (1) and safety checks (2)
+SPECIFICATION_HEADWAY = 1.5
+#SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-end)
+SAFETY_HEADWAY = 1.0  # Should correspond to assumed delay in response (end-to-end)
+
+# Additional margin to keep from leading vehicle, in addition to the headway, used for specification target (1)
+# and safety checks(2)
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
@@ -120,10 +125,12 @@ MIN_OVERTAKE_VEL = 3.5
 LON_MARGIN_FROM_EGO = 1
 
 # Uniform grids for BP Filters
-FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
+#FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
+FILTER_A_0_GRID = UniformGrid(np.array([4.0,3.0]), 0.5) # Changed
 FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
+
 
 # Trajectory Planner #
 
@@ -161,11 +168,12 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 2
 
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
-# iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
+# iterations. If the distance is lower than this threshold, the TP plans the trajectory as if the ego vehicle is
 # currently in the desired location and not in its actual location.
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference threshold
 
+# TODO: remove this (duplicate of WERLING_TIME_RESOLUTION)
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
@@ -182,19 +190,19 @@ MAX_TRAJECTORY_WAYPOINTS = 100
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -8, 0
+SX_OFFSET_MIN, SX_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (long. velocity)
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
+DX_OFFSET_MIN, DX_OFFSET_MAX = 0, 0
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 9
+SX_STEPS, SV_STEPS, DX_STEPS = 1, 1, 1
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
-TD_STEPS = 6
+TD_STEPS = 1
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3
@@ -239,8 +247,8 @@ VELOCITY_MINIMAL_THRESHOLD = 0.001
 FILTER_OFF_ROAD_OBJECTS = False
 
 ### DM Manager configuration ###
-BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.5
-TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.3
+TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
 
 #### NAMES OF MODULES FOR LOGGING ####
 MAP_NAME_FOR_LOGGING = "Map API"

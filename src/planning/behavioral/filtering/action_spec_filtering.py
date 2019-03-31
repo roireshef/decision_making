@@ -9,6 +9,7 @@ from logging import Logger
 from typing import List, Optional
 from itertools import compress
 
+
 @six.add_metaclass(ABCMeta)
 class ActionSpecFilter:
     """
@@ -16,6 +17,7 @@ class ActionSpecFilter:
     whether the ActionSpec satisfies the constraint in the filter. All filters have to get as input ActionSpec
     (or one of its children) and  BehavioralGridState (or one of its children) even if they don't actually use them.
     """
+
     @abstractmethod
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         pass
@@ -29,6 +31,7 @@ class ActionSpecFiltering:
     The gateway to execute filtering on one (or more) ActionSpec(s). From efficiency point of view, the filters
     should be sorted from the strongest (the one filtering the largest number of recipes) to the weakest.
     """
+
     def __init__(self, filters: Optional[List[ActionSpecFilter]], logger: Logger):
         self._filters: List[ActionSpecFilter] = filters or []
         self.logger = logger
@@ -42,9 +45,13 @@ class ActionSpecFiltering:
         """
         mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
         for action_spec_filter in self._filters:
-            if ~np.all(mask):
+            if ~np.any(mask):
                 break
-            current_mask = action_spec_filter.filter(list(compress(action_specs, mask)), behavioral_state)
+            # list of only valid action specs
+            valid_action_specs = list(compress(action_specs, mask))
+            # a mask only on the valid action specs
+            current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
+            # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
         return mask.tolist()
 
@@ -57,4 +64,3 @@ class ActionSpecFiltering:
         :return: A boolean , True where the action_spec is valid and false where it is filtered
         """
         return self.filter_action_specs([action_spec], behavioral_state)[0]
-

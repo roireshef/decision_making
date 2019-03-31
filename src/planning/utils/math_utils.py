@@ -100,6 +100,30 @@ class Math:
         return rounded_val
 
     @staticmethod
+    def floor_to_step(value, step):
+        """
+        Floor the value to nearest multiple of step
+        :param value: the value to be floored.
+        :param step: the rounding step
+        :return: a value floored to a multiple of step
+        """
+        floored_val = np.floor(value * (1 / step)) / (1 / step)
+
+        return floored_val
+
+    @staticmethod
+    def ceil_to_step(value, step):
+        """
+        Ceils the value to nearest multiple of step
+        :param value: the value to be ceiled.
+        :param step: the rounding step
+        :return: a value ceiled to a multiple of step
+        """
+        ceiled_val = np.ceil(value * (1 / step)) / (1 / step)
+
+        return ceiled_val
+
+    @staticmethod
     def roots(p):
         """
         Return the roots of polynomials with coefficients given in the rows of p.
@@ -122,10 +146,19 @@ class Math:
     def find_real_roots_in_limits(coef_matrix: np.ndarray, value_limits: Limits):
         """
         Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
+        NOTE THAT IN ORDER FOR THIS TO WORK, K has to be >=2 and to have no zeros in its first column (degenerate polynomial)
         :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
         :param value_limits: Boundaries for desired roots to look for.
         :return: 2D numpy array [Nx(K-1)]
         """
+        if np.any(coef_matrix[:, 0] == 0):
+            raise NotImplementedError("find_real_roots_in_limits can not find roots for degenerated polynomials, "
+                                      "please clip the polynomial")
+
+        # if polynomial is first degree, it has no roots
+        if coef_matrix.shape[-1] < 2:
+            return np.full(coef_matrix.shape, np.nan)
+
         roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
