@@ -151,7 +151,7 @@ class Math:
         :param value_limits: Boundaries for desired roots to look for.
         :return: 2D numpy array [Nx(K-1)]
         """
-        if np.any(coef_matrix[:, 0] == 0):
+        if np.any(coef_matrix[..., 0] == 0):
             raise NotImplementedError("find_real_roots_in_limits can not find roots for degenerated polynomials, "
                                       "please clip the polynomial")
 
