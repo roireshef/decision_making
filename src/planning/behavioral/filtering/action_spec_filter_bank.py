@@ -55,6 +55,18 @@ class FilterForKinematics(ActionSpecFilter):
             # extract the relevant (cached) frenet frame per action according to the destination lane
             frenet_frame = behavioral_state.extended_lane_frames[lane]
 
+            # if the action is static, there's a chance the 5th order polynomial is actually a degnerate one (has lower
+            # degree), so we clip the first zero coefficients and send a polynomial with lower degree
+            first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
+            is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
+                                                                                     LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
+
+            # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
+            # we can save time by not checking cartesian limits
+            if not is_valid_in_frenet:
+                are_valid.append(False)
+                continue
+
             time_samples = np.arange(0, t + EPS, WERLING_TIME_RESOLUTION)
             total_time = max(BP_ACTION_T_LIMITS[LIMIT_MIN], t)
 
@@ -66,13 +78,7 @@ class FilterForKinematics(ActionSpecFilter):
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
                                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
 
-            # if the action is static, there's a chance the 5th order polynomial is actually a degnerate one (has lower
-            # degree), so we clip the first zero coefficients and send a polynomial with lower degree
-            first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
-            is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
-                                                                                     LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)
-
-            are_valid.append(np.logical_and(is_valid_in_cartesian, is_valid_in_frenet)[0])
+            are_valid.append(is_valid_in_cartesian)
 
         # TODO: remove - for debug only
         had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
