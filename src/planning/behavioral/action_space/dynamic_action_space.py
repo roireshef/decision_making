@@ -8,9 +8,9 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
     ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DA, FS_DV, FS_DX
+from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.math_utils import Math
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from logging import Logger
 from sklearn.utils.extmath import cartesian
@@ -54,9 +54,6 @@ class DynamicActionSpace(ActionSpace):
         target_map_states = [target.dynamic_object.map_state for target in targets]
         # get desired terminal velocity
         v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in target_map_states])
-        v_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SV])
-        a_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SA])
-        zeros = np.zeros(shape=v_T.shape)
 
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]

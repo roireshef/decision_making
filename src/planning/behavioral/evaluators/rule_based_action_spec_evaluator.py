@@ -153,6 +153,6 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         """
         action_ind = [i for i, recipe in enumerate(action_recipes)
                       if recipe.relative_lane == cell[LAT_CELL]
-                      and recipe.action_type==ActionType.FOLLOW_LANE
+                      and recipe.action_type == ActionType.FOLLOW_LANE
                       and recipes_mask[i]]
         return action_ind[-1] if len(action_ind) > 0 else None

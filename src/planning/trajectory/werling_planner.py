@@ -102,7 +102,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                                               fconstraints_tT,
                                                                                               T_s, T_d_grid, self.dt)
 
-            ftrajectories = self._correct_boundary_values(deviated_ftrajectories, ego_frenet_state)
+            ftrajectories = WerlingPlanner._correct_velocity_values(deviated_ftrajectories)
 
             terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
             terminal_s = fconstraints_tT.get_grid_s()
@@ -155,22 +155,24 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories) == 0:
-            raise FrenetLimitsViolated("Frenet Limits Violation - No valid trajectories. "
+            raise FrenetLimitsViolated("No valid trajectories. "
                                        "timestamp_in_sec: %f, "
                                        "time horizon: %f, "
-                                       "extrapolated time horizon: %f.  goal: %s, "
+                                       "extrapolated time horizon: %f, "
+                                       "Highest min frenet velocity: %s, "
+                                       "goal: %s, "
                                        "state: %s. Longitudes range: [%s, %s] (limits: %s)"
-                                       "Highest min frenet velocity: %s"
                                        "number of trajectories passed according to Frenet limits: %s/%s;" %
                                        (state.ego_state.timestamp_in_sec, T_s, planning_horizon,
+                                        np.max(np.min(ftrajectories[:, :, FS_SV], axis=1)),
                                         NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                         np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                         reference_route.s_limits,
-                                        np.max(np.min(ftrajectories[:, :, FS_SV], axis=1)),
                                         len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise CartesianLimitsViolated("Cartesian Limits Violation - No valid trajectories. "
+            lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+            raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
                                           "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
@@ -233,26 +235,19 @@ class WerlingPlanner(TrajectoryPlanner):
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
 
-    def _correct_boundary_values(self, ftrajectories: FrenetTrajectories2D, init_state: FrenetState2D) -> \
+    @staticmethod
+    def _correct_velocity_values(ftrajectories: FrenetTrajectories2D) -> \
             FrenetTrajectories2D:
         """
-        Boundary values (initial) of werling trajectories can be received with minor numerical deviations.
-        This method verifies that if such deviations exist, they are indeed minor, corrects them to the right accurate
-        values and raises a warning if the deviations are not so small.
+        Velocity values of werling trajectories can be received with minor numerical deviations.
+        This method verifies that if such deviations exist, they are indeed minor, and corrects them
+        to the right accurate values.
         :param ftrajectories: trajectories in frenet frame
-        :param init_state: initial state
         :return:Corrected trajectories in frenet frame
         """
-        init_vels = ftrajectories[:, 0, FS_SV]
-        is_init_vels_consistent = np.isclose(init_vels, init_state[FS_SV], atol=1e-3, rtol=0)
-        ftrajectories[is_init_vels_consistent, 0, FS_SV] = init_state[FS_SV]
-
-        init_lon_accs = ftrajectories[:, 0, FS_SA]
-        is_init_lon_accs_consistent = np.isclose(init_lon_accs, init_state[FS_SA], atol=1e-3, rtol=0)
-        ftrajectories[is_init_lon_accs_consistent, 0, FS_SA] = init_state[FS_SA]
-
-        if not np.all(is_init_vels_consistent) or not np.all(is_init_lon_accs_consistent):
-            self._logger.warning("Some resulting Werling trajectories don't meet constraints")
+        traj_velocities = ftrajectories[:, :, FS_SV]
+        is_velocities_close_to_zero = np.isclose(traj_velocities, 0.0, atol=1e-5, rtol=0)
+        ftrajectories[is_velocities_close_to_zero, FS_SV] = 0.0
 
         return ftrajectories
 
