@@ -162,13 +162,15 @@ class WerlingPlanner(TrajectoryPlanner):
                                        "Highest min frenet velocity: %s, "
                                        "goal: %s, "
                                        "state: %s. Longitudes range: [%s, %s] (limits: %s)"
-                                       "number of trajectories passed according to Frenet limits: %s/%s;" %
+                                       "number of trajectories passed according to Frenet limits: %s/%s; "
+                                       "passed lon limits: %d, passed lat limits: %d" %
                                        (state.ego_state.timestamp_in_sec, T_s, planning_horizon,
                                         np.max(np.min(ftrajectories[:, :, FS_SV], axis=1)),
                                         NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                         np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                         reference_route.s_limits,
-                                        len(frenet_filtered_indices), len(ftrajectories)))
+                                        len(frenet_filtered_indices), len(ftrajectories),
+                                        len(lon_frenet_filtered_indices), len(lat_frenet_filtered_indices)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
