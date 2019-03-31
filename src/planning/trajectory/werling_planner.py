@@ -101,7 +101,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                                               fconstraints_tT,
                                                                                               T_s, T_d_grid, self.dt)
 
-            ftrajectories = self._correct_boundary_values(deviated_ftrajectories, ego_frenet_state)
+            ftrajectories = self._correct_velocity_values(deviated_ftrajectories)
 
             terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
             terminal_s = fconstraints_tT.get_grid_s()
@@ -225,30 +225,18 @@ class WerlingPlanner(TrajectoryPlanner):
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
 
-    def _correct_boundary_values(self, ftrajectories: FrenetTrajectories2D, init_state: FrenetState2D) -> \
+    def _correct_velocity_values(self, ftrajectories: FrenetTrajectories2D) -> \
             FrenetTrajectories2D:
         """
-        Boundary values (initial) of werling trajectories can be received with minor numerical deviations.
-        This method verifies that if such deviations exist, they are indeed minor, corrects them to the right accurate
-        values and raises a warning if the deviations are not so small.
+        Velocity values of werling trajectories can be received with minor numerical deviations.
+        This method verifies that if such deviations exist, they are indeed minor, and corrects them
+        to the right accurate values.
         :param ftrajectories: trajectories in frenet frame
-        :param init_state: initial state
         :return:Corrected trajectories in frenet frame
         """
-        init_vels = ftrajectories[:, 0, FS_SV]
-        is_init_vels_consistent = np.isclose(init_vels, init_state[FS_SV], atol=1e-3, rtol=0)
-        ftrajectories[is_init_vels_consistent, 0, FS_SV] = init_state[FS_SV]
-
-        init_lon_accs = ftrajectories[:, 0, FS_SA]
-        is_init_lon_accs_consistent = np.isclose(init_lon_accs, init_state[FS_SA], atol=1e-3, rtol=0)
-        ftrajectories[is_init_lon_accs_consistent, 0, FS_SA] = init_state[FS_SA]
-
-        if not np.all(is_init_vels_consistent) or not np.all(is_init_lon_accs_consistent):
-            self._logger.warning("Some resulting Werling trajectories don't meet constraints")
-
-        target_vels = ftrajectories[:, :, FS_SV]
-        is_target_vels_close_to_zero = np.isclose(target_vels, 0.0, atol=1e-5, rtol=0)
-        ftrajectories[is_target_vels_close_to_zero, FS_SV] = EPS
+        traj_velocities = ftrajectories[:, :, FS_SV]
+        is_velocities_close_to_zero = np.isclose(traj_velocities, 0.0, atol=1e-5, rtol=0)
+        ftrajectories[is_velocities_close_to_zero, FS_SV] = 0.0
 
         return ftrajectories
 
