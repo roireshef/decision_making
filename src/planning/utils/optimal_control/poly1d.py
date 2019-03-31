@@ -101,15 +101,15 @@ class Poly1D:
     @staticmethod
     def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
         """
-                Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
-                polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
-                False otherwise
-                :param degree:
-                :param poly_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
-                :param T_vals: 1D numpy array of planning-times [N]
-                :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
-                :return: 1D numpy array of booleans where True means the restrictions are met.
-                """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
+        False otherwise
+        :param degree:
+        :param poly_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
         # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
         jerk_poly = Math.polyder2d(poly_coefs, m=degree+1)
