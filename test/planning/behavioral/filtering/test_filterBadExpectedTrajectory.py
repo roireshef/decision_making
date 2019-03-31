@@ -5,6 +5,8 @@ import time
 
 from decision_making.src.global_constants import SPECIFICATION_HEADWAY, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, FilterIfNone
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
@@ -24,25 +26,24 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
 from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory
+from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory, \
+    FilterActionsTowardsNonOccupiedCells
 
 import numpy as np
 
 from decision_making.test.messages.static_scene_fixture import scene_static
 
-def test_filter_followVehicleTracking_filterResultsMatchExpected(
+def test_filter_recipesWithNonOccupiedCells_filterNonOccupiedCellsActionsOut(
         behavioral_grid_state_with_objects_for_filtering_tracking_mode: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
 
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[FilterActionsTowardsNonOccupiedCells()], logger=logger)
 
-    # State leads to a0=0,v0=10,sT=15.5,vT=10.2
     # First three and last three are false because they're recipes of non-occupied cells
-    # three middle results are true because tracking a vehicle whose velocity is very close to us can be done with multiple horizons
-    # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
+    # three middle results are true because tracking a vehicle
     expected_filter_results = np.array([False, False, False, True, True, True, False, False, False], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
     filter_results = np.array(dynamic_action_space.filter_recipes(follow_vehicle_recipes_towards_front_cells,
@@ -58,17 +59,25 @@ def test_filter_followVehicleSTNegative_filterResultsMatchExpected(
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[], logger=logger)
+
+    actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
 
     # State leads to a0=0,v0=10,sT=-0.7,vT=11
     # First three and last three are false because they're recipes of non-occupied cells
     # three middle results are [False,True,True] because calm action takes too much time(>20s) and gets filtered while the others don't
     # take this much time and meets the velocity and acceleration constraints
     # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
-    expected_filter_results = np.array([False, False, False, False, True, True, False, False, False], dtype=bool)
+    expected_filter_results = np.array([False, False, True], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
-    filter_results = np.array(dynamic_action_space.filter_recipes(follow_vehicle_recipes_towards_front_cells,
-                                                                  behavioral_grid_state_with_objects_for_filtering_negative_sT))
+
+    action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
+                                                                   behavioral_grid_state_with_objects_for_filtering_negative_sT)
+
+    action_spec_filter = ActionSpecFiltering(filters=[FilterIfNone(), FilterForKinematics()], logger=logger)
+
+    filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
+                                                            behavioral_grid_state_with_objects_for_filtering_negative_sT)
 
     np.testing.assert_array_almost_equal(filter_results, expected_filter_results)
 
