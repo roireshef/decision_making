@@ -134,8 +134,8 @@ class FilterBadExpectedTrajectory(RecipeFilter):
 
                 filter_result[i] = QuinticMotionPredicatesCreator.generate_predicate_value(recipe.action_type, wT, wJ,
                                                                                            a_0, v_0, v_T, s_T,
-                                                                                           SPECIFICATION_MARGIN_TIME_DELAY * margin_sign,
-                                                                                           SAFETY_MARGIN_TIME_DELAY * margin_sign)
+                                                                                           SPECIFICATION_HEADWAY * margin_sign,
+                                                                                           SAFETY_HEADWAY * margin_sign)
 
                 # predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
                 #

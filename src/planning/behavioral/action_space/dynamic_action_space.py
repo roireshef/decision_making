@@ -1,6 +1,6 @@
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_MARGIN_TIME_DELAY, \
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -73,7 +73,7 @@ class DynamicActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT +
                                                        behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
-        T_m = SPECIFICATION_MARGIN_TIME_DELAY
+        T_m = SPECIFICATION_HEADWAY
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -97,7 +97,7 @@ class DynamicActionSpace(ActionSpace):
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], dx=-projected_ego_fstates[:, FS_DX],
-            a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+            a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0, T_m=SPECIFICATION_HEADWAY)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
@@ -110,7 +110,7 @@ class DynamicActionSpace(ActionSpace):
         distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
                                                              v_0=projected_ego_fstates[:, FS_SV],
                                                              v_T=v_T, T=T, dx=ds,
-                                                             T_m=SPECIFICATION_MARGIN_TIME_DELAY)(T)
+                                                             T_m=SPECIFICATION_HEADWAY)(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
