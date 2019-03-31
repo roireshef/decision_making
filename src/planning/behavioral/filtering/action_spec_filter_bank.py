@@ -26,6 +26,13 @@ class FilterIfNone(ActionSpecFilter):
 class FilterForKinematics(ActionSpecFilter):
     @prof.ProfileFunction()
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        """ Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
+            - max longitudinal position (available in the reference frame)
+            - longitudinal velocity limits - both in Frenet (analytical) and Cartesian (by sampling)
+            - longitudinal acceleration limits - both in Frenet (analytical) and Cartesian (by sampling)
+            - lateral acceleration limits - in Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
+            conceptually "straightens" the road's shape.
+         """
         relative_lanes = np.array([spec.relative_lane for spec in action_specs])
 
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
@@ -69,6 +76,12 @@ class FilterForKinematics(ActionSpecFilter):
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
+         of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
+         maintaining the required safety-headway + constant safety-margin"""
+
+        # NOTE: for static actions it takes the front cell's actor, so this filter is actually applied to static actions
+        # as well.
         relative_cells = [(spec.recipe.relative_lane,
                            spec.recipe.relative_lon if isinstance(spec.recipe, DynamicActionRecipe) else RelativeLongitudinalPosition.FRONT)
                           for spec in action_specs]

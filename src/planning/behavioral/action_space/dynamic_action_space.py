@@ -70,6 +70,9 @@ class DynamicActionSpace(ActionSpace):
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
 
+        # here we deduct from the distance to progres: half of lengths of host and target (so we can stay in center-host
+        # to center-target distance, plus another margin that will represent the stopping distance, when headway is
+        # irrelevant due to 0 velocity
         ds = longitudinal_differences + margin_sign * (LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT +
                                                        behavioral_state.ego_state.size.length / 2 + target_length / 2)
 

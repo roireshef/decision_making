@@ -151,16 +151,15 @@ class Math:
         :param value_limits: Boundaries for desired roots to look for.
         :return: 2D numpy array [Nx(K-1)]
         """
+        if np.any(coef_matrix[:, 0] == 0):
+            raise NotImplementedError("find_real_roots_in_limits can not find roots for degenerated polynomials, "
+                                      "please clip the polynomial")
+
         # if polynomial is first degree, it has no roots
         if coef_matrix.shape[-1] < 2:
             return np.full(coef_matrix.shape, np.nan)
 
-        # TODO: try is for debug
-        try:
-            roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
-        except Exception as e:
-            print('hi')
-
+        roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
         is_in_limits = NumpyUtils.is_in_limits(real_roots, value_limits)

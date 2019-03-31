@@ -115,15 +115,13 @@ class Poly1D:
         poly_der = Math.polyder2d(poly_coefs, m=degree+1)
         poly = Math.polyder2d(poly_coefs, m=degree)
 
-        # # untested explicitly, should work
+        # TODO: implement tests for those cases
         if poly_der.shape[-1] == 0:
             # No derivative - polynomial is constant
-            # return NumpyUtils.is_in_limits(poly[:, 0], limits)
-            raise NotImplementedError("are_derivatives_in_limits recieves a null (zero) derivative")
+            return NumpyUtils.is_in_limits(poly[:, 0], limits)
         elif poly_der.shape[-1] == 1:  # 1st order derivative is constant - Polynomial is a*x+b
             # No need to test for t=0 (assuming it's valid), only t=T
-            # return NumpyUtils.is_in_limits(np.polyval(poly, T_vals), limits)
-            raise NotImplementedError("are_derivatives_in_limits recieves a constant derivative")
+            return NumpyUtils.is_in_limits(np.polyval(poly, T_vals), limits)
 
         #  Find roots of jerk_poly (nan for complex or negative roots).
         acc_suspected_points = Math.find_real_roots_in_limits(poly_der, value_limits=np.array([0, np.inf]))
