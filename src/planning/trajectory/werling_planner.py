@@ -145,22 +145,24 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories) == 0:
-            raise FrenetLimitsViolated("Frenet Limits Violation - No valid trajectories. "
+            raise FrenetLimitsViolated("No valid trajectories. "
                                        "timestamp_in_sec: %f, "
                                        "time horizon: %f, "
-                                       "extrapolated time horizon: %f.  goal: %s, "
+                                       "extrapolated time horizon: %f, "
+                                       "Highest min frenet velocity: %s, "
+                                       "goal: %s, "
                                        "state: %s. Longitudes range: [%s, %s] (limits: %s)"
-                                       "Highest min frenet velocity: %s"
                                        "number of trajectories passed according to Frenet limits: %s/%s;" %
                                        (state.ego_state.timestamp_in_sec, T_s, planning_horizon,
+                                        np.max(np.min(ftrajectories[:, :, FS_SV], axis=1)),
                                         NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                         np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                         reference_route.s_limits,
-                                        np.max(np.min(ftrajectories[:, :, FS_SV], axis=1)),
                                         len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise CartesianLimitsViolated("Cartesian Limits Violation - No valid trajectories. "
+            lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+            raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
                                           "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
@@ -244,6 +246,10 @@ class WerlingPlanner(TrajectoryPlanner):
         if not np.all(is_init_vels_consistent) or not np.all(is_init_lon_accs_consistent):
             self._logger.warning("Some resulting Werling trajectories don't meet constraints")
 
+        target_vels = ftrajectories[:, :, FS_SV]
+        is_target_vels_close_to_zero = np.isclose(target_vels, 0.0, atol=1e-5, rtol=0)
+        ftrajectories[is_target_vels_close_to_zero, FS_SV] = EPS
+
         return ftrajectories
 
     @staticmethod
@@ -281,7 +287,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
         conforms = np.all(
             NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
-            np.greater_equal(ftrajectories[:, :, FS_SV], VELOCITY_LIMITS[LIMIT_MIN] - 1e-3), axis=1)
+            np.greater_equal(ftrajectories[:, :, FS_SV], VELOCITY_LIMITS[LIMIT_MIN]), axis=1)
 
         return np.argwhere(conforms).flatten()
 
