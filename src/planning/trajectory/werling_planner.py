@@ -101,7 +101,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                                               fconstraints_tT,
                                                                                               T_s, T_d_grid, self.dt)
 
-            ftrajectories = self._correct_velocity_values(deviated_ftrajectories)
+            ftrajectories = WerlingPlanner._correct_velocity_values(deviated_ftrajectories)
 
             terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
             terminal_s = fconstraints_tT.get_grid_s()
@@ -225,7 +225,8 @@ class WerlingPlanner(TrajectoryPlanner):
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
 
-    def _correct_velocity_values(self, ftrajectories: FrenetTrajectories2D) -> \
+    @staticmethod
+    def _correct_velocity_values(ftrajectories: FrenetTrajectories2D) -> \
             FrenetTrajectories2D:
         """
         Velocity values of werling trajectories can be received with minor numerical deviations.
