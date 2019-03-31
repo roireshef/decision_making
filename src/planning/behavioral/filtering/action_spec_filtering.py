@@ -42,7 +42,7 @@ class ActionSpecFiltering:
         """
         mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
         for action_spec_filter in self._filters:
-            if ~np.all(mask):
+            if ~np.any(mask):
                 break
 
             # list of only valid action specs
