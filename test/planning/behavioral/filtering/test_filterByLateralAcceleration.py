@@ -40,7 +40,8 @@ def test_filter_FollowLaneFilterActionsWithTooHighLateralAcceleration_FilteredAc
                                              FilterForKinematics(),
                                              FilterByLateralAcceleration('predicates')], logger=logger)
 
-    #action_specs = action_specs[45:47]
+    action_specs = action_specs[46:47]
     mask = filtering.filter_action_specs(action_specs, behavioral_state)
     expected_mask = [False if spec is None else spec.v < 30 for spec in action_specs]
+    expected_mask = expected_mask[46:47]
     assert mask == expected_mask

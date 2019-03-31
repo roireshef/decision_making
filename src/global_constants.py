@@ -28,7 +28,7 @@ REFERENCE_ROUTE_MARGINS = PLANNING_LOOKAHEAD_DIST
 PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
 # [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 400
+MAX_HORIZON_DISTANCE = 600
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0

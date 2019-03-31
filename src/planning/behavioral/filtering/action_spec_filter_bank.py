@@ -184,7 +184,10 @@ class FilterForKinematics(ActionSpecFilter):
             frenet_frame = behavioral_state.extended_lane_frames[lane]
             total_time = max(BP_ACTION_T_LIMITS[LIMIT_MIN], t)
 
-            samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
+            # TODO: How to use this without the total_time? cut with total_time?
+            samplable_trajectory = SamplableWerlingTrajectory(0, t, t, frenet_frame, poly_s, poly_d)
+
+            # A Cartesian-Frame trajectory: a numpy matrix of CartesianExtendedState [:, [C_X, C_Y, C_YAW, C_V, C_A, C_K]]
             samples = samplable_trajectory.sample(time_samples)
 
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(samples[np.newaxis, ...],
