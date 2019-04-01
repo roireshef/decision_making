@@ -101,8 +101,8 @@ class DmInitialization:
         value_approximator = ZeroValueApproximator(logger)
 
         # TODO: Change the 'predicate dir arg in FilterLateralAcceleration()
-        action_spec_filtering = ActionSpecFiltering(filters=[FilterForKinematics(), FilterByLateralAcceleration('predicates'),
-                                                             FilterIfNone()], logger=logger)
+        action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone(),FilterForKinematics(),
+                                                             FilterByLateralAcceleration('predicates')], logger=logger)
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)
 
