@@ -119,13 +119,6 @@ class TrajectoryPlanningFacade(DmModule):
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
                      minimal_required_horizon, params.bp_time, params.cost_params)
 
-            if self._last_trajectory is not None and samplable_trajectory is not None:
-                self.logger.debug('Previous SamplableTrajectory : %s.', self._last_trajectory.__dict__)
-                self.logger.debug('Current SamplableTrajectory : %s.', samplable_trajectory.__dict__)
-                self.logger.debug('time: %.3f,d_T: %.3f,d_time: %.3f', state.ego_state.timestamp_in_sec,
-                                  self._last_trajectory.T-samplable_trajectory.T,
-                                  samplable_trajectory.timestamp_in_sec - self._last_trajectory.timestamp_in_sec)
-
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
 
