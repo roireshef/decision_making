@@ -52,6 +52,11 @@ class FilterForKinematics(ActionSpecFilter):
 
         are_valid = []
         for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
+            # TODO: in the future, consider leaving only a single action (for better "learnability")
+            if spec.in_track_mode:
+                are_valid.append(True)
+                continue
+
             # extract the relevant (cached) frenet frame per action according to the destination lane
             frenet_frame = behavioral_state.extended_lane_frames[lane]
 
@@ -125,8 +130,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             # minimal margin used in addition to headway (center-to-center of both objects)
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                                                behavioral_state.ego_state.size.length / 2 + \
-                                                target.dynamic_object.size.length / 2
+                     behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))

@@ -1,7 +1,11 @@
 import numpy as np
+from logging import Logger
+from sklearn.utils.extmath import cartesian
+from typing import Optional, List, Type
+
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
@@ -12,9 +16,6 @@ from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, FS_SA, F
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from logging import Logger
-from sklearn.utils.extmath import cartesian
-from typing import Optional, List, Type
 
 
 class DynamicActionSpace(ActionSpace):
