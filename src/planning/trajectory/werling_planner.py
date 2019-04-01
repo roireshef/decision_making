@@ -248,7 +248,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :return:Corrected trajectories in frenet frame
         """
         traj_velocities = ftrajectories[:, :, FS_SV]
-        is_velocities_close_to_zero = np.isclose(traj_velocities, 0.0, atol=1e-5, rtol=0)
+        is_velocities_close_to_zero = np.isclose(traj_velocities, 0.0, atol=1e-4, rtol=0)
         ftrajectories[is_velocities_close_to_zero, FS_SV] = 0.0
 
         return ftrajectories

@@ -123,7 +123,6 @@ class CostBasedBehavioralPlanner:
 
         minimal_required_time = BP_ACTION_T_LIMITS[LIMIT_MIN] + ego.timestamp_in_sec
 
-        # TODO: add a parameter for the total planning time (including TP padding instead/in addition to bp_time)
         # create TrajectoryParams for TP
         trajectory_parameters = TrajectoryParams(reference_route=action_frame,
                                                  time=action_spec.t + ego.timestamp_in_sec,
