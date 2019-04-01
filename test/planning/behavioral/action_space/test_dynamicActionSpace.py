@@ -1,5 +1,4 @@
 import numpy as np
-from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, \
 from decision_making.src.global_constants import SPECIFICATION_HEADWAY, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace

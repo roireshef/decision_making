@@ -180,6 +180,31 @@ def state_with_objects_for_filtering_too_aggressive():
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
+@pytest.fixture(scope='function')
+def state_before_curvature_ovalmilford():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_ovalmilford())
+
+    road_segment_ids = MapUtils.get_road_segment_ids()
+    road_segment_id = road_segment_ids[0]
+
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    # Ego state
+    ego_lane_lon = 140# take a point before curvature
+    ego_vel = 30 # high speed
+    ego_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+
+    dynamic_objects: List[DynamicObject] = list()
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
 
 @pytest.fixture(scope='function')
 def state_without_objects_ovalmilford():
@@ -209,8 +234,8 @@ def state_without_objects_ovalmilford():
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state(state_with_sorrounding_objects: State):
-    yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
+def behavioral_grid_state():
+    yield BehavioralGridState.create_from_state(next(state_with_sorrounding_objects()),
                                                 NAVIGATION_PLAN, None)
 
 

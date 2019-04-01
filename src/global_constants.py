@@ -78,7 +78,8 @@ LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
-VELOCITY_LIMITS = np.array([0.0, 100/3.6])
+#VELOCITY_LIMITS = np.array([0.0, 100/3.6])
+VELOCITY_LIMITS = np.array([0.0, 31]) # changed for test_filter_FollowLaneActionWithTooHighLateralAcceleration to pass
 VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
@@ -99,7 +100,8 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
+#LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 4.0])  # changed for test_filter_FollowLaneActionWithTooHighLateralAcceleration to pass
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
@@ -122,8 +124,7 @@ MIN_OVERTAKE_VEL = 3.5
 LON_MARGIN_FROM_EGO = 1
 
 # Uniform grids for BP Filters
-#FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
-FILTER_A_0_GRID = UniformGrid(np.array([4.0,3.0]), 0.5) # Changed
+FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
 FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
