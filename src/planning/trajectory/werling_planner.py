@@ -39,7 +39,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState,
              time_horizon: float, minimal_required_horizon: float,
              bp_time: int, cost_params: TrajectoryCostParams) -> Tuple[
-                SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+             SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
@@ -99,11 +99,9 @@ class WerlingPlanner(TrajectoryPlanner):
         if is_target_ahead:
 
             # solve problem in frenet-frame
-            deviated_ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
+            ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
                                                                                               fconstraints_tT,
                                                                                               T_s, T_d_grid, self.dt)
-
-            ftrajectories = WerlingPlanner._correct_velocity_values(deviated_ftrajectories)
 
             terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
             terminal_s = fconstraints_tT.get_grid_s()
@@ -121,7 +119,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
             # TODO: those test do not test the padding at the end of trajectory.
             lon_frenet_filter_results = KinematicUtils.filter_by_longitudinal_frenet_limits(
-                poly_coefs[:, :D5], np.full(len(poly_coefs),T_s), cost_params.lon_acceleration_limits,
+                poly_coefs[:, :D5], np.full(len(poly_coefs), T_s), cost_params.lon_acceleration_limits,
                 cost_params.velocity_limits, reference_route.s_limits)
             lon_frenet_filtered_indices = np.argwhere(lon_frenet_filter_results).flatten()
         else:
@@ -135,6 +133,8 @@ class WerlingPlanner(TrajectoryPlanner):
             T_d_vals = np.array([0])
             lat_frenet_filtered_indices = np.array([0])
             lon_frenet_filtered_indices = np.array([0])
+
+        ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories)
 
         frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
 
@@ -168,15 +168,13 @@ class WerlingPlanner(TrajectoryPlanner):
                                        "Highest min frenet velocity: %s, "
                                        "goal: %s, "
                                        "state: %s. Longitudes range: [%s, %s] (limits: %s)"
-                                       "number of trajectories passed according to Frenet limits: %s/%s; "
-                                       "passed lon limits: %d, passed lat limits: %d" %
+                                       "number of trajectories passed according to Frenet limits: %s/%s;" %
                                        (state.ego_state.timestamp_in_sec, T_s, planning_horizon,
                                         np.max(np.min(ftrajectories[:, :, FS_SV], axis=1)),
                                         NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                         np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                         reference_route.s_limits,
-                                        len(frenet_filtered_indices), len(ftrajectories),
-                                        len(lon_frenet_filtered_indices), len(lat_frenet_filtered_indices)))
+                                        len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
@@ -254,7 +252,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :return:Corrected trajectories in frenet frame
         """
         traj_velocities = ftrajectories[:, :, FS_SV]
-        is_velocities_close_to_zero = np.isclose(traj_velocities, 0.0, atol=1e-5, rtol=0)
+        is_velocities_close_to_zero = np.isclose(traj_velocities, 0.0, atol=1e-4, rtol=0)
         ftrajectories[is_velocities_close_to_zero, FS_SV] = 0.0
 
         return ftrajectories
