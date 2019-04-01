@@ -5,6 +5,7 @@ from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from rte.python.logger.AV_logger import AV_Logger
 
 
 class KinematicUtils:
@@ -67,11 +68,18 @@ class KinematicUtils:
         in the frenet frame used for planning
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
+
+        acceleration_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits)\
+            .all(axis=-1)
+        velocities_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) \
+            .all(axis=-1)
+        derivatives_limits = QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits) \
+            .all(axis=-1)
+
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
-        conforms = np.all(
-            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) &
-            QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) &
-            QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits), axis=-1)
+        conforms = acceleration_limits & velocities_limits & derivatives_limits
+        AV_Logger.get_logger().error(
+            f' *****acceleration_limits:{acceleration_limits}, velocites_limits: {velocities_limits}, derivatives_limits: {derivatives_limits}')
 
         return conforms
 

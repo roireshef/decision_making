@@ -65,6 +65,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+        self.logger.error(f' ***** bp filteration passed: {np.sum(action_specs_mask)}')
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
@@ -99,7 +100,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 
-        self.logger.debug('Number of actions originally: %d, valid: %d',
+        self.logger.error('**********   Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
                                                                          recipes_mask, nav_plan)
