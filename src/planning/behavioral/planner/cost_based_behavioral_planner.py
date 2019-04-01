@@ -123,7 +123,6 @@ class CostBasedBehavioralPlanner:
 
         minimal_required_time = BP_ACTION_T_LIMITS[LIMIT_MIN] + ego.timestamp_in_sec
 
-        # TODO: add a parameter for the total planning time (including TP padding instead/in addition to bp_time)
         # create TrajectoryParams for TP
         trajectory_parameters = TrajectoryParams(reference_route=action_frame,
                                                  time=action_spec.t + ego.timestamp_in_sec,
@@ -219,7 +218,6 @@ class CostBasedBehavioralPlanner:
                                                     offset=GOAL_SIGMOID_OFFSET)
         dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_LON_RATIO
 
-        # TODO: remove hack in velocity limits!
         cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x,
                                            obstacle_cost_y=objects_cost_y,
                                            left_lane_cost=left_lane_cost,

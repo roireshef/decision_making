@@ -14,7 +14,7 @@ class WerlingTrajectoryGenerator(TrajectoryGenerator):
     def generate_trajectory(self, timestamp_in_sec: float, frenet_frame: FrenetSerret2DFrame,
                             predicted_maneuver_spec: ManeuverSpec) -> SamplableWerlingTrajectory:
         """
-        Generate a trajectory in Frenet coordiantes, according to object's Frenet frame
+        Generate a trajectory in Frenet coordinates, according to object's Frenet frame
         :param timestamp_in_sec: [sec] global timestamp *in seconds* to use as a reference
                 (other timestamps will be given relative to it)
         :param frenet_frame: Frenet reference frame of object
