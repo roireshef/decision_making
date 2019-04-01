@@ -97,11 +97,9 @@ class WerlingPlanner(TrajectoryPlanner):
         if is_target_ahead:
 
             # solve problem in frenet-frame
-            deviated_ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
+            ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
                                                                                               fconstraints_tT,
                                                                                               T_s, T_d_grid, self.dt)
-
-            ftrajectories = WerlingPlanner._correct_velocity_values(deviated_ftrajectories)
 
             terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
             terminal_s = fconstraints_tT.get_grid_s()
@@ -124,6 +122,8 @@ class WerlingPlanner(TrajectoryPlanner):
             # meaning no lateral motion is carried out.
             T_d_vals = np.array([0])
             lat_frenet_filtered_indices = np.array([0])
+
+        ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories)
 
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
         lon_frenet_filtered_indices = self._filter_by_longitudinal_frenet_limits(ftrajectories,
