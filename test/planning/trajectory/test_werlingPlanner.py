@@ -28,14 +28,14 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 from mapping.test.model.map_model_utils import TestMapModelUtils
 from rte.python.logger.AV_logger import AV_Logger
 
-mock_td_steps = 5
 
-
-# @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-# @patch('decision_making.test.planning.trajectory.test_werlingPlanner.TD_STEPS', mock_td_steps)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.TD_STEPS', mock_td_steps)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.SX_STEPS', 5)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.TD_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MIN', -8)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MAX', 0)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MIN', -1.6)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MAX', 1.6)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
@@ -89,8 +89,6 @@ def test_werlingPlanner_toyScenario_noException():
                                        lat_acceleration_limits=LAT_ACC_LIMITS)
 
     planner = WerlingPlanner(logger, predictor)
-
-    start_time = time.time()
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route, goal=goal,
                                                    time_horizon=Ts, minimal_required_horizon=Ts, bp_time=0, cost_params=cost_params)

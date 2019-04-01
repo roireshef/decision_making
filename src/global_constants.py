@@ -104,17 +104,14 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
-# Assumed response delay on road [sec]
-# Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 2
 
 # Headway [sec] from a leading vehicle, used for specification target (1) and safety checks (2)
 SPECIFICATION_HEADWAY = 1.5
 #SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-end)
 SAFETY_HEADWAY = 1.0  # Should correspond to assumed delay in response (end-to-end)
 
-# Additional margin to keep from leading vehicle, in addition to the headway, used for specification target (1)
-# and safety checks(2)
+# Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
+# safety checks accordingly
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 

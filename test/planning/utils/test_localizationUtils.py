@@ -7,7 +7,6 @@ from decision_making.src.state.state import ObjectSize, EgoState
 
 
 def test_localizationUtils_transformEgoFromOriginToCenter():
-
     ego_pos = np.array([3, 4, 0])
     ego_yaw = np.pi/2
     ego_size = ObjectSize(5, 2, 2)
