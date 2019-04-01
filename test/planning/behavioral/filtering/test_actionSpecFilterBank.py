@@ -4,13 +4,11 @@ from unittest.mock import patch
 
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, \
     FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory, \
-    FilterIfNone as FilterRecipeIfNone
+from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as FilterRecipeIfNone
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
@@ -50,7 +48,6 @@ def test_filter_closeToTrackingMode_allActionsAreValid(
     # only look at the same lane, front cell actions
     actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
 
-    # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
     expected_filter_results = np.array([True, True, True], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
 
@@ -80,7 +77,6 @@ def test_filter_closeToTrackingMode_allActionsAreValid(
 def test_filter_trackingMode_allActionsAreValid(
         behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
-    """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx """
 
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)
@@ -90,7 +86,6 @@ def test_filter_trackingMode_allActionsAreValid(
     # only look at the same lane, front cell actions
     actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
 
-    # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
     expected_filter_results = np.array([True, True, True], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
 
@@ -120,15 +115,17 @@ def test_filter_trackingMode_allActionsAreValid(
 def test_filter_staticActionsWithLeadingVehicle_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode,
         follow_lane_recipes: List[StaticActionRecipe]):
+    """
+    # actions [0, 1, 3, 9, 12, 13, 15, 16] are None after specify
+    # actions [6-17] are static, aiming to higher velocity - which hits the front vehicle
+    # action 8 can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
+    """
 
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)
 
     filtering = RecipeFiltering(filters=[], logger=logger)
 
-    # actions [0, 1, 3, 9, 12, 13, 15, 16] are None after specify
-    # actions [6-17] are static, aiming to higher velocity - which hits the front vehicle
-    # action 8 can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
     expected_filter_results = np.array([False, False, True, False, True, True, False, False, True,
                                         False, False, False, False, False, False, False, False, False], dtype=bool)
     static_action_space = StaticActionSpace(logger, filtering=filtering)
@@ -160,8 +157,12 @@ def test_filter_staticActionsWithLeadingVehicle_filterResultsMatchExpected(
 def test_filter_aggressiveFollowScenario_allActionsAreInvalid(
         behavioral_grid_state_with_objects_for_filtering_too_aggressive,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
-    """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx """
-
+    """
+    State leads to a0=0,v0=10,sT=53.5,vT=30
+    Results are false because this following scenario is too aggressive (close a gap of 20[m/s] to a target vehicle ~50[m] from us)
+    calm and standard actions take too much time and aggressive violates velocity and acceleration
+    All ground truths checked with desmos - https://www.desmos.com/calculator/exizg3iuhs
+    """
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)
 
@@ -169,11 +170,7 @@ def test_filter_aggressiveFollowScenario_allActionsAreInvalid(
 
     actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
 
-    # State leads to a0=0,v0=10,sT=53.5,vT=30
-    # First three and last three are false because they're recipes of non-occupied cells
-    # three middle results are false because this following scenario is too aggressive (close a gap of 20[m/s] to a target vehicle ~50[m] from us)
-    # calm and standard actions take too much time and aggressive violates velocity and acceleration
-    # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
+
     expected_filter_results = np.array([False, False, False], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
 
