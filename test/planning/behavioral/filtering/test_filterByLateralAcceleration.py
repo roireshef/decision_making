@@ -12,7 +12,8 @@ import time
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, StaticActionRecipe
+from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, StaticActionRecipe, ActionSpec, \
+    RelativeLane, AggressivenessLevel
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import all_follow_lane_recipes
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -23,6 +24,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import s
 from decision_making.test.messages.static_scene_fixture import scene_static_ovalmilford
 
 
+# TODO: create a better test
 def test_filter_FollowLaneFilterActionsWithTooHighLateralAcceleration_FilteredAccordingly(
         scene_static_ovalmilford,
         state_before_curvature_ovalmilford,
@@ -33,12 +35,12 @@ def test_filter_FollowLaneFilterActionsWithTooHighLateralAcceleration_FilteredAc
 
     behavioral_state = BehavioralGridState.create_from_state(state_before_curvature_ovalmilford, MILFORD_NAVIGATION_PLAN, logger)
 
-    static_action_space = StaticActionSpace(logger, filtering=DEFAULT_STATIC_RECIPE_FILTERING)
-    action_specs = static_action_space.specify_goals(all_follow_lane_recipes, behavioral_state)
+    # High Curvature is located around s=300
+    action_specs = [ActionSpec(10, 10, 110, 0, StaticActionRecipe(RelativeLane.SAME_LANE, 10, AggressivenessLevel.CALM)),
+                    ActionSpec(10, 34, 300, 0, StaticActionRecipe(RelativeLane.SAME_LANE, 34, AggressivenessLevel.CALM))]
 
     filtering = ActionSpecFiltering(filters=[FilterIfNone(),
                                              FilterByLateralAcceleration('predicates')], logger=logger)
-    #action_specs = action_specs[44:45]
     mask = filtering.filter_action_specs(action_specs, behavioral_state)
-    expected_mask = [False if spec is None else spec.v < 30 for spec in action_specs]
+    expected_mask = [True, False]
     assert mask == expected_mask

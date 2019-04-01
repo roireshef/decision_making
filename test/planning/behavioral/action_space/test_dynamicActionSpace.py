@@ -8,9 +8,11 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state
 from rte.python.logger.AV_logger import AV_Logger
 from typing import List
+
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
+    follow_vehicle_recipes_towards_front_cells, state_with_sorrounding_objects
 
 
 # Specifies follow actions for front vehicles in 3 lanes. longitudinal and lateral coordinates
