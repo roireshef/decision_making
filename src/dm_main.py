@@ -37,7 +37,7 @@ from decision_making.src.state.state_module import StateModule
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
-
+from rte.python.parser import av_argument_parser
 # TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
                                               51360, 228028, 87622, 228007, 87660, 87744, 9893,
@@ -132,6 +132,7 @@ class DmInitialization:
 
 
 def main():
+    av_argument_parser.parse_arguments()
     # register termination signal handler
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (DM main) registered signal handler', getpid())
