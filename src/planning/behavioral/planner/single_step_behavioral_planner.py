@@ -121,4 +121,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
                           selected_action_spec, state.ego_state.timestamp_in_sec)
 
+        self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
+                          % (behavioral_state.ego_state.timestamp_in_sec,
+                             action_recipes[selected_action_index],
+                             selected_action_spec.t))
+
         return trajectory_parameters, baseline_trajectory, visualization_message
