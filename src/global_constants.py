@@ -175,7 +175,7 @@ MAX_TRAJECTORY_WAYPOINTS = 100
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -8, 0
+SX_OFFSET_MIN, SX_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (long. velocity)
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
