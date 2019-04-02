@@ -20,17 +20,19 @@ class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0, T:float = np.inf):
         """
-
-        :param fixed_trajectory:
-        :param timestamp_in_sec:
-        :param T:
+        This class holds a CartesianExtendedTrajectory object with the 'timestamp_in_sec' member as its initial
+        timestamp and T as the total horizon. It samples from the Trajectory object upon request by returning the
+        closest point in time on the discrete trajectory.
+        :param fixed_trajectory: a CartesianExtendedTrajectory object
+        :param timestamp_in_sec: Initial timestamp [s]
+        :param T: Trajectory time horizon [s] ("length")
         """
         super().__init__(timestamp_in_sec, T)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
-        This function takes an array of time stamps and returns aCartesianExtendedTrajectory.
+        This function takes an array of timestamps and returns a CartesianExtendedTrajectory.
         Note: Since the trajectory is not actually samplable - the closest time points on the trajectory are returned.
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory
