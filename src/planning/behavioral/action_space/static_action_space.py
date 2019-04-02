@@ -70,18 +70,15 @@ class StaticActionSpace(ActionSpace):
         # intersecting in T=0.
         T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
 
-        # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
-        # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
-        # # when setting T
-        # with np.errstate(invalid='ignore'):
-        #     T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
-
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0,
             dx=-projected_ego_fstates[:, FS_DX], T_m=0)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
+
+        print('tracking mode: %s; T_s[3]=%s, T_s[6]=%s, T_d=%s' %
+              (QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0).any(), T_s[3], T_s[6], T_d[0]))
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)

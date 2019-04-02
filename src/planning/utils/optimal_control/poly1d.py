@@ -218,7 +218,7 @@ class QuarticPoly1D(Poly1D):
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.isclose(v_0, v_T, atol=1e-3, rtol=0) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(
+        return np.isclose(v_0, v_T, atol=1e-2, rtol=0) if np.isclose(a_0, 0.0, atol=1e-2, rtol=0) else np.full(
             v_T.shape, False)
 
     @staticmethod

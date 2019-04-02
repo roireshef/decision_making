@@ -1,3 +1,4 @@
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from logging import Logger
 from typing import List
 
@@ -51,6 +52,12 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                          if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
                                          and recipe.relative_lane == RelativeLane.SAME_LANE
                                          and recipe.velocity == maximal_allowed_velocity]
+
+        ego = behavioral_state.ego_state
+        ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
+        spec = action_specs[follow_lane_valid_action_idxs[0]]
+        print('BP time %.3f: ego_fstate: %s; spec: %s' %
+              (ego.timestamp_in_sec, NumpyUtils.str_log(ego_fstate), spec.__dict__))
 
         costs[follow_lane_valid_action_idxs[0]] = 0  # choose the found static action
         return costs

@@ -24,7 +24,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
     @abstractmethod
     @raises(CartesianLimitsViolated, FrenetLimitsViolated)
     def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, time_horizon: float,
-             minimal_required_time_horizon: float, bp_time: int, cost_params: TrajectoryCostParams) -> \
+             minimal_required_time_horizon: float, cost_params: TrajectoryCostParams) -> \
             Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Plans a trajectory according to the specifications in the arguments
@@ -36,7 +36,6 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         state and time to be determined in the behavioral planner, so that any re-planning iteration is consistent
         in the TP.
         :param minimal_required_time_horizon: if time_horizon is shorter than this number, plan according to this horizon
-        :param bp_time: the timestamp of the state that BP planned on
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
         :return: a tuple of: (samplable representation of the chosen trajectory, tensor of trajectory alternatives,
          trajectories costs correspond to previous output)

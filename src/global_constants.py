@@ -119,7 +119,6 @@ FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use V
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
-
 # Trajectory Planner #
 
 # [m] length of reference trajectory provided by behavioral planner
@@ -161,7 +160,6 @@ DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 2
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference threshold
 
-# TODO: remove this (duplicate of WERLING_TIME_RESOLUTION)
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
 

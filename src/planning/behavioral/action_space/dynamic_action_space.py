@@ -1,4 +1,8 @@
 import numpy as np
+from logging import Logger
+from sklearn.utils.extmath import cartesian
+from typing import Optional, List, Type
+
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
@@ -12,9 +16,6 @@ from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, FS_SA, F
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from logging import Logger
-from sklearn.utils.extmath import cartesian
-from typing import Optional, List, Type
 
 
 class DynamicActionSpace(ActionSpace):
@@ -54,9 +55,6 @@ class DynamicActionSpace(ActionSpace):
         target_map_states = [target.dynamic_object.map_state for target in targets]
         # get desired terminal velocity
         v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in target_map_states])
-        v_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SV])
-        a_0 = np.full(shape=v_T.shape, fill_value=behavioral_state.ego_state.map_state.lane_fstate[FS_SA])
-        zeros = np.zeros(shape=v_T.shape)
 
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
@@ -72,7 +70,6 @@ class DynamicActionSpace(ActionSpace):
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
-
 
         # here we deduct from the distance to progres: half of lengths of host and target (so we can stay in center-host
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
