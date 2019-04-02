@@ -48,3 +48,10 @@ class FrenetConstraints:
         :return: numpy array of shape [n, 3] where n is the resulting number of constraints
         """
         return np.array(np.meshgrid(self._dx, self._dv, self._da)).T.reshape(-1, 3)
+
+    def get_grid(self) -> np.ndarray:
+        return NumpyUtils.cartesian_product_matrix_rows(self.get_grid_s(), self.get_grid_d())
+
+    def __len__(self):
+        return np.prod([len(np.array([self._sx]).flatten()), len(np.array([self._sv]).flatten()), len(np.array([self._sa]).flatten()),
+                       len(np.array([self._dx]).flatten()), len(np.array([self._dv]).flatten()), len(np.array([self._da]).flatten())])

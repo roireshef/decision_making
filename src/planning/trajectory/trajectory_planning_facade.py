@@ -86,14 +86,14 @@ class TrajectoryPlanningFacade(DmModule):
             params = self._get_mission_params()
 
             # Longitudinal planning horizon (Ts)
-            lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
-            minimal_required_horizon = params.minimal_required_time - state.ego_state.timestamp_in_sec
+            T = params.time - state.ego_state.timestamp_in_sec
+            T_required_horizon = params.minimal_required_time - state.ego_state.timestamp_in_sec
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
             self.logger.debug("input: ego: velocity: %s", state.ego_state.velocity)
-            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
+            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", T)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
@@ -112,8 +112,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     minimal_required_horizon, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, T,
+                     T_required_horizon, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
@@ -124,7 +124,7 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: handle viz for fixed trajectories
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, ctrajectories, max(lon_plan_horizon, minimal_required_horizon),
+                state, ctrajectories, max(T, T_required_horizon),
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
