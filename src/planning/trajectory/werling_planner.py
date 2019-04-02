@@ -105,13 +105,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                                  time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
         else:
-            predicted_fconstraints_tT = self.predictor.predict_2d_frenet_states(fconstraints_tT.get_grid(), np.array([-T]))[0]
-            ftrajectories = self.predictor.predict_2d_frenet_states(predicted_fconstraints_tT,
-                                                                    np.arange(0, planning_horizon + EPS, self.dt))
-
-
-            
-        # frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
+            ftrajectories = self.predictor.predict_2d_frenet_states(ego_frenet_state,
+                                                                np.arange(0, planning_horizon + EPS, self.dt))
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
