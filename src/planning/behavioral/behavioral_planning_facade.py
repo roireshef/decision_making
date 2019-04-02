@@ -203,7 +203,6 @@ class BehavioralPlanningFacade(DmModule):
 
         #find length of the lane segment
         ego_lane_length = MapUtils.get_lane_length(ego_lane_segment_id)
-
         dist_to_end = ego_lane_length - ego_station
 
         if  dist_to_end < 0 :
