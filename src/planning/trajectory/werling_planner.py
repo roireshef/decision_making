@@ -102,7 +102,7 @@ class WerlingPlanner(TrajectoryPlanner):
             N = len(fconstraints_t0) * len(fconstraints_tT)
             lat_frenet_filtered_indices = np.arange(N)
             lon_frenet_filtered_indices = np.arange(N)
-            ftrajectories = self._correct_boundary_values(ftrajectories_optimization, ego_frenet_state)
+            ftrajectories = self._correct_boundary_values(ftrajectories_optimization)
         else:
             N = len(fconstraints_t0) * len(fconstraints_tT)
             ftrajectories = np.empty((N, 0, 6))
