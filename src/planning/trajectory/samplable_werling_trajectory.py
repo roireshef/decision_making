@@ -2,7 +2,8 @@ import numpy as np
 
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
-from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D, FS_1D_LEN
+from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D, FS_1D_LEN, \
+    FrenetTrajectory1D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
@@ -72,6 +73,20 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
             'self.total_trajectory_time=%f, max(relative_time_points)=%f' % (self.T_extended, max(relative_time_points))
 
         # Handle the longitudinal(s) axis
+        fstates_s = self._sample_lon_frenet(relative_time_points)
+        # Now handle the lateral(d) axis:
+        fstates_d = self._sample_lat_frenet(relative_time_points)
+
+        # Return trajectory in Frenet coordinates
+        return np.hstack((fstates_s, fstates_d))
+
+    def _sample_lon_frenet(self, relative_time_points: np.array) -> FrenetTrajectory1D:
+        """
+        Samples the appropriate longitudinal frenet states from the longitudinal polynomial w.r.t to the given
+        relative time points
+        :param relative_time_points: time points relative to the trajectory timestamp itself [s]
+        :return:
+        """
 
         in_traj_time_points = relative_time_points[relative_time_points <= self.T_s]
         extrapolated_time_points = relative_time_points[np.logical_and(relative_time_points > self.T_s,
@@ -81,20 +96,31 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         if len(in_traj_time_points) > 0:  # time points are part of the real polynomial part of the trajectory
             # assign values from <time_points> in s-axis polynomial
-            in_traj_fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), in_traj_time_points)[0]
+            in_traj_fstates_s = \
+            QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), in_traj_time_points)[0]
             fstates_s = np.vstack((fstates_s, in_traj_fstates_s))
 
         if len(extrapolated_time_points) > 0:
             # time points will trigger extrapolating the last sampled point from the polynomial using a constant
             # velocity predictor
             road_following_predictor = RoadFollowingPredictor(None)
-            fstate_in_T_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), np.array([self.T_s]))[0]
-            extrapolated_fstates_s = road_following_predictor.predict_1d_frenet_states(fstate_in_T_s, extrapolated_time_points - self.T_s)[0]
+            fstate_in_T_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), np.array([self.T_s]))[
+                0]
+            extrapolated_fstates_s = \
+            road_following_predictor.predict_1d_frenet_states(fstate_in_T_s, extrapolated_time_points - self.T_s)[0]
             fstates_s = np.vstack((fstates_s, extrapolated_fstates_s))
 
-        # Now handle the lateral(d) axis:
+        return fstates_s
 
-        fstates_d = np.empty(shape=np.append(time_points.shape, 3))
+    def _sample_lat_frenet(self, relative_time_points: np.array) -> FrenetTrajectory1D:
+        """
+        Samples the appropriate lateral frenet states from the lateral polynomial w.r.t to the given
+        relative time points
+        :param relative_time_points: time points relative to the trajectory timestamp itself [s]
+        :return:
+        """
+
+        fstates_d = np.empty(shape=np.append(relative_time_points.shape, 3))
 
         is_within_horizon_d = relative_time_points <= self.T_d
 
@@ -114,5 +140,4 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         fstates_d[np.logical_not(is_within_horizon_d)] = extrapolation_state_d
 
-        # Return trajectory in Frenet coordinates
-        return np.hstack((fstates_s, fstates_d))
+        return fstates_d
