@@ -126,7 +126,10 @@ class TrajectoryPlannerCosts:
 
         # Ego-center coordinates are projected onto the objects' reference frames [M, N, T, 2]
         # with M ego-trajectories, N objects, T timestamps.
-        ego_centers_in_objs_frame = np.einsum('mti, ntji -> mntj', ego_points_ext, objects_H_inv_transposed_trimmed)
+        try:
+            ego_centers_in_objs_frame = np.einsum('mti, ntji -> mntj', ego_points_ext, objects_H_inv_transposed_trimmed)
+        except Exception as e:
+            print(e)
 
         # deduct ego and objects' half-sizes on both dimensions (to reflect objects' boundaries and not center-point)
         distances_from_ego_boundaries = np.abs(ego_centers_in_objs_frame) - 0.5 * (objects_sizes[:, np.newaxis] + ego_size)

@@ -6,10 +6,8 @@ from abc import ABCMeta, abstractmethod
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from logging import Logger
-from rte.python.logger.AV_logger import AV_Logger
 from typing import List, Optional
 from itertools import compress
-
 
 @six.add_metaclass(ABCMeta)
 class ActionSpecFilter:
@@ -18,7 +16,6 @@ class ActionSpecFilter:
     whether the ActionSpec satisfies the constraint in the filter. All filters have to get as input ActionSpec
     (or one of its children) and  BehavioralGridState (or one of its children) even if they don't actually use them.
     """
-
     @abstractmethod
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         pass
@@ -65,3 +62,4 @@ class ActionSpecFiltering:
         :return: A boolean , True where the action_spec is valid and false where it is filtered
         """
         return self.filter_action_specs([action_spec], behavioral_state)[0]
+

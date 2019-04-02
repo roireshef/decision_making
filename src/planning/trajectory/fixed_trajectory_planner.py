@@ -35,7 +35,7 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         # Make sure no unplanned extrapolation will occur due to overreaching time points
         # This check is done in relative-to-ego units
         assert max(relative_time_points) <= self.T + EPS, \
-            'In timestamp %f : self.T=%f <= max(relative_time_points)=%f' % \
+            'In timestamp %f : self.total_trajectory_time=%f <= max(relative_time_points)=%f' % \
             (self.timestamp_in_sec, self.T, max(relative_time_points))
 
         indices_of_closest_time_points = np.round(relative_time_points / WERLING_TIME_RESOLUTION).astype(int)
@@ -68,12 +68,12 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._sleep_mean = sleep_mean
 
     @raises(NotTriggeredException)
-    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
+    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, T: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
         that advances incrementally on fixed_trajectory by step size. Otherwise raise NotTriggeredException
-        :param time_horizon: the length of the trajectory snippet (seconds)
+        :param T: the length of the trajectory snippet (seconds)
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored

@@ -79,7 +79,7 @@ BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 VELOCITY_LIMITS = np.array([0.0, 100/3.6])
-VELOCITY_STEP = 5/3.6
+VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
 BP_ACTION_T_LIMITS = np.array([2.0, 15.0])
@@ -100,14 +100,13 @@ LAT_ACC_LIMITS = np.array([-1.0, 1.0])
 # Making the BP filter tighter
 STRICT_BP_FILTER_COEFFICIENT = 0.90
 
-# Headway [sec] from a leading vehicle, used for specification target (1) and safety checks (2)
-SPECIFICATION_HEADWAY = 1.5
-SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-end)
+# Assumed response delay on road [sec]
+# Used to compute safe distance from other agents on road
+SPECIFICATION_MARGIN_TIME_DELAY = 1.5
+SAFETY_MARGIN_TIME_DELAY = 0.7
 
-# Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
-# safety checks accordingly
-LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
@@ -255,7 +254,7 @@ RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 
 
 #### MetricLogger
-METRIC_LOGGER_DELIMITER= '_'
+METRIC_LOGGER_DELIMITER = '_'
 
 ##### Log messages
 # TODO: update decision_making_sim messages

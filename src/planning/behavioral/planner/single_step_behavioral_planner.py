@@ -98,6 +98,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+
+        self.logger.debug('Number of actions originally: %d, valid: %d',
+                          self.action_space.action_space_size, np.sum(recipes_mask))
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
                                                                          recipes_mask, nav_plan)
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(

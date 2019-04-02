@@ -1,7 +1,6 @@
 import time
 
 import numpy as np
-import rte.python.profiler as prof
 import traceback
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
@@ -58,10 +57,12 @@ class TrajectoryPlanningFacade(DmModule):
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, None)
         self.pubsub.subscribe(UC_SYSTEM_STATE_LCM, None)
+        # self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
         self.pubsub.unsubscribe(UC_SYSTEM_STATE_LCM)
+        # self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _periodic_action_impl(self):
         """
@@ -72,19 +73,22 @@ class TrajectoryPlanningFacade(DmModule):
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
+            # scene_static = self._get_current_scene_static()
+            # SceneStaticModel.get_instance().set_scene_static(scene_static)
+
             state = self._get_current_state()
 
             params = self._get_mission_params()
 
             # Longitudinal planning horizon (Ts)
-            lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
-            minimal_required_horizon = params.minimal_required_time - state.ego_state.timestamp_in_sec
+            T = params.time - state.ego_state.timestamp_in_sec
+            T_required_horizon = params.minimal_required_time - state.ego_state.timestamp_in_sec
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
             self.logger.debug("input: ego: velocity: %s", state.ego_state.velocity)
-            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
+            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", T)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
@@ -127,8 +131,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     minimal_required_horizon, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, T,
+                     T_required_horizon, params.cost_params)
 
             if self._last_trajectory is not None and samplable_trajectory is not None:
                 self.logger.debug('Previous SamplableTrajectory : %s.', self._last_trajectory.__dict__)
@@ -146,7 +150,7 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: handle viz for fixed trajectories
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, ctrajectories, max(lon_plan_horizon, minimal_required_horizon),
+                state, ctrajectories, max(T, T_required_horizon),
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
@@ -236,6 +240,21 @@ class TrajectoryPlanningFacade(DmModule):
         state = State.deserialize(serialized_state)
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
         return state
+
+    def _get_current_scene_static(self) -> SceneStatic:
+        with prof.time_range('_get_current_scene_static.get_latest_sample'):
+            is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
+
+        # TODO Move the raising of the exception to pubsub code. Do the same in behavioral facade
+        if serialized_scene_static is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_SCENE_STATIC)
+        with prof.time_range('_get_current_scene_static.SceneStatic.deserialize'):
+            scene_static = SceneStatic.deserialize(serialized_scene_static)
+        if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
+            raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
+        self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
+        return scene_static
 
     def _get_mission_params(self) -> TrajectoryParams:
         """

@@ -139,13 +139,15 @@ class Poly1D:
         poly_der = Math.polyder2d(poly_coefs, m=degree+1)
         poly = Math.polyder2d(poly_coefs, m=degree)
 
-        # TODO: implement tests for those cases
+        # # untested explicitly, should work
         if poly_der.shape[-1] == 0:
             # No derivative - polynomial is constant
-            return NumpyUtils.is_in_limits(poly[:, 0], limits)
+            # return NumpyUtils.is_in_limits(poly[:, 0], limits)
+            raise NotImplementedError("are_derivatives_in_limits recieves a null (zero) derivative")
         elif poly_der.shape[-1] == 1:  # 1st order derivative is constant - Polynomial is a*x+b
             # No need to test for t=0 (assuming it's valid), only t=T
-            return NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits)
+            # return NumpyUtils.is_in_limits(np.polyval(poly, T_vals), limits)
+            raise NotImplementedError("are_derivatives_in_limits recieves a constant derivative")
 
         #  Find roots of jerk_poly (nan for complex or negative roots).
         acc_suspected_points = Math.find_real_roots_in_limits(poly_der, value_limits=np.array([0, np.inf]))
@@ -218,7 +220,7 @@ class QuarticPoly1D(Poly1D):
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.isclose(v_0, v_T, atol=1e-2, rtol=0) if np.isclose(a_0, 0.0, atol=1e-2, rtol=0) else np.full(
+        return np.isclose(v_0, v_T, atol=1e-3, rtol=0) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(
             v_T.shape, False)
 
     @staticmethod
@@ -369,8 +371,7 @@ class QuinticPoly1D(Poly1D):
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
-                              np.isclose(s_0, T_m*v_0, atol=1e-3, rtol=0)) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(v_T.shape, False)
+        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0), np.isclose(s_0, T_m*v_0, atol=1e-3, rtol=0)) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(v_T.shape, False)
 
     @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
