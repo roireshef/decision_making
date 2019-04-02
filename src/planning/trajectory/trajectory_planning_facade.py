@@ -1,5 +1,5 @@
 import time
-
+import rte.python.profiler as prof
 import numpy as np
 import traceback
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
@@ -110,9 +110,9 @@ class TrajectoryPlanningFacade(DmModule):
                     ego_time = state.ego_state.timestamp_in_sec
                     dist_to_goal = np.linalg.norm(params.target_state[:2] - sampled_cartesian[:2])
                     time_to_goal = params.time - ego_time
-                    print('TP if: time %.3f; orig-fstate: (%f, %f, %f) -> (%f, %f, %f); '
+                    print('TP if: time %.3f (bp %.3f); orig-fstate: (%f, %f, %f) -> (%f, %f, %f); '
                           'cpoint: (%.2f, %.2f); to_goal: t=%.3f s=%.3f s/t=%.3f' %
-                          (ego_time, ego_fstate[0], ego_fstate[1], ego_fstate[2],
+                          (ego_time, params.bp_time*1e-9, ego_fstate[0], ego_fstate[1], ego_fstate[2],
                            sampled_fstate[0], sampled_fstate[1], sampled_fstate[2],
                            sampled_cartesian[0], sampled_cartesian[1], time_to_goal, dist_to_goal,
                            dist_to_goal / time_to_goal))
@@ -133,6 +133,7 @@ class TrajectoryPlanningFacade(DmModule):
             samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, T,
                      T_required_horizon, params.cost_params)
+
 
             if self._last_trajectory is not None and samplable_trajectory is not None:
                 self.logger.debug('Previous SamplableTrajectory : %s.', self._last_trajectory.__dict__)
@@ -175,7 +176,6 @@ class TrajectoryPlanningFacade(DmModule):
                                  traceback.format_exc())
 
     # TODO: add map_origin that is sent from the outside
-    @prof.ProfileFunction()
     def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory):
         """
         sample trajectory points from the samplable-trajectory, translate them according to ego's reference point and
@@ -241,21 +241,6 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
         return state
 
-    def _get_current_scene_static(self) -> SceneStatic:
-        with prof.time_range('_get_current_scene_static.get_latest_sample'):
-            is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
-
-        # TODO Move the raising of the exception to pubsub code. Do the same in behavioral facade
-        if serialized_scene_static is None:
-            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_SCENE_STATIC)
-        with prof.time_range('_get_current_scene_static.SceneStatic.deserialize'):
-            scene_static = SceneStatic.deserialize(serialized_scene_static)
-        if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
-            raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
-        self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
-        return scene_static
-
     def _get_mission_params(self) -> TrajectoryParams:
         """
         Returns the last received mission (trajectory) parameters.
@@ -278,7 +263,6 @@ class TrajectoryPlanningFacade(DmModule):
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_VISUALIZATION, debug_msg.serialize())
 
-    @prof.ProfileFunction()
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
@@ -300,7 +284,6 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
-    @prof.ProfileFunction()
     def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
                                    planning_horizon: float, predictor: EgoAwarePredictor,
                                    reference_route: GeneralizedFrenetSerretFrame) -> TrajectoryVisualizationMsg:

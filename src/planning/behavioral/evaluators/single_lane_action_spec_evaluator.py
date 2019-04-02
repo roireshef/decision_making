@@ -56,8 +56,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         ego = behavioral_state.ego_state
         ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
         spec = action_specs[follow_lane_valid_action_idxs[0]]
-        print('BP time %.3f: ego_fstate: %s; spec: %s' %
-              (ego.timestamp_in_sec, NumpyUtils.str_log(ego_fstate), spec.__dict__))
+        print('BP time %.3f: ego_fstate: %s; spec: %s; cpoint: (%.2f, %.2f)' %
+              (ego.timestamp_in_sec, NumpyUtils.str_log(ego_fstate), spec.__dict__, ego.cartesian_state[0], ego.cartesian_state[1]))
 
         costs[follow_lane_valid_action_idxs[0]] = 0  # choose the found static action
         return costs

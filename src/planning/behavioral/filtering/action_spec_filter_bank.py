@@ -6,7 +6,7 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID, SAFETY_HEADWAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, STRICT_BP_FILTER_COEFFICIENT
+    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, STRICT_BP_FILTER_COEFFICIENT
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
