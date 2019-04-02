@@ -28,7 +28,7 @@ REFERENCE_ROUTE_MARGINS = PLANNING_LOOKAHEAD_DIST
 PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
 # [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 600
+MAX_HORIZON_DISTANCE = 400
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
@@ -78,8 +78,7 @@ LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
-#VELOCITY_LIMITS = np.array([0.0, 100/3.6])
-VELOCITY_LIMITS = np.array([0.0, 31]) # changed for test_filter_FollowLaneActionWithTooHighLateralAcceleration to pass
+VELOCITY_LIMITS = np.array([0.0, 100/3.6])
 VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
@@ -92,13 +91,6 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
     [0.01, 0.15, 0.1]
 ])
 
-# behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of static actions
-BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE = np.array([
-    [6.000, 0.15, 0.1],
-    [1.600, 0.15, 0.1],
-    [0.015, 0.15, 0.1]
-])
-
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
@@ -108,8 +100,7 @@ LAT_ACC_LIMITS = np.array([-2.0, 2.0])
 
 # Headway [sec] from a leading vehicle, used for specification target (1) and safety checks (2)
 SPECIFICATION_HEADWAY = 1.5
-#SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-end)
-SAFETY_HEADWAY = 1.0  # Should correspond to assumed delay in response (end-to-end)
+SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-end)
 
 # Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
 # safety checks accordingly

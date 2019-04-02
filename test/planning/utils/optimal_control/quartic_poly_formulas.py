@@ -81,8 +81,6 @@ class QuarticMotionPredicatesCreator:
         self.vT_grid = vT_grid
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
-        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(vT_grid)],
-                                 fill_value=False)
 
     @staticmethod
     def create_quartic_motion_funcs(a_0, v_0, v_T, T):
@@ -97,7 +95,7 @@ class QuarticMotionPredicatesCreator:
                QuarticPoly1D.acceleration_profile_function(a_0, v_0, v_T, T)
 
     @staticmethod
-    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T):
+    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T) -> [bool, float]:
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -106,7 +104,7 @@ class QuarticMotionPredicatesCreator:
         :param v_0: initial velocity [m/s]
         :param v_T: desired final velocity [m/s]
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
-                acceleration constraints.
+                acceleration constraints and doesn't get into target vehicle safety zone.
         """
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
@@ -114,7 +112,7 @@ class QuarticMotionPredicatesCreator:
         # Here we can't find a local minima as the equation is close to a linear line, intersecting in T=0.
 
         if QuarticPoly1D.is_tracking_mode(v_0, np.array([v_T]), a_0)[0]:
-            return True
+            return True, 0
 
         time_cost_poly_coefs = \
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
@@ -125,14 +123,14 @@ class QuarticMotionPredicatesCreator:
         extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
 
         if len(extremum_T) == 0:
-            return False
+            return False, np.inf
 
         T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
 
         # Handling the case of an action where we'd like to continue doing what we're doing, so action time is zero
         # or very small and gets quantized to zero.
         if T == 0:
-            return True
+            return True, 0
 
         v_t_func, a_t_func = QuarticMotionPredicatesCreator.create_quartic_motion_funcs(a_0, v_0, v_T, T)
 
@@ -145,7 +143,25 @@ class QuarticMotionPredicatesCreator:
         is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
         is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
 
-        return is_T_in_range and is_vel_in_range and is_acc_in_range
+        return is_T_in_range and is_vel_in_range and is_acc_in_range, T
+
+    @staticmethod
+    def generate_action_distance(w_T, w_J, a_0, v_0, v_T) -> float:
+        """
+        Generates the actual predicate value (true/false) for the given action,weights and scenario params
+        :param w_T: weight of Time component in time-jerk cost function
+        :param w_J: weight of longitudinal jerk component in time-jerk cost function
+        :param a_0: initial acceleration [m/s^2]
+        :param v_0: initial velocity [m/s]
+        :param v_T: desired final velocity [m/s]
+        :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
+                acceleration constraints and doesn't get into target vehicle safety zone.
+        """
+        in_limits, T = QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T)
+        distance = QuarticPoly1D.distance_profile_function(a_0, v_0, v_T, T)(T) \
+            if T > 0 and in_limits else 0 if T == 0 else np.inf
+        return distance
+
 
     def create_predicates(self, jerk_time_weights: np.ndarray) -> None:
         """
@@ -155,6 +171,8 @@ class QuarticMotionPredicatesCreator:
         :return:
         """
         action_type = ActionType.FOLLOW_LANE
+        predicate = np.full(shape=[len(self.v0_grid), len(self.a0_grid), len(self.vT_grid)], fill_value=False)
+
         for weight in jerk_time_weights:
             w_J, w_T = weight[0], weight[2]  # w_T stays the same (0.1), w_J is now to be one of [12,2,0.01]
             print('weights are: %.2f,%.2f' % (w_J, w_T))
@@ -162,10 +180,36 @@ class QuarticMotionPredicatesCreator:
                 print('v_0 is: %.2f' % v_0)
                 for m, a_0 in enumerate(self.a0_grid):
                     for j, v_T in enumerate(self.vT_grid):
-                        self.predicate[k, m, j] = QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T)
+                        predicate[k, m, j], _ = QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T)
 
             output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
             output_predicate_file_path = Paths.get_resource_absolute_path_filename(
                 '%s/%s' % (self.predicates_resources_target_directory,
                            output_predicate_file_name))
-            BinaryReadWrite.save(array=self.predicate, file_path=output_predicate_file_path)
+            BinaryReadWrite.save(array=predicate, file_path=output_predicate_file_path)
+
+    def create_actions_distances(self, jerk_time_weights: np.ndarray) -> None:
+        """
+        Creates predicates for the jerk-time weights and the follow_lane static action
+        :param jerk_time_weights: a 2-dimensional of shape [Kx3] where its rows are different sets of weights and each
+                set of weights is built from 3 terms :  longitudinal jerk, latitudinal jerk and action time weights.
+        :return:
+        """
+        action_type = ActionType.FOLLOW_LANE
+        distances = np.full(shape=[len(self.v0_grid), len(self.a0_grid), len(self.vT_grid)], dtype=float, fill_value=np.inf)
+
+        for wi, weight in enumerate(jerk_time_weights):
+            w_J, w_T = weight[0], weight[2]  # w_T stays the same (0.1), w_J is now to be one of [12,2,0.01]
+            print('weights are: %.2f,%.2f' % (w_J, w_T))
+            for k, v_0 in enumerate(self.v0_grid):
+                print('v_0 is: %.2f' % v_0)
+                for m, a_0 in enumerate(self.a0_grid):
+                    for j, v_T in enumerate(self.vT_grid):
+                        distances[k, m, j] = QuarticMotionPredicatesCreator.generate_action_distance(w_T, w_J, a_0, v_0, v_T)
+
+            # save actions distances to file
+            output_distances_file_name = '%s_distances_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
+            output_distances_file_path = Paths.get_resource_absolute_path_filename(
+                '%s/%s' % (self.predicates_resources_target_directory,
+                           output_distances_file_name))
+            np.save(file=output_distances_file_path, arr=distances)  # np.save adds extension .npy to the file name

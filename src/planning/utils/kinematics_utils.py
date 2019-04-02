@@ -79,8 +79,6 @@ class KinematicUtils:
 
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
         conforms = acceleration_limits & velocities_limits & derivatives_limits
-        AV_Logger.get_logger().error(
-            f' *****acceleration_limits:{acceleration_limits}, velocites_limits: {velocities_limits}, derivatives_limits: {derivatives_limits}')
 
         return conforms
 

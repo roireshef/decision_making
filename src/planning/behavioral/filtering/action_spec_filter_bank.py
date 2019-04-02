@@ -5,8 +5,8 @@ import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE, FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID, SAFETY_HEADWAY
+    FILTER_V_0_GRID, FILTER_A_0_GRID, \
+    FILTER_V_T_GRID, SAFETY_HEADWAY, BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -229,7 +229,7 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
 
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
         # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
-        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE[AggressivenessLevel.CALM.value]
+        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
         brake_dist = self.distance_predicates[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
                      FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
         vel_limit_in_points = 0 # TODO
@@ -420,7 +420,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
         dist_to_points = frenet.get_s_from_index_on_frame(frenet_points_idxs, delta_s=0) - action_spec.s
 
         # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
-        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS_FOLLOW_LANE[AggressivenessLevel.CALM.value]
+        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
         brake_dist = action_distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
                      FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
         return (brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()

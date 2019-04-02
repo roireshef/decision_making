@@ -22,14 +22,15 @@ def main():
     dynamic_actions = [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE]
     resources_directory = 'predicates'
     # Quintic predicates creation
-    quintic_predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID,
-                                                                FILTER_V_T_GRID, T_m=SPECIFICATION_HEADWAY,
-                                                                T_safety=SAFETY_HEADWAY,
-                                                                predicates_resources_target_directory=resources_directory)
-    quintic_predicates_creator.create_predicates(weights, dynamic_actions)
+#    quintic_predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID,
+#                                                                FILTER_V_T_GRID, T_m=SPECIFICATION_HEADWAY,
+#                                                                T_safety=SAFETY_HEADWAY,
+#                                                                predicates_resources_target_directory=resources_directory)
+#    quintic_predicates_creator.create_predicates(weights, dynamic_actions)
     # Quartic predicates creation
     quartic_predicates_creator = QuarticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_V_T_GRID, resources_directory)
     quartic_predicates_creator.create_predicates(weights)
+    quartic_predicates_creator.create_actions_distances(weights)
     # Create MetaData log file
     document_created_predicates(resources_directory)
 
