@@ -79,7 +79,7 @@ BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 VELOCITY_LIMITS = np.array([0.0, 100/3.6])
-VELOCITY_STEP = 10/3.6
+VELOCITY_STEP = 5/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
 BP_ACTION_T_LIMITS = np.array([2.0, 15.0])
@@ -95,8 +95,10 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-2.0, 2.0])
+LAT_ACC_LIMITS = np.array([-1.0, 1.0])
 
+# Making the BP filter tighter
+STRICT_BP_FILTER_COEFFICIENT = 0.90
 
 # Headway [sec] from a leading vehicle, used for specification target (1) and safety checks (2)
 SPECIFICATION_HEADWAY = 1.5

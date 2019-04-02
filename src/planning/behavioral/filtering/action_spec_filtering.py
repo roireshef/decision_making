@@ -54,7 +54,6 @@ class ActionSpecFiltering:
             current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
-            AV_Logger.get_logger().error(f'XXX filter:{action_spec_filter}. passed: {np.sum(current_mask)} .current_mask:{current_mask}. action_specs:{valid_action_specs} ')
         return mask.tolist()
 
     @prof.ProfileFunction()

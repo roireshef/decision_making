@@ -6,7 +6,7 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID, SAFETY_HEADWAY, BP_JERK_S_JERK_D_TIME_WEIGHTS
+    FILTER_V_T_GRID, SAFETY_HEADWAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, STRICT_BP_FILTER_COEFFICIENT
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -20,8 +20,11 @@ from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN, C_V, C_K
 from decision_making.src.planning.types import FS_SX, FS_SV, LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from rte.python.logger.AV_logger import AV_Logger
 from typing import List
 
 
@@ -57,6 +60,9 @@ class FilterForKinematics(ActionSpecFilter):
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
+        dt = WERLING_TIME_RESOLUTION
+        predictor = RoadFollowingPredictor(AV_Logger.get_logger())
+
         are_valid = []
         for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
             # TODO: in the future, consider leaving only a single action (for better "learnability")
@@ -79,16 +85,27 @@ class FilterForKinematics(ActionSpecFilter):
                 are_valid.append(False)
                 continue
 
-            time_samples = np.arange(0, t + EPS, WERLING_TIME_RESOLUTION)
+            time_samples = np.arange(0, t + EPS, dt)
             total_time = max(BP_ACTION_T_LIMITS[LIMIT_MIN], t)
 
             # generate a SamplableWerlingTrajectory (combination of s(t), d(t) polynomials applied to a Frenet frame)
             samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
-            cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
 
+            ftrajectory = samplable_trajectory.sample_frenet(time_samples)
+
+            # for too short planning time pad the trajectory with constant velocity prediction
+            if t < BP_ACTION_T_LIMITS[LIMIT_MIN]:
+                time_samples = np.arange(Math.ceil_to_step(t, dt) - t, BP_ACTION_T_LIMITS[LIMIT_MIN] - t + EPS, dt)
+                terminal_fstate = np.array([spec.s, spec.v, 0, spec.d, 0, 0])
+                extrapolated_fstates_s = predictor.predict_2d_frenet_states(terminal_fstate[np.newaxis], time_samples)[0]
+                ftrajectory = np.concatenate((ftrajectory, extrapolated_fstates_s), axis=0)
+
+            cartesian_points = samplable_trajectory.frenet_frame.ftrajectory_to_ctrajectory(ftrajectory)
+
+            strict_lat_acceleration_limits = STRICT_BP_FILTER_COEFFICIENT * LAT_ACC_LIMITS
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, strict_lat_acceleration_limits)[0]
 
             are_valid.append(is_valid_in_cartesian)
 

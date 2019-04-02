@@ -108,8 +108,8 @@ class WerlingPlanner(TrajectoryPlanner):
                 extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(terminal_states, time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
 
-            lat_frenet_filtered_indices = self._filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
-                                                                                cost_params)
+            # lat_frenet_filtered_indices = self._filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
+            #                                                                     cost_params)
 
         else:  # No actual planning is required, apply padding with constant velocity predictor
 
@@ -127,7 +127,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
         lon_frenet_filtered_indices = self._filter_by_longitudinal_frenet_limits(ftrajectories,
                                                                                  reference_route.s_limits)
-        frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
+        # frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
+        frenet_filtered_indices = lon_frenet_filtered_indices
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(
