@@ -92,7 +92,7 @@ class WerlingPlanner(TrajectoryPlanner):
             NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
             T, planning_horizon)
 
-        is_target_ahead = T > 0 and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
+        is_target_ahead = T > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
         # solve the optimization problem in frenet-frame from t=0 to t=T
         if is_target_ahead:
@@ -217,7 +217,7 @@ class WerlingPlanner(TrajectoryPlanner):
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
 
-    def _correct_boundary_values(self, ftrajectories: FrenetTrajectories2D, init_state: FrenetState2D) -> \
+    def _correct_boundary_values(self, ftrajectories: FrenetTrajectories2D) -> \
             FrenetTrajectories2D:
         """
         Boundary values (initial) of werling trajectories can be received with minor numerical deviations.
