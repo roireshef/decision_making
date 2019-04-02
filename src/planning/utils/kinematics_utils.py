@@ -10,6 +10,16 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPol
 class KinematicUtils:
     @staticmethod
     def is_maintaining_distance(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):
+        """
+        Given two s(t) longitudinal polynomials (one for host, one for target), this function checks if host maintains
+        at least a distance of margin + headway (time * host_velocity) in the time range specified by <time_range>.
+        :param poly_host: 1d numpy array - coefficients of host's polynomial s(t)
+        :param poly_target: 1d numpy array - coefficients of target's polynomial s(t)
+        :param margin: the minimal stopping distance to keep in meters (in addition to headway, highly relevant for stopping)
+        :param headway: the time to use for the headway formula: time*velocity = distance to keep.
+        :param time_range: the relevant range of t for checking the polynomials, i.e. [0, T]
+        :return: boolean - True if host maintains proper distance from target, False otherwise
+        """
         # coefficients of host vehicle velocity v_h(t) of host
         vel_poly = np.polyder(poly_host, 1)
 
@@ -57,7 +67,11 @@ class KinematicUtils:
         """
         Given a set of trajectories in Frenet coordinate-frame, it validates them against the following limits:
         (longitudinal progress on the frenet frame curve, positive longitudinal velocity)
-
+        :param poly_coefs_s: 2D matrix of solutions (1st dim), each one is a vector of coefficients of a longitudinal
+        s(t) polynomial (2nd dim), with t in the range [0, T] (T specified in T_s_vals)
+        :param T_s_vals: 1d numpy array - the T for the polynomials in <poly_coefs_s>
+        :param lon_acceleration_limits: acceleration limits to test the trajectories keep
+        :param lon_velocity_limits: velocity limits to test the trajectories keep
         :param reference_route_limits: the minimal and maximal progress (s value) on the reference route used
         in the frenet frame used for planning
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out

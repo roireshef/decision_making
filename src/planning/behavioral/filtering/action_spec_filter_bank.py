@@ -3,7 +3,7 @@ from typing import List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    SAFETY_MARGIN_TIME_DELAY
+    SAFETY_HEADWAY
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -133,7 +133,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                      behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # validate distance keeping (on frenet longitudinal axis)
-            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_MARGIN_TIME_DELAY, np.array([0, t]))
+            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
 
             are_valid.append(is_safe)
 

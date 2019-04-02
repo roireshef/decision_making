@@ -110,13 +110,11 @@ class TrajectoryPlanningFacade(DmModule):
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
-            try:
-                # plan a trajectory according to specification from upper DM level
-                samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
-                    plan(updated_state, params.reference_route, params.target_state, T,
-                         T_required_horizon, params.cost_params)
-            except TypeError as e:
-                print(e)
+            # plan a trajectory according to specification from upper DM level
+            samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
+                plan(updated_state, params.reference_route, params.target_state, T,
+                     T_required_horizon, params.cost_params)
+
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)

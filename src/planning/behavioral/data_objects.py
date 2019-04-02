@@ -3,6 +3,7 @@ from enum import Enum
 from typing import List
 import numpy as np
 
+from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.types import FrenetState2D
 
 
