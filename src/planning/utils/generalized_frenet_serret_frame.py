@@ -133,7 +133,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
         return np.isin(segment_ids, self._segments_id)
 
-    def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
+    def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: NumpyIndicesArray) -> FrenetStates2D:
         """
         Converts frenet_states on a frenet_frame to frenet_states on the generalized frenet frame.
         :param frenet_states: frenet_states on another frenet_frame which was part in building the generalized frenet frame.
@@ -159,7 +159,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         generalized frenet frame.
         :return: a frenet state on the generalized frenet frame.
         """
-        return self.convert_from_segment_states(frenet_state[np.newaxis, ...], [segment_id])[0]
+        return self.convert_from_segment_states(frenet_state[np.newaxis, ...], np.array([segment_id]))[0]
 
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
         """
@@ -220,6 +220,16 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
         # given the fractional index of the point (O_idx+delta_s), find which segment it belongs to based
         # on the points offset of each segment
+        return self.get_s_from_index_on_frame(O_idx, delta_s)
+
+    def get_s_from_index_on_frame(self, O_idx: np.ndarray, delta_s: np.ndarray):
+        """
+        given fractional index of the point (O_idx+delta_s), find which segment it belongs to based on
+        the points offset of each segment
+        :param O_idx: tensor of segment index per point in <points>,
+        :param delta_s: tensor of progress of projection of each point in <points> on its relevant segment
+        :return: approximate s value on the frame that will be created using self.O
+        """
         segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(O_idx, delta_s)) - 1
         # get ds of every point based on the ds of the segment
         ds = self._segments_ds[segment_idx_per_point]
@@ -235,7 +245,11 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
         return s_approx
 
+    # TODO: Understand why this was renamed and remove one of these
     def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
+        return self.get_index_on_frame_from_s(s)
+
+    def get_index_on_frame_from_s(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
         a value in the range [0, ds] representing the projection on this closest point.

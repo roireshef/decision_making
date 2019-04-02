@@ -88,6 +88,31 @@ class Poly1D:
 
         return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
 
+    # TODO: test this!
+    @staticmethod
+    def zip_polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
+        """
+        For each x(t) position polynomial(s) and time-sample it generates 3 values:
+          1. position (evaluation of the polynomial)
+          2. velocity (evaluation of the 1st derivative of the polynomial)
+          2. acceleration (evaluation of the 2st derivative of the polynomial)
+        :param poly_coefs: 2d numpy array [MxL] of the quartic (position) polynomials coefficients, where
+         each row out of the M is a different polynomial and contains L coefficients
+        :param time_samples: 2d numpy array [MxK] of the time stamps for the evaluation of the polynomials
+        :return: 3d numpy array [M,K,3] with the following dimensions:
+            [position value, velocity value, acceleration value]
+        """
+        # compute the coefficients of the polynom's 1st derivative (m=1)
+        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
+        # compute the coefficients of the polynom's 2nd derivative (m=2)
+        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
+
+        x_vals = Math.zip_polyval2d(poly_coefs, time_samples)
+        x_dot_vals = Math.zip_polyval2d(poly_dot_coefs, time_samples)
+        x_dotdot_vals = Math.zip_polyval2d(poly_dotdot_coefs, time_samples)
+
+        return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+
     @classmethod
     def time_constraints_matrix(cls, T: float) -> np.ndarray:
         """
@@ -365,6 +390,19 @@ class QuinticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
+
+    # TODO: test this!
+    @staticmethod
+    def inverse_time_constraints_tensor(T: np.ndarray) -> np.ndarray:
+        zeros = np.zeros_like(T)
+        tensor = np.array([
+            [1 + zeros, zeros, zeros, zeros, zeros, zeros],
+            [zeros, 1 + zeros, zeros, zeros, zeros, zeros],
+            [zeros, zeros, 0.5 + zeros, zeros, zeros, zeros],
+            [-10 / T ** 3, -6 / T ** 2, -3 / (2 * T), 10 / T ** 3, -4 / T ** 2, 1 / (2 * T)],
+            [15 / T ** 4, 8 / T ** 3, 3 / (2 * T ** 2), -15 / T ** 4, 7 / T ** 3, -1 / T ** 2],
+            [-6 / T ** 5, -3 / T ** 4, -1 / (2 * T ** 3), 6 / T ** 5, -3 / T ** 4, 1 / (2 * T ** 3)]])
+        return np.transpose(tensor, (2, 0, 1))
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):

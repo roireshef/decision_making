@@ -95,7 +95,7 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-4.0, 4.0])
+LAT_ACC_LIMITS = np.array([-2.0, 2.0])
 
 # Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
 SPECIFICATION_HEADWAY = 1.5
@@ -252,7 +252,7 @@ RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 
 
 #### MetricLogger
-METRIC_LOGGER_DELIMITER= '_'
+METRIC_LOGGER_DELIMITER = '_'
 
 ##### Log messages
 # TODO: update decision_making_sim messages

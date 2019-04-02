@@ -1,21 +1,18 @@
 import os
-
+import rte.python.profiler as prof
+from decision_making.paths import Paths
 from decision_making.src.exceptions import ResourcesNotUpToDateException
 from decision_making.src.global_constants import *
-from decision_making.paths import Paths
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.types import FS_SV, FS_SA
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
-
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
-from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 from typing import List
-import rte.python.profiler as prof
+
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
@@ -27,6 +24,42 @@ class FilterActionsTowardsOtherLanes(RecipeFilter):
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [recipe.relative_lane == RelativeLane.SAME_LANE
                 if recipe is not None else False for recipe in recipes]
+
+
+class FilterLimitsViolatingTrajectory(RecipeFilter):
+    """
+    This filter checks velocity, acceleration and time limits
+    """
+    def __init__(self, predicates_dir: str):
+        if not self.validate_predicate_constants(predicates_dir):
+            raise ResourcesNotUpToDateException('Predicates files were creates with other set of constants')
+        self.predicates = self.read_predicates(predicates_dir, 'limits')
+
+    @staticmethod
+    def read_predicates(predicates_dir, filter_name):
+        """
+        This method reads boolean maps from file into a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        :param predicates_dir: The directory holding all binary maps (.bin files)
+        :param filter_name: either 'limits' or 'safety'
+        :return: a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        """
+        directory = Paths.get_resource_absolute_path_filename(predicates_dir)
+        predicates = {}
+        for filename in os.listdir(directory):
+            if (filename.endswith(".bin") or filename.endswith(".npy")) and filter_name in filename:
+                predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (predicates_dir, filename))
+                action_type = filename.split('.bin')[0].split('_' + filter_name)[0]
+                wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
+                          float(filename.split('.bin')[0].split('_')[6])]
+                if action_type == 'follow_lane':
+                    predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID))
+                else:
+                    predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
+                if filename.endswith(".npy"):
+                    predicates[(action_type, wT, wJ)] = np.load(file=predicate_path)
+                else:
+                    predicates[(action_type, wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
+        return predicates
 
 
 class FilterBadExpectedTrajectory(RecipeFilter):
