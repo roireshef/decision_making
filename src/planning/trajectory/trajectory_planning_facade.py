@@ -104,7 +104,7 @@ class TrajectoryPlanningFacade(DmModule):
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     minimal_required_horizon, params.bp_time, params.cost_params)
+                     minimal_required_horizon, params.cost_params)
 
             if self._last_trajectory is not None and samplable_trajectory is not None:
                 self.logger.debug('Previous SamplableTrajectory : %s.', self._last_trajectory.__dict__)

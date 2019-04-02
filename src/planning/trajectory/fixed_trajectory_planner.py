@@ -69,14 +69,15 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
 
     @raises(NotTriggeredException)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+             minimal_required_time_horizon: float, cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
         that advances incrementally on fixed_trajectory by step size. Otherwise raise NotTriggeredException
-        :param time_horizon: the length of the trajectory snippet (seconds)
+        :param minimal_required_time_horizon:
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored
+        :param time_horizon: the length of the trajectory snippet (seconds)
         :param cost_params: ignored
         :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
