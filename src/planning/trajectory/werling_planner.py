@@ -82,7 +82,8 @@ class WerlingPlanner(TrajectoryPlanner):
             T_s, planning_horizon)
 
         if is_target_ahead:
-            # target
+
+            # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
 
             # Lateral planning horizon(Td) lower bound, now approximated from x=a*t^2
             lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T_s, self.dt)
@@ -95,25 +96,28 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                                      fconstraints_tT,
                                                                                      T_s, T_d_grid, self.dt)
 
-            terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
-            terminal_s = fconstraints_tT.get_grid_s()
-            terminal_states = NumpyUtils.cartesian_product_matrix_rows(terminal_s, terminal_d)
-
+            # trajectory was planned up to a certain time, the rest should be padded with constant
+            # velocity prediction
             if planning_horizon > T_s:
+
+                terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
+                terminal_s = fconstraints_tT.get_grid_s()
+                terminal_states = NumpyUtils.cartesian_product_matrix_rows(terminal_s, terminal_d)
+
                 time_samples = np.arange(Math.ceil_to_step(T_s, self.dt) - T_s, planning_horizon - T_s + EPS, self.dt)
                 extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(terminal_states, time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
 
             lat_frenet_filtered_indices = self._filter_by_lateral_frenet_limits(poly_coefs[:, D5:], T_d_vals,
                                                                                 cost_params)
-        else:
 
-            # Goal is behind us
+        else:  # No actual planning is required, apply padding with constant velocity predictor
+
             time_samples = np.arange(0, planning_horizon + EPS, self.dt)
             # Create only one trajectory which is actually a constant-velocity predictor of current state
             ftrajectories = self.predictor.predict_2d_frenet_states(np.array([ego_frenet_state]), time_samples)[0][
                 np.newaxis, ...]
-            # here we just take the current state and extrapolate it linearly in time with constant velocity,
+            # Here we just take the current state and extrapolate it linearly in time with constant velocity,
             # meaning no lateral motion is carried out.
             T_d_vals = np.array([0])
             lat_frenet_filtered_indices = np.array([0])
@@ -154,6 +158,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                         np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                         reference_route.s_limits,
                                         len(frenet_filtered_indices), len(ftrajectories)))
+
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
@@ -196,9 +201,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
-        if is_target_ahead:
+        if is_target_ahead:  # Actual werling planning has occurred because T_s > 0.1 and the target is ahead of us
 
-            # Some actual werling planning has occurred because T_s > 0.1 and the target is ahead of us
             samplable_trajectory = SamplableWerlingTrajectory(
                 timestamp_in_sec=state.ego_state.timestamp_in_sec,
                 T_s=T_s,
@@ -209,9 +213,8 @@ class WerlingPlanner(TrajectoryPlanner):
                 total_time=planning_horizon
             )
 
-        else:
+        else:  # Publish a fixed trajectory, containing just padding
 
-            # Just padding
             samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec,
                                                             planning_horizon)
 
