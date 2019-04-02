@@ -95,7 +95,6 @@ class WerlingPlanner(TrajectoryPlanner):
             NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
             T_s, planning_horizon)
 
-        self._logger.error(f'***** is_target_ahead:{is_target_ahead}')
         if is_target_ahead:
 
             # solve problem in frenet-frame
@@ -138,10 +137,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
 
-        self._logger.error('***** %d trajectories passed Frenet filtering(lat) ', len(lat_frenet_filtered_indices))
-        self._logger.error('***** %d trajectories passed Frenet filtering(lon) ', len(lon_frenet_filtered_indices))
-        self._logger.error('***** %d trajectories passed Frenet filtering ', len(frenet_filtered_indices))
-
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(
             ftrajectories[frenet_filtered_indices])
@@ -153,7 +148,6 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                              cost_params.lat_acceleration_limits)
         cartesian_refiltered_indices = np.argwhere(cartesian_filter_results).flatten()
 
-        self._logger.error(f'***** Cartesian_filter_passed:{np.sum(cartesian_filter_results)}')
 
         refiltered_indices = frenet_filtered_indices[cartesian_refiltered_indices]
         ctrajectories_filtered = ctrajectories[cartesian_refiltered_indices]
