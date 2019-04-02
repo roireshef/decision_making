@@ -104,12 +104,8 @@ class TrajectoryPlanningFacade(DmModule):
                 if LocalizationUtils.is_actual_state_close_to_expected_state(
                         state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                     sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
-                    # self.logger.debug(LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED,
-                    #                   sampled_state.ego_state.map_state,
-                    #                   state.ego_state.map_state)
                     updated_state = sampled_state
                 else:
-                    # self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.ego_state.map_state)
                     updated_state = state
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
@@ -117,7 +113,7 @@ class TrajectoryPlanningFacade(DmModule):
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     minimal_required_horizon, params.bp_time, params.cost_params)
+                     minimal_required_horizon, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)

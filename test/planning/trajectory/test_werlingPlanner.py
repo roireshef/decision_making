@@ -93,7 +93,7 @@ def test_werlingPlanner_toyScenario_noException():
     start_time = time.time()
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route, goal=goal,
-                                                   time_horizon=Ts, minimal_required_horizon=Ts, bp_time=0, cost_params=cost_params)
+                                                   T=Ts, T_required_horizon=Ts, bp_time=0, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
 
@@ -203,7 +203,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             # run Werling planner
             planner = WerlingPlanner(logger, predictor)
             _, ctrajectories, costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
-                                                   goal=goal, time_horizon=T, cost_params=cost_params)
+                                                   goal=goal, T=T, cost_params=cost_params)
 
             time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + \
                            state.ego_state.timestamp_in_sec
