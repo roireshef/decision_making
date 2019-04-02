@@ -210,7 +210,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 frenet_frame=reference_route,
                 poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
                 poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:],
-                total_time=planning_horizon
+                T_extended=planning_horizon
             )
 
         else:  # Publish a fixed trajectory, containing just padding

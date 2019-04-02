@@ -19,6 +19,12 @@ from decision_making.test.exceptions import NotTriggeredException
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0, T:float = np.inf):
+        """
+
+        :param fixed_trajectory:
+        :param timestamp_in_sec:
+        :param T:
+        """
         super().__init__(timestamp_in_sec, T)
         self._fixed_trajectory = fixed_trajectory
 
@@ -34,7 +40,7 @@ class FixedSamplableTrajectory(SamplableTrajectory):
 
         # Make sure no unplanned extrapolation will occur due to overreaching time points
         # This check is done in relative-to-ego units
-        assert max(relative_time_points) <= self.T + EPS, \
+        assert max(relative_time_points) <= self.T, \
             'In timestamp %f : self.T=%f <= max(relative_time_points)=%f' % \
             (self.timestamp_in_sec, self.T, max(relative_time_points))
 
