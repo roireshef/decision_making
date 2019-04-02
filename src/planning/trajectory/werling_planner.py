@@ -105,8 +105,11 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                                  time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
         else:
-            ftrajectories = self.predictor.predict_2d_frenet_states(fconstraints_tT.get_grid(),
+            predicted_fconstraints_tT = self.predictor.predict_2d_frenet_states(fconstraints_tT.get_grid(), np.array([-T]))[0]
+            ftrajectories = self.predictor.predict_2d_frenet_states(predicted_fconstraints_tT,
                                                                     np.arange(0, planning_horizon + EPS, self.dt))
+
+
             
         # frenet_filtered_indices = np.intersect1d(lat_frenet_filtered_indices, lon_frenet_filtered_indices)
 
@@ -176,12 +179,19 @@ class WerlingPlanner(TrajectoryPlanner):
 
         else:
             # TODO: this can't be sampled between two points accurately! Use degenerated polynomial instead
-            samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec,
-                                                            planning_horizon)
+            # samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec,
+            #                                                 planning_horizon)
 
+            poly_s = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SV],
+                               ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SX]])
+            poly_d = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DV],
+                               ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DX]])
+            samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
+                                                              planning_horizon, planning_horizon, planning_horizon,
+                                                              reference_route, poly_s, poly_d)
         return samplable_trajectory, \
-               ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
-               filtered_trajectory_costs[sorted_filtered_idxs]
+           ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
+           filtered_trajectory_costs[sorted_filtered_idxs]
 
     def _correct_boundary_values(self, ftrajectories: FrenetTrajectories2D) -> \
             FrenetTrajectories2D:

@@ -1,3 +1,4 @@
+from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from enum import Enum
 from typing import List
 import numpy as np
@@ -88,7 +89,6 @@ class ActionSpec:
         :param v: velocity [m/s]
         :param s: global longitudinal position in Frenet frame [m]
         :param d: global lateral position in Frenet frame [m]
-        :param relative_lane: relative target lane
         :param recipe: the original recipe that the action space originated from (redundant but stored for efficiency)
         """
         self.t = t
@@ -100,6 +100,11 @@ class ActionSpec:
     @property
     def relative_lane(self):
         return self.recipe.relative_lane
+
+    @property
+    def in_track_mode(self):
+        """ if planning time is shorter than the TP's time resolution, the result will be only padding in the TP"""
+        return self.t < TRAJECTORY_TIME_RESOLUTION
 
     def __str__(self):
         return str({k: str(v) for (k, v) in self.__dict__.items()})

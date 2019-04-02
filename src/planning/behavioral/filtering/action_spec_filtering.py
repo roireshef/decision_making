@@ -42,9 +42,16 @@ class ActionSpecFiltering:
         """
         mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
         for action_spec_filter in self._filters:
-            if ~np.all(mask):
+            if ~np.any(mask):
                 break
-            current_mask = action_spec_filter.filter(list(compress(action_specs, mask)), behavioral_state)
+
+            # list of only valid action specs
+            valid_action_specs = list(compress(action_specs, mask))
+
+            # a mask only on the valid action specs
+            current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
+
+            # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
         return mask.tolist()
 

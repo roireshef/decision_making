@@ -1,9 +1,7 @@
 import numpy as np
 
-from decision_making.src.global_constants import VELOCITY_LIMITS
-from decision_making.src.planning.types import C_V, FS_SV, \
-    FS_SX, LIMIT_MIN, C_A, C_K, Limits
-from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits
+from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -22,7 +20,8 @@ class KinematicUtils:
         # add headway
         poly_diff[1:] -= vel_poly * headway
 
-        roots = Math.find_real_roots_in_limits(poly_diff, time_range)
+        first_non_zero = np.argmin(np.equal(poly_diff, 0))
+        roots = Math.find_real_roots_in_limits(poly_diff[first_non_zero:], time_range)
 
         return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
 
@@ -50,7 +49,7 @@ class KinematicUtils:
         return conforms
 
     @staticmethod
-    # TODO: fill docstring, remove comments
+    # TODO: add jerk to filter?
     def filter_by_longitudinal_frenet_limits(poly_coefs_s: np.ndarray, T_s_vals: np.ndarray,
                                              lon_acceleration_limits: Limits,
                                              lon_velocity_limits: Limits,
