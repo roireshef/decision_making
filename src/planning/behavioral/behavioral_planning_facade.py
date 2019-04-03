@@ -202,12 +202,12 @@ class BehavioralPlanningFacade(DmModule):
         ego_station = ego_state.map_state.lane_fstate[FS_SX]
 
         #find length of the lane segment
-        ego_lane_length = MapUtils.get_lane_length(ego_lane_segment_id)
-
+        lane = MapUtils.get_lane(ego_lane_segment_id)
+        ego_lane_length = lane.e_l_length
+        
         dist_to_end = ego_lane_length - ego_station
 
         if  dist_to_end < 0 :
-            # print("lane length: ", ego_lane_length , " ego_station: ", ego_station)
             raise EgoStationBeyondLaneLength("ego station is greater than the lane length for lane segment ID:  \n", ego_lane_segment_id)
 
         # iterate through all road segments within DISTANCE_TO_SET_TAKEOVER_FLAG
@@ -233,7 +233,8 @@ class BehavioralPlanningFacade(DmModule):
                 # find the length of the first lane segment in the next road segment,
                 # assuming that road segment length is similar to its first lane segmnet length
                 next_road_segment_lane_id = route_plan_data.as_route_plan_lane_segments[i][0].e_i_lane_segment_id
-                lane_length = MapUtils.get_lane_length(next_road_segment_lane_id)
+                lane = MapUtils.get_lane(next_road_segment_lane_id)
+                lane_length = lane.e_l_length
 
                 dist_to_end += lane_length
 
