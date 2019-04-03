@@ -1,11 +1,19 @@
+from logging import Logger
+from os import getpid
+
 import numpy as np
+import os
+
 from decision_making.paths import Paths
+from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
+    SingleLaneActionSpecEvaluator
+
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
     DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD
-from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -15,12 +23,9 @@ from decision_making.src.planning.behavioral.action_space.dynamic_action_space i
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
-    DEFAULT_STATIC_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
-    SingleLaneActionSpecEvaluator
+    DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
-from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone, \
-    FilterByLateralAcceleration, FilterForKinematics
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
@@ -29,9 +34,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
-from logging import Logger
 from mapping.src.service.map_service import MapService
-from os import getpid
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
@@ -101,9 +104,7 @@ class DmInitialization:
         action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
-        # TODO: Change the 'predicate dir arg in FilterLateralAcceleration()
-        action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone(), FilterForKinematics(),
-                                                             FilterByLateralAcceleration('predicates')], logger=logger)
+        action_spec_filtering = DEFAULT_ACTION_SPEC_FILTERING
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)
 

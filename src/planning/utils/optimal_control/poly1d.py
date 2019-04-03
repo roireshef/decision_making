@@ -88,6 +88,7 @@ class Poly1D:
 
         return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
 
+    # TODO: test this!
     @staticmethod
     def zip_polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
         """
@@ -140,9 +141,11 @@ class Poly1D:
         poly = Math.polyder2d(poly_coefs, m=degree)
 
         # TODO: implement tests for those cases
-        if poly_der.shape[-1] == 0:
-            # No derivative - polynomial is constant
-            return NumpyUtils.is_in_limits(poly[:, 0], limits)
+        if poly_der.shape[-1] == 0: # No derivative - polynomial is constant
+            if poly.shape[-1] == 0: # Also polynomial is zero (null)
+                return NumpyUtils.is_in_limits(np.full((poly.shape[0], 1), 0), limits)
+            else:
+                return NumpyUtils.is_in_limits(poly[:, 0], limits)
         elif poly_der.shape[-1] == 1:  # 1st order derivative is constant - Polynomial is a*x+b
             # No need to test for t=0 (assuming it's valid), only t=T
             return NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits)
@@ -388,6 +391,7 @@ class QuinticPoly1D(Poly1D):
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
 
+    # TODO: test this!
     @staticmethod
     def inverse_time_constraints_tensor(T: np.ndarray) -> np.ndarray:
         zeros = np.zeros_like(T)

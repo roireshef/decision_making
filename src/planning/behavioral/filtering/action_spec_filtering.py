@@ -9,6 +9,7 @@ from logging import Logger
 from typing import List, Optional
 from itertools import compress
 
+
 @six.add_metaclass(ABCMeta)
 class ActionSpecFilter:
     """
@@ -29,7 +30,6 @@ class ActionSpecFiltering:
     The gateway to execute filtering on one (or more) ActionSpec(s). From efficiency point of view, the filters
     should be sorted from the strongest (the one filtering the largest number of recipes) to the weakest.
     """
-
     def __init__(self, filters: Optional[List[ActionSpecFilter]], logger: Logger):
         self._filters: List[ActionSpecFilter] = filters or []
         self.logger = logger

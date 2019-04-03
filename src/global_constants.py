@@ -98,15 +98,16 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 LAT_ACC_LIMITS = np.array([-1.0, 1.0])
 
 # Making the BP filter tighter
-STRICT_BP_FILTER_COEFFICIENT = 0.90
+STRICT_BP_FILTER_COEFFICIENT = 0.95
 
-# Assumed response delay on road [sec]
-# Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 1.5
-SAFETY_MARGIN_TIME_DELAY = 0.7
+# Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
+SPECIFICATION_HEADWAY = 1.5
+SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-end)
 
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+# Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
+# safety checks accordingly
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5

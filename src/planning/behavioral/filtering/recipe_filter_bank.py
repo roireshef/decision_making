@@ -1,21 +1,18 @@
 import os
-
+import rte.python.profiler as prof
+from decision_making.paths import Paths
 from decision_making.src.exceptions import ResourcesNotUpToDateException
 from decision_making.src.global_constants import *
-from decision_making.paths import Paths
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.types import FS_SV, FS_SA
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
-
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
-from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 from typing import List
-import rte.python.profiler as prof
+
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:

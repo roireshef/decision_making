@@ -1,5 +1,5 @@
 import time
-import rte.python.profiler as prof
+
 import numpy as np
 import traceback
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
@@ -26,11 +26,13 @@ from decision_making.src.planning.types import CartesianExtendedState, Cartesian
     FS_SX
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
+import rte.python.profiler as prof
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -62,6 +64,7 @@ class TrajectoryPlanningFacade(DmModule):
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
         self.pubsub.unsubscribe(UC_SYSTEM_STATE_LCM)
+        self.passed_100 = False
         # self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _periodic_action_impl(self):
@@ -91,6 +94,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", T)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
+
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
@@ -111,7 +115,7 @@ class TrajectoryPlanningFacade(DmModule):
                     dist_to_goal = np.linalg.norm(params.target_state[:2] - sampled_cartesian[:2])
                     time_to_goal = params.time - ego_time
                     print('TP if: time %.3f (bp %.3f); orig-fstate: (%f, %f, %f) -> (%f, %f, %f); '
-                          'cpoint: (%.2f, %.2f); to_goal: t=%.3f s=%.3f s/t=%.3f' %
+                          'cpoint: (%.4f, %.4f); to_goal: t=%.3f s=%.3f s/t=%.3f' %
                           (ego_time, params.bp_time*1e-9, ego_fstate[0], ego_fstate[1], ego_fstate[2],
                            sampled_fstate[0], sampled_fstate[1], sampled_fstate[2],
                            sampled_cartesian[0], sampled_cartesian[1], time_to_goal, dist_to_goal,
@@ -134,13 +138,6 @@ class TrajectoryPlanningFacade(DmModule):
                 plan(updated_state, params.reference_route, params.target_state, T,
                      T_required_horizon, params.cost_params)
 
-
-            if self._last_trajectory is not None and samplable_trajectory is not None:
-                self.logger.debug('Previous SamplableTrajectory : %s.', self._last_trajectory.__dict__)
-                self.logger.debug('Current SamplableTrajectory : %s.', samplable_trajectory.__dict__)
-                self.logger.debug('time: %.3f,d_T: %.3f,d_time: %.3f', state.ego_state.timestamp_in_sec,
-                                  self._last_trajectory.T-samplable_trajectory.T,
-                                  samplable_trajectory.timestamp_in_sec - self._last_trajectory.timestamp_in_sec)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
@@ -208,6 +205,9 @@ class TrajectoryPlanningFacade(DmModule):
                                                                   a_TrajectoryWaypoints=waypoints,
                                                                   e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
 
+        np.set_printoptions(suppress=True)
+        print('Output trajectory at 0.1, 0.2: %s' % (NumpyUtils.str_log(trajectory_points[1:3, :4])))
+
         return trajectory_msg
 
     def _validate_strategy_handlers(self) -> None:
@@ -263,6 +263,7 @@ class TrajectoryPlanningFacade(DmModule):
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_VISUALIZATION, debug_msg.serialize())
 
+    @prof.ProfileFunction()
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
@@ -284,6 +285,7 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
+    @prof.ProfileFunction()
     def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
                                    planning_horizon: float, predictor: EgoAwarePredictor,
                                    reference_route: GeneralizedFrenetSerretFrame) -> TrajectoryVisualizationMsg:
