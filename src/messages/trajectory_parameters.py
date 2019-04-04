@@ -172,7 +172,9 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
-        :param minimal_required_time: minimal required trajectory planning time-frame
+        :param minimal_required_time: minimal required trajectory planning time-frame, supposed to be greater than or
+               equal to the 'time' argument, TP will generate a trajectory getting to at least this time-goal and use
+               padding if needed.
         :param bp_time: absolute time of the state that BP planned on.
         """
         self.reference_route = reference_route

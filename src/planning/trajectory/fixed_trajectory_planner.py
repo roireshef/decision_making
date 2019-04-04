@@ -19,12 +19,20 @@ from decision_making.test.exceptions import NotTriggeredException
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0, T:float = np.inf):
+        """
+        This class holds a CartesianExtendedTrajectory object with the 'timestamp_in_sec' member as its initial
+        timestamp and T as the total horizon. It samples from the Trajectory object upon request by returning the
+        closest point in time on the discrete trajectory.
+        :param fixed_trajectory: a CartesianExtendedTrajectory object
+        :param timestamp_in_sec: Initial timestamp [s]
+        :param T: Trajectory time horizon [s] ("length")
+        """
         super().__init__(timestamp_in_sec, T)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
-        This function takes an array of time stamps and returns aCartesianExtendedTrajectory.
+        This function takes an array of timestamps and returns a CartesianExtendedTrajectory.
         Note: Since the trajectory is not actually samplable - the closest time points on the trajectory are returned.
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory
@@ -34,7 +42,7 @@ class FixedSamplableTrajectory(SamplableTrajectory):
 
         # Make sure no unplanned extrapolation will occur due to overreaching time points
         # This check is done in relative-to-ego units
-        assert max(relative_time_points) <= self.T + EPS, \
+        assert max(relative_time_points) <= self.T, \
             'In timestamp %f : self.T=%f <= max(relative_time_points)=%f' % \
             (self.timestamp_in_sec, self.T, max(relative_time_points))
 
@@ -77,6 +85,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored
+        :param time_horizon: the length of the trajectory snippet (seconds)
         :param cost_params: ignored
         :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)

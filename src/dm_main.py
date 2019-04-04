@@ -61,7 +61,7 @@ class DmInitialization:
     """
 
     @staticmethod
-    def create_state_module(map_file: str=DEFAULT_MAP_FILE) -> StateModule:
+    def create_state_module(map_file: str = DEFAULT_MAP_FILE) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
         pubsub = PubSub()

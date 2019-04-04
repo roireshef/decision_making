@@ -1,24 +1,22 @@
 import time
 
 import numpy as np
+import rte.python.profiler as prof
 import traceback
-from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, CartesianLimitsViolated, StateHasNotArrivedYet
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
-    LOG_MSG_SCENE_STATIC_RECEIVED, VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
-    MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED, LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL
+    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
+    MAX_VIS_TRAJECTORIES_NUMBER
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
-from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
@@ -30,12 +28,10 @@ from decision_making.src.planning.types import CartesianExtendedState, Cartesian
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
-import rte.python.profiler as prof
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -62,12 +58,10 @@ class TrajectoryPlanningFacade(DmModule):
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, None)
         self.pubsub.subscribe(UC_SYSTEM_STATE_LCM, None)
-        # self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
         self.pubsub.unsubscribe(UC_SYSTEM_STATE_LCM)
-        # self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _periodic_action_impl(self):
         """
@@ -77,9 +71,6 @@ class TrajectoryPlanningFacade(DmModule):
         try:
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
-
-            # scene_static = self._get_current_scene_static()
-            # SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             state = self._get_current_state()
 
@@ -115,6 +106,12 @@ class TrajectoryPlanningFacade(DmModule):
                 plan(updated_state, params.reference_route, params.target_state, T,
                      T_required_horizon, params.cost_params)
 
+            if self._last_trajectory is not None and samplable_trajectory is not None:
+                self.logger.debug('Previous SamplableTrajectory : %s.', self._last_trajectory.__dict__)
+                self.logger.debug('Current SamplableTrajectory : %s.', samplable_trajectory.__dict__)
+                self.logger.debug('time: %.3f,d_T: %.3f,d_time: %.3f', state.ego_state.timestamp_in_sec,
+                                  self._last_trajectory.T-samplable_trajectory.T,
+                                  samplable_trajectory.timestamp_in_sec - self._last_trajectory.timestamp_in_sec)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
@@ -215,21 +212,6 @@ class TrajectoryPlanningFacade(DmModule):
         state = State.deserialize(serialized_state)
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
         return state
-
-    def _get_current_scene_static(self) -> SceneStatic:
-        with prof.time_range('_get_current_scene_static.get_latest_sample'):
-            is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
-
-        # TODO Move the raising of the exception to pubsub code. Do the same in behavioral facade
-        if serialized_scene_static is None:
-            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_SCENE_STATIC)
-        with prof.time_range('_get_current_scene_static.SceneStatic.deserialize'):
-            scene_static = SceneStatic.deserialize(serialized_scene_static)
-        if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
-            raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
-        self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
-        return scene_static
 
     def _get_mission_params(self) -> TrajectoryParams:
         """

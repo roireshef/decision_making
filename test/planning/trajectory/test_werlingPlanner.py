@@ -448,7 +448,7 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
         timestamp_in_sec=10.0,
         T_s=1.5,
         T_d=1.0,
-        total_time=1.5,
+        T_extended=1.5,
         frenet_frame=frenet,
         poly_s_coefs=np.array(
             [-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),
