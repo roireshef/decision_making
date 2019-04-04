@@ -191,7 +191,7 @@ def scene_dynamic_fix(scene_static_pg_split):
     header = Header(0, timestamp, 0)
     data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
     map_origin = MapOrigin(0.0, 0.0, 0.0, timestamp)
-    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data, s_MapOrigin=map_origin)
+    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
 
     yield scene_dynamic
 
