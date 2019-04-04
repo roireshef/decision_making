@@ -173,18 +173,13 @@ class WerlingPlanner(TrajectoryPlanner):
                 total_time=planning_horizon
             )
 
-        else:
-            # TODO: this can't be sampled between two points accurately! Use degenerated polynomial instead
-            # samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec,
-            #                                                 planning_horizon)
+        else:  # create samplable trajectory with constant velocity, starting from the goal's location and time
+            poly_s = np.array([0, 0, 0, 0, goal_frenet_state[FS_SV], goal_frenet_state[FS_SX]])
+            poly_d = np.array([0, 0, 0, 0, goal_frenet_state[FS_DV], goal_frenet_state[FS_DX]])
+            samplable_trajectory = SamplableWerlingTrajectory(
+                state.ego_state.timestamp_in_sec + T, planning_horizon, planning_horizon, planning_horizon,
+                reference_route, poly_s, poly_d)
 
-            poly_s = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SV],
-                               ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SX]])
-            poly_d = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DV],
-                               ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DX]])
-            samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
-                                                              planning_horizon, planning_horizon, planning_horizon,
-                                                              reference_route, poly_s, poly_d)
         return samplable_trajectory, \
            ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
            filtered_trajectory_costs[sorted_filtered_idxs]
