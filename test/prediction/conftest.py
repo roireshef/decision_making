@@ -139,14 +139,15 @@ def init_dynamic_ego_state(init_ego_cartesian_state: CartesianExtendedState, car
 
 @pytest.fixture(scope='function')
 def init_state(init_ego_state: EgoState, init_dyn_obj: DynamicObject) -> State:
-    yield State(ego_state=init_ego_state, dynamic_objects=[init_dyn_obj],
+    yield State(is_sampled=False, ego_state=init_ego_state, dynamic_objects=[init_dyn_obj],
                 occupancy_state=OccupancyState(0, np.array([]), np.array([])))
 
 
 @pytest.fixture(scope='function')
 def dynamic_init_state(init_dynamic_ego_state: EgoState, init_dyn_obj: DynamicObject) -> State:
-    yield State(ego_state=init_dynamic_ego_state, dynamic_objects=[init_dyn_obj],
+    yield State(is_sampled=False, ego_state=init_dynamic_ego_state, dynamic_objects=[init_dyn_obj],
                 occupancy_state=OccupancyState(0, np.array([]), np.array([])))
+
 
 @pytest.fixture(scope='function')
 def unaligned_dynamic_object(predicted_cartesian_state_1_constant_yaw: CartesianExtendedState, prediction_timestamps,
@@ -166,7 +167,7 @@ def aligned_ego_state(init_ego_state, unaligned_dynamic_object):
 
 @pytest.fixture(scope='function')
 def unaligned_state(init_ego_state, unaligned_dynamic_object) -> State:
-    yield State(ego_state=init_ego_state, dynamic_objects=[unaligned_dynamic_object],
+    yield State(is_sampled=False, ego_state=init_ego_state, dynamic_objects=[unaligned_dynamic_object],
                 occupancy_state=OccupancyState(0, np.array([]), np.array([])))
 
 
@@ -321,4 +322,4 @@ def original_state_with_sorrounding_objects():
                 dynamic_objects.append(dynamic_object)
                 obj_id += 1
 
-        yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+        yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
