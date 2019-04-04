@@ -196,7 +196,6 @@ class WerlingPlanner(TrajectoryPlanner):
         This method verifies that if such deviations exist, they are indeed minor, corrects them to the right accurate
         values and raises a warning if the deviations are not so small.
         :param ftrajectories: trajectories in frenet frame
-        :param init_state: initial state
         :return:Corrected trajectories in frenet frame
         """
         traj_velocities = ftrajectories[:, :, FS_SV]

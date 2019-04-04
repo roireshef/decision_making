@@ -3,7 +3,8 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+from decision_making.src.global_constants import SPECIFICATION_HEADWAY, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, RelativeLane
@@ -52,8 +53,8 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
     # (according to prediction at the terminal time)
     expected_longitudes = [objects_longitudes[i] +
                            target.dynamic_object.map_state.lane_fstate[FS_SV] * actions[i].t -
-                           actions[i].v * SPECIFICATION_MARGIN_TIME_DELAY -
-                           LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT -
+                           actions[i].v * SPECIFICATION_HEADWAY -
+                           LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT -
                            behavioral_grid_state.ego_state.size.length / 2 - targets[i].dynamic_object.size.length / 2
                            for i, target in enumerate(targets)]
 

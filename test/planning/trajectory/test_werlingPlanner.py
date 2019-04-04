@@ -1,9 +1,9 @@
-import time
 from typing import List
 from unittest.mock import patch
 
 import numpy as np
 import pytest
+from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
@@ -13,10 +13,9 @@ from decision_making.src.planning.behavioral.planner.cost_based_behavioral_plann
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
+from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
     CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
@@ -26,16 +25,15 @@ from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
 from mapping.src.transformations.geometry_utils import CartesianFrame
 from mapping.test.model.map_model_utils import TestMapModelUtils
-from rte.python.logger.AV_logger import AV_Logger
-
-mock_td_steps = 5
 
 
-# @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-# @patch('decision_making.test.planning.trajectory.test_werlingPlanner.TD_STEPS', mock_td_steps)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.TD_STEPS', mock_td_steps)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.SX_STEPS', 5)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.TD_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MIN', -8)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MAX', 0)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MIN', -1.6)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MAX', 1.6)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
@@ -89,8 +87,6 @@ def test_werlingPlanner_toyScenario_noException():
                                        lat_acceleration_limits=LAT_ACC_LIMITS)
 
     planner = WerlingPlanner(logger, predictor)
-
-    start_time = time.time()
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route, goal=goal,
                                                    T=Ts, T_required_horizon=Ts, bp_time=0, cost_params=cost_params)

@@ -1,4 +1,3 @@
-from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from enum import Enum
 from typing import List
 import numpy as np
