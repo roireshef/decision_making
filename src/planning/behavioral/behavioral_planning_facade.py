@@ -70,20 +70,18 @@ class BehavioralPlanningFacade(DmModule):
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            # with prof.time_range('BP-IF'):
-            #     # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
-            #     # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
-            #     # Optimal Control and the fact it complies with Bellman principle of optimality.
-            #     # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            #     if LocalizationUtils.is_actual_state_close_to_expected_state(
-            #             state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-            #         updated_state = self._get_state_with_expected_ego(state)
-            #         self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
-            #                           "according to previous plan")
-            #     else:
-            #         updated_state = state
-
-            updated_state = state
+            with prof.time_range('BP-IF'):
+                # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
+                # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
+                # Optimal Control and the fact it complies with Bellman principle of optimality.
+                # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
+                if LocalizationUtils.is_actual_state_close_to_expected_state(
+                        state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                    updated_state = self._get_state_with_expected_ego(state)
+                    self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
+                                      "according to previous plan")
+                else:
+                    updated_state = state
 
             navigation_plan = self._get_current_navigation_plan()
 

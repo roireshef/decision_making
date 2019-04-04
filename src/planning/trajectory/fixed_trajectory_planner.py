@@ -6,14 +6,15 @@ import numpy as np
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, EPS
+    WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
-    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
+    CartesianExtendedState, CartesianTrajectories, CartesianExtendedTrajectory, CartesianPoint2D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
+from src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 
 
 class FixedSamplableTrajectory(SamplableTrajectory):
@@ -76,8 +77,9 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._sleep_mean = sleep_mean
 
     @raises(NotTriggeredException)
-    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, T: float,
-             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, T: float,
+             T_required_horizon: float, cost_params: TrajectoryCostParams) -> \
+            Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
         that advances incrementally on fixed_trajectory by step size. Otherwise raise NotTriggeredException
@@ -85,7 +87,6 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored
-        :param time_horizon: the length of the trajectory snippet (seconds)
         :param cost_params: ignored
         :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)

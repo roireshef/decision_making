@@ -1,12 +1,15 @@
 import time
+import traceback
+from logging import Logger
+from typing import Dict
 
 import numpy as np
 import rte.python.profiler as prof
-import traceback
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
+
 from decision_making.src.exceptions import MsgDeserializationError, CartesianLimitsViolated, StateHasNotArrivedYet
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
@@ -30,8 +33,6 @@ from decision_making.src.planning.utils.localization_utils import LocalizationUt
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
-from logging import Logger
-from typing import Dict
 
 
 class TrajectoryPlanningFacade(DmModule):
