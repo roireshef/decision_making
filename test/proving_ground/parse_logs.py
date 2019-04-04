@@ -84,8 +84,8 @@ def plot_dynamics(path: str):
     other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
     ego_sa_plot,  = plt.plot(timestamp_in_sec, ego_sa)
     plt.xlabel('time[s]')
-    plt.ylabel('velocity[m/s]')
-    plt.legend([ego_sv_plot, other_sv_plot, ego_sa_plot], ['ego_sv', 'other_sv', 'ego_lane'])
+    plt.ylabel('velocity[m/s]/acceleration[m/s^2]')
+    plt.legend([ego_sv_plot, other_sv_plot, ego_sa_plot], ['ego_sv', 'other_sv', 'ego_sa'])
 
     ax2 = plt.subplot(4, 1, 2, sharex=ax1)
     ego_cx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
