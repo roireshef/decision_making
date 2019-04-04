@@ -309,10 +309,7 @@ class MapUtils:
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
 
-        # TODO: Check if that's correct
         road_ids = route_plan.s_Data.a_i_road_segment_ids
-
-        # TODO: Add get_road_index_in_plan logic
         initial_road_idx_on_plan = route_plan.get_road_index_in_plan(initial_road_segment_id)
 
         cumulative_distance = 0.
