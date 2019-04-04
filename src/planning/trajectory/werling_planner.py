@@ -1,19 +1,22 @@
+from logging import Logger
+from typing import Tuple
+
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.exceptions import CartesianLimitsViolated, FrenetLimitsViolated
+
+from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, VELOCITY_LIMITS
+    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
-from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedSamplableTrajectory
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, \
-    FrenetState2D, C_A, C_K, D5, Limits
+    FrenetState2D, C_A, C_K
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -22,8 +25,6 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
-from logging import Logger
-from typing import Tuple
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -87,7 +88,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # solve the optimization problem in frenet-frame from t=0 to t=T
         if is_target_ahead:
-            
             # Lateral planning horizon(Td) lower bound, now approximated from x=a*t^2
             lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T, self.dt)
 
@@ -97,17 +97,18 @@ class WerlingPlanner(TrajectoryPlanner):
             ftrajectories_optimization, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
                                                                                                   fconstraints_tT,
                                                                                                   T, T_d_grid, self.dt)
-            ftrajectories = self._correct_boundary_values(ftrajectories_optimization)
+            ftrajectories = WerlingPlanner._correct_boundary_values(ftrajectories_optimization)
 
-            if planning_horizon > T:
+            if planning_horizon > T:        # add padding
                 time_samples = np.arange(Math.ceil_to_step(T, self.dt) - T, planning_horizon - T + EPS, self.dt)
                 extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(fconstraints_tT.get_grid(),
                                                                                  time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
         else:
+            # only pad
             ftrajectories = self.predictor.predict_2d_frenet_states(ego_frenet_state[np.newaxis, :],
                                                                     np.arange(0, planning_horizon + EPS, self.dt))
-            ftrajectories = self._correct_boundary_values(ftrajectories)
+            ftrajectories = WerlingPlanner._correct_boundary_values(ftrajectories)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
@@ -172,12 +173,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 poly_d_coefs=poly_coefs[cartesian_filtered_indices[sorted_filtered_idxs[0]]][6:],
                 total_time=planning_horizon
             )
-
         else:
-            # TODO: this can't be sampled between two points accurately! Use degenerated polynomial instead
-            # samplable_trajectory = FixedSamplableTrajectory(ctrajectories[0], state.ego_state.timestamp_in_sec,
-            #                                                 planning_horizon)
-
             poly_s = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SV],
                                ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SX]])
             poly_d = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DV],
@@ -189,7 +185,8 @@ class WerlingPlanner(TrajectoryPlanner):
            ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
            filtered_trajectory_costs[sorted_filtered_idxs]
 
-    def _correct_boundary_values(self, ftrajectories: FrenetTrajectories2D) -> \
+    @staticmethod
+    def _correct_boundary_values(ftrajectories: FrenetTrajectories2D) -> \
             FrenetTrajectories2D:
         """
         Boundary values (initial) of werling trajectories can be received with minor numerical deviations.
