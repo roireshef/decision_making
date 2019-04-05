@@ -119,18 +119,18 @@ class RoutePlannerInputData():
                 raise NavigationSceneDataMismatch("Road segement ID %d reported in the NAV route not found in scene static base", road_segment_id)
 
             if road_segment_idx < number_of_road_segment - 1:
-                self._next_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx+1]
+                self._next_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx+1][1]
             else:
                 self._next_road_segment_id[road_segment_id] = None
 
             if road_segment_idx > 0:
-                self._prev_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx-1]
+                self._prev_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx-1][1]
             else:
                 self._prev_road_segment_id[road_segment_id] = None
 
             # The same road segment can appear more than once in the the route indicating a loop, but should not appear consecutively
             if road_segment_idx > 0:
-                downstream_road_segment_id, _ = enumerated_road_segment_ids[road_segment_idx - 1]
+                downstream_road_segment_id = enumerated_road_segment_ids[road_segment_idx - 1][1]
                 if (downstream_road_segment_id == road_segment_id):
                     raise RepeatedRoadSegments("Route Planner Input Data Processing: Repeated segement reported in the NAV route ")
 
