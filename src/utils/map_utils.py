@@ -134,7 +134,7 @@ class MapUtils:
 
         map_lane_ids = np.array([lane_segment.e_i_lane_segment_id
                                  for lane_segment in
-                                 SceneStaticModel.get_instance().get_scene_static().s_Data.s_SceneStaticBase.as_scene_lane_segments])
+                                 SceneStaticModel.get_instance().get_scene_static().s_Data.s_SceneStaticGeometry.as_scene_lane_segments])
 
         num_points_in_map_lanes = np.array([MapUtils.get_lane_geometry(lane_id).a_nominal_path_points.shape[0]
                                             for lane_id in map_lane_ids])
@@ -281,13 +281,15 @@ class MapUtils:
             init_lane_id = lane_ids[-1]
         else:  # the starting point is within or after lane_id
             init_lane_id, init_lon = lane_id, starting_lon
-
+        # print("init_lane_id, init_lon =", init_lane_id, ",", init_lon)
         # get the full lanes path
         sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, route_plan)
+        # print("sub_segments =", sub_segments)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
         # create GFF
         gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
+        # print("gff =", gff)
         return gff
 
 
@@ -308,9 +310,11 @@ class MapUtils:
         :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
+        # print("initial_road_segment_id =", initial_road_segment_id)
 
         road_ids = route_plan.s_Data.a_i_road_segment_ids
         initial_road_idx_on_plan = route_plan.get_road_index_in_plan(initial_road_segment_id)
+        # print("initial_road_idx_on_plan =", initial_road_idx_on_plan)
 
         cumulative_distance = 0.
         lane_subsegments = []
