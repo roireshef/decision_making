@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from decision_making.paths import Paths
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA
 from decision_making.src.state.state import EgoState
-
+import numpy as np
 
 def plot_dynamics(path: str):
 
@@ -79,27 +79,35 @@ def plot_dynamics(path: str):
 
     f = plt.figure(1)
     plt.plot(411)
-    ax1 = plt.subplot(4, 1, 1)
+    ax1 = plt.subplot(5, 1, 1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
-    ego_sa_plot,  = plt.plot(timestamp_in_sec, ego_sa)
+    other_sx_der_plot,  = plt.plot(timestamp_in_sec, np.gradient(np.array(other_sx))/np.gradient(timestamp_in_sec))
+    ego_sx_der_plot,  = plt.plot(timestamp_in_sec, np.gradient(np.array(ego_sx))/np.gradient(timestamp_in_sec))
     plt.xlabel('time[s]')
-    plt.ylabel('velocity[m/s]/acceleration[m/s^2]')
-    plt.legend([ego_sv_plot, other_sv_plot, ego_sa_plot], ['ego_sv', 'other_sv', 'ego_sa'])
+    plt.ylabel('velocity[m/s]')
+    plt.legend([ego_sv_plot, other_sv_plot, other_sx_der_plot, ego_sx_der_plot], ['ego_sv', 'other_sv', 'grad(other_sx)', 'grad(ego_sx)'])
 
-    ax2 = plt.subplot(4, 1, 2, sharex=ax1)
+    ax2 = plt.subplot(5, 1, 2, sharex=ax1)
+    ego_sa_plot,  = plt.plot(timestamp_in_sec, ego_sa)
+    ego_sx_derder_plot,  = plt.plot(timestamp_in_sec, np.gradient(np.array(ego_sv))/np.gradient(timestamp_in_sec))
+    plt.xlabel('time[s]')
+    plt.ylabel('acceleration[m]')
+    plt.legend([ego_sa_plot, ego_sx_derder_plot], ['ego_sa', 'grad(ego_sv)'])
+
+    ax3 = plt.subplot(5, 1, 3, sharex=ax1)
     ego_cx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
     other_cx_plot,  = plt.plot(timestamp_in_sec, other_sx)
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]')
     plt.legend([ego_cx_plot, other_cx_plot], ['ego_s', 'other_s'])
 
-    ax3 = plt.subplot(4, 1, 3, sharex=ax1)
+    ax4 = plt.subplot(5, 1, 4, sharex=ax1)
     plt.plot(recipe_time, recipe_desc, 'o--')
     plt.xlabel('time[s]')
     plt.ylabel('recipe')
 
-    ax4 = plt.subplot(4, 1, 4, sharex=ax1)
+    ax5 = plt.subplot(5, 1, 5, sharex=ax1)
     spec_t_plot,  = plt.plot(spec_time, spec_t, 'o-')
     spec_v_plot,  = plt.plot(spec_time, spec_v, 'o-')
     # spec_s_plot,  = plt.plot(spec_time, spec_s)
