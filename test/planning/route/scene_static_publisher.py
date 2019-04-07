@@ -1,89 +1,59 @@
-from traceback import format_exc
-from logging import Logger
 from time import time
-from numpy import zeros, ones, array
-from numpy import int as np_int
-from numpy import float as np_float
-from typing import List
-
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
-
-from decision_making.src.infra.pubsub import PubSub
-from decision_making.src.infra.dm_module import DmModule
+from typing import List, Dict, Tuple
+import numpy as np
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
-from decision_making.src.messages.scene_static_message import (
-    SceneStatic,
-    DataSceneStatic,
-    SceneStaticGeometry,
-    SceneStaticBase,
-    NavigationPlan,
-    SceneLaneSegmentGeometry,
-    BoundaryPoint,
-    SceneLaneSegmentBase,
-    SceneRoadIntersection,
-    SceneRoadSegment,
-    MAX_NOMINAL_PATH_POINT_FIELDS,
-    StaticTrafficFlowControl,
-    DynamicTrafficFlowControl,
-    DynamicStatus,
-    AdjacentLane,
-    LaneSegmentConnectivity,
-    LaneCoupling)
-from decision_making.src.messages.scene_static_enums import (
-    MapLaneMarkerType,
-    MapRoadSegmentType,
-    MapLaneType,
-    RoadObjectType,
-    TrafficSignalState,
-    MovingDirection,
-    ManeuverType,
-    LaneMappingStatusType,
-    MapLaneDirection,
-    GMAuthorityType,
-    LaneConstructionType)
+from decision_making.src.messages.scene_static_enums import MapLaneMarkerType, MapRoadSegmentType,\
+    MapLaneType, RoadObjectType, TrafficSignalState, MovingDirection, ManeuverType, LaneMappingStatusType,\
+    MapLaneDirection, GMAuthorityType, LaneConstructionType, RoutePlanLaneSegmentAttr
+from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic,\
+    SceneStaticGeometry, SceneStaticBase, NavigationPlan, SceneLaneSegmentGeometry,\
+    BoundaryPoint, SceneLaneSegmentBase, SceneRoadIntersection, SceneRoadSegment,\
+    MAX_NOMINAL_PATH_POINT_FIELDS, StaticTrafficFlowControl, DynamicTrafficFlowControl,\
+    DynamicStatus, AdjacentLane, LaneSegmentConnectivity, LaneCoupling
 
-class SceneStaticPublisher(DmModule):
-    """
-    TODO: Add description
+class SceneStaticPublisher:
+    RoadSegmentID = int
+    LaneSegmentID = int
+    DownstreamRoadSegmentIDs = Dict[RoadSegmentID, List[RoadSegmentID]]
+    LaneConnectivity = Tuple[LaneSegmentID, ManeuverType]
+    DownstreamLaneConnectivity = Dict[LaneSegmentID, List[LaneConnectivity]]
+    IsLaneAttributeActive = bool
+    LaneAttribute = int # actually, LaneMappingStatusType, MapLaneDirection, GMAuthorityType, or LaneConstructionType
+    LaneAttributeConfidence = float
+    LaneAttributeModification = Tuple[IsLaneAttributeActive, RoutePlanLaneSegmentAttr, LaneAttribute, LaneAttributeConfidence]
+    LaneAttributeModifications = Dict[LaneSegmentID, List[LaneAttributeModification]]
 
-    Args:
-        pubsub: TODO: Add description
-        logger: TODO: Add description
-    """
-    def __init__(self, pubsub: PubSub, logger: Logger):
-        super().__init__(pubsub=pubsub, logger=logger)
-        self.logger.info("Initialized Scene Static Publisher")
+    def __init__(self, road_segment_ids: List[RoadSegmentID], lane_segment_ids: List[List[LaneSegmentID]],
+                 navigation_plan: List[RoadSegmentID], downstream_road_segment_ids: DownstreamRoadSegmentIDs = None,
+                 downstream_lane_connectivity: DownstreamLaneConnectivity = None,
+                 lane_attribute_modifications: LaneAttributeModifications = None):
+        """
+        Creates SCENE_STATIC message for testing
+        :param road_segment_ids: Array of road segment IDs
+        :param lane_segment_ids: 2D array containing lane segment IDs. Each row is associated with a road segment
+        :param navigation_plan: Ordered sequence of road segment IDs that makes up the navigaiton plan
+        :param downstream_road_segment_ids: Optional dictionary containing downstream road segment IDs
+        :param downstream_lane_connectivity: Optional dictionary containing downstream lane connectivity information
+        :param lane_attribute_modifications: Optional dictionary containing modifications to the default lane attributes
+        """
+        if downstream_road_segment_ids is None:
+            downstream_road_segment_ids = {}
 
-    def _start_impl(self):
-        """ TODO: Add description """
-        pass
+        if downstream_lane_connectivity is None:
+            downstream_lane_connectivity = {}
+        
+        if lane_attribute_modifications is None:
+            lane_attribute_modifications = {}
 
-    def _stop_impl(self):
-        """ TODO: Add description """
-        pass
+        self._road_segment_ids = road_segment_ids
+        self._lane_segment_ids = lane_segment_ids
+        self._navigation_plan = navigation_plan
+        self._downstream_road_segment_ids = downstream_road_segment_ids
+        self._downstream_lane_connectivity = downstream_lane_connectivity
+        self._lane_attribute_modifications = lane_attribute_modifications
 
-    def _periodic_action_impl(self):
-        """ TODO: Add description """
-        try:
-            # Generate Data and Publish Message
-            self._publish_scene_static(self._generate_data())
-
-        except Exception as e:
-            self.logger.critical("SceneStaticPublisher: UNHANDLED EXCEPTION: %s. Trace: %s",
-                                 e, format_exc())
-
-    def _generate_data(self) -> SceneStatic:
-        """ TODO: Add description """
-        num_road_segments = 2
-        road_segment_ids = [1, 2]
-
-        num_lane_segments = 4
-        lane_segment_ids = [[101, 102],
-                            [201, 202]]
-
-        navigation_plan = [1, 2]
-
-
+    def generate_data(self) -> SceneStatic:
+        """ Generates scene static data """
         # Time since the epoch
         timestamp_object = Timestamp.from_seconds(time())
 
@@ -99,54 +69,65 @@ class SceneStaticPublisher(DmModule):
                                                          e_phi_longitude=0,
                                                          e_l_altitude=0,
                                                          s_Timestamp=timestamp_object),
-                                   s_SceneStaticBase=SceneStaticBase(e_Cnt_num_lane_segments=num_lane_segments,
-                                                                     as_scene_lane_segments=self._generate_lane_segments(road_segment_ids,
-                                                                                                                         num_lane_segments,
-                                                                                                                         lane_segment_ids),
+                                   s_SceneStaticBase=SceneStaticBase(e_Cnt_num_lane_segments=
+                                                                        sum(len(row) for row in self._lane_segment_ids),
+                                                                     as_scene_lane_segments=self._generate_lane_segments(),
                                                                      e_Cnt_num_road_intersections=0,
                                                                      as_scene_road_intersection=self._generate_road_intersections(),
-                                                                     e_Cnt_num_road_segments=num_road_segments,
-                                                                     as_scene_road_segment=self._generate_road_segments(road_segment_ids,
-                                                                                                                        lane_segment_ids)),
+                                                                     e_Cnt_num_road_segments=len(self._road_segment_ids),
+                                                                     as_scene_road_segment=self._generate_road_segments()),
                                    s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=0,
                                                                              as_scene_lane_segments=self._generate_geometry()),
-                                   s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=num_road_segments,
-                                                                   a_i_road_segment_ids=array(navigation_plan, dtype=np_int))))
+                                   s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=len(self._navigation_plan),
+                                                                   a_i_road_segment_ids=np.array(self._navigation_plan))))
 
-    def _generate_lane_segments(self, road_segment_ids: List[int] = None, num_lane_segments: int = 1,
-                                lane_segment_ids: List[List[int]] = None) -> List[SceneLaneSegmentBase]:
-        """
-        Generates default lane segment geometry data
+    def _generate_lane_segments(self) -> List[SceneLaneSegmentBase]:
+        """ Generates default lane segment geometry data """
+        lane_segment_base = []
 
-        Args:
-            road_segment_ids: List of road segment IDs, Default is None
-            num_lane_segments: Number of lane segments, Default is 1
-            lane_segment_ids: List of lane segment IDs, Default is None
-        """
-        # Add error catching in case lists are None
-
-        lane_segment_lite = []
-
-        for i in range(len(road_segment_ids)):
-            for j in range(len(lane_segment_ids[0])):
-                if i == len(road_segment_ids) - 1:
-                    downstream_lane_count = 0
-                    downstream_lanes = self._generate_lane_segment_connectivity()
+        for i, road_segment_id in enumerate(self._road_segment_ids):
+            for j, lane_segment_id in enumerate(self._lane_segment_ids[i]):
+                if bool(self._downstream_lane_connectivity):
+                    # _downstream_lane_connectivity is NOT empty
+                    if lane_segment_id in self._downstream_lane_connectivity:
+                        downstream_lane_count = len(self._downstream_lane_connectivity[lane_segment_id])
+                        downstream_lanes = [LaneSegmentConnectivity(e_i_lane_segment_id=downstream_lane[0],
+                                                                    e_e_maneuver_type=downstream_lane[1])
+                                            for downstream_lane in self._downstream_lane_connectivity[lane_segment_id]]
+                    else:
+                        downstream_lane_count = 0
+                        downstream_lanes = self._generate_lane_segment_connectivity()
                 else:
-                    downstream_lane_count = 1
-                    downstream_lanes = [LaneSegmentConnectivity(e_i_lane_segment_id=lane_segment_ids[i+1][j],
-                                                                e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
+                    # _downstream_lane_connectivity is empty
+                    if road_segment_id is self._road_segment_ids[-1]:
+                        downstream_lane_count = 0
+                        downstream_lanes = self._generate_lane_segment_connectivity()
+                    else:
+                        downstream_lane_count = 1
+                        downstream_lanes = [LaneSegmentConnectivity(e_i_lane_segment_id=self._lane_segment_ids[i+1][j],
+                                                                    e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
 
+                # Default lane attribute values
                 num_active_lane_attributes = 4
-                active_lane_attribute_indices = array([0, 1, 2, 3], dtype=np_int)
-                lane_attributes = array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
-                                   GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
-                                   LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                   MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value], dtype=np_int)
-                lane_attribute_confidences = ones(4, dtype=np_float)
-                
-                lane_segment_lite.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_segment_ids[i][j],
-                                                              e_i_road_segment_id=road_segment_ids[i],
+                active_lane_attribute_indices = np.array([0, 1, 2, 3])
+                lane_attributes = np.array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                                            GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
+                                            LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
+                                            MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value])
+                lane_attribute_confidences = np.ones(4)
+
+                # Check for lane attribute modifications
+                if lane_segment_id in self._lane_attribute_modifications:
+                    for lane_modification in self._lane_attribute_modifications[lane_segment_id]:
+                        if lane_modification[0] is True:
+                            lane_attributes[lane_modification[1]] = lane_modification[2]
+                            lane_attribute_confidences[lane_modification[1]] = lane_modification[3]
+                        else:
+                            active_lane_attribute_indices = np.delete(active_lane_attribute_indices, lane_modification[1])
+                            num_active_lane_attributes -= 1
+                        
+                lane_segment_base.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_segment_id,
+                                                              e_i_road_segment_id=road_segment_id,
                                                               e_e_lane_type=MapLaneType.ControlledAccess_DividedRoadLane,
                                                               e_Cnt_static_traffic_flow_control_count=0,
                                                               as_static_traffic_flow_control=self._generate_traffic_flow_control(),
@@ -164,41 +145,45 @@ class SceneStaticPublisher(DmModule):
                                                               e_i_downstream_road_intersection_id=1,
                                                               e_Cnt_lane_coupling_count=0,
                                                               as_lane_coupling=self._generate_lane_coupling(),
+                                                              e_l_length=100,
                                                               e_Cnt_num_active_lane_attributes=num_active_lane_attributes,
                                                               a_i_active_lane_attribute_indices=active_lane_attribute_indices,
                                                               a_cmp_lane_attributes=lane_attributes,
                                                               a_cmp_lane_attribute_confidences=lane_attribute_confidences))
         
-        return lane_segment_lite
+        return lane_segment_base
 
-    def _generate_road_segments(self, road_segment_ids: List[int] = None, lane_segment_ids: List[List[int]] = None) -> \
-        List[SceneRoadSegment]:
-        """
-        Generates default road segment data
-
-        Args:
-            road_segment_ids: List of road segment IDs, Default is None
-            lane_segment_ids: List of lane segment IDs, Default is None
-        """
-        # Add error catching in case lists are None
-
-        return [SceneRoadSegment(e_i_road_segment_id=road_segment_ids[i],
-                                 e_i_road_id=1,
-                                 e_Cnt_lane_segment_id_count=len(lane_segment_ids),
-                                 a_i_lane_segment_ids=array(lane_segment_ids[i], dtype=np_int),
-                                 e_e_road_segment_type=MapRoadSegmentType.Normal,
-                                 e_Cnt_upstream_segment_count=0,
-                                 a_i_upstream_road_segment_ids=array([0], dtype=np_int),
-                                 e_Cnt_downstream_segment_count=0,
-                                 a_i_downstream_road_segment_ids=array([0], dtype=np_int)) \
-                for i in range(len(road_segment_ids))]
+    def _generate_road_segments(self) -> List[SceneRoadSegment]:
+        """ Generates road segment data """
+        if bool(self._downstream_road_segment_ids):
+            # _downstream_road_segment_ids is NOT empty
+            return [SceneRoadSegment(e_i_road_segment_id=road_segment_id,
+                                     e_i_road_id=1,
+                                     e_Cnt_lane_segment_id_count=len(self._lane_segment_ids[i]),
+                                     a_i_lane_segment_ids=np.array(self._lane_segment_ids[i]),
+                                     e_e_road_segment_type=MapRoadSegmentType.Normal,
+                                     e_Cnt_upstream_segment_count=0,
+                                     a_i_upstream_road_segment_ids=np.array([0]),
+                                     e_Cnt_downstream_segment_count=len(self._downstream_road_segment_ids[road_segment_id]),
+                                     a_i_downstream_road_segment_ids=np.array(self._downstream_road_segment_ids[road_segment_id])) \
+                    for i, road_segment_id in enumerate(self._road_segment_ids)]
+        else:
+            # _downstream_road_segment_ids is empty
+            return [SceneRoadSegment(e_i_road_segment_id=road_segment_id,
+                                     e_i_road_id=1,
+                                     e_Cnt_lane_segment_id_count=len(self._lane_segment_ids[i]),
+                                     a_i_lane_segment_ids=np.array(self._lane_segment_ids[i]),
+                                     e_e_road_segment_type=MapRoadSegmentType.Normal,
+                                     e_Cnt_upstream_segment_count=0,
+                                     a_i_upstream_road_segment_ids=np.array([0]),
+                                     e_Cnt_downstream_segment_count=0,
+                                     a_i_downstream_road_segment_ids=np.array([])) \
+                    for i, road_segment_id in enumerate(self._road_segment_ids)]
     
     def _generate_road_intersections(self, num_intersections: int = 1) -> List[SceneRoadIntersection]:
         """
         Generates default road intersection data
-
-        Args:
-            num_intersections: Number of intersections, Default is 1
+        :param num_intersections: Number of intersections, Default is 1
         """
         return [SceneRoadIntersection(e_i_road_intersection_id=1,
                                       e_Cnt_lane_coupling_count=0,
@@ -207,9 +192,7 @@ class SceneStaticPublisher(DmModule):
                                       a_i_intersection_road_segment_ids=0)]
     
     def _generate_lane_coupling(self) -> List[LaneCoupling]:
-        """
-        Generates default lane coupling data
-        """
+        """ Generates default lane coupling data """
         return [LaneCoupling(e_i_lane_segment_id=1,
                              e_i_road_intersection_id=1,
                              e_i_downstream_lane_segment_id=1,
@@ -217,40 +200,30 @@ class SceneStaticPublisher(DmModule):
                              e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
     
     def _generate_lane_segment_connectivity(self) -> List[LaneSegmentConnectivity]:
-        """
-        Generates default lane segment connectivity data
-        """
+        """ Generates default lane segment connectivity data """
         return [LaneSegmentConnectivity(e_i_lane_segment_id=1,
                                         e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
     
     def _generate_adjacent_lane(self) -> List[AdjacentLane]:
-        """
-        Generates default adjacent lane data
-        """
+        """ Generates default adjacent lane data """
         return [AdjacentLane(e_i_lane_segment_id=1,
                              e_e_moving_direction=0,
                              e_e_lane_type=MovingDirection.Adjacent_or_same_dir)]
     
     def _generate_dynamic_status(self) -> List[DynamicStatus]:
-        """
-        Generates default dynamic status data
-        """
+        """ Generates default dynamic status data """
         return [DynamicStatus(e_e_status=TrafficSignalState.NO_DETECTION,
                               e_Pct_confidence=0)]
     
     def _generate_dynamic_traffic_flow_control(self) -> List[DynamicTrafficFlowControl]:
-        """
-        Generates default dynamic traffic flow control data
-        """
+        """ Generates default dynamic traffic flow control data """
         return [DynamicTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
                                           e_l_station=0,
                                           e_Cnt_dynamic_status_count=0,
                                           as_dynamic_status=self._generate_dynamic_status())]
     
     def _generate_traffic_flow_control(self) -> List[StaticTrafficFlowControl]:
-        """
-        Generates default traffic flow control data
-        """
+        """ Generates default traffic flow control data """
         return [StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
                                          e_l_station=0,
                                          e_Pct_confidence=0)]
@@ -258,23 +231,17 @@ class SceneStaticPublisher(DmModule):
     def _generate_geometry(self, num_nominal_path_points: int = 1) -> List[SceneLaneSegmentGeometry]:
         """
         Generates default lane segment geometry data
-
-        Args:
-            num_nominal_path_points: Number of nominal path points, Default is 1
+        :param num_nominal_path_points: Number of nominal path points, Default is 1
         """
         boundary_point = [BoundaryPoint(e_e_lane_marker_type=MapLaneMarkerType.MapLaneMarkerType_None,
-                                       e_l_s_start=0,
-                                       e_l_s_end=0)]
+                                        e_l_s_start=0,
+                                        e_l_s_end=0)]
         
         return [SceneLaneSegmentGeometry(e_i_lane_segment_id=0,
-                                        e_i_road_segment_id=0,
-                                        e_Cnt_nominal_path_point_count=num_nominal_path_points,
-                                        a_nominal_path_points=zeros((num_nominal_path_points, MAX_NOMINAL_PATH_POINT_FIELDS)),
-                                        e_Cnt_left_boundary_points_count=1,
-                                        as_left_boundary_points=boundary_point,
-                                        e_Cnt_right_boundary_points_count=1,
-                                        as_right_boundary_points=boundary_point)]
-
-    def _publish_scene_static(self, scene_static: SceneStatic) -> None:
-        """ Publish SCENE_STATIC message """
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], scene_static.serialize())
+                                         e_i_road_segment_id=0,
+                                         e_Cnt_nominal_path_point_count=num_nominal_path_points,
+                                         a_nominal_path_points=np.zeros((num_nominal_path_points, MAX_NOMINAL_PATH_POINT_FIELDS)),
+                                         e_Cnt_left_boundary_points_count=1,
+                                         as_left_boundary_points=boundary_point,
+                                         e_Cnt_right_boundary_points_count=1,
+                                         as_right_boundary_points=boundary_point)]

@@ -11,6 +11,20 @@ from decision_making.src.planning.behavioral.behavioral_planning_facade import B
 from decision_making.src.planning.types import CartesianPoint2D
 from decision_making.test.constants import BP_NEGLIGIBLE_DISPOSITION_LON, BP_NEGLIGIBLE_DISPOSITION_LAT
 
+from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.state.state import State, EgoState
+from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
+from decision_making.src.messages.takeover_message import Takeover, DataTakeover
+from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet ,\
+    RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
+    RoutePlanningException, MappingException, raises
+
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
+from decision_making.src.planning.types import FS_SX
+from decision_making.src.global_constants import  DISTANCE_TO_SET_TAKEOVER_FLAG
+
 
 class BehavioralFacadeMock(BehavioralPlanningFacade):
     """
@@ -62,3 +76,18 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
         except Exception as e:
             self.logger.error("BehavioralPlanningFacade error %s" % traceback.format_exc())
 
+    @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
+    def _mock_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState, scene_static:SceneStatic) -> Takeover:
+        """
+        funtion to calculate the takeover message based on the static route plan
+        takeover flag will be set True if all lane segments' end costs for a downstream road segment
+        within a threshold distance are 1, i.e., road is blocked.
+        :param route_plan_data: last route plan data
+        :param ego_satte: last state for ego vehicle
+        :scene_static: scene static data to instantiate the sceneStaticModel
+        :return: Takeover data
+        """
+        # additional line to set up MapUtils compared to original _set_takeover_message function
+        SceneStaticModel.get_instance().set_scene_static(scene_static)
+
+        return self._set_takeover_message(route_plan_data, ego_state)

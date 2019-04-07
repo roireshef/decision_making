@@ -1,6 +1,5 @@
 from os import getpid
 
-from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
 from decision_making.src.infra.pubsub import PubSub
@@ -58,10 +57,6 @@ def main():
     """
     modules_list = \
         [
-            DmProcess(DmInitialization.create_navigation_planner,
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
-
             DmProcess(DmInitialization.create_state_module,
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),

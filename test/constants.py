@@ -5,6 +5,8 @@ LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING = "LCM_PUB_SUB_MOCK"
 
 MAP_SERVICE_ABSOLUTE_PATH = 'mapping.src.service.map_service.MapService.get_instance'
 
+SCENE_STATIC_MODEL_ABSOLUTE_PATH = 'SceneStaticModel.get_instance.get_scene_static'
+
 FILTER_OBJECT_OFF_ROAD_PATH = 'decision_making.src.state.state_module.FILTER_OFF_ROAD_OBJECTS'
 
 TP_MOCK_FIXED_TRAJECTORY_FILENAME = Paths.get_resource_absolute_path_filename(

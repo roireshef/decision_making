@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.filtering.recipe_filtering import R
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, State
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20_30, \
     behavioral_grid_state_with_objects_for_filtering_tracking_mode, \
     behavioral_grid_state_with_objects_for_filtering_negative_sT, \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, \
@@ -29,6 +29,7 @@ from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import
 import numpy as np
 
 from decision_making.test.messages.static_scene_fixture import scene_static
+
 
 def test_filter_followVehicleTracking_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_tracking_mode: BehavioralGridState,

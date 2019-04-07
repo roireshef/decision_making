@@ -1,7 +1,6 @@
 from logging import Logger
 import numpy as np
 
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -10,12 +9,15 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, State, EgoState, DynamicObject
 from mapping.src.service.map_service import MapService
-from decision_making.test.messages.static_scene_fixture import scene_static_no_split
 
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20
 
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
-def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_no_split):
+
+
+def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_no_split, route_plan_20):
     SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
 
     logger = Logger("test_specifyDynamicAction")
@@ -45,7 +47,7 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_no_split):
                                                     size=size, confidence=0)
 
     state = State(None, [obj], ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, NavigationPlanMsg(np.array([20])), logger)
+    behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20, logger)
 
     action_recipes = action_space.recipes
     recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)

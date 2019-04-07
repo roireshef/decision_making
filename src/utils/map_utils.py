@@ -1,9 +1,11 @@
 import numpy as np
-
+from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, \
+    LaneCostNotFound
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegmentGeometry, SceneLaneSegmentBase, SceneRoadSegment
+from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegmentGeometry, \
+    SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -11,8 +13,6 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound
 from typing import List
 
 

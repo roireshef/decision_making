@@ -28,11 +28,12 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
     DEFAULT_STATIC_RECIPE_FILTERING
 
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
-    navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
+    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2
 
 from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
     create_scene_static_from_map_api
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture,\
+
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR,\
     short_testable_map_api, testable_map_api
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)
@@ -60,12 +61,12 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_facade = TrajectoryPlanningFacade(pubsub=pubsub, logger=tp_logger,
                                                  strategy_handlers=strategy_handlers)
 
-    pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PLAN"], trajectory_publish_mock)
+    pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PLAN, trajectory_publish_mock)
 
     state_module.periodic_action()
     trajectory_facade.start()
 
-    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], short_scene_static.serialize())
+    pubsub.publish(UC_SYSTEM_SCENE_STATIC, short_scene_static.serialize())
 
     behavioral_facade.periodic_action()
     state_module.periodic_action()
@@ -85,11 +86,12 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)
 def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module:StateModule,
-                                                                  navigation_facade: NavigationFacade,
+                                                                  route_planner_facade: RoutePlanningFacade,
                                                                   short_testable_map_api):
 
     scene_static = create_scene_static_from_map_api(short_testable_map_api)
     SceneStaticModel.get_instance().set_scene_static(scene_static)
+
     bp_logger = MagicMock()
     predictor_logger = MagicMock()
 
@@ -108,10 +110,11 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
                                           predictor=predictor, logger=bp_logger)
 
     state_module.periodic_action()
-    navigation_facade.periodic_action()
+    route_planner_facade.periodic_action()
+
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
 
-    pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], behavioral_publish_mock)
+    pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, behavioral_publish_mock)
 
     bp_logger.warn.assert_not_called()
     bp_logger.error.assert_not_called()
@@ -121,7 +124,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     predictor_logger.error.assert_not_called()
     predictor_logger.critical.assert_not_called()
 
-    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], scene_static.serialize())
+    pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static.serialize())
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
 

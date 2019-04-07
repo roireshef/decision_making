@@ -4,6 +4,7 @@ from typing import Dict, List
 
 from decision_making.src.infra.pubsub import PubSub
 
+
 class PubSubMock(PubSub):
     def __init__(self, logger):
         # type: (Logger) -> None
@@ -45,6 +46,3 @@ class PubSubMock(PubSub):
             return True, self.topic_msg_mapping[topic]
         else:
             return False, None
-
-    def get_latest_samples_list(self, topic, timeout, max_list_length):
-        raise NotImplementedError("Mock does not implement get_latest_samples_list method")
