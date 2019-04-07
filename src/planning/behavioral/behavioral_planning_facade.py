@@ -84,7 +84,6 @@ class BehavioralPlanningFacade(DmModule):
                 updated_state = state
 
             route_plan = self._get_current_route_plan()
-            route_plan_lane_cost_dict = _create_route_plan_dictionary(route_plan)
 
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
@@ -92,7 +91,7 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_takeover(takeover_message)
 
             trajectory_params, samplable_trajectory, behavioral_visualization_message = \
-                self._planner.plan(updated_state, route_plan, route_plan_lane_cost_dict)
+                self._planner.plan(updated_state, route_plan)
 
             self._last_trajectory = samplable_trajectory
 

@@ -60,7 +60,7 @@ class BehavioralGridState(BehavioralState):
 
     @classmethod
     @prof.ProfileFunction()
-    def create_from_state(cls, state: State, route_plan: RoutePlan, lane_cost_dict: Dict[int, float], logger: Logger):
+    def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -73,8 +73,7 @@ class BehavioralGridState(BehavioralState):
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        # TODO: Understand if we need both arguments (route_plan, lane_cost_dict) at this point
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, lane_cost_dict)
+        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan)
 
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
@@ -169,7 +168,7 @@ class BehavioralGridState(BehavioralState):
         return longitudinal_differences
 
     @staticmethod
-    def _create_generalized_frenet_frames(state: State, route_plan: RoutePlan, lane_cost_dict: Dict[int, float]) -> \
+    def _create_generalized_frenet_frames(state: State, route_plan: RoutePlan) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
@@ -198,8 +197,7 @@ class BehavioralGridState(BehavioralState):
             try:
                 extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                    lookahead_dist=frame_length, navigation_plan=nav_plan,
-                    lane_cost_dict=lane_cost_dict)
+                    lookahead_dist=frame_length, route_plan=route_plan)
             except MappingException:
                 continue
 

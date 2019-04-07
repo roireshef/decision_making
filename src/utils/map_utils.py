@@ -1,7 +1,8 @@
 import numpy as np
 
-from decision_making.src.global_constants import EPS
+from decision_making.src.global_constants import EPS, LANE_END_COST_IND
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegmentGeometry, SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D
@@ -12,6 +13,7 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound
+from typing import List
 
 
 class MapUtils:
@@ -288,7 +290,7 @@ class MapUtils:
     @staticmethod
     @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     def get_lookahead_frenet_frame_by_cost(lane_id: int, starting_lon: float, lookahead_dist: float,
-                                   navigation_plan: NavigationPlanMsg, lane_cost_dict: Dict[int, float]) -> GeneralizedFrenetSerretFrame:
+                                           route_plan: RoutePlan) -> GeneralizedFrenetSerretFrame:
         """
         Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
         (may be negative).
@@ -302,7 +304,7 @@ class MapUtils:
         """
         init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
         # get the full lanes path
-        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, navigation_plan, lane_cost_dict)
+        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.segment_id) for sub_segment in sub_segments]
         # create GFF
@@ -346,7 +348,7 @@ class MapUtils:
     @staticmethod
     @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         navigation_plan: NavigationPlanMsg, lane_cost_dict: Dict[int, float]) -> List[FrenetSubSegment]:
+                         route_plan: RoutePlan) -> List[FrenetSubSegment]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
@@ -358,9 +360,6 @@ class MapUtils:
         :param lane_cost_list: dictionary of key lane ID to value end cost of traversing lane
         :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
         """
-        initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
-        initial_road_idx_on_plan = navigation_plan.get_road_index_in_plan(initial_road_segment_id)
-
         cumulative_distance = 0.
         lane_subsegments = []
 
@@ -380,29 +379,15 @@ class MapUtils:
             if cumulative_distance > lookahead_distance - EPS:
                 break
 
-            current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, lane_cost_dict)
+            current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan)
             current_segment_start_s = 0
 
         return lane_subsegments
 
-    @staticmethod
-    @raises(LaneCostNotFound)
-    def _get_costs_per_lanes(lane_list: List[int], lane_cost_dict: Dict[int, float]) -> Dict[int, float]:
-        """
-        :param lane_list: list of lanes to get cost of
-        :param lane_cost_dict: dictionary of key lane ID to value end cost of traversing lane
-        :return: costs for traversing in each lane in input lane_list, key = lane ID, value = end cost
-        """
-        lane_costs: Dict[int, float] = {}
-        for lane_id in lane_list:
-            lane_costs[lane_id] = lane_cost_dict.get(lane_id)
-            if lane_costs[lane_id] is None:
-                raise LaneCostNotFound("Cost not found for lane %d in lane cost dictionary", lane_id)
-        return lane_costs
 
     @staticmethod
     @raises(DownstreamLaneNotFound, LaneCostNotFound)
-    def _choose_next_lane_id_by_cost(current_lane_id, lane_cost_dict: Dict[int, float]) -> int:
+    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan) -> int:
         """
         Currently assumes that Lookahead spreads only current lane segment and the next lane segment(!)
 
@@ -410,10 +395,14 @@ class MapUtils:
         :param lane_cost_dict: dictionary of key lane ID to value end cost of traversing lane
         :return: ID of the lane with the minimal costs
         """
+        route_plan_costs = route_plan.to_costs_dict()
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
-        costs_per_downstream_lanes = MapUtils._get_costs_per_lanes(downstream_lanes_ids, lane_cost_dict)
-        return min([(downstream_lane_id, costs_per_downstream_lanes[downstream_lane_id])
-                    for downstream_lane_id in downstream_lanes_ids], key=lambda x:x[1])[0]
+        try:
+            minimal_lane_id = min([downstream_lane_id for downstream_lane_id in downstream_lanes_ids],
+                                  key=lambda x: route_plan_costs.get(x)[LANE_END_COST_IND])
+        except KeyError:
+            raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
+        return minimal_lane_id
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)

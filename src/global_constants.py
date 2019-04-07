@@ -215,7 +215,8 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 # Route Planner #
 LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 
-
+LANE_OCCUPANCY_COST_IND = 0
+LANE_END_COST_IND = 1
 
 # State #
 
@@ -266,7 +267,7 @@ RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 
 
 #### MetricLogger
-METRIC_LOGGER_DELIMITER= '_'
+METRIC_LOGGER_DELIMITER = '_'
 
 ##### Log messages
 # TODO: update decision_making_sim messages

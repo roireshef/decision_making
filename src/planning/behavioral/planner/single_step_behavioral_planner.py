@@ -87,14 +87,13 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan, lane_cost_dict: Dict[int, float]):
+    def plan(self, state: State, route_plan: RoutePlan):
 
         action_recipes = self.action_space.recipes
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan,
-                                                                 lane_cost_dict=lane_cost_dict,
                                                                  logger=self.logger)
 
         # Recipe filtering
