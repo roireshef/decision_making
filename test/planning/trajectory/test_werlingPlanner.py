@@ -89,7 +89,7 @@ def test_werlingPlanner_toyScenario_noException():
     planner = WerlingPlanner(logger, predictor)
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route, goal=goal,
-                                                   T=Ts, T_required_horizon=Ts, bp_time=0, cost_params=cost_params)
+                                                   T=Ts, T_required_horizon=Ts, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
 
