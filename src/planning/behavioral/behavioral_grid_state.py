@@ -1,13 +1,10 @@
 from collections import defaultdict
-from logging import Logger
-from typing import Dict, List, Tuple, Optional
 
 import numpy as np
-
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
@@ -16,6 +13,8 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
+from logging import Logger
+from typing import Dict, List, Tuple, Optional
 
 
 class DynamicObjectWithRoadSemantics:
@@ -61,7 +60,7 @@ class BehavioralGridState(BehavioralState):
 
     @classmethod
     @prof.ProfileFunction()
-    def create_from_state(cls, state: State, nav_plan: NavigationPlanMsg, lane_cost_dict: Dict[int, float], logger: Logger):
+    def create_from_state(cls, state: State, route_plan: RoutePlan, lane_cost_dict: Dict[int, float], logger: Logger):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -74,7 +73,8 @@ class BehavioralGridState(BehavioralState):
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan, lane_cost_dict)
+        # TODO: Understand if we need both arguments (route_plan, lane_cost_dict) at this point
+        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, lane_cost_dict)
 
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
@@ -107,12 +107,7 @@ class BehavioralGridState(BehavioralState):
         # calculate objects' segment map_states
         object_map_states = [obj.map_state for obj in dynamic_objects]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
-        # TODO (for split projections) : add to 'objects_segment_ids' the matching overlap segment_lane_ids  that are
-        #  in the intersection. This can be determined from SceneRoadSegment.SceneRoadIntersection.a_i_lane_overlaps
 
-
-        # TODO: This structure can overwrite the rel_lane in case of multiple rel_lanes
-        # (should be changed when dealing with merges)
         # for objects on non-adjacent lane set relative_lanes[i] = None
         rel_lanes_per_obj = np.full(len(dynamic_objects), None)
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
@@ -120,8 +115,6 @@ class BehavioralGridState(BehavioralState):
             # find all dynamic objects that belong to the current unified frame
             relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
             rel_lanes_per_obj[relevant_objects] = rel_lane
-
-        # TODO (for split projections): Modify/add to object_maps_states to reflect the change in the dynamic_objects
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
@@ -176,14 +169,13 @@ class BehavioralGridState(BehavioralState):
         return longitudinal_differences
 
     @staticmethod
-    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg, lane_cost_dict: Dict[int, float]) -> \
+    def _create_generalized_frenet_frames(state: State, route_plan: RoutePlan, lane_cost_dict: Dict[int, float]) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
         contain multiple original lane segments.
         :param state:
-        :param nav_plan:
-        :param lane_cost_dict: dictionary of key lane ID to value end cost of traversing lane
+        :param route_plan
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames

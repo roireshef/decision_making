@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-
 import six
 
 
@@ -13,8 +12,3 @@ class DDSMsg:
     @abstractmethod
     def deserialize(cls, message):
         pass
-
-
-
-
-

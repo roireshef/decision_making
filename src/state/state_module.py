@@ -1,20 +1,19 @@
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
-from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_dynamic import UC_SYSTEM_SCENE_DYNAMIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
 from decision_making.src.exceptions import ObjectHasNegativeVelocityError
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
-    DEFAULT_OBJECT_Z_VALUE, VELOCITY_MINIMAL_THRESHOLD
+    VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
-from decision_making.src.planning.types import FS_SV, FS_SX, C_V
+from decision_making.src.planning.types import FS_SV, C_V
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
 from logging import Logger
-from mapping.src.exceptions import MapCellNotFound, raises
 from threading import Lock
 from traceback import format_exc
 from typing import Optional, Any, List
@@ -46,7 +45,7 @@ class StateModule(DmModule):
         """
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_DYNAMIC"], self._scene_dynamic_callback)
+        self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC, self._scene_dynamic_callback)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
@@ -62,40 +61,53 @@ class StateModule(DmModule):
     def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):
         try:
             with self._scene_dynamic_lock:
+
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
-                timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
-                occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
-                ego_map_state = MapState(lane_fstate=self._scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
-                                         lane_id=self._scene_dynamic.s_Data.s_host_localization.e_i_lane_segment_id)
-                ego_state = EgoState(obj_id=0,
-                                     timestamp=timestamp,
-                                     cartesian_state=self._scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
-                                     map_state=ego_map_state,
-                                     map_state_on_host_lane=ego_map_state,
-                                     size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                                     confidence=1.0)
 
-                if ego_state.cartesian_state[C_V] < 0:
-                    raise ObjectHasNegativeVelocityError('Ego was received with negative velocity %f' % ego_state.cartesian_state[C_V])
+                state = self.create_state_from_scene_dynamic(self._scene_dynamic)
 
-                dyn_obj_data = DynamicObjectsData(num_objects=self._scene_dynamic.s_Data.e_Cnt_num_objects,
-                                                  objects_localization=self._scene_dynamic.s_Data.as_object_localization,
-                                                  timestamp=timestamp)
-                dynamic_objects = self.create_dyn_obj_list(dyn_obj_data)
-                state = State(occupancy_state, dynamic_objects, ego_state)
-                
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
-                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state.serialize())
+                self.pubsub.publish(UC_SYSTEM_STATE_LCM, state.serialize())
 
         except ObjectHasNegativeVelocityError as e:
             self.logger.error(e)
 
-        except Exception as e:
+        except Exception:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
 
-    @raises(MapCellNotFound)
-    def create_dyn_obj_list(self, dyn_obj_data: DynamicObjectsData) -> List[DynamicObject]:
+    @staticmethod
+    def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic) -> State:
+        """
+        This methods takes an already deserialized SceneDynamic message and converts it to a State object
+        :param scene_dynamic:
+        :return: valid State object
+        """
+
+        timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
+        occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
+        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
+                                 lane_id=scene_dynamic.s_Data.s_host_localization.e_i_lane_segment_id)
+        ego_state = EgoState(obj_id=0,
+                             timestamp=timestamp,
+                             cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
+                             map_state=ego_map_state,
+                             map_state_on_host_lane=ego_map_state,
+                             size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
+                             confidence=1.0)
+
+        if ego_state.cartesian_state[C_V] < 0:
+            raise ObjectHasNegativeVelocityError(
+                'Ego was received with negative velocity %f' % ego_state.cartesian_state[C_V])
+
+        dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
+                                          objects_localization=scene_dynamic.s_Data.as_object_localization,
+                                          timestamp=timestamp)
+        dynamic_objects = StateModule.create_dyn_obj_list(dyn_obj_data)
+        return State(occupancy_state, dynamic_objects, ego_state)
+
+    @staticmethod
+    def create_dyn_obj_list(dyn_obj_data: DynamicObjectsData) -> List[DynamicObject]:
         """
         Convert serialized object perception and global localization data into a DM object (This also includes
         computation of the object's road localization). Additionally store the object in memory as preparation for
@@ -118,34 +130,14 @@ class StateModule(DmModule):
                               obj_loc.s_bounding_box.e_l_height)
             confidence = obj_loc.as_object_hypothesis[0].e_r_probability
 
-            try:
-                dyn_obj = DynamicObject(obj_id=obj_loc.e_Cnt_object_id,
-                                        timestamp=timestamp,
-                                        cartesian_state=cartesian_state,
-                                        map_state=map_state if map_state.lane_id > 0 else None,
-                                        map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
-                                        size=size,
-                                        confidence=confidence)
+            dyn_obj = DynamicObject(obj_id=id,
+                                    timestamp=timestamp,
+                                    cartesian_state=cartesian_state,
+                                    map_state=map_state if map_state.lane_id > 0 else None,
+                                    map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
+                                    size=size,
+                                    confidence=confidence)
 
-                if dyn_obj.cartesian_state[C_V] < 0:
-                    raise ObjectHasNegativeVelocityError('Dynamic object with id %d was received with negative velocity %f'
-                                                         % (dyn_obj.obj_id, dyn_obj.cartesian_state[C_V]))
-
-                # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
-
-                # Required to verify the object has map state and that the velocity exceeds a minimal value.
-                if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
-                    thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
-                    thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
-                    dyn_obj = dyn_obj.clone_from_map_state(
-                        map_state=MapState(lane_fstate=thresholded_lane_fstate,
-                                           lane_id=dyn_obj.map_state.lane_id))
-
-                objects_list.append(dyn_obj)  # update the list of dynamic objects
-
-            except MapCellNotFound:
-                x, y, z = cartesian_state[FS_SX], cartesian_state[FS_SV], DEFAULT_OBJECT_Z_VALUE
-                self.logger.warning(
-                    "Couldn't localize object on road. Object location: ({}, {}, {})".format(id, x, y, z))
+            objects_list.append(dyn_obj)  # update the list of dynamic objects
 
         return objects_list

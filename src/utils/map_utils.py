@@ -1,5 +1,3 @@
-from typing import List, Dict
-
 import numpy as np
 
 from decision_making.src.global_constants import EPS
@@ -59,7 +57,9 @@ class MapUtils:
         :return: lane's length
         """
         nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
-        return nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        # TODO: lane length should be nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        ds = np.mean(np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))
+        return ds * (nominal_points.shape[0] - 1)
 
     @staticmethod
     def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
@@ -141,7 +141,7 @@ class MapUtils:
 
         map_lane_ids = np.array([lane_segment.e_i_lane_segment_id
                                  for lane_segment in
-                                 SceneStaticModel.get_instance().get_scene_static().s_Data.s_SceneStaticBase.as_scene_lane_segments])
+                                 SceneStaticModel.get_instance().get_scene_static().s_Data.s_SceneStaticGeometry.as_scene_lane_segments])
 
         num_points_in_map_lanes = np.array([MapUtils.get_lane_geometry(lane_id).a_nominal_path_points.shape[0]
                                             for lane_id in map_lane_ids])
@@ -312,7 +312,7 @@ class MapUtils:
     @staticmethod
     @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound)
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
-                                   navigation_plan: NavigationPlanMsg) -> GeneralizedFrenetSerretFrame:
+                                   route_plan: RoutePlan) -> GeneralizedFrenetSerretFrame:
         """
         Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
         (may be negative).
@@ -320,7 +320,7 @@ class MapUtils:
         :param lane_id: starting lane_id
         :param starting_lon: starting longitude (may be negative) [m]
         :param lookahead_dist: lookahead distance for the output frame [m]
-        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
+        :param route_plan: the relevant navigation plan to iterate over its road IDs.
         :return: generalized Frenet frame for the given route part
         """
         init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
@@ -416,9 +416,9 @@ class MapUtils:
                     for downstream_lane_id in downstream_lanes_ids], key=lambda x:x[1])[0]
 
     @staticmethod
-    @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound)
+    @raises(RoadNotFound, DownstreamLaneNotFound)
     def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         navigation_plan: NavigationPlanMsg) -> List[FrenetSubSegment]:
+                         route_plan: RoutePlan) -> List[FrenetSubSegment]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to <navigation_plan>, and finally return a configuration of lane-subsegments.
@@ -430,7 +430,9 @@ class MapUtils:
         :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
-        initial_road_idx_on_plan = navigation_plan.get_road_index_in_plan(initial_road_segment_id)
+
+        road_ids = route_plan.s_Data.a_i_road_segment_ids
+        initial_road_idx_on_plan = route_plan.get_road_index_in_plan(initial_road_segment_id)
 
         cumulative_distance = 0.
         lane_subsegments = []
@@ -453,15 +455,15 @@ class MapUtils:
                 break
 
             next_road_idx_on_plan = current_road_idx_on_plan + 1
-            if next_road_idx_on_plan > len(navigation_plan.road_ids) - 1:
+            if next_road_idx_on_plan > len(road_ids) - 1:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
                                              "current_segment_end_s=%f lookahead_distance=%f" %
-                                             (navigation_plan, lookahead_distance - cumulative_distance,
+                                             (road_ids, lookahead_distance - cumulative_distance,
                                               current_segment_end_s, lookahead_distance))
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
             # road segment. This assumes a single correct downstream segment.
-            next_road_segment_id_on_plan = navigation_plan.road_ids[next_road_idx_on_plan]
+            next_road_segment_id_on_plan = road_ids[next_road_idx_on_plan]
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
 
             if len(downstream_lanes_ids) == 0:
@@ -474,10 +476,10 @@ class MapUtils:
 
             if len(downstream_lanes_ids_on_plan) == 0:
                 raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan %s",
-                                                  (navigation_plan))
+                                                  (road_ids))
             if len(downstream_lanes_ids_on_plan) > 1:
                 raise AmbiguousNavigationPlan("More than 1 downstream lanes according to the nav. plan %s",
-                                              (navigation_plan))
+                                              (road_ids))
 
             current_lane_id = downstream_lanes_ids_on_plan[0]
             current_segment_start_s = 0

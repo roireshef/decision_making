@@ -30,17 +30,21 @@ class MsgSerializationError(Exception):
     pass
 
 
+class StateHasNotArrivedYet(Warning):
+    pass
+
+
 # TRAJECTORY PLANNING
 @six.add_metaclass(ABCMeta)
-class TrjajectoryPlanningException(Exception):
+class TrajectoryPlanningException(Exception):
     pass
 
 
-class NoValidTrajectoriesFound(TrjajectoryPlanningException):
+class NoValidTrajectoriesFound(TrajectoryPlanningException):
     pass
 
 
-class CouldNotGenerateTrajectories(TrjajectoryPlanningException):
+class CouldNotGenerateTrajectories(TrajectoryPlanningException):
     pass
 
 
@@ -103,10 +107,43 @@ class RoadNotFound(MappingException):
 class LaneNotFound(MappingException):
     pass
 
-
-class LaneCostNotFound(MappingException):
+class EgoStationBeyondLaneLength(MappingException):
     pass
 
+# ROUTE PLANNING
+@six.add_metaclass(ABCMeta)
+class RoutePlanningException(Exception):
+    pass
+
+class RepeatedRoadSegments(RoutePlanningException):
+    pass
+
+class EgoRoadSegmentNotFound(RoutePlanningException):
+    pass
+
+class EgoLaneOccupancyCostIncorrect(RoutePlanningException):
+    pass
+
+class RoadSegmentLaneSegmentMismatch(RoutePlanningException):
+    pass
+
+class MissingInputInformation(RoutePlanningException):
+    pass
+
+class NavigationSceneDataMismatch(RoutePlanningException):
+    pass
+
+class LaneSegmentDataNotFound(RoutePlanningException):
+    pass
+
+class RoadSegmentDataNotFound(RoutePlanningException):
+    pass
+
+class LaneAttributeNotFound(RoutePlanningException):
+    pass
+
+class DownstreamLaneDataNotFound(RoutePlanningException):
+    pass
 
 def raises(*e):
     # type: (Exception)

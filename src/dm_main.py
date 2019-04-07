@@ -26,6 +26,8 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
+    SingleLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
@@ -66,16 +68,6 @@ NAVIGATION_PLAN = NavigationPlanMsg(np.array([231800832, 5007343616,  238944256,
 NAVIGATION_PLAN_PG = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
 DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
-
-class NavigationFacadeMock(NavigationFacade):
-    def __init__(self, pubsub: PubSub, logger: Logger, plan: NavigationPlanMsg):
-        super().__init__(pubsub=pubsub, logger=logger, handler=None)
-        self.plan = plan
-
-    def _periodic_action_impl(self):
-        self._publish_navigation_plan(self.plan)
-
-
 class DmInitialization:
     """
     This class contains the module initializations
@@ -92,17 +84,6 @@ class DmInitialization:
         return state_module
 
     @staticmethod
-    def create_navigation_planner(map_file: str=DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
-        logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
-
-        pubsub = PubSub()
-        # MapService should be initialized in each process according to the given map_file
-        MapService.initialize(map_file)
-
-        navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
-        return navigation_module
-
-    @staticmethod
     def create_route_planner(map_file: str=DEFAULT_MAP_FILE) -> RoutePlanningFacade:
         logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)
 
@@ -110,7 +91,7 @@ class DmInitialization:
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
-        planner = CostBasedRoutePlanner()
+        planner = BinaryCostBasedRoutePlanner()
 
         route_planning_module = RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
         return route_planning_module
@@ -169,10 +150,6 @@ def main():
 
     modules_list = \
         [
-            DmProcess(lambda: DmInitialization.create_navigation_planner(DEFAULT_MAP_FILE),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
-
             DmProcess(lambda: DmInitialization.create_route_planner(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD}),

@@ -3,20 +3,18 @@ from typing import List
 
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSTakeover, TsSYSDataTakeover
 
-from decision_making.src.messages.scene_common_messages import Header
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.scene_common_messages import Header
 
 class DataTakeover(PUBSUB_MSG_IMPL):
-    """
-    Takeover Flag
-
-    Args:
-        e_b_is_takeover_needed: true = takeover needed,
-                                false = takeover not needed
-    """
     e_b_is_takeover_needed = bool
 
     def __init__(self, e_b_is_takeover_needed: bool):
+        """
+        Takeover Flag
+        :param e_b_is_takeover_needed: true = takeover needed,
+                                       false = takeover not needed
+        """
         self.e_b_is_takeover_needed = e_b_is_takeover_needed
 
     def serialize(self) -> TsSYSDataTakeover:
@@ -31,17 +29,15 @@ class DataTakeover(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_b_is_takeover_needed)
 
 class Takeover(PUBSUB_MSG_IMPL):
-    """
-    Class that represents the TAKEOVER topic
-    
-    Args:
-        s_Header: TODO: Add Comment
-        s_Data: TODO: Add Comment
-    """
     s_Header = Header
     s_Data = DataTakeover
 
     def __init__(self, s_Header: Header, s_Data: DataTakeover):
+        """
+        Class that represents the TAKEOVER topic
+        :param s_Header: General Information
+        :param s_Data: Message Data
+        """
         self.s_Header = s_Header
         self.s_Data = s_Data
 

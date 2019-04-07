@@ -6,6 +6,8 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 # General constants
 UNKNOWN_DEFAULT_VAL = 0.0
 EPS = np.finfo(np.float32).eps
+TRUE_COST = 1.0
+FALSE_COST = 0.0
 
 # Communication Layer
 
@@ -117,6 +119,9 @@ FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use V
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
+# Distance ahead to raise takeover flag
+DISTANCE_TO_SET_TAKEOVER_FLAG = 100
+
 # Trajectory Planner #
 
 # [m] length of reference trajectory provided by behavioral planner
@@ -207,6 +212,11 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN = 0.15
 FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 
 
+# Route Planner #
+LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
+
+
+
 # State #
 
 # TODO: set real values
@@ -283,6 +293,3 @@ LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from ac
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
-
-# Distance ahead to raise takeover flag
-DISTANCE_TO_SET_TAKEOVER_FLAG = 100
