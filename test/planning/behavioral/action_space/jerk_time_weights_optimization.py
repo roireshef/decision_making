@@ -149,7 +149,17 @@ class TimeJerkWeightsOptimization:
 
     @staticmethod
     def check_actions_in_limits(T: np.array, a0: np.array, v0: np.array, vT: np.array, s: np.array, margin: float):
-
+        """
+        given a set of actions, calculate which of them are in limits (kinematics, safety, time limits)
+        and return braking quality and limits statistics
+        :param T: time horizons array
+        :param a0: initial accelerations array
+        :param v0: initial velocities array
+        :param vT: target velocities array
+        :param s: array of initial distances from the target
+        :param margin: minimal distance between cars' centers
+        :return: boolean array of actions in limits, braking quality of actions in limit, statistics data
+        """
         # calculate s profile of host & target
         zeros = np.zeros_like(T)
         poly_host = QuinticPoly1D.s_profile_coefficients(a0, v0, vT, s - margin, T, SPECIFICATION_HEADWAY)
