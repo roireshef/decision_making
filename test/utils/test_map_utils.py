@@ -235,44 +235,26 @@ def test_advanceByCost_lookaheadCoversFullMap_validateExceptionThrownLaneCostNot
         assert True
 
 
-def test_getCostsPerLanes(scene_static_lane_split: SceneStatic, lane_cost_dict_with_split: Dict[int, float]):
-    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split)
-    all_road_segment_ids = [30, 31, 32, 33, 34, 43]
 
-    correct_cost_per_lane = {
-        30: {300: 0, 301: 0, 302: 1},
-        31: {310: 0, 311: 0, 312: 1},
-        32: {320: 0, 321: 0, 322: 1},
-        33: {330: 0, 331: 1, 332: 1},
-        34: {340: 1, 341: 1, 342: 1},
-        43: {430: 0, 431: 0, 432: 0}
-    }
-
-    for road_id in all_road_segment_ids:
-        current_lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_id)
-        cost_per_lane = MapUtils._get_costs_per_lanes(current_lane_ids, lane_cost_dict_with_split)
-        assert correct_cost_per_lane[road_id] == cost_per_lane
-
-
-def test_chooseNextLaneIDByCost_addSplit(scene_static_lane_split: SceneStatic, lane_cost_dict_with_split: Dict[int, float]):
+def test_chooseNextLaneIDByCost_addSplit(scene_static_lane_split: SceneStatic, route_plan_with_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split)
     current_lane_id = 330
     next_lane_id = 430
 
-    least_cost_lane = MapUtils._choose_next_lane_id_by_cost(current_lane_id, lane_cost_dict_with_split)
+    least_cost_lane = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan_with_split)
     assert least_cost_lane == next_lane_id
 
 
-def test_chooseNextLaneIDByCost_ignoreSplit(scene_static_lane_split: SceneStatic, lane_cost_dict_without_split: Dict[int, float]):
+def test_chooseNextLaneIDByCost_ignoreSplit(scene_static_lane_split: SceneStatic, route_plan_without_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split)
     current_lane_id = 330
     next_lane_id = 340
 
-    least_cost_lane = MapUtils._choose_next_lane_id_by_cost(current_lane_id, lane_cost_dict_without_split)
+    least_cost_lane = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan_without_split)
     assert least_cost_lane == next_lane_id    
 
 
-def test_advanceByCost_addSplit(scene_static_lane_split: SceneStatic, lane_cost_dict_with_split: Dict[int, float]):
+def test_advanceByCost_addSplit(scene_static_lane_split: SceneStatic, route_plan_with_split):
     """
     Path is starred:    |  34 |_____
                         | *33  _*43_
@@ -283,8 +265,7 @@ def test_advanceByCost_addSplit(scene_static_lane_split: SceneStatic, lane_cost_
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split)
     road_segment_ids = [30, 31, 32, 33, 43]
     current_ordinal = 0
-    navigation_plan = NavigationPlanMsg(np.array(road_segment_ids))
-    
+
     # Get correct cumulative distance (through three lane segments of 43)
     cumulative_distance = 0
     for road_id in road_segment_ids:
@@ -294,11 +275,11 @@ def test_advanceByCost_addSplit(scene_static_lane_split: SceneStatic, lane_cost_
             cumulative_distance += MapUtils.get_lane_length(lane_id)
 
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, navigation_plan, lane_cost_dict_with_split)
+    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, route_plan_with_split)
     assert len(sub_segments) == len(road_segment_ids) + 2   # Three more lane segments added in final road segment 
 
 
-def test_advanceByCost_ignoreSplit(scene_static_lane_split: SceneStatic, lane_cost_dict_without_split: Dict[int, float]):
+def test_advanceByCost_ignoreSplit(scene_static_lane_split: SceneStatic, route_plan_without_split):
     """
     Path is starred:    | *34 |_____
                         | *33  _43__
@@ -310,15 +291,12 @@ def test_advanceByCost_ignoreSplit(scene_static_lane_split: SceneStatic, lane_co
     road_segment_ids = [30, 31, 32, 33, 34]
     current_ordinal = 0
     # nav_plan lane IDs = [300, 310, 320, 330, 340]
-    navigation_plan = NavigationPlanMsg(np.array(road_segment_ids))
-    
-    
     cumulative_distance = 0
     for road_id in road_segment_ids:
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, navigation_plan, lane_cost_dict_without_split)
+    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, route_plan_without_split)
     assert len(sub_segments) == len(road_segment_ids)
 
 

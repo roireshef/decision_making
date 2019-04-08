@@ -110,6 +110,9 @@ class LaneNotFound(MappingException):
 class EgoStationBeyondLaneLength(MappingException):
     pass
 
+class LaneCostNotFound(MappingException):
+    pass
+
 # ROUTE PLANNING
 @six.add_metaclass(ABCMeta)
 class RoutePlanningException(Exception):

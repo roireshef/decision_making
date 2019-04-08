@@ -5,10 +5,11 @@ from logging import Logger
 
 class BehavioralState:
     @classmethod
-    def create_from_state(cls, state: State, route_plan: RoutePlan, lane_cost_dict: Dict[int, float], logger: Logger):
+    def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
         """
         This method updates the behavioral state according to the new world state and navigation plan.
          It fetches relevant features that will be used for the decision-making process.
+        :param route_plan:
         :param state: new world state
         :param nav_plan: navigation plan message
         :param lane_cost_dict: dictionary of key lane ID with value end cost of traversing lane
