@@ -3,7 +3,6 @@ from typing import Union
 
 import numpy as np
 
-from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.types import Limits
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -50,9 +49,9 @@ class Poly1D:
         {Local path planning and motion control for AGV in positioning. In IEEE/RSJ International Workshop on
         Intelligent Robots and Systems’ 89. The Autonomous Mobile Robots and Its Applications. IROS’89.
         Proceedings., pages 392–397, 1989}
-        :param A_inv: given that the constraints are Ax = B, and x are the polynom coeficients to seek,
+        :param A_inv: given that the constraints are Ax = B, and x are the polynomial coefficients to seek,
         this is the A ^ -1
-        :param constraints: given that the constraints are Ax = B, and x are the polynom coeficients to seek,
+        :param constraints: given that the constraints are Ax = B, and x are the polynomial coefficients to seek,
         every row in here is a B (so that this variable can hold a set of B's that results in a set of solutions)
         :return: x(t) coefficients
         """
@@ -320,6 +319,24 @@ class QuarticPoly1D(Poly1D):
                           - 2*T * (2 * T * a_0 + 3 * v_0 - 3 * v_T)]) / T ** 3
         return coefs
 
+    @staticmethod
+    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
+        """
+        Given a set of quartic actions, i.e. arrays of v_0, v_T, a_0 and T (all arrays of the same size), calculate
+        coefficients for longitudinal polynomial profile for each action.
+        :param a_0: array of initial accelerations
+        :param v_0: array of initial velocities
+        :param v_T: array of target velocities
+        :param T: [sec] array of action times
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        return np.c_[
+            (0.25 * T * a_0 + 0.5 * v_0 - 0.5 * v_T) / T ** 3,
+            (-0.666666666666667 * T * a_0 - 1.0 * v_0 + 1.0 * v_T) / T ** 2,
+            0.5 * a_0,
+            v_0,
+            np.zeros_like(v_0)]
+
 
 class QuinticPoly1D(Poly1D):
     """
@@ -536,3 +553,24 @@ class QuinticPoly1D(Poly1D):
                           + 12 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
                           - 3 * T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m))]) / T ** 5
         return coefs
+
+    @staticmethod
+    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array, T_m: float):
+        """
+        Given a set of quintic actions, i.e. arrays of v0, vT, a0, dx and T (all arrays of the same size), calculate
+        coefficients for longitudinal polynomial profile for each action.
+        :param a_0: array of initial accelerations
+        :param v_0: array of initial velocities
+        :param v_T: array of target velocities
+        :param dx: [m] array of initial distances from the target
+        :param T: [sec] array of action times
+        :param T_m: [sec] T_m * v_T is added to dx
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        return np.c_[
+            (-0.5 * T ** 2 * a_0 - 3.0 * T * (v_0 + v_T) + 6.0 * dx + 6.0 * v_T * (T - T_m)) / T ** 5,
+            (1.5 * T ** 2 * a_0 + T * (8.0 * v_0 + 7.0 * v_T) - 15.0 * dx - 15.0 * v_T * (T - T_m)) / T ** 4,
+            (-1.5 * T ** 2 * a_0 - T * (6.0 * v_0 + 4.0 * v_T) + 10.0 * dx + 10.0 * v_T * (T - T_m)) / T ** 3,
+            0.5 * a_0,
+            v_0,
+            np.zeros_like(v_0)]

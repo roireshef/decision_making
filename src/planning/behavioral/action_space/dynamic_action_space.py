@@ -78,11 +78,8 @@ class DynamicActionSpace(ActionSpace):
                                                        behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
-            v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_HEADWAY)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
-        T_s = np.fmin.reduce(roots_s, axis=-1)
+        T_s = DynamicActionSpace.calc_T_s(weights[:, 2], weights[:, 0], ds, projected_ego_fstates[:, FS_SA],
+                                          projected_ego_fstates[:, FS_SV], v_T)
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
@@ -117,3 +114,12 @@ class DynamicActionSpace(ActionSpace):
                         for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
 
         return action_specs
+
+    @staticmethod
+    def calc_T_s(w_T: np.array, w_J: np.array, ds: np.array, a_0: np.array, v_0: np.array, v_T: np.array,
+                 T_m: float=SPECIFICATION_HEADWAY):
+        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+        cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=w_T, w_J=w_J, dx=ds, a_0=a_0, v_0=v_0, v_T=v_T, T_m=T_m)
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        return np.fmin.reduce(roots_s, axis=-1)
