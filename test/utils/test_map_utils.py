@@ -1,6 +1,6 @@
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import create_route_plan_msg
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import create_route_plan_msg, route_plan_20_30
 from unittest.mock import patch
 
 import pytest
@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
-    UpstreamLaneNotFound
+    UpstreamLaneNotFound, LaneCostNotFound
 from mapping.src.service.map_service import MapService
 from decision_making.test.messages.static_scene_fixture import scene_static
 
@@ -164,7 +164,7 @@ def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException(scene_static: Scen
         assert True
 
 
-def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static: SceneStatic):
+def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static: SceneStatic, route_plan_20_30):
     """
     test the method _advance_on_plan
         run lookahead_dist from the beginning until end of the map
@@ -178,11 +178,12 @@ def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static: 
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)))
+    #TODO: Change route_plan_20_30 to route_plan based on road_segment_ids
+    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance, route_plan_20_30)
     assert len(sub_segments) == len(road_segment_ids)
 
 
-def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static: SceneStatic):
+def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static: SceneStatic, route_plan_20_30):
     """
     test the method _advance_by_cost
         run lookahead_dist from the beginning until end of the map
@@ -203,11 +204,13 @@ def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static: 
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)), lane_cost_dict)
+
+    #TODO: Change route_plan_20_30 to route_plan based on road_segment_ids
+    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, route_plan_20_30)
     assert len(sub_segments) == len(road_segment_ids)
 
 
-def test_advanceByCost_lookaheadCoversFullMap_validateExceptionThrownLaneCostNotFound(scene_static: SceneStatic):
+def test_advanceByCost_lookaheadCoversFullMap_validateExceptionThrownLaneCostNotFound(scene_static: SceneStatic, route_plan_20_30):
     """
     test the method _advance_by_cost
         run lookahead_dist from the beginning until end of the map
@@ -229,7 +232,7 @@ def test_advanceByCost_lookaheadCoversFullMap_validateExceptionThrownLaneCostNot
         cumulative_distance += MapUtils.get_lane_length(lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
     try:
-        sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)), lane_cost_dict)
+        sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, route_plan_20_30)
         assert False
     except LaneCostNotFound:
         assert True

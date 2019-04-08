@@ -328,7 +328,7 @@ class MapUtils:
         init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
 
         # get the full lanes path
-        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
+        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, route_plan)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.segment_id) for sub_segment in sub_segments]
         # create GFF
@@ -399,7 +399,7 @@ class MapUtils:
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
         try:
             minimal_lane_id = min([downstream_lane_id for downstream_lane_id in downstream_lanes_ids],
-                                  key=lambda x: route_plan_costs.get(x)[LANE_END_COST_IND])
+                                  key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
         except KeyError:
             raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
         return minimal_lane_id
