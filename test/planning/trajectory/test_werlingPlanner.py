@@ -89,7 +89,7 @@ def test_werlingPlanner_toyScenario_noException():
     planner = WerlingPlanner(logger, predictor)
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route, goal=goal,
-                                                   T=Ts, T_required_horizon=Ts, bp_time=0, cost_params=cost_params)
+                                                   T=Ts, T_required_horizon=Ts, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
 
@@ -448,7 +448,7 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
         timestamp_in_sec=10.0,
         T_s=1.5,
         T_d=1.0,
-        total_time=1.5,
+        T_extended=1.5,
         frenet_frame=frenet,
         poly_s_coefs=np.array(
             [-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),

@@ -162,7 +162,7 @@ class CostBasedBehavioralPlanner:
         return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
-                                          total_time=minimal_horizon,
+                                          T_extended=minimal_horizon,
                                           frenet_frame=trajectory_parameters.reference_route,
                                           poly_s_coefs=poly_coefs_s,
                                           poly_d_coefs=poly_coefs_d)
