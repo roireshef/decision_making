@@ -34,10 +34,10 @@ class TimeJerkWeightsOptimization:
         Output detailed states coverage (3D grid of states) for the best weights set or compare two weights sets.
         """
         # states grid ranges
-        V_MIN = 20
+        V_MIN = 16
         V_MAX = 27   # max velocity in the states grid
         V_STEP = 1  # velocity step in the states grid
-        S_MIN = 20   # min distance between two objects in the states grid
+        S_MIN = 10   # min distance between two objects in the states grid
         S_MAX = 100  # max distance between two objects in the states grid
         S_STEP = 2.
 
@@ -63,12 +63,12 @@ class TimeJerkWeightsOptimization:
         v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
         braking = np.where(v0 > vT)
         v0, vT, a0, s = v0[braking], vT[braking], a0[braking], s[braking]
-        limited_headway = np.where(np.logical_and(s >= v0 * SAFETY_HEADWAY, s < v0 * 4))
+        limited_headway = np.where((s >= v0 * SAFETY_HEADWAY) & (s < v0 * 4))
         v0, vT, a0, s = v0[limited_headway], vT[limited_headway], a0[limited_headway], s[limited_headway]
         v0, vT, a0, s = np.ravel(v0), np.ravel(vT), np.ravel(a0), np.ravel(s)
 
-        # create grid of weights
-        test_full_range = False
+        # Decide whether to create the full range of weights or just compare two sets of weights.
+        test_full_range = True
         # s_weights is a matrix Wx3, where W is a set of jerk weights (time weight is constant) for 3 aggressiveness levels
         if test_full_range:
             # test a full range of weights (~8 minutes)
@@ -76,7 +76,7 @@ class TimeJerkWeightsOptimization:
                 W2_FROM, W2_TILL, W12_RATIO_FROM, W12_RATIO_TILL, W01_RATIO_FROM, W01_RATIO_TILL, GRID_RESOLUTION)
         else:  # compare a pair of weights sets
             # s_weights = np.array([[0.7, 0.015, 0.005], [0.7, 0.015, 0.015]])
-            s_weights = np.array([[12, 2, 0.01], [6, 0.7, 0.015], [6, 0.2, 0.004]])
+            s_weights = np.array([[12, 2, 0.01], [6, 0.2, 0.004]])
 
         # remove trivial states, for which T_s = 0
         non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * SPECIFICATION_HEADWAY, s)))
