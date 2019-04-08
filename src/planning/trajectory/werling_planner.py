@@ -128,11 +128,11 @@ class WerlingPlanner(TrajectoryPlanner):
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             raise CartesianLimitsViolated("Cartesian Limits Violation - No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
-                                          "extrapolated time horizon: %f. goal: %s, state: %s.\n"
+                                          "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
                                           "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
-                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s); "
+                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s)\n"
                                           "planned lat. accelerations range [%s, %s] (limits: %s); "
-                                          "number of trajectories passed according to Cartesian limits: %s/%s;"
+                                          "number of trajectories passed according to Cartesian limits: %s/%s\n"
                                           "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
                                           (state.ego_state.timestamp_in_sec, T, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
@@ -145,9 +145,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                            np.min(lat_acc), np.max(lat_acc),
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                            len(cartesian_filtered_indices), len(ctrajectories),
-                                           goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                           planning_horizon * (
-                                                   ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+                                           NumpyUtils.str_log(goal_frenet_state), goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
+                                           T * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)

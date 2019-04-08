@@ -13,9 +13,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory
-from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
-    CostBasedBehavioralPlanner
+from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 

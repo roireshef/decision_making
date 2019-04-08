@@ -4,7 +4,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank i
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as RecipeFilterIfNone, \
     FilterActionsTowardsNonOccupiedCells, FilterActionsTowardBackAndParallelCells, FilterOvertakeActions, \
-    FilterBadExpectedTrajectory, FilterIfNoLane, FilterIfAggressive, FilterLaneChanging
+    FilterIfNoLane, FilterLaneChanging
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from rte.python.logger.AV_logger import AV_Logger
 
