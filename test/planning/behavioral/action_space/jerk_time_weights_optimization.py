@@ -51,6 +51,7 @@ class TimeJerkWeightsOptimization:
         GRID_RESOLUTION = 10   # the weights grid resolution
 
         TYPICAL_CAR_LENGTH = 5
+        margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + TYPICAL_CAR_LENGTH
 
         # create ranges of the grid of states
         v0_range = np.arange(V_MIN, V_MAX + EPS, 2)  # np.arange(0, V_MAX + EPS, V_STEP)
@@ -75,7 +76,7 @@ class TimeJerkWeightsOptimization:
                 W2_FROM, W2_TILL, W12_RATIO_FROM, W12_RATIO_TILL, W01_RATIO_FROM, W01_RATIO_TILL, GRID_RESOLUTION)
         else:  # compare a pair of weights sets
             # s_weights = np.array([[0.7, 0.015, 0.005], [0.7, 0.015, 0.015]])
-            s_weights = np.array([[12, 2, 0.01], [6, 0.7, 0.015]])
+            s_weights = np.array([[12, 2, 0.01], [6, 0.7, 0.015], [6, 0.2, 0.004]])
 
         # remove trivial states, for which T_s = 0
         non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * SPECIFICATION_HEADWAY, s)))
@@ -85,11 +86,10 @@ class TimeJerkWeightsOptimization:
 
         valid_states_mask = np.full((s_weights.shape[0], states_num), False)  # states that passed all limits & safety
         profile_rates = np.zeros_like(s_weights)
-        margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + TYPICAL_CAR_LENGTH
 
         for wi, w in enumerate(s_weights):  # loop on weights' sets
             in_limits = np.full((s_weights.shape[1], states_num), False)
-            tot_vel_acc_in_limits = np.zeros(s_weights.shape[1])
+            tot_kinematics_in_limits = np.zeros(s_weights.shape[1])
             tot_safe = np.zeros(s_weights.shape[1])
             tot_time_in_limits = np.zeros(s_weights.shape[1])
 
@@ -104,45 +104,23 @@ class TimeJerkWeightsOptimization:
 
                 # extract valid actions
                 valid_idxs = np.where(np.logical_and(np.logical_not(np.isnan(T)), T > 0))[0]
-                valid_T, valid_v0, valid_a0, valid_vT, valid_s = T[valid_idxs], v0[valid_idxs], a0[valid_idxs], vT[valid_idxs], s[valid_idxs]
-                zeros = np.zeros_like(valid_T)
-
-                # calculate s profile of host & target
-                poly_host = QuinticPoly1D.s_profile_coefficients(valid_a0, valid_v0, valid_vT, valid_s - margin, valid_T, SPECIFICATION_HEADWAY)
-                poly_target = np.c_[zeros, zeros, zeros, zeros, valid_vT, valid_s]
-
-                # calculate states validity wrt velocity, acceleration and time limits
-                vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(
-                    poly_host, valid_T, LON_ACC_LIMITS, VELOCITY_LIMITS, np.array([-np.inf, np.inf]))
-                safe_actions = KinematicUtils.are_maintaining_distance(poly_host, poly_target, margin, SAFETY_HEADWAY, np.c_[zeros, valid_T])
-                time_in_limits = (valid_T <= BP_ACTION_T_LIMITS[LIMIT_MAX])
-                in_limits[aggr, valid_idxs] = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
-
-                # calculate statistics
-                tot_vel_acc_in_limits[aggr] = np.sum(vel_acc_in_limits)
-                tot_safe[aggr] = np.sum(safe_actions)
-                tot_time_in_limits[aggr] = np.sum(time_in_limits)
-
-                # Calculate average (on all valid actions) acceleration profile rate.
-                # Late braking (less pleasant for passengers) gets higher rate than early braking.
-                profile_rates[wi, aggr] = TimeJerkWeightsOptimization.calculate_profile_rates(
-                    poly_host, valid_T, valid_a0, valid_v0, valid_vT, valid_s, in_limits[aggr, valid_idxs])
+                in_limits[aggr, valid_idxs], profile_rates[wi, aggr], \
+                                tot_kinematics_in_limits[aggr], tot_safe[aggr], tot_time_in_limits[aggr] = \
+                    TimeJerkWeightsOptimization.check_actions_in_limits(T[valid_idxs], a0[valid_idxs], v0[valid_idxs],
+                                                                        vT[valid_idxs], s[valid_idxs], margin)
 
             # combine velocity & acceleration limits with time limits and safety, to obtain states validity
             valid_states_mask[wi] = in_limits.any(axis=0)  # OR on aggressiveness levels
 
             print('weight: %7.3f %.3f %.3f: passed %.1f%%\t\tvel_acc %s   safety %s   time %s;\tprofile %s' %
                   (w[0], w[1], w[2], np.sum(valid_states_mask[wi])*100./states_num,
-                   (tot_vel_acc_in_limits*100/states_num).astype(np.int),
-                   (tot_safe*100/states_num).astype(np.int),
+                   (tot_kinematics_in_limits*100/states_num).astype(np.int), (tot_safe*100/states_num).astype(np.int),
                    (tot_time_in_limits*100/states_num).astype(np.int), profile_rates[wi]))
 
-        if test_full_range:
-            # Monitor a quality of the best set of weights (maximal roots).
+        if test_full_range:  # Monitor a quality of the best set of weights (maximal roots).
             TimeJerkWeightsOptimization.print_success_map_for_best_weights_set(v0_range, vT_range, s_range, v0, vT, s,
                                                                                valid_states_mask, s_weights)
-        else:
-            # Compare between two sets of weights (maximal roots).
+        else:  # Compare between two sets of weights (maximal roots).
             TimeJerkWeightsOptimization.print_comparison_between_two_weights_sets(v0_range, vT_range, s_range, v0, vT, s,
                                                                                   valid_states_mask)
 
@@ -170,8 +148,29 @@ class TimeJerkWeightsOptimization:
         return weights
 
     @staticmethod
-    def calculate_profile_rates(poly_host: np.array, T: np.array, a0: np.array, v0: np.array, vT: np.array,
-                                s: np.array, in_limits: np.array) -> float:
+    def check_actions_in_limits(T: np.array, a0: np.array, v0: np.array, vT: np.array, s: np.array, margin: float):
+
+        # calculate s profile of host & target
+        zeros = np.zeros_like(T)
+        poly_host = QuinticPoly1D.s_profile_coefficients(a0, v0, vT, s - margin, T, SPECIFICATION_HEADWAY)
+        poly_target = np.c_[zeros, zeros, zeros, zeros, vT, s]
+
+        # calculate states validity wrt velocity, acceleration and time limits
+        vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(
+            poly_host, T, LON_ACC_LIMITS, VELOCITY_LIMITS, np.array([-np.inf, np.inf]))
+        safe_actions = KinematicUtils.are_maintaining_distance(poly_host, poly_target, margin, SAFETY_HEADWAY, np.c_[zeros, T])
+        time_in_limits = (T <= BP_ACTION_T_LIMITS[LIMIT_MAX])
+        in_limits = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
+
+        # Calculate average (on all valid actions) braking profile quality.
+        # Late braking (less pleasant for passengers) gets lower rate than early braking.
+        braking_rates = TimeJerkWeightsOptimization.calculate_braking_profile_qualities(poly_host, T, a0, v0, vT, s, in_limits)
+
+        return in_limits, braking_rates, np.sum(vel_acc_in_limits), np.sum(safe_actions), np.sum(time_in_limits)
+
+    @staticmethod
+    def calculate_braking_profile_qualities(poly_host: np.array, T: np.array, a0: np.array, v0: np.array, vT: np.array,
+                                            s: np.array, in_limits: np.array) -> float:
         """
         Given a set of actions, calculate average braking rate (only on valid actions).
         Late braking (less pleasant for passengers) gets higher rate than early braking.
@@ -182,11 +181,11 @@ class TimeJerkWeightsOptimization:
         :param vT: target velocities array
         :param s: array of initial distances from the target
         :param in_limits: boolean array: which actions are in vel, acc, time limits
-        :return: average braking rate for the given actions. Range: [0, 1]; 0 the best, 1 the worst.
+        :return: average braking quality for the given actions. Range: [0, 1]; 0 the worst, 1 the best.
         """
-        # Calculate average (on all valid actions) acceleration profile rate.
-        # Late braking (less pleasant for passengers) gets higher rate than early braking.
-        rate_num = rate_sum = 0
+        # Calculate average (on all valid actions) braking profile quality.
+        # Late braking (less pleasant for passengers) gets lower rate than early braking.
+        weights_sum = weighted_rates_sum = 0
         for i in range(T.shape[0]):
             if not in_limits[i]:
                 continue
@@ -196,32 +195,31 @@ class TimeJerkWeightsOptimization:
             acc_poly_coefs = Math.polyder2d(poly_host[i:i + 1], m=2)
             acc_samples = Math.polyval2d(acc_poly_coefs, time_samples)[0]
             # calculate acceleration profile rate
-            brake_rate, rate_weight = TimeJerkWeightsOptimization.get_braking_quality(
-                distance_profile(time_samples), acc_samples)
+            brake_rate, rate_weight = TimeJerkWeightsOptimization.get_braking_quality(distance_profile(time_samples),
+                                                                                      acc_samples)
             if brake_rate is not None:  # else there was not braking
-                rate_sum += rate_weight * brake_rate
-                rate_num += rate_weight
+                weighted_rates_sum += rate_weight * brake_rate
+                weights_sum += rate_weight
 
-        return rate_sum / rate_num if rate_num > 0 else 0
+        return weighted_rates_sum / weights_sum if weights_sum > 0 else 0
 
     @staticmethod
     def get_braking_quality(distances: np.array, acc_samples: np.array) -> [float, float]:
         """
-        calculate normalized center of mass of braking: braking close to target (less pleasant) gets higher rate
+        calculate normalized center of mass of braking: braking close to target (less pleasant) gets lower rate
         :param distances: array of distances from the followed object
         :param acc_samples: array of acceleration samples
         :return: 1. center of mass of negative acc_samples as function of distance from the object;
-                    the lower rate the better
+                    the higher rate the better
                  2. the rate weight: the higher accelerations the higher weight
         """
-        final_dist = distances[-1]
         max_brake = max(0., -min(acc_samples))
         if max_brake == 0:
             return 0, 0
         brake_idxs = np.where(acc_samples < 0)[0]
-        cum_brake = -np.sum(acc_samples[brake_idxs])
-        cum_brake_dist = -np.sum(acc_samples[brake_idxs] / np.maximum(1, distances[brake_idxs])) * final_dist
-        return (cum_brake_dist / cum_brake) ** 2, max_brake
+        brake_samples = -acc_samples[brake_idxs]
+        cum_brake = np.sum(brake_samples)
+        return np.sum(brake_samples * distances[brake_idxs]) / (cum_brake * distances[0]), max_brake
 
     @staticmethod
     def print_success_map_for_best_weights_set(v0_range: np.array, vT_range: np.array, s_range: np.array,
