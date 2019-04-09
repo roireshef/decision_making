@@ -2,7 +2,7 @@ import ast
 import matplotlib.pyplot as plt
 
 from decision_making.paths import Paths
-from decision_making.src.planning.types import FS_SV, C_V, FS_SX
+from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA
 from decision_making.src.state.state import EgoState
 
 
@@ -10,13 +10,12 @@ def plot_dynamics(path: str):
 
     f = open(path, 'r')
     ego_cv = []
+    ego_sa = []
     ego_sv = []
     ego_sx = []
     other_cv = []
     other_sv = []
     other_sx = []
-    ego_lane = []
-    other_lane = []
     timestamp_in_sec = []
 
     spec_t = []
@@ -42,9 +41,9 @@ def plot_dynamics(path: str):
                 cnt += 1
                 continue
             ego_cv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_V])
+            ego_sa.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SA])
             ego_sv.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SV])
             ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
-            ego_lane.append(state_dict['ego_state']['_cached_map_state']['lane_id']/1e9)
             timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
 
             dyn_obj_list = state_dict['dynamic_objects']['iterable']
@@ -52,12 +51,10 @@ def plot_dynamics(path: str):
                 other_cv.append(0.0)
                 other_sv.append(0.0)
                 other_sx.append(0.0)
-                other_lane.append(0.0)
             else:
                 other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
                 other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
                 other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
-                other_lane.append(dyn_obj_list[0]['_cached_map_state']['lane_id']/1e9)
 
         if 'Chosen behavioral action spec' in text:
             spec_str = text.split('Chosen behavioral action spec ')[1]
@@ -85,11 +82,10 @@ def plot_dynamics(path: str):
     ax1 = plt.subplot(4, 1, 1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
-    ego_lane_plot,  = plt.plot(timestamp_in_sec, ego_lane)
-    other_lane_plot,  = plt.plot(timestamp_in_sec, other_lane)
+    ego_sa_plot,  = plt.plot(timestamp_in_sec, ego_sa)
     plt.xlabel('time[s]')
-    plt.ylabel('velocity[m/s]')
-    plt.legend([ego_sv_plot, other_sv_plot, ego_lane_plot, other_lane_plot], ['ego_sv', 'other_sv', 'ego_lane', 'other_lane'])
+    plt.ylabel('velocity[m/s]/acceleration[m/s^2]')
+    plt.legend([ego_sv_plot, other_sv_plot, ego_sa_plot], ['ego_sv', 'other_sv', 'ego_sa'])
 
     ax2 = plt.subplot(4, 1, 2, sharex=ax1)
     ego_cx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
