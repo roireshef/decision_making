@@ -24,13 +24,13 @@ class DmProcess:
         self._trigger_args = trigger_args
         self._queue = Queue()
 
-        process_name = "DM_process_{}".format(self.name)
-        self.process = Process(target=self._module_process_entry, name=process_name, daemon=True)
+        self._process_name = "DM_process_{}".format(self.name)
+        self.process = Process(target=self._module_process_entry, name=self._process_name, daemon=True)
 
         self._trigger = None
         self._module_instance = None
 
-        self.logger = AV_Logger.get_logger(process_name)
+        self.logger = AV_Logger.get_logger(self._process_name)
 
     @property
     def name(self) -> str:
@@ -68,7 +68,7 @@ class DmProcess:
 
         # create the trigger and activate it.
         if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
-            self._trigger = DmPeriodicTimerTrigger(self._trigger_callback, **self._trigger_args)
+            self._trigger = DmPeriodicTimerTrigger(self._trigger_callback, self._process_name, **self._trigger_args)
         elif self._trigger_type == DmTriggerType.DM_TRIGGER_NONE:
             self._trigger = DmNullTrigger()
 
