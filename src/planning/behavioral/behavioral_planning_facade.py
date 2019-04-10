@@ -181,7 +181,7 @@ class BehavioralPlanningFacade(DmModule):
         takeover flag will be set True if all lane segments' end costs for a downstream road segment
         within a threshold distance are 1, i.e., road is blocked.
         :param route_plan_data: last route plan data
-        :param ego_satte: last state for ego vehicle
+        :param ego_state: last state for ego vehicle
         :return: Takeover data
         """
 
@@ -189,29 +189,29 @@ class BehavioralPlanningFacade(DmModule):
 
         ego_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(ego_lane_segment_id)
 
-        # find road segment row index in route plan 2-d array
-        route_plan_idx = np.where(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
+        # find ego road segment row index in as_route_plan_lane_segments 2-d array which matches the index in a_i_road_segment_ids 1-d array
+        route_plan_start_idx = np.where(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
 
-        if len(route_plan_idx[0]) == 0: # check if ego road segment Id is listed inside route plan data
+        if len(route_plan_start_idx[0]) == 0: # check if ego road segment Id is listed inside route plan data
             raise EgoRoadSegmentNotFound('Route plan does not include data for ego road segment ID {0}'.format(ego_road_segment_id))
-        if len(route_plan_idx[0]) > 1 :
+        if len(route_plan_start_idx[0]) > 1 :
             raise RepeatedRoadSegments("Route Plan has repeated data for road segment ID:  \n", ego_road_segment_id)
 
-        row_idx = route_plan_idx[0][0]
+        ego_row_idx = route_plan_start_idx[0][0]
 
         ego_station = ego_state.map_state.lane_fstate[FS_SX]
 
         #find length of the lane segment
         lane = MapUtils.get_lane(ego_lane_segment_id)
         ego_lane_length = lane.e_l_length
-        
+
         dist_to_end = ego_lane_length - ego_station
 
         if  dist_to_end < 0 :
             raise EgoStationBeyondLaneLength("ego station is greater than the lane length for lane segment ID:  \n", ego_lane_segment_id)
 
         # iterate through all road segments within DISTANCE_TO_SET_TAKEOVER_FLAG
-        for i in range(row_idx, route_plan_data.e_Cnt_num_road_segments):
+        for i in range(ego_row_idx, route_plan_data.e_Cnt_num_road_segments):
 
             road_segment_blocked = True
 
@@ -219,7 +219,7 @@ class BehavioralPlanningFacade(DmModule):
             for j in range(route_plan_data.a_Cnt_num_lane_segments[i]):
 
                 # raise exception if ego lane occupancy cost is 1
-                if i == row_idx and route_plan_data.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == ego_lane_segment_id \
+                if i == ego_row_idx and route_plan_data.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == ego_lane_segment_id \
                     and  route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == 1 :
                     raise EgoLaneOccupancyCostIncorrect("Occupancy cost is 1 for ego lane semgnet ID: \n", ego_lane_segment_id)
 
@@ -228,7 +228,7 @@ class BehavioralPlanningFacade(DmModule):
                     break
 
             # continue looking at the next road segments if current road segment is not blocked
-            if road_segment_blocked == False :
+            if i > ego_row_idx and not road_segment_blocked:
 
                 # find the length of the first lane segment in the next road segment,
                 # assuming that road segment length is similar to its first lane segmnet length
@@ -241,13 +241,11 @@ class BehavioralPlanningFacade(DmModule):
                 # check if this road segment lies within the DISTANCE_TO_SET_TAKEOVER_FLAG
                 if dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG :
                     break
-            else :
+            elif road_segment_blocked:
                 break
 
-        if road_segment_blocked == True and dist_to_end < DISTANCE_TO_SET_TAKEOVER_FLAG:
-            takeover_flag = True
-        else :
-            takeover_flag = False
+        takeover_flag = False
+        takeover_flag = road_segment_blocked and dist_to_end < DISTANCE_TO_SET_TAKEOVER_FLAG
 
         takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,
                                                     s_Timestamp=Timestamp.from_seconds(ego_state.timestamp_in_sec),
