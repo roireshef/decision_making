@@ -102,10 +102,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
     def predict_1d_frenet_states(self, objects_fstates: FrenetState1D, horizons: np.ndarray) -> FrenetTrajectories1D:
         """
-        Constant velocity prediction for all timestamps and objects in a matrix computation
-        :param objects_fstates: numpy 2D array [Nx3] where N is the number of objects, each row is a 1D FSTATE
-        :param horizons: numpy 1D array [T] with T horizons (relative time for prediction into the future)
-        :return: numpy 3D array [NxTx3]
+        See base class
         """
         T = horizons.shape[0]
         N = objects_fstates.shape[0]
@@ -120,11 +117,9 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
     def predict_2d_frenet_states(self, objects_fstates: FrenetStates2D, horizons: np.ndarray) -> FrenetTrajectories2D:
         """
-        Constant velocity prediction for all timestamps and objects in a matrix computation
-        :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
-        :param horizons: numpy 1D array [T] with T horizons (relative time for prediction into the future)
-        :return: numpy 3D array [NxTx6]
+        See base class
         """
+
         T = horizons.shape[0]
         N = objects_fstates.shape[0]
         if N == 0:

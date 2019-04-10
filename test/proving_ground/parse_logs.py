@@ -80,27 +80,6 @@ def plot_dynamics(path: str):
 
             recipe_time.append(float(time))
 
-        if 'Chosen behavioral action spec' in text:
-            spec_str = text.split('Chosen behavioral action spec ')[1]
-            spec_dict = ast.literal_eval(spec_str.split(' (ego_timestamp: ')[0])
-
-            time = float(spec_str.split(' (ego_timestamp: ')[1][:-2])
-
-            spec_t.append(float(spec_dict['t']))
-            spec_v.append(float(spec_dict['v']))
-            spec_s.append(float(spec_dict['s']))
-            spec_time.append(float(time))
-
-        if 'Chosen behavioral action recipe' in text:
-            recipe_str = text.split('Chosen behavioral action recipe')[1].split('Recipe: ')[1].replace("<", "'<").replace(">", ">'")
-            recipe_dict = ast.literal_eval(recipe_str.split(' (ego_timestamp: ')[0])
-
-            time = float(recipe_str.split(' (ego_timestamp: ')[1][:-2])
-
-            recipe_desc.append('%s\n%s' % (recipe_dict['action_type'], recipe_dict['aggressiveness']))
-
-            recipe_time.append(float(time))
-
     f = plt.figure(1)
     plt.plot(411)
     ax1 = plt.subplot(4, 1, 1)

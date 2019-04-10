@@ -4,7 +4,8 @@ from logging import Logger
 from typing import List, Dict
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import FrenetTrajectories2D, FrenetStates2D
+from decision_making.src.planning.types import FrenetTrajectories2D, FrenetStates2D, FrenetTrajectories1D, \
+    FrenetStates1D
 from decision_making.src.state.state import State, DynamicObject
 
 
@@ -42,6 +43,16 @@ class EgoAwarePredictor(metaclass=ABCMeta):
         Global, not relative
         :param action_trajectory: the ego's planned action trajectory
         :return: a mapping between object id to the list of future dynamic objects of the matching object
+        """
+        pass
+
+    @abstractmethod
+    def predict_1d_frenet_states(self, objects_fstates: FrenetStates1D, horizons: np.ndarray) -> FrenetTrajectories1D:
+        """
+        Constant velocity prediction for all timestamps and objects in a matrix computation
+        :param objects_fstates: numpy 2D array [Nx3] where N is the number of objects, each row is an FSTATE
+        :param horizons: numpy 1D array [T] with T horizons (relative time for prediction into the future)
+        :return: numpy 3D array [NxTx3]
         """
         pass
 

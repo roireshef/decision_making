@@ -1,7 +1,11 @@
 import numpy as np
+from logging import Logger
+from sklearn.utils.extmath import cartesian
+from typing import Optional, List, Type
+
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
@@ -12,9 +16,6 @@ from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, FS_SA, F
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from logging import Logger
-from sklearn.utils.extmath import cartesian
-from typing import Optional, List, Type
 
 
 class DynamicActionSpace(ActionSpace):
@@ -87,13 +88,8 @@ class DynamicActionSpace(ActionSpace):
         # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
         # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
         # intersecting in T=0.
+        # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
         T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, SPECIFICATION_HEADWAY)] = 0
-
-        # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
-        # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
-        # # when setting T
-        # with np.errstate(invalid='ignore'):
-        #    T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(

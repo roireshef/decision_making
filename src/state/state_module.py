@@ -1,11 +1,15 @@
+from logging import Logger
+from threading import Lock
+from traceback import format_exc
+from typing import Optional, Any, List
+
 import numpy as np
 import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
-from decision_making.src.exceptions import ObjectHasNegativeVelocityError
-from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
-    VELOCITY_MINIMAL_THRESHOLD
+
+from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
@@ -13,10 +17,6 @@ from decision_making.src.planning.types import FS_SV, C_V
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
-from logging import Logger
-from threading import Lock
-from traceback import format_exc
-from typing import Optional, Any, List
 
 
 class DynamicObjectsData:
@@ -66,25 +66,36 @@ class StateModule(DmModule):
 
                 state = self.create_state_from_scene_dynamic(self._scene_dynamic)
 
-                if state.ego_state.cartesian_state[C_V] < 0:
-                    state.ego_state.cartesian_state[C_V] = 0
-                    state.ego_state.map_state.lane_fstate[FS_SV] = 0
-                    self.logger.warning('Ego was received with negative velocity %f' % state.ego_state.cartesian_state[C_V])
+                postprocessed_state = self._handle_negative_velocities(state)
 
-                for i in range(len(state.dynamic_objects)):
-                    if state.dynamic_objects[i].cartesian_state[C_V] < 0:
-                        state.dynamic_objects[i].cartesian_state[C_V] = 0
-                        state.dynamic_objects[i].map_state.lane_fstate[FS_SV] = 0
-                        self.logger.warning(
-                            'Dynamic object with obj_id %s was received with negative velocity %f',
-                            state.dynamic_objects[i].obj_id, state.dynamic_objects[i].cartesian_state[C_V])
+                self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, postprocessed_state)
 
-                self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
-
-                self.pubsub.publish(UC_SYSTEM_STATE_LCM, state.serialize())
+                self.pubsub.publish(UC_SYSTEM_STATE_LCM, postprocessed_state.serialize())
 
         except Exception:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
+
+    def _handle_negative_velocities(self, state: State) -> State:
+        """
+        Handles cases of ego state or dynamic objects with negative velocities.
+        It modifies their velocities so they will equal zero and writes a warning in the log.
+        :param state: Possibly containing objects with negative velocities
+        :return: State containing objects with non-negative velocities
+        """
+        if state.ego_state.cartesian_state[C_V] < 0:
+            state.ego_state.cartesian_state[C_V] = 0
+            state.ego_state.map_state.lane_fstate[FS_SV] = 0
+            self.logger.warning('Ego was received with negative velocity %f' % state.ego_state.cartesian_state[C_V])
+
+        for i in range(len(state.dynamic_objects)):
+            if state.dynamic_objects[i].cartesian_state[C_V] < 0:
+                state.dynamic_objects[i].cartesian_state[C_V] = 0
+                state.dynamic_objects[i].map_state.lane_fstate[FS_SV] = 0
+                self.logger.warning(
+                    'Dynamic object with obj_id %s was received with negative velocity %f',
+                    state.dynamic_objects[i].obj_id, state.dynamic_objects[i].cartesian_state[C_V])
+
+        return state
 
     @staticmethod
     def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic) -> State:

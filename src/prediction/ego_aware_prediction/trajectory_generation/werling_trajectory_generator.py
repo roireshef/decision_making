@@ -53,7 +53,7 @@ class WerlingTrajectoryGenerator(TrajectoryGenerator):
         return SamplableWerlingTrajectory(timestamp_in_sec=timestamp_in_sec,
                                           T_s=predicted_maneuver_spec.T_s,
                                           T_d=predicted_maneuver_spec.T_d,
-                                          total_time=predicted_maneuver_spec.T_s,
+                                          T_extended=predicted_maneuver_spec.T_s,
                                           frenet_frame=frenet_frame,
                                           poly_s_coefs=poly_s,
                                           poly_d_coefs=poly_d)

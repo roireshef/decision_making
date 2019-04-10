@@ -68,13 +68,8 @@ class StaticActionSpace(ActionSpace):
         # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
         # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
         # intersecting in T=0.
+        # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
         T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
-
-        # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
-        # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
-        # # when setting T
-        # with np.errstate(invalid='ignore'):
-        #     T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
