@@ -23,7 +23,7 @@ class RoutePlanningFacade(DmModule):
         """
         super().__init__(pubsub=pubsub, logger=logger)
         self.planner = route_planner
-        self.timestamp = Timestamp.from_seconds(time.time())
+        self.timestamp = None
         self.logger.info("Initialized Route Planner Facade.")
         MetricLogger.init(ROUTE_PLANNING_NAME_FOR_METRICS)
 
