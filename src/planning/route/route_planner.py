@@ -155,10 +155,7 @@ class RoutePlannerInputData():
         """
          This method returns List[road segment IDs] in the same sequence as that is in the NAV plan
         """
-        nav_plan:List[int] = []
-        for (road_segment_id, _) in self._route_lane_segment_ids.items():
-            nav_plan.append(road_segment_id)
-        return nav_plan
+        return [road_segment_id for (road_segment_id, _) in self._route_lane_segment_ids.items()]
 
 
     @raises(LaneSegmentDataNotFound)
