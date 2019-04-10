@@ -19,47 +19,34 @@ class RoutePlannerInputData():
         route plan 2D lane sequences and also keeps relevant data in dictionary containers for faster access
     """
 
-    def __init__(self, route_lane_segment_ids: Optional[RouteLaneSegmentOrderedDict] = None,\
-                 route_lane_segments_base_as_dict: Optional[LaneSegmentBaseDict] = None,\
-                 route_road_segments_as_dict: Optional[RoadSegmentDict] = None ,\
-                 next_road_segment_id: Optional[Dict[int, int]] = None,\
-                 prev_road_segment_id: Optional[Dict[int, int]] = None) :
+    def __init__(self, route_lane_segment_ids: Optional[RouteLaneSegmentOrderedDict] = None,
+                 route_lane_segments_base_as_dict: Optional[LaneSegmentBaseDict] = None,
+                 route_road_segments_as_dict: Optional[RoadSegmentDict] = None,
+                 next_road_segment_id: Optional[Dict[int, int]] = None,
+                 prev_road_segment_id: Optional[Dict[int, int]] = None):
 
-        if route_lane_segment_ids is None:
-            route_lane_segment_ids = OrderedDict()
+        self._route_lane_segment_ids = route_lane_segment_ids or OrderedDict()      # dict:   key - road segment IDs (ordered as in
+                                                                                    #               routeplan)
+                                                                                    #       value - np.ndarray(LaneSegmentID) (ordered as
+                                                                                    #               in the road segment structure in nav.
+                                                                                    #               plan)
 
-        if route_lane_segments_base_as_dict is None:
-            route_lane_segments_base_as_dict = {}
+        self._route_lane_segments_base_as_dict = route_lane_segments_base_as_dict or {}     # dict:   key - lane segment ID
+                                                                                            #       value - LaneSegmentBase
+                                                                                            # Should contain all the lane segments listed
+                                                                                            # in nav. route road segments
 
-        if route_road_segments_as_dict is None:
-            route_road_segments_as_dict = {}
+        self._route_road_segments_as_dict = route_road_segments_as_dict or {}   # dict:   key - road segment ID,
+                                                                                #       value - Road Segments.
+                                                                                # Should contain all the road segments listed in nav. route
 
-        if next_road_segment_id is None:
-            next_road_segment_id = {}
+        self._next_road_segment_id = next_road_segment_id or {}     # dict:   key - road segment ID,
+                                                                    #       value - next road segment ID in nav. route
+                                                                    # Enables O(1) lookup of the next road segment.
 
-        if prev_road_segment_id is None:
-            prev_road_segment_id = {}
-
-
-        self._route_lane_segment_ids =  route_lane_segment_ids                       # dict:  key - road segment IDs (ordered as in routeplan),
-                                                                                     #        value - np.ndarray(LaneSegmentID)
-                                                                                     #        (ordered as in the road segment structure in nav. plan)
-
-        self._route_lane_segments_base_as_dict = route_lane_segments_base_as_dict    # dict: key - lane segment ID,
-                                                                                     #       value - LaneSegmentBase.
-                                                                                     # Should contain all the lane segments listed in nav. route road segments
-
-        self._route_road_segments_as_dict = route_road_segments_as_dict              # dict: key - road segment ID,
-                                                                                     #       value - Road Segments.
-                                                                                     # Should contain all the road segments listed in nav. route
-
-        self._next_road_segment_id =  next_road_segment_id                           # Enables O(1) lookup of the next road segment.
-                                                                                     #                 key - road segment ID,
-                                                                                     #                 value - next road segment ID in nav. route
-
-        self._prev_road_segment_id =  prev_road_segment_id                           # Enables O(1) lookup of the prev road segment
-                                                                                     #                 key - road segment ID,
-                                                                                     #                 value - prev road segment ID in nav. route
+        self._prev_road_segment_id = prev_road_segment_id or {}     # dict:   key - road segment ID,
+                                                                    #       value - prev road segment ID in nav. route
+                                                                    # Enables O(1) lookup of the prev road segment
 
     @staticmethod # Made static method especially as this method doesn't access the classes states/variables
     @raises(MissingInputInformation)
