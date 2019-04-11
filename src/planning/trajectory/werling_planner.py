@@ -178,16 +178,26 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            poly_s = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SV],
-                               ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SX]])
-            poly_d = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DV],
-                               ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DX]])
+            poly_s, poly_d = WerlingPlanner._create_linear_profile_polynomials(
+                ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, :])
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
                                                               planning_horizon, planning_horizon, planning_horizon,
                                                               reference_route, poly_s, poly_d)
         return samplable_trajectory, \
            ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
            filtered_trajectory_costs[sorted_filtered_idxs]
+
+    @staticmethod
+    def _create_linear_profile_polynomials(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
+        """
+        Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
+        velocity). Those polynomials are degenerate to s(t)=v*t+x form
+        :param frenet_state: the current frenet state to pull positions and velocities from
+        :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
+        """
+        poly_s = np.array([0, 0, 0, 0, frenet_state[FS_SV], frenet_state[FS_SX]])
+        poly_d = np.array([0, 0, 0, 0, frenet_state[FS_DV], frenet_state[FS_DX]])
+        return poly_s, poly_d
 
     @staticmethod
     def _correct_velocity_values(ftrajectories: FrenetTrajectories2D) -> \
