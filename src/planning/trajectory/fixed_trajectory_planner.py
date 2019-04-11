@@ -83,10 +83,10 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
         that advances incrementally on fixed_trajectory by step size. Otherwise raise NotTriggeredException
-        :param T: the length of the trajectory snippet (seconds)
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored
+        :param T_required_horizon: the length of the trajectory snippet (seconds)
         :param cost_params: ignored
         :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
