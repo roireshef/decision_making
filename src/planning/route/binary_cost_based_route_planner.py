@@ -278,7 +278,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             lane_segment_base_data = self._route_plan_input_data.get_lane_segment_base(lane_segment_id)
             
             route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = \
-                                                                                               (self._lane_cost_calc(lane_segment_base_data=lane_segment_base_data))
+                                                                        self._lane_cost_calc(lane_segment_base_data=lane_segment_base_data)
                                                                         
 
             downstream_road_segment_not_found = downstream_road_segment_not_found and not(downstream_lane_found_in_route)

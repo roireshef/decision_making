@@ -56,12 +56,10 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_cst_lane_end_cost)
 
     def __str__(self):
-        print_route_plan_lane_segment = "\n"
-        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_segment_id " + str(self.e_i_lane_segment_id) + "\n"
-        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_occupancy_cost " + str(self.e_cst_lane_occupancy_cost) + "\n"
-        print_route_plan_lane_segment = print_route_plan_lane_segment + "lane_end_cost " + str(self.e_cst_lane_end_cost) + "\n"
-        print_route_plan_lane_segment = print_route_plan_lane_segment + "\n"
-
+        print_route_plan_lane_segment = "lane_segment_id " + str(self.e_i_lane_segment_id) + \
+                                        " lane_occupancy_cost " + str(self.e_cst_lane_occupancy_cost) + \
+                                        " lane_end_cost " + str(self.e_cst_lane_end_cost)
+        return print_route_plan_lane_segment
 
 RoutePlanRoadSegment = List[RoutePlanLaneSegment]   # RoutePlanLaneSegment : struct -> Contains Route plan end and occupancy costs,
                                                     # along with the lane identifier to convey routing relevant information in a structure.
@@ -123,7 +121,6 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                    as_route_plan_lane_segments)
 
     def __str__(self)->str:
-        print_route = "\n"
         for i, road_segment in enumerate(self.as_route_plan_lane_segments):
             a_i_lane_segment_ids = []
             a_cst_lane_occupancy_costs = []
@@ -132,10 +129,9 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                 a_i_lane_segment_ids.append(lane_segment.e_i_lane_segment_id)
                 a_cst_lane_occupancy_costs.append(lane_segment.e_cst_lane_occupancy_cost)
                 a_cst_lane_end_costs.append(lane_segment.e_cst_lane_end_cost)
-            print_route = print_route + "lane_segment_ids " + str(a_i_lane_segment_ids) + "\n"
-            print_route = print_route + "lane_occupancy_costs " + str(a_cst_lane_occupancy_costs) + "\n"
-            print_route = print_route + "lane_end_costs " + str(a_cst_lane_end_costs) + "\n"
-            print_route = print_route + "\n"
+            print_route = "lane_segment_ids: " + str(a_i_lane_segment_ids) + \
+                          "lane_occupancy_costs: " + str(a_cst_lane_occupancy_costs) + \
+                          "lane_end_costs " + str(a_cst_lane_end_costs) + "\n"
 
         return print_route
 

@@ -244,7 +244,6 @@ class BehavioralPlanningFacade(DmModule):
             elif road_segment_blocked:
                 break
 
-        takeover_flag = False
         takeover_flag = road_segment_blocked and dist_to_end < DISTANCE_TO_SET_TAKEOVER_FLAG
 
         takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,
