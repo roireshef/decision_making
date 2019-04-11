@@ -167,7 +167,7 @@ class WerlingPlanner(TrajectoryPlanner):
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
         if is_target_ahead:  # Actual werling planning has occurred because T_s > 0.1 and the target is ahead of us
-            # TODO: what if the coefficients of poly_s will result with negative velocity
+            # TODO: what if future sampling from poly_s will result with negative velocity (uncorrected for negative velocity)?
             samplable_trajectory = SamplableWerlingTrajectory(
                 timestamp_in_sec=state.ego_state.timestamp_in_sec,
                 T_s=T,

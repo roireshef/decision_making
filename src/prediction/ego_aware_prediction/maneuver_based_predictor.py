@@ -5,6 +5,7 @@ import copy
 import numpy as np
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
+from decision_making.src.planning.types import FrenetStates1D, FrenetTrajectories1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
@@ -121,8 +122,15 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
 
         return predicted_objects_states_dict
 
+    def predict_1d_frenet_states(self, objects_fstates: FrenetStates1D, horizons: np.ndarray) -> FrenetTrajectories1D:
+        """
+        See base class
+        """
+        raise Exception("Not implemented yet")
+
     def predict_2d_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
         """
         See base class
         """
         raise Exception("Not implemented yet")
+
