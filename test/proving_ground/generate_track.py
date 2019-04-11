@@ -8,18 +8,15 @@ from decision_making.src.planning.types import FP_SX, FP_DX, C_V, C_A, C_K, Cart
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.test.planning.trajectory.utils import WerlingVisualizer
-from mapping.src.service.map_service import MapService
 
 
 class OfflineTrajectoryGenerator:
     """ This class takes specifications for maneuvers and generates a trajectory that
     goes according to them on a specific road using Werling planner """
-    def __init__(self, road_id, frenet: FrenetSerret2DFrame):
+    def __init__(self, frenet: FrenetSerret2DFrame):
         """
-        :param road_id: the road id on which the trajectory will be planned
-        :param map_file_name: the filename for MapService to work on
+        :param frenet: the frenet frame that corresponds to the RHS of the road
         """
-        MapService.initialize()
         self.frenet = frenet
 
     def plan(self, geo_coordinates: np.array, init_velocity: float, interm_goals: list, lane_width: float) -> CartesianExtendedTrajectory:
@@ -63,7 +60,6 @@ class OfflineTrajectoryGenerator:
         :param goal_sv: desired longitudinal velocity [m/sec] (of goal)
         :return: trajectory in Cartesian-frame
         """
-        time_points = np.arange(0.0, T+WERLING_TIME_RESOLUTION, WERLING_TIME_RESOLUTION)
         goal_state = FrenetConstraints(sx=init_constraints._sx + (goal_sv + init_constraints._sv) / 2 * T, sv=goal_sv,
                                        sa=0, dx=init_constraints._dx + delta_dx, dv=0, da=0)
         ftrajectories, _, _ = WerlingPlanner._solve_optimization(init_constraints, goal_state, T, np.array([T]),
@@ -75,9 +71,6 @@ class OfflineTrajectoryGenerator:
 def main():
     NORTH_POINT_LAT_LON = [32.218577, 34.835475]
     SOUTH_POINT_LAT_LON = [32.212071, 34.83709]
-    ROAD_ID = 20
-
-    frenet =
 
     # initial velocity at the initial point
     INIT_VEL = 20 / 3.6  # [m/s]
@@ -103,7 +96,8 @@ def main():
     init_geo_coordinate = NORTH_POINT_LAT_LON
     init_geo_name = 'north'
 
-    generator = OfflineTrajectoryGenerator(ROAD_ID, )
+    frenet = None  # Instantiate a FrenetSerret2DFrame here.
+    generator = OfflineTrajectoryGenerator(frenet)
     trajectory = generator.plan(geo_coordinates=init_geo_coordinate, init_velocity=INIT_VEL, interm_goals=interm_goals, lane_width=LANE_WIDTH)
     time_points = np.arange(0.0, len(trajectory)*WERLING_TIME_RESOLUTION, WERLING_TIME_RESOLUTION)
 
