@@ -190,7 +190,7 @@ class BehavioralPlanningFacade(DmModule):
         ego_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(ego_lane_segment_id)
 
         # find ego road segment row index in as_route_plan_lane_segments 2-d array which matches the index in a_i_road_segment_ids 1-d array
-        route_plan_start_idx = np.where(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
+        route_plan_start_idx = np.argwhere(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
 
         if len(route_plan_start_idx[0]) == 0: # check if ego road segment Id is listed inside route plan data
             raise EgoRoadSegmentNotFound('Route plan does not include data for ego road segment ID {0}'.format(ego_road_segment_id))
@@ -215,17 +215,17 @@ class BehavioralPlanningFacade(DmModule):
 
             road_segment_blocked = True
 
-            # check the end cost for all lane segments within a road segment
-            for j in range(route_plan_data.a_Cnt_num_lane_segments[i]):
-
-                # raise exception if ego lane occupancy cost is 1
-                if i == ego_row_idx and route_plan_data.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == ego_lane_segment_id \
-                    and  route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == 1 :
+            # raise exception if ego lane occupancy cost is 1
+            if i == ego_row_idx :
+                ego_road_lane_ids = np.array([route_lane.e_i_lane_segment_id for route_lane in route_plan_data.as_route_plan_lane_segments[ego_row_idx]])
+                ego_col_idx = np.argwhere(ego_road_lane_ids==ego_lane_segment_id)[0][0]
+                if route_plan_data.as_route_plan_lane_segments[ego_row_idx][ego_col_idx].e_cst_lane_occupancy_cost == 1:
                     raise EgoLaneOccupancyCostIncorrect("Occupancy cost is 1 for ego lane semgnet ID: \n", ego_lane_segment_id)
 
-                if route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost < 1 :
-                    road_segment_blocked = False
-                    break
+            # check the end cost for all lane segments within a road segment
+            lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[i]])
+            if np.any(lane_end_costs<1) :
+                road_segment_blocked = False
 
             # continue looking at the next road segments if current road segment is not blocked
             if i > ego_row_idx and not road_segment_blocked:
