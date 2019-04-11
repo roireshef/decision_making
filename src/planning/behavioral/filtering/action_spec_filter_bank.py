@@ -1,4 +1,6 @@
+from decision_making.paths import Paths
 from decision_making.src.global_constants import SAFETY_HEADWAY
+import os
 
 from collections import defaultdict
 
@@ -17,7 +19,6 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
     RelativeLongitudinalPosition, StaticActionRecipe, AggressivenessLevel, ActionType
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
-from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterLimitsViolatingTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN, C_V, C_K
 from decision_making.src.planning.types import FS_SX, FS_SV, LAT_CELL
@@ -231,10 +232,27 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
     Checks if it is possible to break from the goal to the end of the frenet frame
     """
 
-    def __init__(self, predicates_dir: str):
+    def __init__(self, path: str):
         # TODO: Change this
-        self.limit_predicates = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'limits')
-        self.distance_predicates = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'distances')
+        self.distances = ConstraintBrakeLateralAccelerationFilter.read_distances(path)
+
+    @staticmethod
+    def read_distances(path):
+        """
+        This method reads maps from file into a dictionary mapping a tuple of (action_type,weights) to a LUT.
+        :param path: The directory holding all maps (.npy files)
+        :return: a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        """
+        directory = Paths.get_resource_absolute_path_filename(path)
+        distances = {}
+        for filename in os.listdir(directory):
+            if filename.endswith(".npy"):
+                predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (path, filename))
+                action_type = filename.split('.bin')[0].split('_distances')[0]
+                wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
+                          float(filename.split('.bin')[0].split('_')[6])]
+                distances[(action_type, wT, wJ)] = np.load(file=predicate_path)
+        return distances
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
@@ -251,7 +269,7 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
         # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
-        brake_dist = self.distance_predicates[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
+        brake_dist = self.distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
                      FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
         vel_limit_in_points = 0 # TODO
         return brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)]
@@ -309,8 +327,7 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
 
 class FilterByLateralAcceleration(ActionSpecFilter):
     def __init__(self, predicates_dir: str):
-        self.predicates = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'limits')
-        self.distances = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'distances')
+        self.distances = ConstraintBrakeLateralAccelerationFilter.read_distances(predicates_dir, 'distances')
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
