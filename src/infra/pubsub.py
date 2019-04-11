@@ -22,7 +22,8 @@ class PubSub:
             callback function named "Class" and "_callback_function", respectively, the event scheduler will be named
             "Class _callback_function".
             """
-            event_scheduler_name = "{} {}".format(callback.__self__.__class__.__name__, callback.__name__)
+            event_scheduler_name = "{}{}".format(callback.__self__.__class__.__name__, callback.__name__)
+            print('Registered EvenScheduler callback: ', event_scheduler_name)
             event_scheduler = EventScheduler(event_scheduler_name)
             event_scheduler.register_cb(topic, callback)
 

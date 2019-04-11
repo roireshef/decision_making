@@ -11,7 +11,8 @@ from rte.python.profiler import cleanup as profiler_cleanup
 
 class DmProcess:
 
-    def __init__(self, module_creation_method: Callable[[], DmModule], trigger_type: DmTriggerType, trigger_args: dict):
+    def __init__(self, module_creation_method: Callable[[], DmModule], trigger_type: DmTriggerType, trigger_args: dict,
+                 name: str = ''):
         """
         Manager for a single DM module running in a separate process
         :param module_creation_method: the method to create an instance of the DM module to run in a separate process
@@ -23,6 +24,7 @@ class DmProcess:
         self._trigger_type = trigger_type
         self._trigger_args = trigger_args
         self._queue = Queue()
+        self.name = name
 
         self._process_name = "DM_process_{}".format(self.name)
         self.process = Process(target=self._module_process_entry, name=self._process_name, daemon=True)
@@ -31,10 +33,6 @@ class DmProcess:
         self._module_instance = None
 
         self.logger = AV_Logger.get_logger(self._process_name)
-
-    @property
-    def name(self) -> str:
-        return self._module_creation_method.__name__
 
     def start_process(self) -> None:
         """
