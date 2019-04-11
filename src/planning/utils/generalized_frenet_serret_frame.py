@@ -78,6 +78,16 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsPointOffset))
 
     @property
+    def segments(self) -> List[FrenetSubSegment]:
+        """
+        :return: List of frenet sub segments with the starting and ending s in the GFF that correspond to that segment
+        """
+        return [FrenetSubSegment(segment_id=self._segments_id[idx],
+                                 s_start=self._segments_s_offsets[idx],
+                                 s_end=self._segments_s_offsets[idx+1])
+                for idx in range(len(self._segments_id))]
+
+    @property
     def ds(self):
         raise NotImplementedError('GeneralizedFrenetSerretFrame doesn\'t have a single ds value.')
 
