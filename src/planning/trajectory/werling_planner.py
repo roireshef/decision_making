@@ -130,14 +130,18 @@ class WerlingPlanner(TrajectoryPlanner):
         if len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+            lat_acc_traj_idx = np.argmin(np.max(np.abs(lat_acc[:, :, C_A]), axis=1))
+            lat_acc_t_idx = np.argmax(np.abs(lat_acc[lat_acc_traj_idx, :, C_A]))
+            lat_acc_v = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_V]
+            lat_acc_k = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_K]
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
-                                          "extrapolated time horizon: %f. goal: %s, state: %s.\n"
-                                          "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
-                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s); "
-                                          "planned lat. accelerations range [%s, %s] (limits: %s); "
-                                          "number of trajectories passed according to Cartesian limits: %s/%s;"
-                                          "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
+                                          "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
+                                          "[min/max velocity] [%s, %s] (limits: %s); "
+                                          "[min/max lon_acc] [%s, %s] (limits: %s)\n"
+                                          "min/max lat_acc [%s, %s] (limits: %s); passed limits: %s/%s\n"
+                                          "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f\n"
+                                          "worst_lat_acc: t=%.1f v=%.3f k=%.3f" %
                                           (state.ego_state.timestamp_in_sec, T, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                            np.max(np.min(ctrajectories[:, :, C_V], axis=1)),
@@ -149,9 +153,9 @@ class WerlingPlanner(TrajectoryPlanner):
                                            np.min(lat_acc), np.max(lat_acc),
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                            len(cartesian_filtered_indices), len(ctrajectories),
-                                           goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                           planning_horizon * (
-                                                   ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+                                           NumpyUtils.str_log(goal_frenet_state), goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
+                                           T * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5,
+                                           lat_acc_t_idx*0.1, lat_acc_v, lat_acc_k))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
@@ -178,11 +182,9 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            poly_s = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SV],
-                               ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_SX]])
-            poly_d = np.array([0, 0, 0, 0, ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DV],
-                               ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, FS_DX]])
-            samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
+            poly_s = np.array([0, 0, 0, 0, goal_frenet_state[FS_SV], goal_frenet_state[FS_SX]])
+            poly_d = np.array([0, 0, 0, 0, goal_frenet_state[FS_DV], goal_frenet_state[FS_DX]])
+            samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec + T,
                                                               planning_horizon, planning_horizon, planning_horizon,
                                                               reference_route, poly_s, poly_d)
         return samplable_trajectory, \
