@@ -194,7 +194,7 @@ class BehavioralPlanningFacade(DmModule):
 
         if len(route_plan_start_idx[0]) == 0: # check if ego road segment Id is listed inside route plan data
             raise EgoRoadSegmentNotFound('Route plan does not include data for ego road segment ID {0}'.format(ego_road_segment_id))
-        if len(route_plan_idx[0]) > 1 :
+        if len(route_plan_start_idx[0]) > 1 :
             raise RepeatedRoadSegments('Route Plan has repeated data for road segment ID {0}'.format(ego_road_segment_id))
 
         ego_row_idx = route_plan_start_idx[0][0]
@@ -214,6 +214,13 @@ class BehavioralPlanningFacade(DmModule):
         for i in range(ego_row_idx, route_plan_data.e_Cnt_num_road_segments):
 
             road_segment_blocked = True
+
+            # raise exception if ego lane occupancy cost is 1
+            if i == ego_row_idx :
+                ego_road_lane_ids = np.array([route_lane.e_i_lane_segment_id for route_lane in route_plan_data.as_route_plan_lane_segments[ego_row_idx]])
+                ego_col_idx = np.argwhere(ego_road_lane_ids==ego_lane_segment_id)[0][0]
+                if route_plan_data.as_route_plan_lane_segments[ego_row_idx][ego_col_idx].e_cst_lane_occupancy_cost == 1:
+                    raise EgoLaneOccupancyCostIncorrect('Occupancy cost is 1 for ego lane segment ID {0}'.format(ego_lane_segment_id))
 
             # check the end cost for all lane segments within a road segment
             for j in range(route_plan_data.a_Cnt_num_lane_segments[i]):
