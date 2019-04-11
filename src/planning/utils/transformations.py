@@ -3,6 +3,7 @@ from decision_making.src.planning.types import C_YAW
 import numpy as np
 
 from decision_making.src.state.state import EgoState
+from rte.ctm.src import CtmService
 
 
 class Transformations:
@@ -35,3 +36,16 @@ class Transformations:
             trajectory=np.array([ego_cstate]), direction=-1)[0]
         # return cloned ego state with transformed position (since road_localization should be recomputed)
         return ego_state.clone_from_cartesian_state(transformed_ego_cstate)
+
+    @staticmethod
+    def convert_geo_to_map_coordinates(lat, lon, layer=0):
+        # type: (float, float, int) -> [float, float, Tuple(int, char)]
+        """
+        Converts the Geo lat/lon coordinates into map coordinates (meters from the frame origin).
+        Taken out of ultracruise/mapping/src/model/map_api.py
+        :param lat: The latitude in degrees
+        :param lon: The longitude in degrees
+        :param layer:
+        :return: The (x,y) position on the map, relative to the frame origin
+        """
+        return CtmService.get_ctm().transform_geo_location_to_map(lat, lon)
