@@ -6,7 +6,6 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
 from decision_making.test.prediction.conftest import PREDICTION_HORIZON
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
     WerlingTrajectoryGenerator

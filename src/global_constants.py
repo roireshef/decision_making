@@ -273,6 +273,10 @@ LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from d
 LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from actual location (actual frenet: %s)"
 
 
-
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
+
+PG_SPLIT_PICKLE_FILE_NAME = '/home/MZ8CJ6/temp/PG_split.p'
+PG_PICKLE_FILE_NAME = '/home/MZ8CJ6/temp/PG.p'
+SHORT_MAP_PICKLE_FILE_NAME = '/home/MZ8CJ6/temp/short_map.p'
+TESTABLE_MAP_PICKLE_FILE_NAME = '/home/MZ8CJ6/temp/testable_map.p'

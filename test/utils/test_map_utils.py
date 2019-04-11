@@ -11,7 +11,6 @@ from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
-from mapping.src.service.map_service import MapService
 from decision_making.test.messages.static_scene_fixture import scene_static
 
 MAP_SPLIT = "PG_split.bin"
@@ -60,7 +59,6 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static: Scene
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_to_lane_borders(lane_ids[0], 0)
     assert dist_to_right == dist_to_left
-    assert dist_to_right == MapService.get_instance().get_road(road_ids[0]).lane_width/2
 
 
 def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder(scene_static: SceneStatic):
@@ -406,11 +404,9 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
         validate consistency between road segment ids and lane ids
     """
     SceneStaticModel.get_instance().set_scene_static(scene_static)
-    MapService.initialize(MAP_SPLIT)
     road_segment_ids = MapUtils.get_road_segment_ids()
     road_segment_id = road_segment_ids[0]
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-    assert len(lane_ids) == MapService.get_instance().get_road(road_segment_id).lanes_num
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[0])
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[-1])
 
@@ -422,22 +418,3 @@ def test_doesMapExistBackward_longBackwardDist_validateRelevantException(scene_s
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
     assert MapUtils.does_map_exist_backward(lane_id, 200)
     assert not MapUtils.does_map_exist_backward(lane_id, 400)
-
-def test_getLaneFrenetFrame_isClose(scene_static: SceneStatic):
-
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    road_segment_id = road_segment_ids[2]
-    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
-
-    lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    MapService.initialize(MAP_SPLIT)
-    original_lane_frenet = MapService.get_instance()._lane_frenet[lane_id]
-
-    assert np.isclose(lane_frenet.k, original_lane_frenet.k).all()
-    assert np.isclose(lane_frenet.k_tag, original_lane_frenet.k_tag).all()
-    assert np.isclose(lane_frenet.points, original_lane_frenet.points).all()
-    assert np.isclose(lane_frenet.T, original_lane_frenet.T).all()
-    assert np.isclose(lane_frenet.N, original_lane_frenet.N).all()
-
-

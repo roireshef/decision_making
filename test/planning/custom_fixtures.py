@@ -1,10 +1,12 @@
 import numpy as np
 import pytest
+import pickle
 from decision_making.src.state.map_state import MapState
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
+    PG_SPLIT_PICKLE_FILE_NAME, SHORT_MAP_PICKLE_FILE_NAME
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
@@ -25,18 +27,12 @@ from decision_making.src.state.state import OccupancyState, ObjectSize, State, D
 from decision_making.src.state.state_module import DynamicObjectsData
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
-from decision_making.test.messages.static_scene_fixture import scene_static
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
-
-from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
-
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture,\
-    short_testable_map_api, testable_map_api
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
 OLD_TIMESTAMP_PARAM = 'old_timestamp'
@@ -127,8 +123,8 @@ def dynamic_objects_negative_velocity():
 
 
 @pytest.fixture(scope='function')
-def state(short_testable_map_api):
-    short_scene_static = create_scene_static_from_map_api(short_testable_map_api)
+def state():
+    short_scene_static = pickle.load(open(SHORT_MAP_PICKLE_FILE_NAME, 'rb'))
     SceneStaticModel.get_instance().set_scene_static(short_scene_static)
 
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
@@ -182,8 +178,9 @@ def state_with_old_object(request) -> State:
 
 @pytest.fixture(scope='function')
 def scene_dynamic_fix():
+    scene_static = pickle.load(open(PG_SPLIT_PICKLE_FILE_NAME, 'rb'))
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
     lane_id = 200
     cstate = np.array([1100, 7, 0, 1.0, 0.0, 0])
 

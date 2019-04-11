@@ -30,7 +30,6 @@ from rte.python.logger.AV_logger import AV_Logger
 
 mock_td_steps = 5
 
-# @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 # @patch('decision_making.test.planning.trajectory.test_werlingPlanner.TD_STEPS', mock_td_steps)
 # @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.TD_STEPS', mock_td_steps)
 # @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.SX_STEPS', 5)
