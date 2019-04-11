@@ -125,7 +125,8 @@ class MapUtils:
     @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D) -> int:
         """
-        given cartesian coordinates, find the closest lane to the point
+        Given cartesian coordinates, find the closest lane to the point. Note that this function operates only on the lane segments that are
+        provided in the smaller, geometry-data horizon (i.e. the lane segments provided in the SceneStaticGeometry structure).
         :param cartesian_point: 2D cartesian coordinates
         :return: closest lane segment id
         """
