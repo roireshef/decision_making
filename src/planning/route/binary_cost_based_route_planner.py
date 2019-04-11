@@ -113,8 +113,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             occupancy_cost_method = attribute_based_occupancy_cost_methods[lane_attribute_index]                                                                                        # 
             return occupancy_cost_method(lane_attribute_value)
         else:
-            raise LaneAttributeNotFound("Cost Based Route Planner: lane_attribute_index not supported", lane_attribute_index)
-        
+            raise LaneAttributeNotFound('Binary Cost Based Route Planner: lane_attribute_index {0} not supported'.format(lane_attribute_index))
 
     @staticmethod
     @raises(LaneAttributeNotFound)
@@ -132,14 +131,14 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attributes):
                 lane_attribute_value = lane_segment_base_data.a_cmp_lane_attributes[lane_attribute_index]
             else:
-                raise LaneAttributeNotFound("Cost Based Route Planner: lane_attribute_index doesnt have corresponding lane attribute value"
-                                 , lane_attribute_index)
+                raise LaneAttributeNotFound('Binary Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute value'
+                                            .format(lane_attribute_index))
 
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attribute_confidences):
                 lane_attribute_confidence = lane_segment_base_data.a_cmp_lane_attribute_confidences[lane_attribute_index]
             else:
-                raise LaneAttributeNotFound("Cost Based Route Planner: lane_attribute_index doesnt have corresponding lane attribute confidence value"
-                                 , lane_attribute_index)
+                raise LaneAttributeNotFound('Binary Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute '\
+                                            'confidence value'.format(lane_attribute_index))
 
             
             if (lane_attribute_confidence < LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD):
@@ -193,7 +192,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                 if ( downstream_route_lane_segment_idx < len(downstream_route_lane_segments) ):
                     downstream_route_lane_segment = downstream_route_lane_segments[downstream_route_lane_segment_idx]
                 else:
-                    raise DownstreamLaneDataNotFound("Cost Based Route Planner: downstream_route_lane_segment_idx not present in route_plan_lane_segments")
+                    raise DownstreamLaneDataNotFound('Binary Cost Based Route Planner: downstream lane segment ID {0} for lane segment ID {1} '\
+                                                     'not present in route_plan_lane_segment structure for downstream road segment'
+                                                     .format(downstream_lane_segment_id, lane_segment_base_data.e_i_lane_segment_id))
                 
                 downstream_lane_segment_occupancy_cost = downstream_route_lane_segment.e_cst_lane_occupancy_cost
 
@@ -288,13 +289,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
     
         if (downstream_road_segment_not_found):
-            raise RoadSegmentLaneSegmentMismatch("Cost Based Route Planner: Not a single downstream lane segment to the current" +
-                                                 "road segment (lane segments) were found in the downstream road segment described" +
-                                                 "in the navigation route plan road_segment_id ", road_segment_id, " lane_segment_ids", 
-                                                 lane_segment_ids, " next(road_segment_id)", 
-                                                 self._route_plan_input_data.get_next_road_segment(road_segment_id), " route_plan",
-                                                 self._route_plan_input_data.get_nav_plan(),
-                                                 "downstream_lane_segment_ids_for_road_segment ", downstream_lane_segment_ids_for_road_segment)
+            raise RoadSegmentLaneSegmentMismatch('Binary Cost Based Route Planner: Not a single downstream lane segment for the current '\
+                                                 'road segment ID {0} were found in the route plan downstream road segment ID {1} '\
+                                                 'described in the navigation plan'.format(road_segment_id, self._route_plan_input_data.get_next_road_segment(road_segment_id)))
         
         return route_lane_segments
 
