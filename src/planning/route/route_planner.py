@@ -4,13 +4,13 @@ from collections import OrderedDict
 from typing import List, Dict, Optional
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
-     SceneRoadSegment, SceneLaneSegmentBase
+    SceneRoadSegment, SceneLaneSegmentBase
 from decision_making.src.exceptions import MissingInputInformation, RepeatedRoadSegments, raises,\
     NavigationSceneDataMismatch, LaneSegmentDataNotFound, RoadSegmentDataNotFound
 
 RoadSegmentDict = Dict[int, SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int, SceneLaneSegmentBase]
-RouteLaneSegmentOrderedDict = Dict[int, np.ndarray] # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
+RouteLaneSegmentOrderedDict = Dict[int, np.ndarray]     # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
 
 
 class RoutePlannerInputData():
@@ -25,30 +25,41 @@ class RoutePlannerInputData():
                  next_road_segment_id: Optional[Dict[int, int]] = None,
                  prev_road_segment_id: Optional[Dict[int, int]] = None):
 
-        self._route_lane_segment_ids = route_lane_segment_ids or OrderedDict()      # dict:   key - road segment IDs (ordered as in
-                                                                                    #               routeplan)
-                                                                                    #       value - np.ndarray(LaneSegmentID) (ordered as
-                                                                                    #               in the road segment structure in nav.
-                                                                                    #               plan)
+        """
+        dict:   key - road segment IDs (ordered as in routeplan)
+              value - np.ndarray(LaneSegmentID) (ordered as in the road segment structure in nav. plan)
+        """
+        self._route_lane_segment_ids = route_lane_segment_ids or OrderedDict()
 
-        self._route_lane_segments_base_as_dict = route_lane_segments_base_as_dict or {}     # dict:   key - lane segment ID
-                                                                                            #       value - LaneSegmentBase
-                                                                                            # Should contain all the lane segments listed
-                                                                                            # in nav. route road segments
+        """
+        dict:   key - lane segment ID
+              value - LaneSegmentBase
+        Should contain all the lane segments listed in nav. route road segments
+        """
+        self._route_lane_segments_base_as_dict = route_lane_segments_base_as_dict or {}
 
-        self._route_road_segments_as_dict = route_road_segments_as_dict or {}   # dict:   key - road segment ID,
-                                                                                #       value - Road Segments.
-                                                                                # Should contain all the road segments listed in nav. route
+        """
+        dict:   key - road segment ID
+              value - Road Segments
+        Should contain all the road segments listed in nav. route
+        """
+        self._route_road_segments_as_dict = route_road_segments_as_dict or {}
 
-        self._next_road_segment_id = next_road_segment_id or {}     # dict:   key - road segment ID,
-                                                                    #       value - next road segment ID in nav. route
-                                                                    # Enables O(1) lookup of the next road segment.
+        """
+        dict:   key - road segment ID,
+              value - next road segment ID in nav. route
+        Enables O(1) lookup of the next road segment.
+        """
+        self._next_road_segment_id = next_road_segment_id or {}
 
-        self._prev_road_segment_id = prev_road_segment_id or {}     # dict:   key - road segment ID,
-                                                                    #       value - prev road segment ID in nav. route
-                                                                    # Enables O(1) lookup of the prev road segment
+        """
+        dict:   key - road segment ID,
+              value - prev road segment ID in nav. route
+        Enables O(1) lookup of the prev road segment
+        """
+        self._prev_road_segment_id = prev_road_segment_id or {}
 
-    @staticmethod # Made static method especially as this method doesn't access the classes states/variables
+    @staticmethod   # Made static method especially as this method doesn't access the classes states/variables
     @raises(MissingInputInformation)
     def check_scene_data_validity(scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
         if not scene.as_scene_lane_segments:
@@ -57,9 +68,8 @@ class RoutePlannerInputData():
         if not scene.as_scene_road_segment:
             raise MissingInputInformation("Route Planner Input Data Processing: Empty scene.as_scene_road_segment")
 
-        if not nav_plan.a_i_road_segment_ids.size: # np.ndarray type
+        if not nav_plan.a_i_road_segment_ids.size:  # np.ndarray type
             raise MissingInputInformation("Route Planner Input Data Processing: Empty NAV Plan")
-
 
     def _update_dict_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
         """
@@ -78,9 +88,8 @@ class RoutePlannerInputData():
             road_segment_id = scene_road_segment.e_i_road_segment_id
 
             # Verify if these road segs are in NAV route plan.
-            if road_segment_id in nav_plan.a_i_road_segment_ids: # Empty NAV Plan error would have been caught earlier
+            if road_segment_id in nav_plan.a_i_road_segment_ids:    # Empty NAV Plan error would have been caught earlier
                 self._route_road_segments_as_dict[road_segment_id] = scene_road_segment
-
 
     @raises(MissingInputInformation, RepeatedRoadSegments, NavigationSceneDataMismatch)
     def _update_routeplan_data(self, nav_plan: NavigationPlan) -> None:
@@ -106,12 +115,12 @@ class RoutePlannerInputData():
                 raise NavigationSceneDataMismatch('Road segement ID {0} reported in the NAV route not found in scene static base'.format(road_segment_id))
 
             if road_segment_idx < number_of_road_segment - 1:
-                self._next_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx+1][1]
+                self._next_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx + 1][1]
             else:
                 self._next_road_segment_id[road_segment_id] = None
 
             if road_segment_idx > 0:
-                self._prev_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx-1][1]
+                self._prev_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx - 1][1]
             else:
                 self._prev_road_segment_id[road_segment_id] = None
 
@@ -120,7 +129,6 @@ class RoutePlannerInputData():
                 downstream_road_segment_id = enumerated_road_segment_ids[road_segment_idx - 1][1]
                 if (downstream_road_segment_id == road_segment_id):
                     raise RepeatedRoadSegments("Route Planner Input Data Processing: Repeated segement reported in the NAV route ")
-
 
     def reformat_input_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
         """
@@ -137,16 +145,14 @@ class RoutePlannerInputData():
         self._update_dict_data(scene, nav_plan)
         self._update_routeplan_data(nav_plan)
 
-
     def get_nav_plan(self) -> List[int]:
         """
          This method returns List[road segment IDs] in the same sequence as that is in the NAV plan
         """
         return [road_segment_id for (road_segment_id, _) in self._route_lane_segment_ids.items()]
 
-
     @raises(LaneSegmentDataNotFound)
-    def get_lane_segment_base(self, lane_segment_id:int) -> SceneLaneSegmentBase:
+    def get_lane_segment_base(self, lane_segment_id: int) -> SceneLaneSegmentBase:
         """
          This method returns lane segment base given a lane segment ID
         """
@@ -169,9 +175,8 @@ class RoutePlannerInputData():
             raise LaneSegmentDataNotFound("Cost Based Route Planner: Trying to access empty route lane segment ids ")
         return self._route_lane_segment_ids
 
-
     @raises(RoadSegmentDataNotFound)
-    def get_lane_segment_ids_for_road_segment(self, road_segment_id:int) -> np.ndarray:
+    def get_lane_segment_ids_for_road_segment(self, road_segment_id: int) -> np.ndarray:
         """
          This method returns np.ndarray(road_segment_id) (ordered as in the road segment structure )
         """
@@ -180,9 +185,8 @@ class RoutePlannerInputData():
 
         return self._route_lane_segment_ids[road_segment_id]
 
-
     @raises(RoadSegmentDataNotFound)
-    def get_next_road_segment(self, road_segment_id:int) -> int:
+    def get_next_road_segment(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
@@ -191,7 +195,7 @@ class RoutePlannerInputData():
 
 
     @raises(RoadSegmentDataNotFound)
-    def get_prev_road_segment(self, road_segment_id:int) -> int:
+    def get_prev_road_segment(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
@@ -199,7 +203,6 @@ class RoutePlannerInputData():
             raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry for previous road segment found for road segment ID {0}'.format(road_segment_id))
 
         self._prev_road_segment_id[road_segment_id]
-
 
     def __str__(self) -> str:
         """
@@ -219,4 +222,3 @@ class RoutePlanner(metaclass=ABCMeta):
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """Abstract route planner method. Implementation details will be in child class/methods """
         pass
-
