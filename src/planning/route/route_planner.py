@@ -98,10 +98,13 @@ class RoutePlannerInputData():
         an ordered dictionary: key -> road seg ids ordered as in route
                                value -> ndaray of lane seg ids (ordered) as stored in the road seg structure
         """
-        enumerated_road_segment_ids = list(enumerate(nav_plan.a_i_road_segment_ids))
-        number_of_road_segment = len(enumerated_road_segment_ids)
+        # For the first road segment in the nav. plan, the previous road segment value will be "None"
+        prev_road_segment_id = None
 
-        for road_segment_idx, road_segment_id in enumerated_road_segment_ids:
+        """
+        Loop over road segments, except for the last in the nav. plan, and assign the next and previous road segment IDs accordingly. Note that enumerate is configured to start counting the index (i) from 1 instead of 0. This was done so that no addition is needed each time the index is accessed.
+        """
+        for i, road_segment_id in enumerate(nav_plan.a_i_road_segment_ids[:-1], start=1):
             if road_segment_id in self._route_road_segments_as_dict:
                 all_lane_segment_ids_in_this_road_segment = self._route_road_segments_as_dict[road_segment_id].a_i_lane_segment_ids
 
@@ -114,21 +117,32 @@ class RoutePlannerInputData():
             else:
                 raise NavigationSceneDataMismatch('Road segement ID {0} reported in the NAV route not found in scene static base'.format(road_segment_id))
 
-            if road_segment_idx < number_of_road_segment - 1:
-                self._next_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx + 1][1]
-            else:
-                self._next_road_segment_id[road_segment_id] = None
+            self._next_road_segment_id[road_segment_id] = nav_plan.a_i_road_segment_ids[i]
+            self._prev_road_segment_id[road_segment_id] = prev_road_segment_id
 
-            if road_segment_idx > 0:
-                self._prev_road_segment_id[road_segment_id] = enumerated_road_segment_ids[road_segment_idx - 1][1]
-            else:
-                self._prev_road_segment_id[road_segment_id] = None
+            prev_road_segment_id = road_segment_id
 
             # The same road segment can appear more than once in the the route indicating a loop, but should not appear consecutively
-            if road_segment_idx > 0:
-                downstream_road_segment_id = enumerated_road_segment_ids[road_segment_idx - 1][1]
-                if (downstream_road_segment_id == road_segment_id):
-                    raise RepeatedRoadSegments("Route Planner Input Data Processing: Repeated segement reported in the NAV route ")
+            if road_segment_id == nav_plan.a_i_road_segment_ids[i]:
+                raise RepeatedRoadSegments("Route Planner Input Data Processing: Repeated segement reported in the NAV route ")
+
+        # Assign values corresponding to the last road segment in the nav. plan
+        last_road_segment_id = nav_plan.a_i_road_segment_ids[-1]
+
+        if last_road_segment_id in self._route_road_segments_as_dict:
+            all_lane_segment_ids_in_this_road_segment = self._route_road_segments_as_dict[last_road_segment_id].a_i_lane_segment_ids
+
+            # Since this is a input validity check for which we have to loop over all road segs, it will cost O(n) extra if we do it upfront.
+            if all_lane_segment_ids_in_this_road_segment.size:
+                self._route_lane_segment_ids[last_road_segment_id] = all_lane_segment_ids_in_this_road_segment
+            else:
+                raise MissingInputInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(last_road_segment_id))
+
+        else:
+            raise NavigationSceneDataMismatch('Road segement ID {0} reported in the NAV route not found in scene static base'.format(last_road_segment_id))
+
+        self._next_road_segment_id[last_road_segment_id] = None
+        self._prev_road_segment_id[last_road_segment_id] = prev_road_segment_id
 
     def reformat_input_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
         """
