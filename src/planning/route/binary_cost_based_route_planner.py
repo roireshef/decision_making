@@ -17,14 +17,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     """
     def __init__(self, route_plan_lane_segments: Optional[RoutePlanRoadSegments] = None,
                  route_plan_input_data: Optional[RoutePlannerInputData] = None):
-        if route_plan_lane_segments is None:
-            route_plan_lane_segments = []
-
-        if route_plan_input_data is None:
-            route_plan_input_data = RoutePlannerInputData()
-
-        self.__route_plan_lane_segments = route_plan_lane_segments
-        self._route_plan_input_data = route_plan_input_data
+        self.__route_plan_lane_segments = route_plan_lane_segments or []
+        self._route_plan_input_data = route_plan_input_data or RoutePlannerInputData()
 
     def get_route_plan_lane_segments(self) -> RoutePlanRoadSegments:
         return self.__route_plan_lane_segments
