@@ -37,4 +37,9 @@ class Paths:
         # type: () -> str
         return os.path.join(os.path.dirname(__file__), 'resources')
 
+    @staticmethod
+    def get_maps_path():
+        # type: () -> str
+        return os.path.join(os.path.dirname(__file__), 'test/maps')
+
 

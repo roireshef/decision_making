@@ -1,4 +1,4 @@
-from decision_making.src.global_constants import PG_PICKLE_FILE_NAME
+from decision_making.test.messages.static_scene_fixture import scene_static_pg_no_split
 from logging import Logger
 import numpy as np
 import pickle
@@ -16,9 +16,8 @@ from mapping.src.service.map_service import MapService
 
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
-def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
-    scene_static_no_split = pickle.load(open(PG_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
+def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_pg_no_split):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
 
     logger = Logger("test_specifyDynamicAction")
     road_id = 20

@@ -1,10 +1,9 @@
-from decision_making.src.global_constants import TESTABLE_MAP_PICKLE_FILE_NAME
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.test.messages.static_scene_fixture import scene_static_testable
 from typing import List
 from unittest.mock import patch
 
 import numpy as np
-import pickle
 
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.state.state import DynamicObject, EgoState, State
@@ -19,10 +18,10 @@ def test_AlignObjects_ExternalTimestamp_AccuratePrediction(physical_time_alignme
                                                            dynamic_init_state: State, prediction_timestamps: np.ndarray,
                                                            predicted_dyn_object_states_constant_yaw: List[
                                                                DynamicObject],
-                                                           predicted_dynamic_ego_states: List[EgoState]):
+                                                           predicted_dynamic_ego_states: List[EgoState],
+                                                           scene_static_testable):
 
-    scene_static = pickle.load(open(TESTABLE_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
     predicted_state = physical_time_alignment_predictor.predict_state(state=dynamic_init_state, prediction_timestamps=np.array([
         prediction_timestamps[0]]))[0]
@@ -42,10 +41,10 @@ def test_AlignObjects_ExternalTimestamp_ConstantYawAccuratePrediction(
         physical_time_alignment_predictor: EgoUnawarePredictor,
         dynamic_init_state: State, prediction_timestamps: np.ndarray,
         predicted_dyn_object_states_constant_yaw: List[DynamicObject],
-        predicted_dynamic_ego_states: List[EgoState]):
+        predicted_dynamic_ego_states: List[EgoState],
+        scene_static_testable):
 
-    scene_static = pickle.load(open(TESTABLE_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
     predicted_state = physical_time_alignment_predictor.predict_state(state=dynamic_init_state, prediction_timestamps=np.array([
         prediction_timestamps[1]]))[0]

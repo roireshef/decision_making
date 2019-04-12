@@ -1,6 +1,5 @@
-from decision_making.src.global_constants import SHORT_MAP_PICKLE_FILE_NAME
+from decision_making.test.messages.static_scene_fixture import scene_static_short_map
 from unittest.mock import MagicMock, patch
-import pickle
 
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
@@ -8,7 +7,6 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STA
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
@@ -36,9 +34,9 @@ from decision_making.test.planning.custom_fixtures import pubsub, behavioral_fac
 
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
-                                                                        state_module: StateModule):
-    short_scene_static = pickle.load(open(SHORT_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(short_scene_static)
+                                                                        state_module: StateModule,
+                                                                        scene_static_short_map):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_map)
 
     # Using logger-mock here because facades catch exceptions and redirect them to logger
     tp_logger = MagicMock()
@@ -60,7 +58,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     state_module.periodic_action()
     trajectory_facade.start()
 
-    pubsub.publish(UC_SYSTEM_SCENE_STATIC, short_scene_static.serialize())
+    pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_map.serialize())
 
     behavioral_facade.periodic_action()
     state_module.periodic_action()
@@ -79,9 +77,9 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
 
 def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module: StateModule,
-                                                                  navigation_facade: NavigationFacade):
-    scene_static = pickle.load(open(SHORT_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+                                                                  navigation_facade: NavigationFacade,
+                                                                  scene_static_short_map):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_map)
     bp_logger = MagicMock()
     predictor_logger = MagicMock()
 
@@ -113,7 +111,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     predictor_logger.error.assert_not_called()
     predictor_logger.critical.assert_not_called()
 
-    pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static.serialize())
+    pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_map.serialize())
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
 

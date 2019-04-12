@@ -1,9 +1,7 @@
-from decision_making.src.global_constants import TESTABLE_MAP_PICKLE_FILE_NAME
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from typing import List
 from unittest.mock import patch, MagicMock
 import numpy as np
-import pickle
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -17,10 +15,10 @@ from decision_making.test.prediction.utils import Utils
 def test_PredictObjects_StraightRoad_AccuratePrediction(road_following_predictor: EgoAwarePredictor,
                                                         init_state: State, prediction_timestamps: np.ndarray,
                                                         predicted_dyn_object_states_road_yaw: List[DynamicObject],
-                                                        ego_samplable_trajectory: SamplableTrajectory):
+                                                        ego_samplable_trajectory: SamplableTrajectory,
+                                                        scene_static_testable):
 
-    scene_static = pickle.load(open(TESTABLE_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
     predicted_objects = road_following_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
                                                   prediction_timestamps=prediction_timestamps,
@@ -43,10 +41,10 @@ def test_PredictObjects_StraightRoad_AccuratePrediction(road_following_predictor
 def test_PredictState_StraightRoad_AccuratePrediction(road_following_predictor: EgoAwarePredictor, init_state: State, prediction_timestamps: np.ndarray,
                                                       predicted_dyn_object_states_road_yaw: List[DynamicObject],
                                                       predicted_static_ego_states: List[EgoState],
-                                                      ego_samplable_trajectory: SamplableTrajectory):
+                                                      ego_samplable_trajectory: SamplableTrajectory,
+                                                      scene_static_testable):
 
-    scene_static = pickle.load(open(TESTABLE_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
     predicted_states = road_following_predictor.predict_state(state=init_state,
                                                prediction_timestamps=prediction_timestamps,
@@ -74,10 +72,10 @@ def test_PredictState_StraightRoad_AccuratePrediction(road_following_predictor: 
 def test_PredictObjects_StraightRoad_NoCartesian(road_following_predictor: EgoAwarePredictor,
                                                  init_state: State, prediction_timestamps: np.ndarray,
                                                  predicted_dyn_object_states_road_yaw: List[DynamicObject],
-                                                 ego_samplable_trajectory: SamplableTrajectory):
+                                                 ego_samplable_trajectory: SamplableTrajectory,
+                                                 scene_static_testable):
 
-    scene_static = pickle.load(open(TESTABLE_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
     with patch(CARTESIAN_CREATION) as cartesian_creation_mock:
         _ = road_following_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],

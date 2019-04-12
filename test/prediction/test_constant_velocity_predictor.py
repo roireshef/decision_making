@@ -1,8 +1,7 @@
-from decision_making.src.global_constants import TESTABLE_MAP_PICKLE_FILE_NAME
+from decision_making.test.messages.static_scene_fixture import scene_static_testable
 from typing import List
 from unittest.mock import patch, MagicMock
 import numpy as np
-import pickle
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
@@ -17,10 +16,9 @@ from decision_making.src.prediction.ego_aware_prediction.maneuver_based_predicto
 def test_PredictObjects_StraightRoad_AccuratePrediction(constant_velocity_predictor: ManeuverBasedPredictor,
                                                         init_state: State, prediction_timestamps: np.ndarray,
                                                         predicted_dyn_object_states_road_yaw: List[DynamicObject],
-                                                        ego_samplable_trajectory: SamplableTrajectory):
-
-    scene_static = pickle.load(open(TESTABLE_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+                                                        ego_samplable_trajectory: SamplableTrajectory,
+                                                        scene_static_testable):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
     predicted_objects = constant_velocity_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
                                                   prediction_timestamps=prediction_timestamps,

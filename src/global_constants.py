@@ -276,7 +276,7 @@ LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from ac
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
 
-PG_SPLIT_PICKLE_FILE_NAME = '/home/MZ8CJ6/temp/PG_split.p'
-PG_PICKLE_FILE_NAME = '/home/MZ8CJ6/temp/PG.p'
-SHORT_MAP_PICKLE_FILE_NAME = '/home/MZ8CJ6/temp/short_map.p'
-TESTABLE_MAP_PICKLE_FILE_NAME = '/home/MZ8CJ6/temp/testable_map.p'
+PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.p'
+PG_PICKLE_FILE_NAME = 'PG.p'
+SHORT_MAP_PICKLE_FILE_NAME = 'short_map.p'
+TESTABLE_MAP_PICKLE_FILE_NAME = 'testable_map.p'

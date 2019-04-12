@@ -1,12 +1,12 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.test.messages.static_scene_fixture import scene_static_testable
 from typing import List
 
 import numpy as np
 import pytest
-import pickle
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, TESTABLE_MAP_PICKLE_FILE_NAME
+from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, C_V
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
@@ -276,9 +276,8 @@ def ego_samplable_trajectory(static_cartesian_state: CartesianExtendedState) -> 
 
 
 @pytest.fixture(scope='function')
-def original_state_with_sorrounding_objects():
-    scene_static = pickle.load(open(TESTABLE_MAP_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+def original_state_with_sorrounding_objects(scene_static_testable):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))

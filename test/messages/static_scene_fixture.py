@@ -1,8 +1,10 @@
 import pytest
 import numpy as np
 import pickle
+import os
 from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, PG_PICKLE_FILE_NAME, \
-    TESTABLE_MAP_PICKLE_FILE_NAME
+    TESTABLE_MAP_PICKLE_FILE_NAME, SHORT_MAP_PICKLE_FILE_NAME
+from decision_making.paths import Paths
 
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
@@ -15,15 +17,20 @@ from mapping.src.exceptions import NextRoadNotFound
 
 
 @pytest.fixture
-def scene_static_no_split():
-    return pickle.load(open(PG_PICKLE_FILE_NAME, 'rb'))
+def scene_static_pg_no_split():
+    return pickle.load(open(os.path.join(Paths.get_maps_path(), PG_PICKLE_FILE_NAME), 'rb'))
 
 
 @pytest.fixture
-def scene_static():
-    return pickle.load(open(PG_SPLIT_PICKLE_FILE_NAME, 'rb'))
+def scene_static_pg_split():
+    return pickle.load(open(os.path.join(Paths.get_maps_path(), PG_SPLIT_PICKLE_FILE_NAME), 'rb'))
 
 
 @pytest.fixture
 def scene_static_testable():
-    return pickle.load(open(TESTABLE_MAP_PICKLE_FILE_NAME, 'rb'))
+    return pickle.load(open(os.path.join(Paths.get_maps_path(), TESTABLE_MAP_PICKLE_FILE_NAME), 'rb'))
+
+
+@pytest.fixture
+def scene_static_short_map():
+    return pickle.load(open(os.path.join(Paths.get_maps_path(), SHORT_MAP_PICKLE_FILE_NAME), 'rb'))

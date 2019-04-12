@@ -1,11 +1,12 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.test.messages.static_scene_fixture import scene_static_pg_split
 from logging import Logger
 
 import numpy as np
 import pickle
 
 from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, PG_SPLIT_PICKLE_FILE_NAME
+    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -17,9 +18,10 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, DynamicObject, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.paths import Paths
 
 
-def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
+def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_pg_split):
     """
     Test TP obstacle cost.
     Ego has 3 lane-change trajectories (from right to left) with same init/end constraints but different T_d: [4, 6, 8].
@@ -29,8 +31,7 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     The second trajectory is too close to the object.
     The third trajectory collides with the object.
     """
-    scene_static = pickle.load(open(PG_SPLIT_PICKLE_FILE_NAME, 'rb'))
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     logger = Logger("test_computeCost_threeSRoutesOneObstacle_validScore")
     road_id = 20
