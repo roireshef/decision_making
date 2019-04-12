@@ -15,8 +15,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     """
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
     """
-    def __init__(self, route_plan_lane_segments:Optional[RoutePlanRoadSegments] = None,\
-                 route_plan_input_data: Optional[RoutePlannerInputData] = None ):
+    def __init__(self, route_plan_lane_segments: Optional[RoutePlanRoadSegments] = None,
+                 route_plan_input_data: Optional[RoutePlannerInputData] = None):
         if route_plan_lane_segments is None:
             route_plan_lane_segments = []
 
@@ -29,7 +29,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     def get_route_plan_lane_segments(self) -> RoutePlanRoadSegments:
         return self.__route_plan_lane_segments
 
-
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
     def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
@@ -38,8 +37,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param mapping_status_attribute: type of mapped
         :return: normalized cost (FALSE_COST to TRUE_COST)
         """
-        if ( (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
-             (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap) ):
+        if ((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
+            (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
             return FALSE_COST
         return TRUE_COST
 
@@ -51,8 +50,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param construction_zone_attribute: type of lane construction
         :return: Normalized cost (FALSE_COST to TRUE_COST)
         """
-        if ( (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
-             (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown) ):
+        if ((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
+            (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
             return FALSE_COST
         return TRUE_COST
 
@@ -64,9 +63,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param lane_dir_in_route_attribute: map lane direction in respect to host
         :return: Normalized cost (FALSE_COST to TRUE_COST)
         """
-        if ( (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
-             (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
-             (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle) ):
+        if ((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
+            (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
+            (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
             return FALSE_COST
         return TRUE_COST
 
@@ -81,7 +80,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         if (gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None):
             return FALSE_COST
         return TRUE_COST
-
 
     @staticmethod
     @raises(LaneAttributeNotFound)
@@ -99,13 +97,17 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             # making attribute_based_occupancy_cost_methods a static dictionary (of [lane_attribute_index, lane attribute based occupancy_cost
             # calculation methods])
             attribute_based_occupancy_cost_methods = {
-            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus:BinaryCostBasedRoutePlanner.mapping_status_based_occupancy_cost,
+                RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus:
+                    BinaryCostBasedRoutePlanner.mapping_status_based_occupancy_cost,
 
-            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA:BinaryCostBasedRoutePlanner.gm_authority_based_occupancy_cost,
+                RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA:
+                    BinaryCostBasedRoutePlanner.gm_authority_based_occupancy_cost,
 
-            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction:BinaryCostBasedRoutePlanner.construction_zone_based_occupancy_cost,
+                RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction:
+                    BinaryCostBasedRoutePlanner.construction_zone_based_occupancy_cost,
 
-            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction: BinaryCostBasedRoutePlanner.lane_dir_in_route_based_occupancy_cost
+                RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction:
+                    BinaryCostBasedRoutePlanner.lane_dir_in_route_based_occupancy_cost
             }
 
         if lane_attribute_index in attribute_based_occupancy_cost_methods:
@@ -114,7 +116,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             return occupancy_cost_method(lane_attribute_value)
         else:
             raise LaneAttributeNotFound('Binary Cost Based Route Planner: lane_attribute_index {0} not supported'.format(lane_attribute_index))
-
 
     @staticmethod
     @raises(LaneAttributeNotFound)
@@ -138,21 +139,18 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attribute_confidences):
                 lane_attribute_confidence = lane_segment_base_data.a_cmp_lane_attribute_confidences[lane_attribute_index]
             else:
-                raise LaneAttributeNotFound('Binary Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute '\
+                raise LaneAttributeNotFound('Binary Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute '
                                             'confidence value'.format(lane_attribute_index))
-
 
             if (lane_attribute_confidence < LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD):
                 continue
 
-            lane_attribute_occupancy_cost = BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost(lane_attribute_index=lane_attribute_index,
-                                                                                                            lane_attribute_value=lane_attribute_value )
+            lane_attribute_occupancy_cost = BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost(lane_attribute_index=lane_attribute_index, lane_attribute_value=lane_attribute_value)
             # Check if the lane is unoccupiable
-            if(lane_attribute_occupancy_cost==TRUE_COST):
+            if(lane_attribute_occupancy_cost == TRUE_COST):
                 return TRUE_COST
 
         return FALSE_COST
-
 
     @raises(DownstreamLaneDataNotFound)
     # Following method is kept public in order to unit test the method from outside the class
@@ -176,7 +174,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         downstream_route_lane_segments: RoutePlanRoadSegment = self.get_route_plan_lane_segments()[-1]
 
-        downstream_route_lane_segment_ids = np.array([route_lane_segment.e_i_lane_segment_id for route_lane_segment in downstream_route_lane_segments ])
+        downstream_route_lane_segment_ids = np.array([route_lane_segment.e_i_lane_segment_id for route_lane_segment in downstream_route_lane_segments])
 
         for downstream_base_lane_segment in lane_segment_base_data.as_downstream_lanes:
 
@@ -190,10 +188,10 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                 # find the index corresponding to the lane seg ID in the road segment
                 downstream_route_lane_segment_idx = np.where(downstream_route_lane_segment_ids == downstream_lane_segment_id)[0][0]
 
-                if ( downstream_route_lane_segment_idx < len(downstream_route_lane_segments) ):
+                if (downstream_route_lane_segment_idx < len(downstream_route_lane_segments)):
                     downstream_route_lane_segment = downstream_route_lane_segments[downstream_route_lane_segment_idx]
                 else:
-                    raise DownstreamLaneDataNotFound('Binary Cost Based Route Planner: downstream lane segment ID {0} for lane segment ID {1} '\
+                    raise DownstreamLaneDataNotFound('Binary Cost Based Route Planner: downstream lane segment ID {0} for lane segment ID {1} '
                                                      'not present in route_plan_lane_segment structure for downstream road segment'
                                                      .format(downstream_lane_segment_id, lane_segment_base_data.e_i_lane_segment_id))
 
@@ -218,16 +216,16 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             (List[int]): list of all downstream lane segment ids
         """
         lane_segment_id = lane_segment_base_data.e_i_lane_segment_id
-        downstream_lane_segment_ids:List[int] = []
+        downstream_lane_segment_ids: List[int] = []
 
         # Calculate lane occupancy costs for a lane
         lane_occupancy_cost = BinaryCostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
 
         # Calculate lane end costs (from lane occupancy costs)
-        if  not self.get_route_plan_lane_segments(): # if route_plan_lane_segments is empty indicating the last segment in route
+        if not self.get_route_plan_lane_segments():  # if route_plan_lane_segments is empty indicating the last segment in route
             if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
                 lane_end_cost = TRUE_COST
-            else :
+            else:
                 lane_end_cost = FALSE_COST
 
             downstream_lane_found_in_route = True
@@ -235,11 +233,10 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             # exception by running diagnostics on the downstream to the last road segment, in route.
         else:
 
-            lane_end_cost, downstream_lane_found_in_route, downstream_lane_segment_ids = (self._lane_end_cost_calc
-                                                                                               (lane_segment_base_data=lane_segment_base_data))
+            lane_end_cost, downstream_lane_found_in_route, downstream_lane_segment_ids = self._lane_end_cost_calc(
+                lane_segment_base_data=lane_segment_base_data)
 
-
-            if (lane_occupancy_cost == TRUE_COST):# Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
+            if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
                 lane_end_cost = TRUE_COST
 
         # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
@@ -249,26 +246,25 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         return current_route_lane_segment, downstream_lane_found_in_route, downstream_lane_segment_ids
 
-
     @raises(RoadSegmentLaneSegmentMismatch)
-    def _road_segment_cost_calc(self, road_segment_id:int) -> RoutePlanRoadSegment:
+    def _road_segment_cost_calc(self, road_segment_id: int) -> RoutePlanRoadSegment:
         """
         Itreratively uses lane_cost_calc method to calculate lane costs (occupancy and end) for all lane segments in a road segment
         :return:
         RoutePlanRoadSegment, which is List[RoutePlanLaneSegments]
         Also raises RoadSegmentLaneSegmentMismatch internally if it can't find any downstream lane segment in the route
         """
-        route_lane_segments:RoutePlanRoadSegment = []
+        route_lane_segments: RoutePlanRoadSegment = []
 
-        downstream_road_segment_not_found = True # as the name suggests
-                                                 # if there is NO downstream lane (as defined in map) to the current
-                                                 # road segment (any of its lanes) that is in the route
+        downstream_road_segment_not_found = True    # as the name suggests
+                                                    # if there is NO downstream lane (as defined in map) to the current
+                                                    # road segment (any of its lanes) that is in the route
 
-        if not self.get_route_plan_lane_segments(): # check if this is the last road segment in the nav plan
-           downstream_road_segment_not_found = False
+        if not self.get_route_plan_lane_segments():  # check if this is the last road segment in the nav plan
+            downstream_road_segment_not_found = False
 
-        downstream_lane_segment_ids_for_road_segment:List[List[int]] = []
-        downstream_lane_segment_ids:List[int] = []
+        downstream_lane_segment_ids_for_road_segment: List[List[int]] = []
+        downstream_lane_segment_ids: List[int] = []
 
         lane_segment_ids = self._route_plan_input_data.get_lane_segment_ids_for_road_segment(road_segment_id)
 
@@ -278,9 +274,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
             lane_segment_base_data = self._route_plan_input_data.get_lane_segment_base(lane_segment_id)
 
-            route_lane_segment, downstream_lane_found_in_route , downstream_lane_segment_ids = \
-                                                                        self._lane_cost_calc(lane_segment_base_data=lane_segment_base_data)
-
+            route_lane_segment, downstream_lane_found_in_route, downstream_lane_segment_ids = self._lane_cost_calc(
+                lane_segment_base_data=lane_segment_base_data)
 
             downstream_road_segment_not_found = downstream_road_segment_not_found and not(downstream_lane_found_in_route)
 
@@ -288,10 +283,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
             route_lane_segments.append(route_lane_segment)
 
-
         if (downstream_road_segment_not_found):
-            raise RoadSegmentLaneSegmentMismatch('Binary Cost Based Route Planner: Not a single downstream lane segment for the current '\
-                                                 'road segment ID {0} were found in the route plan downstream road segment ID {1} '\
+            raise RoadSegmentLaneSegmentMismatch('Binary Cost Based Route Planner: Not a single downstream lane segment for the current '
+                                                 'road segment ID {0} were found in the route plan downstream road segment ID {1} '
                                                  'described in the navigation plan'.format(road_segment_id,
                                                  self._route_plan_input_data.get_next_road_segment(road_segment_id)))
 
@@ -311,7 +305,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # key -> road_segment_id
         # value -> lane_segment_ids
 
-        self.__route_plan_lane_segments:RoutePlanRoadSegments = []
+        self.__route_plan_lane_segments: RoutePlanRoadSegments = []
         self._route_plan_input_data = route_plan_input_data
 
         for (road_segment_id, lane_segment_ids) in reversed(route_plan_input_data.get_lane_segment_ids_for_route().items()):
@@ -321,7 +315,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             # append the road segment sepecific info , as the road seg iteration is reverse
             road_segment_ids.append(road_segment_id)
 
-            num_lane_segments.append( len(lane_segment_ids) )
+            num_lane_segments.append(len(lane_segment_ids))
 
             self.__route_plan_lane_segments.append(route_lane_segments)
 
