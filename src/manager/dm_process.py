@@ -12,7 +12,7 @@ from rte.python.profiler import cleanup as profiler_cleanup
 class DmProcess:
 
     def __init__(self, module_creation_method: Callable[[], DmModule], trigger_type: DmTriggerType, trigger_args: dict,
-                 name: str = ''):
+                 name: str):
         """
         Manager for a single DM module running in a separate process
         :param module_creation_method: the method to create an instance of the DM module to run in a separate process
