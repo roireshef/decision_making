@@ -124,6 +124,7 @@ def dynamic_objects_negative_velocity():
     yield objects
 
 
+@pytest.fixture(scope='function')
 def state(scene_static_short_map):
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_map)
 
