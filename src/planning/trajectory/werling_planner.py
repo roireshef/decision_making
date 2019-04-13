@@ -130,8 +130,8 @@ class WerlingPlanner(TrajectoryPlanner):
         if len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
-            lat_acc_traj_idx = np.argmin(np.max(np.abs(lat_acc[:, :, C_A]), axis=1))
-            lat_acc_t_idx = np.argmax(np.abs(lat_acc[lat_acc_traj_idx, :, C_A]))
+            lat_acc_traj_idx = np.argmin(np.max(np.abs(lat_acc), axis=1))
+            lat_acc_t_idx = np.argmax(np.abs(lat_acc[lat_acc_traj_idx]))
             lat_acc_v = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_V]
             lat_acc_k = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_K]
             raise CartesianLimitsViolated("No valid trajectories. "
