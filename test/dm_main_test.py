@@ -18,7 +18,6 @@ from decision_making.src.planning.types import C_Y
 from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
 from decision_making.test.utils_for_tests import Utils
-from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
@@ -29,8 +28,6 @@ class DmMockInitialization:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
-        # Init map
-        MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
 
         fixed_trajectory = Utils.read_trajectory(TP_MOCK_FIXED_TRAJECTORY_FILENAME)

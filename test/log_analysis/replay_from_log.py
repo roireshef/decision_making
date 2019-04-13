@@ -17,7 +17,6 @@ from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIER_STRING_BP, \
     STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, DmLogParser
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
-from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 #LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
@@ -67,7 +66,6 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
 
     # Initialize TP
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-    MapService.initialize()
     predictor = RoadFollowingPredictor(logger)
     planner = WerlingPlanner(logger, predictor)
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
