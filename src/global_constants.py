@@ -85,7 +85,7 @@ VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
+BP_ACTION_T_LIMITS = np.array([0.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -168,6 +168,9 @@ TRAJECTORY_NUM_POINTS = 10
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
+
+# [sec] Minimum required time horizon for trajectory (including padding)
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.0
 
 # Werling Planner #
 

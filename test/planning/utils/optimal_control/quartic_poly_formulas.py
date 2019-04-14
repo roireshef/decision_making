@@ -1,5 +1,6 @@
 import numpy as np
 import sympy as sp
+from decision_making.src.planning.types import LIMIT_MIN
 from sympy import symbols
 from sympy.matrices import *
 
@@ -121,7 +122,7 @@ class QuarticMotionPredicatesCreator:
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]))[0]
         cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs,
-                                                          np.array([0, BP_ACTION_T_LIMITS[1]]))
+                                                          np.array([BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[1]]))
         extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
 
         if len(extremum_T) == 0:

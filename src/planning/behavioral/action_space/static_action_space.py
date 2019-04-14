@@ -56,7 +56,7 @@ class StaticActionSpace(ActionSpace):
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
@@ -69,7 +69,7 @@ class StaticActionSpace(ActionSpace):
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0,
             dx=-projected_ego_fstates[:, FS_DX], T_m=0)
-        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
