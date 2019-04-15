@@ -11,7 +11,7 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS
+    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_LAT_ACC_STRICT_COEF
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.global_constants import SAFETY_HEADWAY
@@ -55,7 +55,7 @@ class FilterForKinematics(ActionSpecFilter):
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
         T = np.array([spec.t for spec in action_specs])
-        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T))
+        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T)
 
         # solve for s(t) and d(t)
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
@@ -83,30 +83,27 @@ class FilterForKinematics(ActionSpecFilter):
                 are_valid.append(False)
                 continue
 
-            time_samples = np.arange(0, t + EPS, WERLING_TIME_RESOLUTION)
             total_time = max(BP_ACTION_T_LIMITS[LIMIT_MIN], t)
+            time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
 
             # generate a SamplableWerlingTrajectory (combination of s(t), d(t) polynomials applied to a Frenet frame)
             samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
             cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
 
             # validate cartesian points against cartesian limits
+            bp_lat_acc_limits = LAT_ACC_LIMITS * BP_LAT_ACC_STRICT_COEF
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, bp_lat_acc_limits)[0]
 
             are_valid.append(is_valid_in_cartesian)
 
-            # if is_valid_in_cartesian and abs(spec.v - 2.77) < 1 and spec.recipe.aggressiveness == AggressivenessLevel.CALM:
-            #     lat_acc = np.abs(cartesian_points[:, C_V] ** 2 * cartesian_points[:, C_K])
-            #     worst_t = np.argmax(lat_acc)
-            #     worst_v = cartesian_points[worst_t, C_V]
-            #     worst_k = cartesian_points[worst_t, C_K]
-            #     s = samplable_trajectory.sample_frenet(time_samples)[:, FS_SX]
-            #     init_idx = frenet_frame.get_index_on_frame_from_s(np.array([s[0]]))[0][0]
-            #     # final_idx = frenet_frame.get_index_on_frame_from_s(np.array([s[-1]]))[0][0]
-            #     print('BP %.3f: spec.t=%.3f worst_lat_acc: t=%.1f v=%.3f k=%.3f; nominal_k=%s' %
-            #           (behavioral_state.ego_state.timestamp_in_sec, spec.t, worst_t * 0.1, worst_v, worst_k,
-            #            NumpyUtils.str_log(frenet_frame.k[init_idx:init_idx+5, 0])))
+            if is_valid_in_cartesian and abs(spec.v - 3) < 1.2:
+                lat_acc = np.abs(cartesian_points[:, C_V] ** 2 * cartesian_points[:, C_K])
+                worst_t = np.argmax(lat_acc)
+                worst_v = cartesian_points[worst_t, C_V]
+                worst_k = cartesian_points[worst_t, C_K]
+                print('BP %.3f: spec.t=%.3f spec.v=%.3f; worst_lat_acc: t=%.1f v=%.3f k=%.3f' %
+                      (behavioral_state.ego_state.timestamp_in_sec, spec.t, spec.v, worst_t * 0.1, worst_v, worst_k))
 
         # TODO: remove - for debug only
         had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0

@@ -57,14 +57,14 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                          and recipe.velocity == maximal_allowed_velocity]
 
         # TODO: remove it
-        # ego = behavioral_state.ego_state
-        # spec = action_specs[follow_lane_valid_action_idxs[0]]
-        # frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-        # ego_fstate = frenet.cstate_to_fstate(ego.cartesian_state)
-        #
-        # np.set_printoptions(suppress=True)
-        # print('BP time %.3f, goal_time=%.3f: ego_fstate = %s' %
-        #       (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, NumpyUtils.str_log(ego_fstate)))
+        ego = behavioral_state.ego_state
+        spec = action_specs[follow_lane_valid_action_idxs[0]]
+        frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
+        ego_fstate = frenet.cstate_to_fstate(ego.cartesian_state)
+
+        np.set_printoptions(suppress=True)
+        print('BP time %.3f, goal_time=%.3f: ego_fstate = %s' %
+              (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, NumpyUtils.str_log(ego_fstate)))
 
         costs[follow_lane_valid_action_idxs[0]] = 0  # choose the found static action
         return costs

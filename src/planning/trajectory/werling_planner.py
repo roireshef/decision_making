@@ -189,11 +189,15 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
+            target_time_diff = min(T, 0)
             poly_s = np.array([0, 0, 0, 0, goal_frenet_state[FS_SV], goal_frenet_state[FS_SX]])
             poly_d = np.array([0, 0, 0, 0, goal_frenet_state[FS_DV], goal_frenet_state[FS_DX]])
-            samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec + T,
-                                                              planning_horizon, planning_horizon, planning_horizon,
+            samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec + target_time_diff,
+                                                              planning_horizon - target_time_diff,
+                                                              planning_horizon - target_time_diff,
+                                                              planning_horizon - target_time_diff,
                                                               reference_route, poly_s, poly_d)
+
         return samplable_trajectory, \
            ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
            filtered_trajectory_costs[sorted_filtered_idxs]
