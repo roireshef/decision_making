@@ -1,19 +1,17 @@
+import numpy as np
 from logging import Logger
 from typing import List, Dict, Optional
-
-import copy
-import numpy as np
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FrenetStates1D, FrenetTrajectories1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
+from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
+    TrajectoryGenerator
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
-    TrajectoryGenerator
 
 
 class ManeuverBasedPredictor(EgoAwarePredictor):

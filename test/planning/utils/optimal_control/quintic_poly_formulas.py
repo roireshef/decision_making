@@ -146,7 +146,7 @@ class QuinticMotionPredicatesCreator:
                                                               np.array([v_T]), np.array([s_T]),
                                                               np.array([T_m]))[0]
         cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array(
-            [0, BP_ACTION_T_LIMITS[1]]))
+            [BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
 
         if len(extremum_T) == 0:
