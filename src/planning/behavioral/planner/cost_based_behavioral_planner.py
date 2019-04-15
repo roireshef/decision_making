@@ -1,7 +1,10 @@
 import numpy as np
-import rte.python.profiler as prof
 import six
 from abc import abstractmethod, ABCMeta
+from logging import Logger
+from typing import Optional, List
+
+import rte.python.profiler as prof
 from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, \
     LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, \
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
@@ -27,9 +30,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
-from logging import Logger
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from typing import Optional, List
 
 
 @six.add_metaclass(ABCMeta)

@@ -1,15 +1,14 @@
-from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN
-from typing import List
-
 import numpy as np
 import sympy as sp
 from sympy import symbols
 from sympy.matrices import *
+from typing import List
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, VELOCITY_LIMITS, \
     BP_ACTION_T_LIMITS, EPS
 from decision_making.src.planning.behavioral.data_objects import ActionType
+from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
@@ -145,8 +144,7 @@ class QuinticMotionPredicatesCreator:
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]), np.array([s_T]),
                                                               np.array([T_m]))[0]
-        cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array(
-            [BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, BP_ACTION_T_LIMITS)
         extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
 
         if len(extremum_T) == 0:
