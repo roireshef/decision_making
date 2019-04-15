@@ -120,15 +120,16 @@ class CostBasedBehavioralPlanner:
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
-        minimal_required_time = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON + ego.timestamp_in_sec
+        goal_time = action_spec.t + ego.timestamp_in_sec
+        trajectory_end_time = max(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON + ego.timestamp_in_sec, goal_time)
 
         # create TrajectoryParams for TP
         trajectory_parameters = TrajectoryParams(reference_route=action_frame,
-                                                 time=action_spec.t + ego.timestamp_in_sec,
+                                                 target_time=goal_time,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
-                                                 minimal_required_time=minimal_required_time,
+                                                 trajectory_end_time=trajectory_end_time,
                                                  bp_time=ego.timestamp)
 
         return trajectory_parameters
@@ -156,7 +157,7 @@ class CostBasedBehavioralPlanner:
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
-        minimal_horizon = trajectory_parameters.minimal_required_time - timestamp
+        minimal_horizon = trajectory_parameters.trajectory_end_time - timestamp
 
         return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
                                           T_s=action_spec.t,

@@ -77,8 +77,8 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._sleep_mean = sleep_mean
 
     @raises(NotTriggeredException)
-    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, T: float,
-             T_required_horizon: float, cost_params: TrajectoryCostParams) -> \
+    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, T_target_horizon: float,
+             T_trajectory_end_horizon: float, cost_params: TrajectoryCostParams) -> \
             Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
@@ -86,7 +86,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored
-        :param T_required_horizon: the length of the trajectory snippet (seconds)
+        :param T_trajectory_end_horizon: the length of the trajectory snippet (seconds)
         :param cost_params: ignored
         :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
