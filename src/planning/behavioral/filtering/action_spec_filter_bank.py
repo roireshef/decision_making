@@ -96,6 +96,18 @@ class FilterForKinematics(ActionSpecFilter):
 
             are_valid.append(is_valid_in_cartesian)
 
+            # if is_valid_in_cartesian and abs(spec.v - 2.77) < 1 and spec.recipe.aggressiveness == AggressivenessLevel.CALM:
+            #     lat_acc = np.abs(cartesian_points[:, C_V] ** 2 * cartesian_points[:, C_K])
+            #     worst_t = np.argmax(lat_acc)
+            #     worst_v = cartesian_points[worst_t, C_V]
+            #     worst_k = cartesian_points[worst_t, C_K]
+            #     s = samplable_trajectory.sample_frenet(time_samples)[:, FS_SX]
+            #     init_idx = frenet_frame.get_index_on_frame_from_s(np.array([s[0]]))[0][0]
+            #     # final_idx = frenet_frame.get_index_on_frame_from_s(np.array([s[-1]]))[0][0]
+            #     print('BP %.3f: spec.t=%.3f worst_lat_acc: t=%.1f v=%.3f k=%.3f; nominal_k=%s' %
+            #           (behavioral_state.ego_state.timestamp_in_sec, spec.t, worst_t * 0.1, worst_v, worst_k,
+            #            NumpyUtils.str_log(frenet_frame.k[init_idx:init_idx+5, 0])))
+
         # TODO: remove - for debug only
         had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
         valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])

@@ -1,3 +1,5 @@
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from logging import Logger
 from typing import List
 
@@ -38,11 +40,6 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                             and recipe.relative_lane == RelativeLane.SAME_LANE
                                             and recipe.action_type == ActionType.FOLLOW_VEHICLE]
 
-        # TODO: remove it
-        ego = behavioral_state.ego_state
-        frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-        ego_fstate = frenet.cstate_to_fstate(ego.cartesian_state)
-
         if len(follow_vehicle_valid_action_idxs) > 0:
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs
@@ -59,9 +56,15 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                          and recipe.relative_lane == RelativeLane.SAME_LANE
                                          and recipe.velocity == maximal_allowed_velocity]
 
-        print('BP time %.3f, goal_time=%.3f: sva=(%.2f, %.2f, %.2f)' %
-              (ego.timestamp_in_sec, ego.timestamp_in_sec + action_specs[follow_lane_valid_action_idxs[0]].t,
-               ego_fstate[0], ego_fstate[1], ego_fstate[2]))
+        # TODO: remove it
+        # ego = behavioral_state.ego_state
+        # spec = action_specs[follow_lane_valid_action_idxs[0]]
+        # frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
+        # ego_fstate = frenet.cstate_to_fstate(ego.cartesian_state)
+        #
+        # np.set_printoptions(suppress=True)
+        # print('BP time %.3f, goal_time=%.3f: ego_fstate = %s' %
+        #       (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, NumpyUtils.str_log(ego_fstate)))
 
         costs[follow_lane_valid_action_idxs[0]] = 0  # choose the found static action
         return costs

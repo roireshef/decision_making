@@ -39,7 +39,7 @@ class WerlingPlanner(TrajectoryPlanner):
     @prof.ProfileFunction()
     def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, T: float,
              T_required_horizon: float, cost_params: TrajectoryCostParams) -> Tuple[
-                SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+        SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
@@ -128,20 +128,26 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories_filtered) == 0:
+            np.set_printoptions(suppress=True)
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
             lat_acc_traj_idx = np.argmin(np.max(np.abs(lat_acc), axis=1))
             lat_acc_t_idx = np.argmax(np.abs(lat_acc[lat_acc_traj_idx]))
             lat_acc_v = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_V]
             lat_acc_k = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_K]
+            s = ftrajectories[lat_acc_traj_idx, :, FS_SX]
+            init_idx = reference_route.get_index_on_frame_from_s(np.array([s[0]]))[0][0]
+            final_idx = reference_route.get_index_on_frame_from_s(np.array([s[-1]]))[0][0]
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
                                           "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
                                           "[min/max velocity] [%s, %s] (limits: %s); "
                                           "[min/max lon_acc] [%s, %s] (limits: %s)\n"
                                           "min/max lat_acc [%s, %s] (limits: %s); passed limits: %s/%s\n"
-                                          "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f\n"
-                                          "worst_lat_acc: t=%.1f v=%.3f k=%.3f" %
+                                          "ego_frenet = %s\ngoal_frenet = %s\n"
+                                          "distance from ego to goal = %f, time*approx_velocity = %f\n"
+                                          "worst_lat_acc: t=%.1f v=%.3f k=%.3f\n"
+                                          "nominal_k=%s" %
                                           (state.ego_state.timestamp_in_sec, T, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                            np.max(np.min(ctrajectories[:, :, C_V], axis=1)),
@@ -153,9 +159,10 @@ class WerlingPlanner(TrajectoryPlanner):
                                            np.min(lat_acc), np.max(lat_acc),
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                            len(cartesian_filtered_indices), len(ctrajectories),
-                                           NumpyUtils.str_log(goal_frenet_state), goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
+                                           NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
+                                           goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
                                            T * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5,
-                                           lat_acc_t_idx*0.1, lat_acc_v, lat_acc_k))
+                                           lat_acc_t_idx*0.1, lat_acc_v, lat_acc_k, reference_route.k[init_idx:final_idx+1, 0]))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)

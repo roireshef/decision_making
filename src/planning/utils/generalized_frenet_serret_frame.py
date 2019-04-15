@@ -245,10 +245,6 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
         return s_approx
 
-    # TODO: Understand why this was renamed and remove one of these
-    def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
-        return self.get_index_on_frame_from_s(s)
-
     def get_index_on_frame_from_s(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
@@ -265,17 +261,19 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         s_in_segment = s - self._segments_s_offsets[segment_idxs]
         # get the points offset of the segment that each longitudinal value resides in.
         segment_points_offset = self._segments_point_offset[segment_idxs]
-        # get the progress in index units (progress_in_points is a "floating-point index")
-        progress_in_points = np.divide(s_in_segment, ds) + segment_points_offset
-        # calculate and return the integer and fractional parts of the index
-        O_idx = np.round(progress_in_points).astype(np.int)
 
         # calculate the offset of the first segment starting relative to the first GFF point
         # add this offset to delta_s for the points on the first segment (in other segments this offset is 0)
         initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
         intra_point_offsets = initial_intra_point_offset * (segment_idxs == 0).astype(np.int)
 
-        delta_s = np.expand_dims((progress_in_points - O_idx) * ds + intra_point_offsets, axis=len(s.shape))
+        # get the progress in index units (progress_in_points is a "floating-point index")
+        progress_in_points = np.divide(s_in_segment + intra_point_offsets, ds) + segment_points_offset
+
+        # calculate and return the integer and fractional parts of the index
+        O_idx = np.round(progress_in_points).astype(np.int)
+
+        delta_s = np.expand_dims((progress_in_points - O_idx) * ds, axis=len(s.shape))
 
         return O_idx, delta_s
 
