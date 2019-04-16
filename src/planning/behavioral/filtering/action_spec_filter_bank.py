@@ -53,7 +53,7 @@ class FilterForKinematics(ActionSpecFilter):
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
         are_valid = []
-        for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
+        for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, non_tracking_specs):
             # TODO: in the future, consider leaving only a single action (for better "learnability")
 
             # extract the relevant (cached) frenet frame per action according to the destination lane
