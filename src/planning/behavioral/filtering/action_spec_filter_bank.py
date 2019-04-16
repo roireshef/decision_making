@@ -44,43 +44,48 @@ class FilterForKinematics(ActionSpecFilter):
             - lateral acceleration limits - in Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
             conceptually "straightens" the road's shape.
          """
-        non_tracking_specs = [spec for spec in action_specs if not spec.in_track_mode]
-
         # extract all relevant information for boundary conditions
-        relative_lanes = np.array([spec.relative_lane for spec in non_tracking_specs])
-        initial_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
-        terminal_fstates = np.array([spec.as_fstate() for spec in non_tracking_specs])
+        initial_fstates = np.array([behavioral_state.projected_ego_fstates[spec.relative_lane] for spec in action_specs])
+        terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+        T = np.array([spec.t for spec in action_specs])
 
-        # represent initial and terminal boundary conditions (for two Frenet axes s,d)
-        constraints_s = np.concatenate((initial_fstates[:, :(FS_SA+1)], terminal_fstates[:, :(FS_SA+1)]), axis=1)
-        constraints_d = np.concatenate((initial_fstates[:, FS_DX:], terminal_fstates[:, FS_DX:]), axis=1)
+        # creare boolean arrays indicating whether the specs are in tracking mode
+        in_track_mode = np.array([spec.in_track_mode for spec in action_specs])
+        no_track_mode = np.logical_not(in_track_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        T = np.array([spec.t for spec in non_tracking_specs])
-        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T)
+        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[no_track_mode])
+
+        # represent initial and terminal boundary conditions (for two Frenet axes s,d) for non-tracking specs
+        constraints_s = np.concatenate((initial_fstates[no_track_mode, :FS_DX], terminal_fstates[no_track_mode, :FS_DX]), axis=1)
+        constraints_d = np.concatenate((initial_fstates[no_track_mode, FS_DX:], terminal_fstates[no_track_mode, FS_DX:]), axis=1)
 
         # solve for s(t) and d(t)
-        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+        poly_coefs_s, poly_coefs_d = np.zeros((len(action_specs), 6)), np.zeros((len(action_specs), 6))
+        poly_coefs_s[no_track_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d[no_track_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+        # in tracking mode (constant velocity) the s polynomials have only two non-zero coefficients
+        poly_coefs_s[in_track_mode, 4:] = np.c_[terminal_fstates[in_track_mode, FS_SV], terminal_fstates[in_track_mode, FS_SX]]
 
         are_valid = []
-        for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
+        for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
             # TODO: in the future, consider leaving only a single action (for better "learnability")
 
             # extract the relevant (cached) frenet frame per action according to the destination lane
-            frenet_frame = behavioral_state.extended_lane_frames[lane]
+            frenet_frame = behavioral_state.extended_lane_frames[spec.relative_lane]
 
-            # if the action is static, there's a chance the 5th order polynomial is actually a degnerate one (has lower
-            # degree), so we clip the first zero coefficients and send a polynomial with lower degree
-            first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
-            is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
-                                                                                     LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
+            if not spec.in_track_mode:
+                # if the action is static, there's a chance the 5th order polynomial is actually a degnerate one
+                # (has lower degree), so we clip the first zero coefficients and send a polynomial with lower degree
+                first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
+                is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(
+                    poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
 
-            # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
-            # we can save time by not checking cartesian limits
-            if not is_valid_in_frenet:
-                are_valid.append(False)
-                continue
+                # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
+                # we can save time by not checking cartesian limits
+                if not is_valid_in_frenet:
+                    are_valid.append(False)
+                    continue
 
             total_time = max(BP_ACTION_T_LIMITS[LIMIT_MIN], t)
             time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
@@ -105,9 +110,7 @@ class FilterForKinematics(ActionSpecFilter):
                 print('BP %.3f: spec.t=%.3f spec.v=%.3f; worst_lat_acc: t=%.1f v=%.3f k=%.3f' %
                       (behavioral_state.ego_state.timestamp_in_sec, spec.t, spec.v, worst_t * 0.1, worst_v, worst_k))
 
-        # fill array for all specs, including in_track_mode
-        it = iter(are_valid)
-        return [True if spec.in_track_mode else next(it) for spec in action_specs]
+        return are_valid
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
