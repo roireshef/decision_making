@@ -30,10 +30,6 @@ from rte.python.logger.AV_logger import AV_Logger
 
 mock_td_steps = 5
 
-# @patch('decision_making.test.planning.trajectory.test_werlingPlanner.TD_STEPS', mock_td_steps)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.TD_STEPS', mock_td_steps)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.SX_STEPS', 5)
-# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 5)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
@@ -137,7 +133,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
-    ROAD_ID = 1
+    road_id = 1
     lane_width = 3.6
     num_lanes = 2
     road_width = num_lanes * lane_width
@@ -167,31 +163,17 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             vT = 8
             T = 2*lng/(v0+vT + (test_idx-40))
 
-        # Additional tests that probably will be used in the future
-        # elif test_idx == 8:  # go on margin to prevent collision
-        #     obs_poses = np.array([np.array([17, 1.4])])
-        #     start_ego_lat = reference_route_latitude = goal_latitude = lane_width / 2
-        # elif test_idx < 12:  # curve road with obstacles
-        #     obs_poses = np.array([np.array([4, 0]), np.array([14, 0.7]), np.array([24, 2.1]),
-        #                           np.array([42, -4.6 + (test_idx-9)*0.2])])
-        # else:  # curve road without obstacles
-        #     obs_poses = np.array([])
-        #     goal_latitude = reference_route_latitude = lane_width / 2 + (test_idx % 2) * lane_width
-        #     start_ego_lat = lane_width / 2 + ((test_idx+1) % 2) * lane_width
-
         # Create reference route (normal and extended). The extension is intended to prevent
         # overflow of projection on the ref route
         route_points, ext_route_points = \
-            create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width, reference_route_latitude, lng, ext, curvature)
-
-        # with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda : test_scene_static):
+            create_route_for_test_werlingPlanner(road_id, num_lanes, lane_width, reference_route_latitude, lng, ext, curvature)
 
         frenet = FrenetSerret2DFrame.fit(ext_route_points[:, :2])
 
         # create state and goal based on ego parameters and obstacles' location
         state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
                                                            v0, vT, start_ego_lat, goal_latitude)
-        goal_map_state = MapState(frenet.cstate_to_fstate(goal), MapUtils.get_lanes_ids_from_road_segment_id(ROAD_ID)[0])
+        goal_map_state = MapState(frenet.cstate_to_fstate(goal), MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0])
 
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(map_state=goal_map_state, ego_size=state.ego_state.size)
 
@@ -423,7 +405,7 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
 
     fig.savefig(image_file_name)
 
-    #fig.show()
+    # fig.show()
     fig.clear()
 
 
