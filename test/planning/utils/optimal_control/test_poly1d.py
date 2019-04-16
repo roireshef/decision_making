@@ -1,4 +1,4 @@
-from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D, QuinticPoly1D, QuarticPoly1D
 import numpy as np
 
 
@@ -36,3 +36,13 @@ def test_areDerivativesInLimits_constantInLimits_returnTrue():
     is_in_limits = Poly1D.are_derivatives_in_limits(0, poly_coefs, T_vals, limits=limits)
 
     assert is_in_limits
+
+
+def test_inverseTimeConstraintsTensor_compareWithLingAlgInv_isClose():
+    T_vals = np.array([1, 10])
+    A1_quintic_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
+    A2_quintic_inv = QuinticPoly1D.inverse_time_constraints_tensor(T_vals)
+    assert np.isclose(A1_quintic_inv, A2_quintic_inv).all()
+    A1_quartic_inv = np.linalg.inv(QuarticPoly1D.time_constraints_tensor(T_vals))
+    A2_quartic_inv = QuarticPoly1D.inverse_time_constraints_tensor(T_vals)
+    assert np.isclose(A1_quartic_inv, A2_quartic_inv).all()
