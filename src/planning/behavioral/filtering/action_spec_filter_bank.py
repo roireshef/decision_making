@@ -43,7 +43,7 @@ class FilterForKinematics(ActionSpecFilter):
         no_track_mode = np.logical_not(in_track_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T[no_track_mode]))
+        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[no_track_mode])
 
         # represent initial and terminal boundary conditions (for two Frenet axes s,d) for non-tracking specs
         constraints_s = np.concatenate((initial_fstates[no_track_mode, :FS_DX], terminal_fstates[no_track_mode, :FS_DX]), axis=1)
