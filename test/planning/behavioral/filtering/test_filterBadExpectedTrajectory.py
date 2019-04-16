@@ -28,7 +28,7 @@ from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import
 
 import numpy as np
 
-from decision_making.test.messages.static_scene_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 def test_filter_followVehicleTracking_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_tracking_mode: BehavioralGridState,

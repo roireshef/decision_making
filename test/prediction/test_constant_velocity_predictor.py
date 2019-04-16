@@ -1,4 +1,4 @@
-from decision_making.test.messages.static_scene_fixture import scene_static_testable
+from decision_making.test.messages.scene_static_fixture import scene_static_testable
 from typing import List
 from unittest.mock import patch, MagicMock
 import numpy as np

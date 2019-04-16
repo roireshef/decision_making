@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.static_scene_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment

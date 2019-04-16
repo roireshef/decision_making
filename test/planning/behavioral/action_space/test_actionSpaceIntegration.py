@@ -1,5 +1,5 @@
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.static_scene_fixture import scene_static_pg_no_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_no_split
 from logging import Logger
 import numpy as np
 import pickle

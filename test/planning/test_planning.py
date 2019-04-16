@@ -1,4 +1,4 @@
-from decision_making.test.messages.static_scene_fixture import scene_static_short_testable
+from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 from unittest.mock import MagicMock, patch
 
 from decision_making.src.infra.pubsub import PubSub

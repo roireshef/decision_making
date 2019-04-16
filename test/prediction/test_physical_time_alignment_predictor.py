@@ -1,5 +1,5 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.test.messages.static_scene_fixture import scene_static_testable
+from decision_making.test.messages.scene_static_fixture import scene_static_testable
 from typing import List
 from unittest.mock import patch
 

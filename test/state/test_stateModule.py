@@ -14,7 +14,7 @@ from decision_making.test.constants import FILTER_OBJECT_OFF_ROAD_PATH
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
     dynamic_objects_negative_velocity
-from decision_making.test.messages.static_scene_fixture import scene_static_pg_split, scene_static_testable
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_testable
 
 
 # @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)

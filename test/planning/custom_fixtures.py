@@ -28,7 +28,7 @@ from decision_making.src.state.state import OccupancyState, ObjectSize, State, D
 from decision_making.src.state.state_module import DynamicObjectsData
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
-from decision_making.test.messages.static_scene_fixture import scene_static_short_testable, scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_short_testable, scene_static_pg_split
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock

@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_STATI
 from decision_making.src.state.state import ObjectSize, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 
-from decision_making.test.messages.static_scene_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 
