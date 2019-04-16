@@ -160,10 +160,10 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     reference_route = GeneralizedFrenetSerretFrame
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
-    time = float
+    target_time = float
     bp_time = int
 
-    def __init__(self, strategy, reference_route, target_state, cost_params, time, minimal_required_time, bp_time):
+    def __init__(self, strategy, reference_route, target_state, cost_params, target_time, trajectory_end_time, bp_time):
         # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float, float, int)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
@@ -171,18 +171,19 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         :param target_state: the vector-representation of the target state to plan ego motion towards
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
-        :param time: trajectory planning time-frame
-        :param minimal_required_time: minimal required trajectory planning time-frame, supposed to be greater than or
-               equal to the 'time' argument, TP will generate a trajectory getting to at least this time-goal and use
-               padding if needed.
+        :param target_time: the absolute timestamp in [sec] that represent the time of arrival to the terminal boundary
+        condition (TP optimization problem will end in this time)
+        :param trajectory_end_time: the timestamp in [sec] in which the actual trajectory will end (including padding
+        done in TP, which is a consequence of Control's requirement to have a long enough trajectory, i.e. according to
+        MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
         :param bp_time: absolute time of the state that BP planned on.
         """
         self.reference_route = reference_route
         self.target_state = target_state
         self.cost_params = cost_params
         self.strategy = strategy
-        self.time = time
-        self.minimal_required_time = minimal_required_time
+        self.target_time = target_time
+        self.trajectory_end_time = trajectory_end_time
         self.bp_time = bp_time
 
     def __str__(self):
@@ -203,8 +204,8 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         lcm_msg.target_state = self.target_state
         lcm_msg.cost_params = self.cost_params.serialize()
 
-        lcm_msg.time = self.time
-        lcm_msg.minimal_required_time = self.minimal_required_time
+        lcm_msg.target_time = self.target_time
+        lcm_msg.trajectory_end_time = self.trajectory_end_time
         lcm_msg.bp_time = self.bp_time
 
         return lcm_msg
@@ -216,6 +217,6 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
                    , GeneralizedFrenetSerretFrame.deserialize(lcmMsg.reference_route)
                    , lcmMsg.target_state
                    , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
-                   , lcmMsg.time
-                   , lcmMsg.minimal_required_time
+                   , lcmMsg.target_time
+                   , lcmMsg.trajectory_end_time
                    , lcmMsg.bp_time)

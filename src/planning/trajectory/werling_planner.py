@@ -37,9 +37,9 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     @prof.ProfileFunction()
-    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, T: float,
-             T_required_horizon: float, cost_params: TrajectoryCostParams) -> Tuple[
-        SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState,
+             T_target_horizon: float, T_trajectory_end_horizon: float, cost_params: TrajectoryCostParams) -> Tuple[
+                SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
@@ -70,7 +70,7 @@ class WerlingPlanner(TrajectoryPlanner):
         fconstraints_tT = FrenetConstraints(sx=sx_range, sv=sv_range, sa=goal_frenet_state[FS_SA],
                                             dx=dx_range, dv=goal_frenet_state[FS_DV], da=goal_frenet_state[FS_DA])
 
-        planning_horizon = max(T_required_horizon, T)
+        planning_horizon = max(T_trajectory_end_horizon, T_target_horizon)
 
         assert planning_horizon >= self.dt + EPS, 'planning_horizon (=%f) is too short and is less than one trajectory' \
                                                   ' timestamp (=%f)' % (planning_horizon, self.dt)
@@ -78,33 +78,33 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(
             'WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds and extrapolating to %s seconds',
             NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
-            T, planning_horizon)
+            T_target_horizon, planning_horizon)
 
-        is_target_ahead = T > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
+        is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
         # solve the optimization problem in frenet-frame from t=0 to t=T
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
             # Lateral planning horizon(Td) lower bound, now approximated from x=a*t^2
-            lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T, self.dt)
+            lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T_target_horizon, self.dt)
 
             # create a grid on T_d (lateral movement time-grid)
-            T_d_grid = WerlingPlanner._create_lat_horizon_grid(T, lower_bound_T_d)
+            T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_target_horizon, lower_bound_T_d)
 
             # solve problem in frenet-frame
             ftrajectories_optimization, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
                                                                                                   fconstraints_tT,
-                                                                                                  T, T_d_grid, self.dt)
+                                                                                                  T_target_horizon, T_d_grid, self.dt)
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories_optimization)
 
             # trajectory was planned up to a certain time, the rest should be padded with constant
             # velocity prediction
-            if planning_horizon > T:        # add padding
+            if planning_horizon > T_target_horizon:        # add padding
                 terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
                 terminal_s = fconstraints_tT.get_grid_s()
                 terminal_states = NumpyUtils.cartesian_product_matrix_rows(terminal_s, terminal_d)
 
-                time_samples = np.arange(Math.ceil_to_step(T, self.dt) - T, planning_horizon - T + EPS, self.dt)
+                time_samples = np.arange(Math.ceil_to_step(T_target_horizon, self.dt) - T_target_horizon, planning_horizon - T_target_horizon + EPS, self.dt)
                 extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(terminal_states, time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
         else:
@@ -148,7 +148,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                           "distance from ego to goal = %f, time*approx_velocity = %f\n"
                                           "worst_lat_acc: t=%.1f v=%.3f k=%.3f\n"
                                           "nominal_k=%s" %
-                                          (state.ego_state.timestamp_in_sec, T, planning_horizon,
+                                          (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                            np.max(np.min(ctrajectories[:, :, C_V], axis=1)),
                                            np.min(np.max(ctrajectories[:, :, C_V], axis=1)),
@@ -161,7 +161,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                            len(cartesian_filtered_indices), len(ctrajectories),
                                            NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
                                            goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                           T * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5,
+                                           T_target_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5,
                                            lat_acc_t_idx*0.1, lat_acc_v, lat_acc_k, reference_route.k[init_idx:final_idx+1, 0]))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
@@ -178,10 +178,10 @@ class WerlingPlanner(TrajectoryPlanner):
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
         if is_target_ahead:  # Actual werling planning has occurred because T_s > 0.1 and the target is ahead of us
-            # TODO: what if the coefficients of poly_s will result with negative velocity
+            # TODO: what if future sampling from poly_s will result with negative velocity (uncorrected for negative velocity)?
             samplable_trajectory = SamplableWerlingTrajectory(
                 timestamp_in_sec=state.ego_state.timestamp_in_sec,
-                T_s=T,
+                T_s=T_target_horizon,
                 T_d=T_d_vals[cartesian_filtered_indices[sorted_filtered_idxs[0]]],
                 frenet_frame=reference_route,
                 poly_s_coefs=poly_coefs[cartesian_filtered_indices[sorted_filtered_idxs[0]]][:6],
@@ -189,7 +189,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            target_time_diff = min(T, 0)
+            target_time_diff = min(T_target_horizon, 0)
             poly_s = np.array([0, 0, 0, 0, goal_frenet_state[FS_SV], goal_frenet_state[FS_SX]])
             poly_d = np.array([0, 0, 0, 0, goal_frenet_state[FS_DV], goal_frenet_state[FS_DX]])
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec + target_time_diff,
@@ -197,10 +197,21 @@ class WerlingPlanner(TrajectoryPlanner):
                                                               planning_horizon - target_time_diff,
                                                               planning_horizon - target_time_diff,
                                                               reference_route, poly_s, poly_d)
-
         return samplable_trajectory, \
            ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
            filtered_trajectory_costs[sorted_filtered_idxs]
+
+    @staticmethod
+    def _create_linear_profile_polynomials(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
+        """
+        Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
+        velocity). Those polynomials are degenerate to s(t)=v*t+x form
+        :param frenet_state: the current frenet state to pull positions and velocities from
+        :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
+        """
+        poly_s = np.array([0, 0, 0, 0, frenet_state[FS_SV], frenet_state[FS_SX]])
+        poly_d = np.array([0, 0, 0, 0, frenet_state[FS_DV], frenet_state[FS_DX]])
+        return poly_s, poly_d
 
     @staticmethod
     def _correct_velocity_values(ftrajectories: FrenetTrajectories2D) -> \
