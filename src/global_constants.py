@@ -97,7 +97,7 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-1.5, 1.5])
 
-BP_LAT_ACC_STRICT_COEF = 0.95
+BP_LAT_ACC_STRICT_COEF = 0.9
 
 # Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
 SPECIFICATION_HEADWAY = 1.5
