@@ -84,15 +84,8 @@ class FilterForKinematics(ActionSpecFilter):
             are_valid.append(is_valid_in_cartesian)
 
         # fill array for all specs, including in_track_mode
-        full_are_valid = []
-        non_tracking_idx = 0
-        for spec in action_specs:
-            if spec.in_track_mode:
-                full_are_valid.append(True)
-            else:
-                full_are_valid.append(are_valid[non_tracking_idx])
-                non_tracking_idx += 1
-        return full_are_valid
+        it = iter(are_valid)
+        return [True if spec.in_track_mode else next(it) for spec in action_specs]
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
