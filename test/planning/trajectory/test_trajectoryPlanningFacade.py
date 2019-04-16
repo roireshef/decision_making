@@ -9,7 +9,6 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, EgoState
-from decision_making.test.messages.static_scene_fixture import scene_static_short_map
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from rte.python.logger.AV_logger import AV_Logger

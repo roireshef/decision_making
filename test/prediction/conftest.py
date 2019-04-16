@@ -6,7 +6,6 @@ from typing import List
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, C_V
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
