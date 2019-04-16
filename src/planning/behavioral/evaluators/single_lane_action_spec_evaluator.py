@@ -63,8 +63,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         ego_fstate = frenet.cstate_to_fstate(ego.cartesian_state)
 
         np.set_printoptions(suppress=True)
-        print('BP time %.3f, goal_time=%.3f: ego_fstate = %s' %
-              (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, NumpyUtils.str_log(ego_fstate)))
+        print('BP time %.3f, goal_time=%.3f: spec.v=%.3f, ego_fstate = %s' %
+              (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, spec.v, NumpyUtils.str_log(ego_fstate)))
 
         costs[follow_lane_valid_action_idxs[0]] = 0  # choose the found static action
         return costs
