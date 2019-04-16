@@ -10,7 +10,6 @@ from decision_making.src.state.state import EgoState
 
 
 def plot_dynamics(path: str):
-
     f = open(path, 'r')
     ego_cv = []
     ego_ca = []
@@ -121,8 +120,6 @@ def plot_dynamics(path: str):
                 traj_dict['s_Data']['a_TrajectoryWaypoints']['shape'])[:points_counter])
             trajectory_time.append(timestamp.timestamp_in_seconds)
 
-
-
     f = plt.figure(1)
 
     ax1 = plt.subplot(5, 2, 1)
@@ -171,7 +168,6 @@ def plot_dynamics(path: str):
     plt.ylabel('loc/tracking errors')
     plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th],
                ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
-
 
     ax7 = plt.subplot(5, 2, 4, sharex=ax1)
     for t, traj in zip(trajectory_time, trajectory):
