@@ -1,5 +1,6 @@
 from decision_making.paths import Paths
 import os
+import copy
 
 from collections import defaultdict
 
@@ -11,17 +12,17 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_LAT_ACC_STRICT_COEF
+    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.global_constants import SAFETY_HEADWAY
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, StaticActionRecipe, AggressivenessLevel, ActionType
+    RelativeLongitudinalPosition, StaticActionRecipe, AggressivenessLevel, ActionType, RelativeLane
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN, C_V, C_K
+from decision_making.src.planning.types import FS_SA, FS_DX, C_V, C_K
 from decision_making.src.planning.types import FS_SX, FS_SV, LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -65,7 +66,7 @@ class FilterForKinematics(ActionSpecFilter):
         poly_coefs_s[no_track_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
         poly_coefs_d[no_track_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
         # in tracking mode (constant velocity) the s polynomials have only two non-zero coefficients
-        poly_coefs_s[in_track_mode, 4:] = np.c_[terminal_fstates[in_track_mode, FS_SV], terminal_fstates[in_track_mode, FS_SX]]
+        poly_coefs_s[in_track_mode, 4:] = np.c_[initial_fstates[in_track_mode, FS_SV], initial_fstates[in_track_mode, FS_SX]]
 
         are_valid = []
         for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
@@ -87,7 +88,7 @@ class FilterForKinematics(ActionSpecFilter):
                     are_valid.append(False)
                     continue
 
-            total_time = max(BP_ACTION_T_LIMITS[LIMIT_MIN], t)
+            total_time = max(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, t)
             time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
 
             # generate a SamplableWerlingTrajectory (combination of s(t), d(t) polynomials applied to a Frenet frame)
@@ -95,9 +96,8 @@ class FilterForKinematics(ActionSpecFilter):
             cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
 
             # validate cartesian points against cartesian limits
-            bp_lat_acc_limits = LAT_ACC_LIMITS * BP_LAT_ACC_STRICT_COEF
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, bp_lat_acc_limits)[0]
+                                        VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)[0]
 
             are_valid.append(is_valid_in_cartesian)
 
@@ -109,6 +109,15 @@ class FilterForKinematics(ActionSpecFilter):
                 worst_k = cartesian_points[worst_t, C_K]
                 print('BP %.3f: spec.t=%.3f spec.v=%.3f; worst_lat_acc: t=%.1f v=%.3f k=%.3f' %
                       (behavioral_state.ego_state.timestamp_in_sec, spec.t, spec.v, worst_t * 0.1, worst_v, worst_k))
+
+        # TODO: remove it
+        if not any(are_valid):
+            ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
+            frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
+            init_idx = frenet.get_index_on_frame_from_s(ego_fstate[:1])[0][0]
+            print('ERROR in BP %.3f: ego_fstate=%s; nominal_k=%s' %
+                  (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(ego_fstate),
+                   frenet.k[init_idx:init_idx+10, 0]))
 
         return are_valid
 
@@ -253,7 +262,7 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
         # find all Frenet points beyond spec.s, where velocity limit (by curvature) is lower then spec.v
         beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
         curvatures = np.maximum(np.abs(target_lane_frenet.k[beyond_spec_frenet_idxs, 0]), EPS)
-        points_velocity_limits = np.sqrt(LAT_ACC_LIMITS[1] / curvatures)
+        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
         slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
 
         return beyond_spec_frenet_idxs[slow_points]
@@ -333,6 +342,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
             # this should be taken care of by the kineatic_filter
             if spec is None:
                 continue
+
             target_lane_frenet = behavioral_state.extended_lane_frames[spec.relative_lane]  # the target GFF
             if spec.s >= target_lane_frenet.s_max:
                 continue
@@ -342,7 +352,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
             beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
             curvatures = np.maximum(np.abs(target_lane_frenet.k[beyond_spec_frenet_idxs, 0]), EPS)
 
-            points_velocity_limits = np.sqrt(LAT_ACC_LIMITS[1] / curvatures)
+            points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
             slow_points = np.where(points_velocity_limits < spec.v)[0]  # points that require braking after spec
 
             # if all points beyond the spec have velocity limit higher than spec.v, so no need to brake
@@ -352,8 +362,8 @@ class FilterByLateralAcceleration(ActionSpecFilter):
 
             # check the ability to brake beyond the spec for all points with limited velocity
             is_able_to_brake = FilterByLateralAcceleration._check_ability_to_brake_beyond_spec(
-                spec, behavioral_state.extended_lane_frames[spec.relative_lane],
-                beyond_spec_frenet_idxs[slow_points], points_velocity_limits[slow_points], self.distances)
+                spec, target_lane_frenet, beyond_spec_frenet_idxs[slow_points], points_velocity_limits[slow_points],
+                self.distances)
 
             filtering_res[spec_idx] = is_able_to_brake
 
@@ -404,10 +414,11 @@ class FilterByLateralAcceleration(ActionSpecFilter):
             ftrajectories_s = QuinticPoly1D.zip_polyval_with_derivatives(poly_coefs_s, time_samples_2d)
 
             # calculate ftrajectories_s beyond spec.t
-            last_time_idxs = (np.maximum(specs_t, BP_ACTION_T_LIMITS[0]) / WERLING_TIME_RESOLUTION).astype(int) + 1
+            last_time_idxs = (np.maximum(specs_t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / WERLING_TIME_RESOLUTION).astype(int) + 1
             for i, trajectory in enumerate(ftrajectories_s):
                 # calculate trajectory time index for t = max(specs_t[i], BP_ACTION_T_LIMITS[0])
-                # if spec.t < BP_ACTION_T_LIMITS[0], extrapolate trajectories between spec.t and BP_ACTION_T_LIMITS[0]
+                # if spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, extrapolate trajectories between spec.t and
+                # MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
                 if specs_t[i] < last_time_idxs[i]:
                     spec_t_idx = int(specs_t[i] / WERLING_TIME_RESOLUTION) + 1
                     times_beyond_spec = np.arange(spec_t_idx, last_time_idxs[i]) * WERLING_TIME_RESOLUTION - specs_t[
@@ -429,7 +440,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
             lateral_accelerations[np.array(indices_by_rel_lane[rel_lane])] = \
                 lane_center_ctrajectories[..., C_K] * lane_center_ctrajectories[..., C_V] ** 2
 
-        return NumpyUtils.is_in_limits(lateral_accelerations, LAT_ACC_LIMITS).all(axis=-1)
+        return NumpyUtils.is_in_limits(lateral_accelerations, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS).all(axis=-1)
 
     @staticmethod
     def _check_ability_to_brake_beyond_spec(action_spec: ActionSpec, frenet: GeneralizedFrenetSerretFrame,

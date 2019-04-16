@@ -103,12 +103,12 @@ class TrajectoryPlanningFacade(DmModule):
                     ego_time = state.ego_state.timestamp_in_sec
                     sampled_cartesian = sampled_state.ego_state.cartesian_state
                     dist_to_goal = np.linalg.norm(params.target_state[:2] - sampled_cartesian[:2])
-                    time_to_goal = params.time - ego_time
+                    time_to_goal = params.target_time - ego_time
                     sampled_fstate = params.reference_route.cstate_to_fstate(sampled_cartesian)
                     np.set_printoptions(suppress=True)
                     print('TP if: time %.3f, goal_time=%.3f, max_sample_time=%.3f; orig-fstate: '
                           '%s -> %s; cpoint: (%.2f, %.2f); to_goal: t=%.3f s=%.3f s/t=%.3f' %
-                          (ego_time, params.time, params.minimal_required_time,
+                          (ego_time, params.target_time, params.trajectory_end_time,
                            NumpyUtils.str_log(ego_fstate), NumpyUtils.str_log(sampled_fstate),
                            sampled_cartesian[0], sampled_cartesian[C_Y], time_to_goal, dist_to_goal,
                            dist_to_goal / time_to_goal))
@@ -118,7 +118,7 @@ class TrajectoryPlanningFacade(DmModule):
                     # TODO: remove it
                     ego_fstate = params.reference_route.cstate_to_fstate(state.ego_state.cartesian_state)
                     print('TP else: time %.3f, goal_time=%.3f; orig-fstate: (%.2f, %.3f, %.2f); lane_id %d' %
-                          (state.ego_state.timestamp_in_sec, params.time, ego_fstate[0], ego_fstate[1], ego_fstate[2],
+                          (state.ego_state.timestamp_in_sec, params.target_time, ego_fstate[0], ego_fstate[1], ego_fstate[2],
                            state.ego_state.map_state.lane_id))
 
                     updated_state = state
