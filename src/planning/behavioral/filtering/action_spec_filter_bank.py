@@ -44,17 +44,19 @@ class FilterForKinematics(ActionSpecFilter):
             - lateral acceleration limits - in Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
             conceptually "straightens" the road's shape.
          """
+        non_tracking_specs = [spec for spec in action_specs if not spec.in_track_mode]
+
         # extract all relevant information for boundary conditions
-        relative_lanes = np.array([spec.relative_lane for spec in action_specs])
+        relative_lanes = np.array([spec.relative_lane for spec in non_tracking_specs])
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
-        terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+        terminal_fstates = np.array([spec.as_fstate() for spec in non_tracking_specs])
 
         # represent initial and terminal boundary conditions (for two Frenet axes s,d)
         constraints_s = np.concatenate((initial_fstates[:, :(FS_SA+1)], terminal_fstates[:, :(FS_SA+1)]), axis=1)
         constraints_d = np.concatenate((initial_fstates[:, FS_DX:], terminal_fstates[:, FS_DX:]), axis=1)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        T = np.array([spec.t for spec in action_specs])
+        T = np.array([spec.t for spec in non_tracking_specs])
         A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T)
 
         # solve for s(t) and d(t)
@@ -64,9 +66,6 @@ class FilterForKinematics(ActionSpecFilter):
         are_valid = []
         for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
             # TODO: in the future, consider leaving only a single action (for better "learnability")
-            if spec.in_track_mode:
-                are_valid.append(True)
-                continue
 
             # extract the relevant (cached) frenet frame per action according to the destination lane
             frenet_frame = behavioral_state.extended_lane_frames[lane]
@@ -97,6 +96,7 @@ class FilterForKinematics(ActionSpecFilter):
 
             are_valid.append(is_valid_in_cartesian)
 
+            # TODO: remove it
             if is_valid_in_cartesian and abs(spec.v - 3) < 1.2:
                 lat_acc = np.abs(cartesian_points[:, C_V] ** 2 * cartesian_points[:, C_K])
                 worst_t = np.argmax(lat_acc)
@@ -105,11 +105,9 @@ class FilterForKinematics(ActionSpecFilter):
                 print('BP %.3f: spec.t=%.3f spec.v=%.3f; worst_lat_acc: t=%.1f v=%.3f k=%.3f' %
                       (behavioral_state.ego_state.timestamp_in_sec, spec.t, spec.v, worst_t * 0.1, worst_v, worst_k))
 
-        # TODO: remove - for debug only
-        had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
-        valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
-
-        return are_valid
+        # fill array for all specs, including in_track_mode
+        it = iter(are_valid)
+        return [True if spec.in_track_mode else next(it) for spec in action_specs]
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
