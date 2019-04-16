@@ -124,7 +124,6 @@ def plot_dynamics(path: str):
 
 
     f = plt.figure(1)
-    plt.plot(521)
 
     ax1 = plt.subplot(5, 2, 1)
     ego_cx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
@@ -154,10 +153,9 @@ def plot_dynamics(path: str):
     ax5 = plt.subplot(5, 2, 9, sharex=ax1)
     spec_t_plot,  = plt.plot(spec_time, spec_t, 'o-')
     spec_v_plot,  = plt.plot(spec_time, spec_v, 'o-')
-    # spec_s_plot,  = plt.plot(spec_time, spec_s)
 
     plt.xlabel('time[s]')
-    plt.ylabel('sepc_time/spec_velocity')
+    plt.ylabel('spec_time/spec_velocity')
     plt.legend([spec_t_plot, spec_v_plot], ['spec_t [s]', 'spec_v [m/s]'])
 
     ax6 = plt.subplot(5, 2, 2, sharex=ax1)
@@ -165,13 +163,12 @@ def plot_dynamics(path: str):
     bp_if_lat,  = plt.plot(bp_if_time, bp_if_lat_err, 'o--')
     tp_if_lon,  = plt.plot(tp_if_time, tp_if_lon_err, 'o-.')
     tp_if_lat,  = plt.plot(tp_if_time, tp_if_lat_err, 'o--')
-    # spec_s_plot,  = plt.plot(spec_time, spec_s)
 
     lon_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LON, linewidth=1, color='k', linestyle='-.')
     lat_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LAT, linewidth=1, color='k', linestyle='--')
 
     plt.xlabel('time[s]')
-    plt.ylabel('loc/trakcing errors')
+    plt.ylabel('loc/tracking errors')
     plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th],
                ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
 
