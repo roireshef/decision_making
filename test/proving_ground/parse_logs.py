@@ -1,10 +1,12 @@
 import ast
 import matplotlib.pyplot as plt
+import numpy as np
 
 from decision_making.paths import Paths
+from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K
 from decision_making.src.state.state import EgoState
-import numpy as np
+
 
 def plot_dynamics(path: str):
 
@@ -112,20 +114,15 @@ def plot_dynamics(path: str):
     ax1 = plt.subplot(6,  1, 1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
-    other_sx_der_plot,  = plt.plot(timestamp_in_sec, np.gradient(np.array(other_sx))/np.gradient(timestamp_in_sec))
-    ego_sx_der_plot,  = plt.plot(timestamp_in_sec, np.gradient(np.array(ego_sx))/np.gradient(timestamp_in_sec))
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
-    plt.legend([ego_sv_plot, other_sv_plot, other_sx_der_plot, ego_sx_der_plot], ['ego_sv', 'other_sv', 'grad(other_sx)', 'grad(ego_sx)'])
+    plt.legend([ego_sv_plot, other_sv_plot], ['ego_sv', 'other_sv'])
 
     ax2 = plt.subplot(6,  1, 2, sharex=ax1)
     ego_sa_plot,  = plt.plot(timestamp_in_sec, ego_sa)
-    ego_ca_plot,  = plt.plot(timestamp_in_sec, ego_ca)
-    ego_sv_der_plot,  = plt.plot(timestamp_in_sec, np.gradient(np.array(ego_sv))/np.gradient(timestamp_in_sec))
-    ego_cv_der_plot,  = plt.plot(timestamp_in_sec, np.gradient(np.array(ego_cv))/np.gradient(timestamp_in_sec))
     plt.xlabel('time[s]')
     plt.ylabel('acceleration[m]')
-    plt.legend([ego_sa_plot, ego_sv_der_plot, ego_ca_plot, ego_cv_der_plot], ['ego_sa', 'grad(ego_sv)', 'ego_a (cartesian)', 'grad(ego_v)'])
+    plt.legend([ego_sa_plot], ['ego_sa'])
 
     ax3 = plt.subplot(6,  1, 3, sharex=ax1)
     ego_cx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
@@ -149,15 +146,20 @@ def plot_dynamics(path: str):
     plt.legend([spec_t_plot, spec_v_plot], ['spec_t [s]', 'spec_v [m/s]'])
 
     ax6 = plt.subplot(6, 1, 6, sharex=ax1)
-    bp_if_lon,  = plt.plot(bp_if_time, bp_if_lon_err, 'o-')
-    bp_if_lat,  = plt.plot(bp_if_time, bp_if_lat_err, 'o-')
-    tp_if_lon,  = plt.plot(tp_if_time, tp_if_lon_err, 'o-')
-    tp_if_lat,  = plt.plot(tp_if_time, tp_if_lat_err, 'o-')
+    bp_if_lon,  = plt.plot(bp_if_time, bp_if_lon_err, 'o-.')
+    bp_if_lat,  = plt.plot(bp_if_time, bp_if_lat_err, 'o--')
+    tp_if_lon,  = plt.plot(tp_if_time, tp_if_lon_err, 'o-.')
+    tp_if_lat,  = plt.plot(tp_if_time, tp_if_lat_err, 'o--')
     # spec_s_plot,  = plt.plot(spec_time, spec_s)
+
+    lon_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LON, linewidth=1, color='k', linestyle='-.')
+    lat_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LAT, linewidth=1, color='k', linestyle='--')
 
     plt.xlabel('time[s]')
     plt.ylabel('loc/trakcing errors')
-    plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat], ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat'])
+    plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th],
+               ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
+
 
 
 
@@ -166,6 +168,5 @@ def plot_dynamics(path: str):
 
 if __name__ == "__main__":
     # Enter path of log file to analyze here:
-    file = '/home/kz430x/Recordings_EN4_m1_demo_code_creeping_fix_04-10-2019/logs/AV_Log_dm_main.log.1'
-    # file = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
+    file = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
     plot_dynamics(file)
