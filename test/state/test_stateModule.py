@@ -7,10 +7,8 @@ from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
-from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.state.state_module import StateModule, DynamicObjectsData
-from decision_making.test.constants import FILTER_OBJECT_OFF_ROAD_PATH
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
     dynamic_objects_negative_velocity
