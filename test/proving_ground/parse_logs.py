@@ -160,9 +160,6 @@ def plot_dynamics(path: str):
     plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th],
                ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
 
-
-
-
     plt.show()
 
 
