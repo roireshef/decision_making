@@ -186,10 +186,10 @@ class TrajectoryPlanningFacade(DmModule):
         trajectory_points = samplable_trajectory.sample(time_samples)
         self._last_trajectory = samplable_trajectory
 
+        # TODO: remove it
         # ftrajectory = samplable_trajectory.sample_frenet(time_samples)
         # np.set_printoptions(suppress=True)
-        # print('TP output ftrajectory_d: %s; t=%.3f' %
-        #       (ftrajectory[:5, 3:], samplable_trajectory.timestamp_in_sec))
+        # print('TP output ftrajectory_s: %s; time=%.3f' % (ftrajectory[:5, :3], samplable_trajectory.timestamp_in_sec))
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields

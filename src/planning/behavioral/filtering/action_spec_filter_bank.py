@@ -101,13 +101,13 @@ class FilterForKinematics(ActionSpecFilter):
             are_valid.append(is_valid_in_cartesian)
 
             # TODO: remove it
-            if is_valid_in_cartesian and abs(spec.v - 3) < 1.2:
-                lat_acc = np.abs(cartesian_points[:, C_V] ** 2 * cartesian_points[:, C_K])
-                worst_t = np.argmax(lat_acc)
-                worst_v = cartesian_points[worst_t, C_V]
-                worst_k = cartesian_points[worst_t, C_K]
-                print('BP %.3f: spec.t=%.3f spec.v=%.3f; worst_lat_acc: t=%.1f v=%.3f k=%.3f' %
-                      (behavioral_state.ego_state.timestamp_in_sec, spec.t, spec.v, worst_t * 0.1, worst_v, worst_k))
+            # if is_valid_in_cartesian and abs(spec.v - 3) < 1.2:
+            #     lat_acc = np.abs(cartesian_points[:, C_V] ** 2 * cartesian_points[:, C_K])
+            #     worst_t = np.argmax(lat_acc)
+            #     worst_v = cartesian_points[worst_t, C_V]
+            #     worst_k = cartesian_points[worst_t, C_K]
+            #     print('BP %.3f: spec.t=%.3f spec.v=%.3f; worst_lat_acc: t=%.1f v=%.3f k=%.3f' %
+            #           (behavioral_state.ego_state.timestamp_in_sec, spec.t, spec.v, worst_t * 0.1, worst_v, worst_k))
 
         # TODO: remove it
         if not any(are_valid):
