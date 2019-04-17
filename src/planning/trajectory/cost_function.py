@@ -1,43 +1,47 @@
 import numpy as np
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST, SAFETY_SIGMOID_COST, \
+    LON_SAFETY_SIGMOID_K_PARAM, LAT_SAFETY_SIGMOID_K_PARAM
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
-    FrenetTrajectories2D, FS_DX
+    FrenetTrajectories2D, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
 from mapping.src.transformations.geometry_utils import CartesianFrame
+from typing import Dict
 
 
 class TrajectoryPlannerCosts:
 
     @staticmethod
     def compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
-                                state: State, params: TrajectoryCostParams,
-                                global_time_samples: np.ndarray, predictor: EgoAwarePredictor, dt: float,
-                                reference_route: FrenetSerret2DFrame) -> \
-            [np.ndarray, np.ndarray, np.ndarray]:
+                                state: State, projected_obj_fstates: Dict[int, FrenetState2D],
+                                params: TrajectoryCostParams, global_time_samples: np.ndarray,
+                                predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame,
+                                safe_distances: np.array) -> [np.ndarray, np.ndarray, np.ndarray]:
         """
         Compute obstacle, deviation and jerk costs for every trajectory point separately.
         It creates a costs tensor of size N x M x 3, where N is trajectories number, M is trajectory length.
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
         :param state: the state object (that includes obstacles, etc.)
+        :param projected_obj_fstates: dict from obj_id to projected Frenet state of the dynamic object on reference_route
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
         :param dt: time step of ctrajectories
+        :param reference_route: GFF reference route
+        :param safe_distances: differences between actual distances from objects and RSS safe distances; 4D matrix
         :return: point-wise cost components: obstacles_costs, deviations_costs, jerk_costs.
-        The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
+        The tensor shape: N x M x 4, where N is trajectories number, M is trajectory length.
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
-        obstacles_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, params,
-                                                                        global_time_samples, predictor,
-                                                                        reference_route)
+        obstacles_costs = TrajectoryPlannerCosts.compute_obstacle_costs(
+            ctrajectories, state, projected_obj_fstates, params, global_time_samples, predictor, reference_route)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = TrajectoryPlannerCosts.compute_deviation_costs(ftrajectories, params)
@@ -45,18 +49,24 @@ class TrajectoryPlannerCosts:
         ''' JERK COST '''
         jerk_costs = TrajectoryPlannerCosts.compute_jerk_costs(ctrajectories, params, dt)
 
-        return np.dstack((obstacles_costs, deviations_costs, jerk_costs))
+        ''' safety (RSS) COST '''
+        safety_costs = TrajectoryPlannerCosts.compute_safety_costs(safe_distances)
+
+        return np.dstack((obstacles_costs, deviations_costs, jerk_costs, safety_costs))
 
     @staticmethod
     def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State,
+                               projected_obj_fstates: Dict[int, FrenetState2D],
                                params: TrajectoryCostParams, global_time_samples: np.ndarray,
                                predictor: RoadFollowingPredictor, reference_route: FrenetSerret2DFrame):
         """
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param state: the state object (that includes obstacles, etc.)
+        :param projected_obj_fstates: dict from obj_id to projected Frenet state of the dynamic object on reference_route
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :param reference_route: reference route (GFF)
         :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
         """
         # Filter close objects
@@ -67,15 +77,12 @@ class TrajectoryPlannerCosts:
             if len(close_objects) == 0:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
-            # calculate objects' map_state
-            # TODO: consider using map_state_on_host_lane
-            objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
-                                                 for obj in close_objects if obj.cartesian_state is not None])
+            close_objects_fstates = np.array([projected_obj_fstates[obj.obj_id] for obj in close_objects])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
             objects_predicted_ftrajectories = predictor.predict_2d_frenet_states(
-                objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
+                close_objects_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
@@ -84,7 +91,6 @@ class TrajectoryPlannerCosts:
             # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
             distances = TrajectoryPlannerCosts.compute_distances_to_objects(
                 ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
-
 
             # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
             k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
@@ -132,6 +138,23 @@ class TrajectoryPlannerCosts:
         distances_from_ego_boundaries = np.abs(ego_centers_in_objs_frame) - 0.5 * (objects_sizes[:, np.newaxis] + ego_size)
 
         return distances_from_ego_boundaries
+
+    @staticmethod
+    def compute_safety_costs(safe_distances: np.array):
+        """
+        Given raw (not weighted) safety costs (based on RSS), sum it over obstacles and multiply by weight
+        :param safe_distances: difference between actual distances and safe distances.
+                                4D tensor: trajectories x objects x timestamps x lon/lat
+        :return: MxN matrix of safety costs per point, where N is trajectories number, M is trajectory length.
+        """
+        # transfer lon & lat normalized safe distances to truncated sigmoid costs
+        normalized_offset = safe_distances * np.array([LON_SAFETY_SIGMOID_K_PARAM, LAT_SAFETY_SIGMOID_K_PARAM])
+        # the following sigmoid obtains values between 0 and 2.
+        sigmoid_costs = np.divide(2., (1. + np.exp(np.minimum(normalized_offset, EXP_CLIP_TH))))
+        # truncate the sigmoid by 1 and extract lon & lat costs, which are safe if 0 < cost < 1 and unsafe if cost = 1
+        logit_costs = np.minimum(sigmoid_costs, 1)
+
+        return SAFETY_SIGMOID_COST * logit_costs[..., 0] * logit_costs[..., 1]  # lon_costs * lat_costs
 
     @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):

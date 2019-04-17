@@ -74,6 +74,10 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
+SAFETY_SIGMOID_COST = 100                   # maximal cost of RSS safety (sigmoid)
+LON_SAFETY_SIGMOID_K_PARAM = 6              # sigmoid k (slope) param of longitudinal RSS safety cost
+LAT_SAFETY_SIGMOID_K_PARAM = 15             # sigmoid k (slope) param of lateral RSS safety cost
+
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
 
@@ -98,6 +102,9 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
+# maximal deceleration during emergency braking
+EMERGENCY_DECELERATION = 8
+
 # Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
 SPECIFICATION_HEADWAY = 1.5
 SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-end)
@@ -106,6 +113,22 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 # safety checks accordingly
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+
+# [m] minimal lateral safe distance between objects
+LATERAL_SAFETY_MU = 0.5
+
+# [m/sec] lateral velocity blame threshold: in case of lateral danger,
+# if ego_lat_vel >= min(obj_lat_vel, LAT_VEL_BLAME_THRESH), then ego is blamed
+LAT_VEL_BLAME_THRESH = 0.1
+
+# [m/s^2] longitudinal acceleration of object during time delay in RSS
+LON_SAFETY_ACCEL_DURING_RESPONSE = 0  # LON_ACC_LIMITS[1]
+
+# [m/s^2] lateral acceleration of object during time delay in RSS
+LAT_SAFETY_ACCEL_DURING_RESPONSE = 0
+
+MAX_SAFETY_T_D_GRID_SIZE = 3
+
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
@@ -158,7 +181,7 @@ DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 2
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as if the ego vehicle is
 # currently in the desired location and not in its actual location.
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1

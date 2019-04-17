@@ -4,6 +4,7 @@ from logging import Logger
 from typing import Dict
 
 import numpy as np
+import copy
 import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
@@ -27,7 +28,7 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, FP_SX, C_Y, FS_DX, \
-    FS_SX
+    FS_SX, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -102,9 +103,13 @@ class TrajectoryPlanningFacade(DmModule):
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
+            # project all dynamic objects on the reference route
+            projected_obj_fstates = TrajectoryPlanningFacade._project_objects_on_reference_route(
+                updated_state, params.reference_route)
+
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, T_target_horizon,
+                plan(updated_state, params.reference_route, projected_obj_fstates, params.target_state, T_target_horizon,
                      T_trajectory_end_horizon, params.cost_params)
 
             if self._last_trajectory is not None and samplable_trajectory is not None:
@@ -146,6 +151,24 @@ class TrajectoryPlanningFacade(DmModule):
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
+
+    @staticmethod
+    def _project_objects_on_reference_route(state: State, reference_route: GeneralizedFrenetSerretFrame) -> \
+            Dict[int, FrenetState2D]:
+        """
+        Project all dynamic objects on the reference route. In case of failure set map_state = None.
+        :param state: original state
+        :param reference_route: GFF to project on
+        :return: dictionary from obj_id to its projected map_states on the reference route
+        """
+        projected_obj_fstates = {}
+        projected_state = copy.deepcopy(state)
+        for obj in projected_state.dynamic_objects:
+            try:
+                projected_obj_fstates[obj.obj_id] = reference_route.cstate_to_fstate(obj.cartesian_state)
+            except Exception:  # too far object
+                pass
+        return projected_obj_fstates
 
     # TODO: add map_origin that is sent from the outside
     @prof.ProfileFunction()
@@ -282,18 +305,13 @@ class TrajectoryPlanningFacade(DmModule):
         # visualize objects' predictions
         # TODO: create 3 GFFs in TP and convert objects' predictions on them
         objects_visualizations = []
-        for obj in state.dynamic_objects:
-            try:
-                obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
-                obj_fpredictions = predictor.predict_2d_frenet_states(np.array([obj_fstate]),
-                                                                      prediction_horizons)[0][:, [FS_SX, FS_DX]]
-                # skip objects having predictions out of reference_route
-                valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
-                obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
-                objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
-
-            except Exception:  # verify the object can be projected on reference_route
-                continue
+        for obj_id, obj_fstate in objects_fstates.items():
+            obj_fpredictions = predictor.predict_2d_frenet_states(np.array([obj_fstate]),
+                                                                  prediction_horizons)[0][:, [FS_SX, FS_DX]]
+            # skip objects having predictions out of reference_route
+            valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
+            obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
+            objects_visualizations.append(PredictionsVisualization(obj_id, obj_cpredictions))
 
         header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
         trajectory_length = ctrajectories.shape[1]

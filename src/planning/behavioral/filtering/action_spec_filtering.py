@@ -5,6 +5,7 @@ from abc import ABCMeta, abstractmethod
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
+from decision_making.src.state.state import State
 from logging import Logger
 from typing import List, Optional
 from itertools import compress
@@ -17,7 +18,7 @@ class ActionSpecFilter:
     (or one of its children) and  BehavioralGridState (or one of its children) even if they don't actually use them.
     """
     @abstractmethod
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, state: State) -> List[bool]:
         pass
 
     def __str__(self):
