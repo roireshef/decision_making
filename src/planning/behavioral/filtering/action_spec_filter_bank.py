@@ -1,6 +1,5 @@
 from decision_making.paths import Paths
 import os
-import copy
 
 from collections import defaultdict
 
@@ -167,11 +166,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             are_valid.append(is_safe)
 
-        # TODO: remove - for debug only
-        had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
-        valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
-
         return are_valid
+
 
 @six.add_metaclass(ABCMeta)
 class ConstraintSpecFilter(ActionSpecFilter):

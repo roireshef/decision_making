@@ -147,7 +147,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                           "ego_frenet = %s\ngoal_frenet = %s\n"
                                           "distance from ego to goal = %f, time*approx_velocity = %f\n"
                                           "worst_lat_acc: t=%.1f v=%.3f k=%.3f\n"
-                                          "nominal_k=%s" %
+                                          "nominal_points.k=%s" %
                                           (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                            np.max(np.min(ctrajectories[:, :, C_V], axis=1)),
@@ -189,19 +189,10 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            # target_time_diff = min(T_target_horizon, 0)
-            # poly_s, poly_d = WerlingPlanner._create_linear_profile_polynomials(goal_frenet_state)
-            # samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec + target_time_diff,
-            #                                                   planning_horizon - target_time_diff,
-            #                                                   planning_horizon - target_time_diff,
-            #                                                   planning_horizon - target_time_diff,
-            #                                                   reference_route, poly_s, poly_d)
             poly_s, poly_d = WerlingPlanner._create_linear_profile_polynomials(ego_frenet_state)
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
                                                               planning_horizon, planning_horizon, planning_horizon,
                                                               reference_route, poly_s, poly_d)
-
-
 
         return samplable_trajectory, \
            ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
