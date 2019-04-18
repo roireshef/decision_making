@@ -102,7 +102,7 @@ class ActionSpec:
         return self.recipe.relative_lane
 
     @property
-    def in_track_mode(self):
+    def in_tracking_mode(self):
         """ if planning time is shorter than the TP's time resolution, the result will be only padding in the TP"""
         return self.t < TRAJECTORY_TIME_RESOLUTION
 

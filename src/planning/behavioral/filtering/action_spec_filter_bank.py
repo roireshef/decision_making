@@ -39,7 +39,7 @@ class FilterForKinematics(ActionSpecFilter):
         T = np.array([spec.t for spec in action_specs])
 
         # create boolean arrays indicating whether the specs are in tracking mode
-        in_track_mode = np.array([spec.in_track_mode for spec in action_specs])
+        in_track_mode = np.array([spec.in_tracking_mode for spec in action_specs])
         no_track_mode = np.logical_not(in_track_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
@@ -63,7 +63,7 @@ class FilterForKinematics(ActionSpecFilter):
             # extract the relevant (cached) frenet frame per action according to the destination lane
             frenet_frame = behavioral_state.extended_lane_frames[spec.relative_lane]
 
-            if not spec.in_track_mode:
+            if not spec.in_tracking_mode:
                 # if the action is static, there's a chance the 5th order polynomial is actually a degnerate one
                 # (has lower degree), so we clip the first zero coefficients and send a polynomial with lower degree
                 first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
@@ -99,7 +99,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         # to prevent inverse of singular matrices (T=0) check safety only for non-tracking actions
         # tracking actions are safe
-        non_tracking_specs = [spec for spec in action_specs if not spec.in_track_mode]
+        non_tracking_specs = [spec for spec in action_specs if not spec.in_tracking_mode]
 
         # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
         # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
@@ -122,25 +122,21 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         # solve for s(t)
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
 
-        are_valid = []
-        for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
-            if target is None:
-                are_valid.append(True)
-                continue
+        are_valid = [True] * len(T)
+        for i, (poly_s, t, cell, target) in enumerate(zip(poly_coefs_s, T, relative_cells, target_vehicles)):
+            if target is not None:
+                target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
+                    target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
+                target_poly_s = np.array([0, 0, 0, 0, target_fstate[FS_SV], target_fstate[FS_SX]])
 
-            target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
-                target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
-            target_poly_s = np.array([0, 0, 0, 0, target_fstate[FS_SV], target_fstate[FS_SX]])
+                # minimal margin used in addition to headway (center-to-center of both objects)
+                margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
+                         behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
-            # minimal margin used in addition to headway (center-to-center of both objects)
-            margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                     behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
-
-            # validate distance keeping (on frenet longitudinal axis)
-            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
-
-            are_valid.append(is_safe)
+                # validate distance keeping (on frenet longitudinal axis)
+                are_valid[i] = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                                                                      np.array([0, t]))
 
         # return boolean list for all actions, including in_track_mode; tracking actions are always valid
         it = iter(are_valid)
-        return [True if spec.in_track_mode else next(it) for spec in action_specs]
+        return [True if spec.in_tracking_mode else next(it) for spec in action_specs]
