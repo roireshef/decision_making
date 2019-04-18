@@ -120,16 +120,6 @@ class MapUtils:
         return relative_lane_ids
 
     @staticmethod
-    def _get_all_middle_lanes():
-        """
-        Returns the middle lane of each road segment.
-        :return:
-        """
-        lanes_per_roads = [MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-                           for road_segment_id in MapUtils.get_road_segment_ids()]
-        return [lanes[int(len(lanes) / 2)] for lanes in lanes_per_roads]
-
-    @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D) -> int:
         """
         given cartesian coordinates, find the closest lane to the point

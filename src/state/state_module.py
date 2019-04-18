@@ -92,7 +92,6 @@ class StateModule(DmModule):
                              timestamp=timestamp,
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
-                             map_state_on_host_lane=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                              confidence=1.0)
 
@@ -123,8 +122,6 @@ class StateModule(DmModule):
             # TODO: Handle multiple hypotheses
             cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
             map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
-            # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
-            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
                               obj_loc.s_bounding_box.e_l_width,
                               obj_loc.s_bounding_box.e_l_height)
@@ -134,7 +131,6 @@ class StateModule(DmModule):
                                     timestamp=timestamp,
                                     cartesian_state=cartesian_state,
                                     map_state=map_state if map_state.lane_id > 0 else None,
-                                    map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
                                     size=size,
                                     confidence=confidence)
 
