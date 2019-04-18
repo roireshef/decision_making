@@ -170,7 +170,7 @@ class CostBasedBehavioralPlanner:
         :return: a TrajectoryCostParams instance that encodes all parameters for TP cost computation.
         """
 
-        is_rightmost_lane = (len(MapUtils.get_adjacent_lane_ids(map_state.lane_id, RelativeLane.RIGHT_LANE)) == 0)
+        is_rightmost_lane = MapUtils.get_lane_ordinal(map_state.lane_id) == 0
         is_leftmost_lane = (len(MapUtils.get_adjacent_lane_ids(map_state.lane_id, RelativeLane.LEFT_LANE)) == 0)
 
         # TODO: here we assume a constant lane width from the current state to the goal

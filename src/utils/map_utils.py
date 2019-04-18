@@ -400,7 +400,6 @@ class MapUtils:
     @raises(RoadNotFound)
     def get_road_segment(road_id: int) -> SceneRoadSegment:
         """
-
         Retrieves road by road_id  according to the last message
         :param road_id:
         :return:
