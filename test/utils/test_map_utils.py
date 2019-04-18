@@ -62,21 +62,6 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static: Scene
     assert dist_to_right == MapService.get_instance().get_road(road_ids[0]).lane_width/2
 
 
-def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder(scene_static: SceneStatic):
-    """
-    test method get_dist_from_lane_center_to_road_borders:
-        in the current map the lanes have a constant lane width and all lanes have the same width
-    """
-
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
-    road_ids = MapUtils.get_road_segment_ids()
-    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
-    dist_to_right, dist_to_left = MapUtils.get_dist_to_road_borders(lane_ids[0], 0)
-    lane_width = 3.6
-    assert dist_to_right == lane_width/2
-    assert dist_to_left == lane_width * (len(lane_ids) - 0.5)
-
-
 def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(scene_static: SceneStatic):
     """
     test method get_lookahead_frenet_frame:
