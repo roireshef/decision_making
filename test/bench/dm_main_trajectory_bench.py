@@ -1,4 +1,4 @@
-from decision_making.src.planning.navigation.default_config import NAVIGATION_PLAN
+from decision_making.src.planning.navigation.default_config import NAVIGATION_PLAN_OVAL_TRACK
 from os import getpid
 
 from decision_making.src import global_constants
@@ -76,7 +76,7 @@ class DmMockInitialization:
         return trajectory_planning_module
 
 
-def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
+def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN_OVAL_TRACK):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.

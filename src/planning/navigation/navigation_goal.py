@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import Dict
 
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.state import State
@@ -16,17 +16,15 @@ class GoalStatus(Enum):
 
 
 class NavigationGoal:
-    def __init__(self, road_segment_id: int, lon: float, lanes_idxs: List[int]):
+    def __init__(self, road_segment_id: int, goal_longitude_per_ordinal: Dict[int, float]):
         """
         Holds parameters of a navigation goal: road id, longitude, list of lanes.
         :param road_segment_id: road segment id from the map
-        :param lon: [m] longitude of the goal relatively to the road's beginning
-        :param lanes_idxs: list of lane indices of the goal
+        :param goal_longitude_per_ordinal: a mapping between an ordinal in the goal road_segment and the longitude of the goal
+                                relatively to that lane's beginning
         """
-        # TODO: replace road & lane indices by list of lane_ids and lon will be per lane.
         self.road_segment_id = road_segment_id
-        self.lon = lon
-        self.lanes_idxs = lanes_idxs
+        self.goal_longitude_per_ordinal = goal_longitude_per_ordinal
 
     def validate(self, state: State) -> GoalStatus:
         """
@@ -37,9 +35,9 @@ class NavigationGoal:
         # TODO: use route planner to check whether current road_id != goal.road means MISSED or NOT_YET
         map_state = state.ego_state.map_state
         road_segment_id = MapUtils.get_road_segment_id_from_lane_id(map_state.lane_id)
-        # TODO: decide relatively to which lane self.lon is given
-        if road_segment_id == self.road_segment_id and map_state.lane_fstate[FS_SX] >= self.lon:
-            if MapUtils.get_lane_ordinal(map_state.lane_id) in self.lanes_idxs:
+        ego_ordinal = MapUtils.get_lane_ordinal(map_state.lane_id)
+        if road_segment_id == self.road_segment_id and map_state.lane_fstate[FS_SX] >= self.goal_longitude_per_ordinal[ego_ordinal]:
+            if ego_ordinal in self.goal_longitude_per_ordinal.keys():
                 return GoalStatus.REACHED
             else:
                 return GoalStatus.MISSED
