@@ -4,6 +4,7 @@ import os
 from collections import defaultdict
 
 import numpy as np
+from decision_making.src.exceptions import ConstraintFilterPreConstraintValue
 from typing import List
 
 import rte.python.profiler as prof
@@ -11,7 +12,8 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
+    PREDICATES_FOLDER
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.global_constants import SAFETY_HEADWAY
@@ -168,13 +170,6 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         return are_valid
 
-class ConstraintFilterPreConstraintValue(Exception):
-    def __init__(self,value):
-        self._value = value
-
-    @property
-    def value(self):
-        return self._value
 
 
 @six.add_metaclass(ABCMeta)
@@ -270,7 +265,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
         return mask
 
 
-class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
+class BeyondSpecLateralAccelerationFilter(ConstraintSpecFilter):
     """
     Testing the constraint design with this extension.
     Checks if it is possible to break from the goal to the end of the frenet frame
@@ -284,9 +279,8 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
 
     def __init__(self):
         super().__init__()
-        # TODO: Change this
-        predicate_folder = 'predicates'
-        self.distances = ConstraintBrakeLateralAccelerationFilter._read_distances(predicate_folder)
+        predicate_folder = PREDICATES_FOLDER
+        self.distances = BeyondSpecLateralAccelerationFilter._read_distances(predicate_folder)
 
     @staticmethod
     def _read_distances(path):
@@ -308,7 +302,7 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
         """
-        Finds 'slow' points
+        Finds 'slow' points indices
         :param behavioral_state:
         :param action_spec:
         :return:
@@ -367,8 +361,9 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
     """
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
         """
-         TODO: Selects all points from the end of the action_spec until the 'stop' location
-         return empty if there is no 'stop' location
+         raise_true if there is no sign
+         otherwise gets the action_spec.s index
+
         :param behavioral_state:
         :param action_spec:
         :return:
@@ -378,7 +373,7 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                          points: np.ndarray) -> np.ndarray:
         """
-        TODO: the aggressive velocity to get to the stop sign
+        TODO: the aggressive break distance to get to the stop sign
         :param behavioral_state:
         :param action_spec:
         :param points:
@@ -401,9 +396,10 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
         return target_values <= constraints_values
 
 
+
 class FilterByLateralAcceleration(ActionSpecFilter):
     def __init__(self, path: str):
-        self.distances = ConstraintBrakeLateralAccelerationFilter._read_distances(path)
+        self.distances = BeyondSpecLateralAccelerationFilter._read_distances(path)
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """

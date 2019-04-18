@@ -121,6 +121,13 @@ FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use V
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
+# Folder location for offline predicates
+PREDICATES_FOLDER = 'predicates'
+
+
+
+
+
 # Trajectory Planner #
 
 # [m] length of reference trajectory provided by behavioral planner

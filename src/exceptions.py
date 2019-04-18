@@ -107,6 +107,14 @@ class RoadNotFound(MappingException):
 class LaneNotFound(MappingException):
     pass
 
+class ConstraintFilterPreConstraintValue(Exception):
+    def __init__(self,value):
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
+
 
 def raises(*e):
     # type: (Exception)
