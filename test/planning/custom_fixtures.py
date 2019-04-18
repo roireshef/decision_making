@@ -137,20 +137,15 @@ def state(short_testable_map_api):
     v = np.linalg.norm([v_x, v_y])
     dyn1 = DynamicObject(obj_id=1, timestamp=34, cartesian_state=np.array([0.5, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
                          map_state=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
-                         map_state_on_host_lane=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
                          size=ObjectSize(1, 1, 1), confidence=1.0)
     dyn2 = DynamicObject(obj_id=2, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
                          map_state=MapState(lane_fstate=np.array([10., 2.61312593, 0., 0., 1.0823922, 0.]), lane_id=11),
-                         map_state_on_host_lane=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
                          size=ObjectSize(1, 1, 1), confidence=1.0)
-    dyn1.map_state
-    dyn2.map_state
 
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
     ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]),
                          map_state=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
-                         map_state_on_host_lane=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
                          size=size, confidence=0)
     yield State(False, occupancy_state, dynamic_objects, ego_state)
 
@@ -224,6 +219,7 @@ def dyn_obj_outside_road():
                                                         size=size, confidence=0)
     yield dyn_obj
 
+
 @pytest.fixture(scope='function')
 def trajectory_params():
     ref_points = np.array([[x, -2.0] for x in range(0, 200)])
@@ -255,16 +251,6 @@ def trajectory():
 @pytest.fixture(scope='function')
 def behavioral_visualization_msg(trajectory_params):
     yield BehavioralVisualizationMsg(trajectory_params.reference_route.points)
-
-
-@pytest.fixture(scope='function')
-def trajectory_visualization_msg(state, trajectory):
-    yield TrajectoryVisualizationMsg(reference_route=trajectory.trajectory,
-                                     trajectories=np.array([trajectory.trajectory]),
-                                     costs=np.array([0]),
-                                     state=state,
-                                     predicted_states=[state],
-                                     plan_time=2.0)
 
 
 ### MODULES/INFRA ###
@@ -305,21 +291,3 @@ def navigation_facade(pubsub, navigation_plan):
     navigation_module.start()
     yield navigation_module
     navigation_module.stop()
-
-
-@pytest.fixture(scope='function')
-def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
-    logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-
-    trajectory_planning_module = TrajectoryPlanningFacadeMock(pubsub=pubsub, logger=logger,
-                                                              trajectory_msg=trajectory,
-                                                              visualization_msg=trajectory_visualization_msg)
-
-    trajectory_planning_module.start()
-    yield trajectory_planning_module
-    trajectory_planning_module.stop()
-
-@pytest.fixture(scope='function')
-def predictor():
-    logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
-    yield RoadFollowingPredictor(logger)
