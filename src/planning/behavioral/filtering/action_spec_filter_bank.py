@@ -168,11 +168,20 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         return are_valid
 
+class ConstraintFilterPreConstraintValue(Exception):
+    def __init__(self,value):
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
+
 
 @six.add_metaclass(ABCMeta)
 class ConstraintSpecFilter(ActionSpecFilter):
     """
-    A filter to allow constraint
+    A filter based on predefined constraint.
+
     """
 
     @abstractmethod
@@ -184,42 +193,80 @@ class ConstraintSpecFilter(ActionSpecFilter):
         """
         pass
 
+    def _raise_false(self):
+        """
+        Terminates the execution of the filter with a False value.
+        :return: None
+        """
+        raise ConstraintFilterPreConstraintValue(False)
+
+    def _raise_true(self):
+        """
+        Terminates the execution of the filter with a True value.
+        :return:
+        """
+        raise ConstraintFilterPreConstraintValue(True)
+
+
     @abstractmethod
     def _target_function(self, behavioral_state: BehavioralGridState,
                          action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
         """
-        function under test.
-        :param action_spec:
-        :return:
+        The definition of the function to be tested. Receives
+        :param behavioral_state:  A behavioral grid state
+        :param action_spec: the action spec which to filter
+        :return: the result of the target function as an np.ndarray
         """
         pass
 
     @abstractmethod
-    def _constraint(self, behavioral_state: BehavioralGridState,
+    def _constraint_function(self, behavioral_state: BehavioralGridState,
                     action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
         """
-        Defines a constraint function over points
-        :return:
+        Defines the constraint function over points.
+
+        :param behavioral_state:  A behavioral grid state
+        :param action_spec: the action spec which to filter
+        :return: the result of the constraint function as an np.ndarray
         """
         pass
 
     @abstractmethod
     def _condition(self, target_values, constraints_values) -> bool:
         """
-        Applying a condition on target and constraints values
-        :param target_values:
-        :param constraints_values:
+        The test condition to apply on the results of target and constraint values
+        :param target_values: the (externally calculated) target function
+        :param constraints_values: the (externally calculated) constraint values
         :return:
         """
         pass
 
+    def _check_condition(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> bool:
+        """
+        Tests the condition defined by this filter
+        :param behavioral_state:
+        :param action_spec:
+        :return:
+        """
+        points_under_test = self._select_points(behavioral_state, action_spec)
+        return self._condition(self._target_function(behavioral_state, action_spec, points_under_test),
+                               self._constraint_function(behavioral_state, action_spec, points_under_test))
+
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        # TODO: What about parallelism on all ActionSpecs?
+        """
+        The overriden filter function
+        :param action_specs:
+        :param behavioral_state:
+        :return:
+        """
+        # TODO: Can we parallalize over the ActionSpecs?
         mask = []
         for action_spec in action_specs:
-            mask.append(self._condition(
-                self._target_function(self._select_points(behavioral_state, action_spec)),
-                self._constraint(behavioral_state, action_spec ,self._select_points(behavioral_state, action_spec))))
+            try:
+                mask_value = self._check_condition(behavioral_state, action_spec)
+            except ConstraintFilterPreConstraintValue as e:
+                mask_value = e.value
+            mask.append(mask_value)
         return mask
 
 
@@ -227,14 +274,22 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
     """
     Testing the constraint design with this extension.
     Checks if it is possible to break from the goal to the end of the frenet frame
+
+    the following edge cases are treated by raise_true/false:
+
+    (A) spec is not None
+    (B) (spec.s >= target_lane_frenet.s_max then continue)
+
     """
 
-    def __init__(self, path: str):
+    def __init__(self):
+        super().__init__()
         # TODO: Change this
-        self.distances = ConstraintBrakeLateralAccelerationFilter.read_distances(path)
+        predicate_folder = 'predicates'
+        self.distances = ConstraintBrakeLateralAccelerationFilter._read_distances(predicate_folder)
 
     @staticmethod
-    def read_distances(path):
+    def _read_distances(path):
         """
         This method reads maps from file into a dictionary mapping a tuple of (action_type,weights) to a LUT.
         :param path: The directory holding all maps (.npy files)
@@ -252,33 +307,57 @@ class ConstraintBrakeLateralAccelerationFilter(ConstraintSpecFilter):
         return distances
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
+        """
+        Finds 'slow' points
+        :param behavioral_state:
+        :param action_spec:
+        :return:
+        """
+        if action_spec is None:
+            self._raise_false()
+
+        points_velocity_limits, beyond_spec_frenet_idxs = self._get_velocity_limits_of_points(action_spec,
+                                                                                              behavioral_state)
+        slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
+        # set edge case
+        if len(slow_points) == 0:
+            self._raise_true()
+        return beyond_spec_frenet_idxs[slow_points]
+
+    def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: np.ndarray) \
+            -> np.ndarray:
+        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
+        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+        brake_dist = self.distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
+                     FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
+
+        points_velocity_limits, _ = self._get_velocity_limits_of_points(action_spec, behavioral_state)
+        slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
+        vel_limit_in_points = points_velocity_limits[slow_points]
+
+        return brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)]
+
+    def _get_velocity_limits_of_points(self, action_spec, behavioral_state):
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
+        if action_spec.s >= target_lane_frenet.s_max:
+            self._raise_false()
         # get the Frenet point index near the goal action_spec.s
         spec_s_point_idx = target_lane_frenet.get_index_on_frame_from_s(np.array([action_spec.s]))[0][0]
         # find all Frenet points beyond spec.s, where velocity limit (by curvature) is lower then spec.v
         beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
         curvatures = np.maximum(np.abs(target_lane_frenet.k[beyond_spec_frenet_idxs, 0]), EPS)
         points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
-        slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
+        return points_velocity_limits, beyond_spec_frenet_idxs
 
-        return beyond_spec_frenet_idxs[slow_points]
-
-    def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
-        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
-        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
-        brake_dist = self.distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
-                     FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
-        vel_limit_in_points = 0 # TODO
-        return brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)]
-
-    def _constraint(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
+    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
+                             points: np.ndarray) -> np.ndarray:
         frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
         # create constraints for static actions per point beyond the given spec
         dist_to_points = frenet.get_s_from_index_on_frame(points, delta_s=0) - action_spec.s
         return dist_to_points
 
     def _condition(self, target_values, constraints_values) -> bool:
-        return target_values < constraints_values
+        return (target_values < constraints_values).all()
 
 
 class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
@@ -307,7 +386,7 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
         """
         pass
 
-    def _constraint(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
+    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                     points: np.ndarray) -> np.ndarray:
         """
         TODO: Similar to the braking condition for lateral acceleration, assuming braking to 0
@@ -324,7 +403,7 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
 
 class FilterByLateralAcceleration(ActionSpecFilter):
     def __init__(self, path: str):
-        self.distances = ConstraintBrakeLateralAccelerationFilter.read_distances(path)
+        self.distances = ConstraintBrakeLateralAccelerationFilter._read_distances(path)
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
