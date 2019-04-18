@@ -18,7 +18,6 @@ MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
 
 
-
 def test_getRoadSegmentIdFromLaneId_correct(scene_static: SceneStatic):
     SceneStaticModel.get_instance().set_scene_static(scene_static)
     lane_id = 222

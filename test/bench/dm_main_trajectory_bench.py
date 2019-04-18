@@ -18,7 +18,7 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 
 from decision_making.src.state.state_module import StateModule
 from decision_making.test import constants
-from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME, BP_MOCK_FIXED_SPECS
+from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
 from decision_making.test.utils_for_tests import Utils

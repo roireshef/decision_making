@@ -46,7 +46,6 @@ class MapUtils:
         :param lane_id:
         :return: lane's ordinal
         """
-        # TODO: extract ordinal from lane_id numerically (lowest hexadecimal digit)
         return MapUtils.get_lane(lane_id).e_Cnt_right_adjacent_lane_count
 
     @staticmethod

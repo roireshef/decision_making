@@ -3,7 +3,7 @@ import pytest
 from decision_making.src.state.map_state import MapState
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
+    NAVIGATION_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -15,12 +15,10 @@ from decision_making.src.messages.trajectory_parameters import SigmoidFunctionPa
     TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
 from decision_making.src.state.state_module import DynamicObjectsData
 from decision_making.src.utils.map_utils import MapUtils
@@ -28,7 +26,6 @@ from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.messages.static_scene_fixture import scene_static
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
-from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
@@ -235,15 +232,6 @@ def trajectory_params():
                            cost_params=trajectory_cost_params, time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY,
                            bp_time=0)
-
-
-@pytest.fixture(scope='function')
-def trajectory():
-    chosen_trajectory = np.array(
-        [[1.0, 0.0, 0.0, 0.0], [2.0, -0.33, 0.0, 0.0], [3.0, -0.66, 0.0, 0.0], [4.0, -1.0, 0.0, 0.0],
-         [5.0, -1.33, 0.0, 0.0], [6.0, -1.66, 0.0, 0.0], [7.0, -2.0, 0.0, 0.0], [8.0, -2.0, 0.0, 0.0],
-         [9.0, -2.0, 0.0, 0.0], [10.0, -2.0, 0.0, 0.0], [11.0, -2.0, 0.0, 0.0]])
-    yield TrajectoryPlan(timestamp=0, trajectory=chosen_trajectory, current_speed=5.0)
 
 
 ### VIZ MESSAGES ###
