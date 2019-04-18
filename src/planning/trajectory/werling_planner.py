@@ -158,7 +158,8 @@ class WerlingPlanner(TrajectoryPlanner):
         filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
                                global_time_sample, self._predictor, self.dt, reference_route,
-                               poly_coefs[refiltered_indices], T_s)
+                               poly_coefs[refiltered_indices, :QuinticPoly1D.num_coefs],
+                               poly_coefs[refiltered_indices, QuinticPoly1D.num_coefs:], T_s)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
@@ -233,7 +234,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
                       predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame,
-                      poly_coefs: np.array, T_s: float) -> np.ndarray:
+                      poly_coefs_s: np.array, poly_coefs_d: np.array, T_s: float) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -246,14 +247,15 @@ class WerlingPlanner(TrajectoryPlanner):
         :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :param dt: time step of ctrajectories
         :param reference_route: the reference route (GFF) of TP
-        :param poly_coefs: Nx12 matrix of coefficients of polynomials for s and for d for all trajectories
+        :param poly_coefs_s: Nx6 matrix of coefficients of polynomials for s for all trajectories
+        :param poly_coefs_d: Nx6 matrix of coefficients of polynomials for d for all trajectories
         :param T_s: TP longitudinal planning time
         :return: numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
         """
         ''' deviation from goal cost '''
         # calculate trajectory end-point in Frenet coordinates
-        end_fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs[:, :6], np.array([T_s]))
-        end_fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs[:, 6:], np.array([T_s]))
+        end_fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, np.array([T_s]))
+        end_fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, np.array([T_s]))
 
         # calculate distance from trajectory end-point to the goal
         dist_from_goal_s = end_fstates_s[:, 0, 0] - goal_in_frenet[FS_SX]
