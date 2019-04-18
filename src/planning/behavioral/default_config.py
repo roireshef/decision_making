@@ -23,5 +23,5 @@ DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone()
 DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone(),
                                                              FilterForKinematics(),
                                                              FilterForSafetyTowardsTargetVehicle(),
-                                                             FilterByLateralAcceleration('predicates')],
+                                                             FilterByLateralAcceleration()],
                                                     logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
