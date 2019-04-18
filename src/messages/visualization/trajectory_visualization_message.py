@@ -84,4 +84,4 @@ class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSTrajectoryVisualization):
-        return cls(Header.deserialize(pubsubMsg.s_Header), TrajectoryVisualizationMsg.deserialize(pubsubMsg.s_Data))
+        return cls(Header.deserialize(pubsubMsg.s_Header), DataTrajectoryVisualization.deserialize(pubsubMsg.s_Data))

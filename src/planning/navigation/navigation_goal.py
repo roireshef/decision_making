@@ -23,7 +23,7 @@ class NavigationGoal:
         :param lon: [m] longitude of the goal relatively to the road's beginning
         :param lanes_idxs: list of lane indices of the goal
         """
-        # TODO: replace road & lane_indices by list of lane_ids and lon will be per lane.
+        # TODO: replace road & lane indices by list of lane_ids and lon will be per lane.
         self.road_segment_id = road_segment_id
         self.lon = lon
         self.lanes_idxs = lanes_idxs

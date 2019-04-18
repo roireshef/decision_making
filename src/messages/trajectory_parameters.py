@@ -8,6 +8,7 @@ from common_data.interface.Rte_Types.python.sub_structures.LcmTrajectoryCostPara
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
+from decision_making.src.planning.types import FrenetState2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 
@@ -138,20 +139,20 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryCostParams)-> TrajectoryCostParams
         return cls(SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_x)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_y)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_lane_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_lane_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_shoulder_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
-                 , lcmMsg.dist_from_goal_lat_factor
-                 , lcmMsg.lon_jerk_cost
-                 , lcmMsg.lat_jerk_cost
-                 , lcmMsg.velocity_limits
-                 , lcmMsg.lon_acceleration_limits
-                 , lcmMsg.lat_acceleration_limits)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_y)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.left_lane_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.right_lane_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.left_shoulder_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
+                   , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
+                   , lcmMsg.dist_from_goal_lat_factor
+                   , lcmMsg.lon_jerk_cost
+                   , lcmMsg.lat_jerk_cost
+                   , lcmMsg.velocity_limits
+                   , lcmMsg.lon_acceleration_limits
+                   , lcmMsg.lat_acceleration_limits)
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
@@ -163,7 +164,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     time = float
 
     def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float)->None
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, FrenetState2D, TrajectoryCostParams, float, int)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)
@@ -206,9 +207,8 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryParameters)->TrajectoryParams
         return cls(TrajectoryPlanningStrategy(lcmMsg.strategy)
-                 , GeneralizedFrenetSerretFrame.deserialize(lcmMsg.reference_route)
-                 , lcmMsg.target_state
-                 , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
-                 , lcmMsg.time
-                 , lcmMsg.bp_time)
-
+                   , GeneralizedFrenetSerretFrame.deserialize(lcmMsg.reference_route)
+                   , lcmMsg.target_state
+                   , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
+                   , lcmMsg.time
+                   , lcmMsg.bp_time)
