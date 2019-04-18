@@ -72,7 +72,8 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
             else:
                 predicted_ego_state = None
 
-            state = State(occupancy_state=state.occupancy_state,
+            state = State(is_sampled=False,
+                          occupancy_state=state.occupancy_state,
                           ego_state=predicted_ego_state,
                           dynamic_objects=predicted_dynamic_objects)
 
@@ -83,7 +84,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
                         action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[DynamicObject]]:
         """
-        Predicte the future of the specified objects, for the specified timestamps
+        Predict the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
         provided to enable flexibility in prediction given state knowledge
         :param object_ids: a list of ids of the specific objects to predict

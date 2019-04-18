@@ -269,24 +269,26 @@ class State(PUBSUB_MSG_IMPL):
     dynamic_objects = List[DynamicObject]
     ego_state = EgoState
 
-    def __init__(self, occupancy_state: OccupancyState, dynamic_objects: List[DynamicObject], ego_state: EgoState)-> None:
+    def __init__(self, is_sampled, occupancy_state, dynamic_objects, ego_state):
+        # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> None
         """
         main class for the world state. deep copy is required by self.clone_with!
+        :param is_sampled: indicates if this state is sampled from a trajectory (and wasn't received from state_module)
         :param occupancy_state: free space
         :param dynamic_objects:
         :param ego_state:
         """
+        self.is_sampled = is_sampled
         self.occupancy_state = occupancy_state
         self.dynamic_objects = dynamic_objects
         self.ego_state = ego_state
 
-    def clone_with(self, occupancy_state: OccupancyState = None, dynamic_objects: List[DynamicObject] = None,
-                   ego_state: EgoState = None):
+    def clone_with(self, is_sampled=None, occupancy_state=None, dynamic_objects=None, ego_state=None):
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
         """
-        return State(occupancy_state or self.occupancy_state,
+        return State(is_sampled if is_sampled is not None else self.is_sampled, occupancy_state or self.occupancy_state,
                      dynamic_objects if dynamic_objects is not None else self.dynamic_objects,
                      ego_state or self.ego_state)
 

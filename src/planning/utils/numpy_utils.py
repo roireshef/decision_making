@@ -57,6 +57,20 @@ class NumpyUtils:
         return np.logical_or(np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX]),
                              np.logical_or(np.isclose(arr, limits[LIMIT_MIN]), np.isclose(arr, limits[LIMIT_MAX])))
 
+    @staticmethod
+    def div(a: np.array, b: np.array):
+        """
+        simple numpy vision operation with handling of division by zero (in that case returns 0)
+        :param a: divided part
+        :param b: divisor
+        :return: a/b where b!=0, 0 otherwise
+        """
+        with np.errstate(divide='ignore', invalid='ignore'):
+            c = np.divide(a, b)
+            c[np.isinf(c)] = 0
+            c = np.nan_to_num(c)
+
+        return c
 
 class UniformGrid:
     """Lean version of a uniform grid (inclusive)"""

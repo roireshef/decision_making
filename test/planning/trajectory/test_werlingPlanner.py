@@ -68,7 +68,7 @@ def test_werlingPlanner_toyScenario_noException():
                                                cartesian_state=np.array([LON_MARGIN_FROM_EGO, 0, 0, v0, 0.0, 0.0]),
                                                size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT), confidence=1.0)
 
-    state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
+    state = State(is_sampled=False, occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
     cost_params = TrajectoryCostParams(left_lane_cost=SigmoidFunctionParams(10, 1.0, 1.0),
                                        right_lane_cost=SigmoidFunctionParams(10, 1.0, 1.0),
