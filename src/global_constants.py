@@ -98,6 +98,8 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-1.5, 1.5])
 
+# We use in BP more strict lateral acceleration threshold of kinematic filter than in TP:
+# BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS
 BP_LAT_ACC_STRICT_COEF = 0.9
 
 # Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
