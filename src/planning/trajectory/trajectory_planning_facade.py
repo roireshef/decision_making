@@ -4,8 +4,8 @@ import numpy as np
 import traceback
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, CartesianLimitsViolated, StateHasNotArrivedYet
@@ -58,13 +58,13 @@ class TrajectoryPlanningFacade(DmModule):
         self._started_receiving_states = False
 
     def _start_impl(self):
-        self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, None)
-        self.pubsub.subscribe(UC_SYSTEM_STATE_LCM, None)
+        self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS, None)
+        self.pubsub.subscribe(UC_SYSTEM_STATE, None)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
 
     def _stop_impl(self):
-        self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
-        self.pubsub.unsubscribe(UC_SYSTEM_STATE_LCM)
+        self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
+        self.pubsub.unsubscribe(UC_SYSTEM_STATE)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _periodic_action_impl(self):
@@ -136,7 +136,7 @@ class TrajectoryPlanningFacade(DmModule):
 
         except MsgDeserializationError:
             self.logger.warning("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
-                              traceback.format_exc())
+                                traceback.format_exc())
 
         # TODO - we need to handle this as an emergency.
         except CartesianLimitsViolated:
@@ -175,10 +175,10 @@ class TrajectoryPlanningFacade(DmModule):
         map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp_object)
 
         trajectory_plan = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,
-                                                        e_Cnt_version=0),
-                                        s_Data=DataTrajectoryPlan(s_Timestamp=timestamp_object, s_MapOrigin=map_origin,
-                                                                  a_TrajectoryWaypoints=waypoints,
-                                                                  e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
+                                                         e_Cnt_version=0),
+                                         s_Data=DataTrajectoryPlan(s_Timestamp=timestamp_object, s_MapOrigin=map_origin,
+                                                                   a_TrajectoryWaypoints=waypoints,
+                                                                   e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
 
         return trajectory_plan
 
@@ -202,7 +202,7 @@ class TrajectoryPlanningFacade(DmModule):
             if self._started_receiving_states:
                 # PubSub queue is empty after being non-empty for a while
                 raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_STATE_LCM)
+                                              UC_SYSTEM_STATE)
             else:
                 # Pubsub queue is empty since planning module is up
                 raise StateHasNotArrivedYet("Waiting for data from SceneProvider/StateModule")
@@ -218,7 +218,8 @@ class TrajectoryPlanningFacade(DmModule):
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
         scene_static = SceneStatic.deserialize(serialized_scene_static)
-        self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
+        self.logger.debug(
+            "%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
 
     def _get_mission_params(self) -> TrajectoryParams:
@@ -228,10 +229,10 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
+        is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS, timeout=1)
         if serialized_params is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed' %
-                                          UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
+                                          UC_SYSTEM_TRAJECTORY_PARAMS)
         trajectory_params = TrajectoryParams.deserialize(serialized_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, trajectory_params)
         return trajectory_params
@@ -276,7 +277,8 @@ class TrajectoryPlanningFacade(DmModule):
         """
         # TODO: add recipe to trajectory_params for goal's description
         # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = np.round(np.linspace(0, len(ctrajectories)-1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
+        alternative_ids_skip_range = np.round(
+            np.linspace(0, len(ctrajectories) - 1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
         # slice alternative trajectories by skipping indices - for visualization
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
 
@@ -303,6 +305,7 @@ class TrajectoryPlanningFacade(DmModule):
         trajectory_length = ctrajectories.shape[1]
         points_step = int(trajectory_length / MAX_NUM_POINTS_FOR_VIZ) + 1
         visualization_data = DataTrajectoryVisualization(
-            sliced_ctrajectories[:, :trajectory_length:points_step, :(C_Y+1)],  # at most MAX_NUM_POINTS_FOR_VIZ points
+            sliced_ctrajectories[:, :trajectory_length:points_step, :(C_Y + 1)],
+            # at most MAX_NUM_POINTS_FOR_VIZ points
             objects_visualizations, "")
         return TrajectoryVisualizationMsg(header, visualization_data)
