@@ -175,8 +175,17 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 @six.add_metaclass(ABCMeta)
 class ConstraintSpecFilter(ActionSpecFilter):
     """
-    A filter based on predefined constraint.
+    A filter based on a predefined constraint.
+     defined by:
+     (1) x-axis (select_points method)
+     (2) the function to test on these points (_target_function)
+     (3) the constraint function (_constraint_function)
+     (4) the condition function between target and constraints (_condition function)
 
+     Usage:
+        extend ConstraintSpecFilter class and implement the appropiate functions: (at least the four methods described
+        above).
+        To terminate the filter calculation use _raise_true/_raise_false  at any stage.
     """
 
     @abstractmethod
@@ -188,19 +197,6 @@ class ConstraintSpecFilter(ActionSpecFilter):
         """
         pass
 
-    def _raise_false(self):
-        """
-        Terminates the execution of the filter with a False value.
-        :return: None
-        """
-        raise ConstraintFilterPreConstraintValue(False)
-
-    def _raise_true(self):
-        """
-        Terminates the execution of the filter with a True value.
-        :return:
-        """
-        raise ConstraintFilterPreConstraintValue(True)
 
 
     @abstractmethod
@@ -236,6 +232,20 @@ class ConstraintSpecFilter(ActionSpecFilter):
         """
         pass
 
+    def _raise_false(self):
+        """
+        Terminates the execution of the filter with a False value.
+        :return: None
+        """
+        raise ConstraintFilterPreConstraintValue(False)
+
+    def _raise_true(self):
+        """
+        Terminates the execution of the filter with a True value.
+        :return:
+        """
+        raise ConstraintFilterPreConstraintValue(True)
+
     def _check_condition(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> bool:
         """
         Tests the condition defined by this filter
@@ -254,7 +264,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :param behavioral_state:
         :return:
         """
-        # TODO: Can we parallalize over the ActionSpecs?
+        # TODO: Can/Should we parallalize over the ActionSpecs?
         mask = []
         for action_spec in action_specs:
             try:
@@ -267,8 +277,8 @@ class ConstraintSpecFilter(ActionSpecFilter):
 
 class BeyondSpecLateralAccelerationFilter(ConstraintSpecFilter):
     """
-    Testing the constraint design with this extension.
-    Checks if it is possible to break from the goal to the end of the frenet frame
+    Testing the constraint filter design.
+    Checks if it is possible to break to desired lateral acceleration limit from the goal to the end of the frenet frame
 
     the following edge cases are treated by raise_true/false:
 
@@ -278,7 +288,6 @@ class BeyondSpecLateralAccelerationFilter(ConstraintSpecFilter):
     """
 
     def __init__(self):
-        super().__init__()
         predicate_folder = PREDICATES_FOLDER
         self.distances = BeyondSpecLateralAccelerationFilter._read_distances(predicate_folder)
 
@@ -356,13 +365,11 @@ class BeyondSpecLateralAccelerationFilter(ConstraintSpecFilter):
 
 class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
     """
-    A filter for actions that may arrive at location too fast
-    Checks if it's possible to break to the stop location
+    Filter for stop bar
     """
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
         """
-         raise_true if there is no sign
-         otherwise gets the action_spec.s index
+         TODO: raise_true if there is no sign. otherwise gets the action_spec.s index as the single point to be tested
 
         :param behavioral_state:
         :param action_spec:
@@ -373,7 +380,7 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                          points: np.ndarray) -> np.ndarray:
         """
-        TODO: the aggressive break distance to get to the stop sign
+        TODO: get the aggressive break distance to get to the stop sign. Similar to LateralAcceleration
         :param behavioral_state:
         :param action_spec:
         :param points:
@@ -395,144 +402,4 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
     def _condition(self, target_values, constraints_values) -> bool:
         return target_values <= constraints_values
 
-
-
-class FilterByLateralAcceleration(ActionSpecFilter):
-    def __init__(self, path: str):
-        self.distances = BeyondSpecLateralAccelerationFilter._read_distances(path)
-
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        """
-        Check violation of lateral acceleration for action_specs, and beyond action_specs check ability to brake
-        before all future curves using any static action.
-        :return: specs list that passed the lateral acceleration filter
-        """
-        # now check ability to break before future curves beyond the baseline specs' trajectories
-        filtering_res = [False] * len(action_specs)
-        for spec_idx, spec in enumerate(action_specs):
-            # this should be taken care of by the kineatic_filter
-            if spec is None:
-                continue
-
-            target_lane_frenet = behavioral_state.extended_lane_frames[spec.relative_lane]  # the target GFF
-            if spec.s >= target_lane_frenet.s_max:
-                continue
-            # get the Frenet point index near the goal action_spec.s
-            spec_s_point_idx = target_lane_frenet.get_index_on_frame_from_s(np.array([spec.s]))[0][0]
-            # find all Frenet points beyond spec.s, where velocity limit (by curvature) is lower then spec.v
-            beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
-            curvatures = np.maximum(np.abs(target_lane_frenet.k[beyond_spec_frenet_idxs, 0]), EPS)
-
-            points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
-            slow_points = np.where(points_velocity_limits < spec.v)[0]  # points that require braking after spec
-
-            # if all points beyond the spec have velocity limit higher than spec.v, so no need to brake
-            if len(slow_points) == 0:
-                filtering_res[spec_idx] = True
-                continue  # the spec passes the filter
-
-            # check the ability to brake beyond the spec for all points with limited velocity
-            is_able_to_brake = FilterByLateralAcceleration._check_ability_to_brake_beyond_spec(
-                spec, target_lane_frenet, beyond_spec_frenet_idxs[slow_points], points_velocity_limits[slow_points],
-                self.distances)
-
-            filtering_res[spec_idx] = is_able_to_brake
-
-        return filtering_res
-
-    @staticmethod
-    def check_lateral_acceleration_limits(action_specs: List[ActionSpec],
-                                          behavioral_state: BehavioralGridState) -> np.array:
-        """
-        check meeting of lateral acceleration limits for the given specs list
-        :param action_specs:
-        :param behavioral_state:
-        :return: bool array of size len(action_specs)
-        """
-        # group all specs and their indices by the relative lanes
-        specs_by_rel_lane = defaultdict(list)
-        indices_by_rel_lane = defaultdict(list)
-        for i, spec in enumerate(action_specs):
-            if spec is not None:
-                specs_by_rel_lane[spec.relative_lane].append(spec)
-                indices_by_rel_lane[spec.relative_lane].append(i)
-
-        time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], WERLING_TIME_RESOLUTION)
-        lateral_accelerations = np.zeros((len(action_specs), len(time_samples)))
-
-        # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
-        for rel_lane in specs_by_rel_lane.keys():
-            lane_specs = specs_by_rel_lane[rel_lane]
-            specs_t = np.array([spec.t for spec in lane_specs])
-            goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
-
-            # don't test lateral acceleration beyond spec.t, so set 0 for time_samples > spec.t
-            # create 2D time samples: a line for each spec with non-zero size according to spec.t
-            time_samples_2d = np.tile(time_samples, len(lane_specs)).reshape(len(lane_specs), len(time_samples))
-            for i, spec_samples in enumerate(time_samples_2d):
-                spec_samples[(int(specs_t[i] / WERLING_TIME_RESOLUTION) + 1):] = 0
-
-            frenet = behavioral_state.extended_lane_frames[rel_lane]  # the target GFF
-            ego_fstate = behavioral_state.projected_ego_fstates[rel_lane]
-            ego_fstates = np.tile(ego_fstate, len(lane_specs)).reshape((len(lane_specs), -1))
-
-            # calculate polynomial coefficients of the spec's Frenet trajectory for s axis
-            A_inv = QuinticPoly1D.inverse_time_constraints_tensor(specs_t)
-            poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, np.hstack(
-                (ego_fstates[:, FS_SX:FS_DX], goal_fstates[:, FS_SX:FS_DX])))
-
-            # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
-            ftrajectories_s = QuinticPoly1D.zip_polyval_with_derivatives(poly_coefs_s, time_samples_2d)
-
-            # calculate ftrajectories_s beyond spec.t
-            last_time_idxs = (np.maximum(specs_t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / WERLING_TIME_RESOLUTION).astype(int) + 1
-            for i, trajectory in enumerate(ftrajectories_s):
-                # calculate trajectory time index for t = max(specs_t[i], BP_ACTION_T_LIMITS[0])
-                # if spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, extrapolate trajectories between spec.t and
-                # MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-                if specs_t[i] < last_time_idxs[i]:
-                    spec_t_idx = int(specs_t[i] / WERLING_TIME_RESOLUTION) + 1
-                    times_beyond_spec = np.arange(spec_t_idx, last_time_idxs[i]) * WERLING_TIME_RESOLUTION - specs_t[
-                        i]
-                    trajectory[spec_t_idx:last_time_idxs[i]] = np.c_[
-                        lane_specs[i].s + times_beyond_spec * lane_specs[i].v,
-                        np.full(times_beyond_spec.shape, lane_specs[i].v),
-                        np.zeros_like(times_beyond_spec)]
-                # assign near-zero velocity to ftrajectories_s beyond last_time_idx
-                trajectory[last_time_idxs[i]:] = np.array([EPS, EPS, 0])
-
-            # assign zeros to the lateral movement of ftrajectories
-            ftrajectories = np.concatenate((ftrajectories_s, np.zeros_like(ftrajectories_s)), axis=-1)
-
-            # convert Frenet to cartesian trajectories
-            lane_center_ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories)
-
-            # calculate lateral accelerations
-            lateral_accelerations[np.array(indices_by_rel_lane[rel_lane])] = \
-                lane_center_ctrajectories[..., C_K] * lane_center_ctrajectories[..., C_V] ** 2
-
-        return NumpyUtils.is_in_limits(lateral_accelerations, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS).all(axis=-1)
-
-    @staticmethod
-    def _check_ability_to_brake_beyond_spec(action_spec: ActionSpec, frenet: GeneralizedFrenetSerretFrame,
-                                            frenet_points_idxs: np.array, vel_limit_in_points: np.array,
-                                            action_distances: np.array):
-        """
-        Given action spec and velocity limits on a subset of Frenet points, check if it's possible to brake enough
-        before arriving to these points. The ability to brake is verified using static actions distances.
-        :param action_spec: action specification
-        :param frenet: generalized Frenet Serret frame
-        :param frenet_points_idxs: array of indices of the Frenet frame points, having limited velocity
-        :param vel_limit_in_points: array of maximal velocities at frenet_points_idxs
-        :param action_distances: dictionary of distances of static actions
-        :return: True if the agent can brake before each given point to its limited velocity
-        """
-        # create constraints for static actions per point beyond the given spec
-        dist_to_points = frenet.get_s_from_index_on_frame(frenet_points_idxs, delta_s=0) - action_spec.s
-
-        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
-        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
-        brake_dist = action_distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
-                     FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
-        return (brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()
 
