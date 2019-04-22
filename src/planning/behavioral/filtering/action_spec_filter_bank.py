@@ -5,6 +5,7 @@ from collections import defaultdict
 
 import numpy as np
 from decision_making.src.exceptions import ConstraintFilterPreConstraintValue
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from typing import List
 
 import rte.python.profiler as prof
@@ -363,10 +364,23 @@ class BeyondSpecLateralAccelerationFilter(ConstraintSpecFilter):
         return (target_values < constraints_values).all()
 
 
-class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
+class StoppingAtLocationFilter(ConstraintSpecFilter):
     """
     Filter for stop bar
+
+    TODO: Use the name from scene_Static (TsSYS_StaticTrafficFlowControl)
+    TODO: Add the filter of when the stop_sign is on the way
+    TODO: Create base class for both
+    Assumptions:  Actions where the stop_sign in between location and goal are filtered.
     """
+
+    def _get_stop_bar_index_on_frenet(self):
+        """
+        Searches beyond the goal
+        :return:  -1  if no stop bar. Otherwise gets it from the SceneProvider
+        """
+        #MapUtils.get_static_traffic_flow_control(GeneralizedFrenetSerretFrame)
+
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
         """
          TODO: raise_true if there is no sign. otherwise gets the action_spec.s index as the single point to be tested
@@ -375,31 +389,45 @@ class ConstraintStoppingAtLocationFilter(ConstraintSpecFilter):
         :param action_spec:
         :return:
         """
-        pass
+        stop_bar_index = self._get_stop_bar_index_on_frenet()
+        if stop_bar_index == -1:
+            self._raise_true()
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
+        if action_spec.s >= target_lane_frenet.s_max:
+            self._raise_false()
+        # get the Frenet point index near the goal action_spec.s
+        spec_s_point_idx = target_lane_frenet.get_index_on_frame_from_s(np.array([action_spec.s]))[0][0]
+        beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
+        return beyond_spec_frenet_idxs[action_spec.s]
 
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                          points: np.ndarray) -> np.ndarray:
         """
-        TODO: get the aggressive break distance to get to the stop sign. Similar to LateralAcceleration
         :param behavioral_state:
         :param action_spec:
         :param points:
         :return:
         """
-        pass
+        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
+        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+        brake_dist = self.distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
+            FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0),
+            FILTER_V_T_GRID.get_index(0)]
+        return brake_dist
 
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                     points: np.ndarray) -> np.ndarray:
         """
-        TODO: Similar to the braking condition for lateral acceleration, assuming braking to 0
         :param behavioral_state:
         :param action_spec:
         :param points:
-        :return:
+        :return: The distance from the goal to the
         """
-        pass
+        # create constraints for static actions per point beyond the given spec
+        dist_to_points = self._get_stop_bar_index_on_frenet() - action_spec.s
+        return dist_to_points
 
     def _condition(self, target_values, constraints_values) -> bool:
-        return target_values <= constraints_values
+        return target_values < constraints_values
 
 

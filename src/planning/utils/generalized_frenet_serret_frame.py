@@ -40,10 +40,10 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
-                 segments_id: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
+                 segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
-        self._segments_id = segments_id
+        self._segments_id = segment_ids
         self._segments_s_start = segments_s_start
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
