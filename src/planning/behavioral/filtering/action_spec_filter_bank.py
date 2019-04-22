@@ -85,7 +85,7 @@ class FilterForKinematics(ActionSpecFilter):
 
             are_valid.append(is_valid_in_cartesian)
 
-        # TODO: remove - for debug only
+        # TODO: remove - for debug onlyADA
         had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
         valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
 
@@ -140,5 +140,61 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         # TODO: remove - for debug only
         had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
         valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
+
+        return are_valid
+
+
+class FilterForAccelerationTowardsSlowdown(ActionSpecFilter):
+    @prof.ProfileFunction()
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        """ The filter applies only for slowdown action specs (v[T] < v[0]).
+            Builds a baseline trajectory out of the slowdown action specs (v[T] < v[0]) and validates that the
+            longitudinal acceleration in Frenet doesn't increases.
+         """
+        are_valid = [True] * len(action_specs)
+        # extract all relevant information for boundary conditions
+        relative_lanes = np.array([spec.relative_lane for spec in action_specs])
+        initial_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
+        terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+
+        # select dynamic slowdown specs
+        is_dynamic = np.vectorize(lambda sp: isinstance(sp.recipe, DynamicActionRecipe))
+        slowdown_specs_idx, = np.where(np.logical_and(is_dynamic(action_specs),
+                                                      np.logical_and(initial_fstates[:, FS_SV] >
+                                                                     terminal_fstates[:, FS_SV],
+                                                                     (np.logical_not
+                                                                      (np.isclose(initial_fstates[:, FS_SV],
+                                                                                  (terminal_fstates[:, FS_SV])))))))
+
+        if not len(slowdown_specs_idx):
+            return are_valid
+        slowdown_specs = np.array(action_specs)[slowdown_specs_idx]
+        initial_accelerations = initial_fstates[:, FS_SA]
+
+        # find a jerk-optimal maneuver for each specs
+        constraints_s = np.concatenate((initial_fstates[slowdown_specs_idx, :(FS_SA+1)],
+                                        terminal_fstates[slowdown_specs_idx, :(FS_SA+1)]), axis=1)
+        T = np.array([spec.t for spec in slowdown_specs])
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T))
+        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+
+        # debug
+        initial_velocities = initial_fstates[slowdown_specs_idx, FS_SV]
+        terminal_velocities = terminal_fstates[slowdown_specs_idx, FS_SV]
+
+        # masks specs that their solution increases the acceleration
+        for poly_s, t, lane, spec, spec_idx, initial_acceleration, iv, tv in zip(poly_coefs_s, T, relative_lanes,
+                                                                                 slowdown_specs, slowdown_specs_idx,
+                                                                                 initial_accelerations,
+                                                                                 initial_velocities,
+                                                                                 terminal_velocities):
+            are_valid[spec_idx] = QuinticPoly1D.are_accelerations_in_limits(poly_s[np.newaxis, 0:],
+                                                                            np.array([t]),
+                                                                            np.array([float("-inf"),
+                                                                                      initial_acceleration]))[0][0]
+            if not are_valid[spec_idx]:
+                print("t: {}, initial velocity : {}, terminal velocity : {}, spec: {}, {}".format
+                      (behavioral_state.ego_state.timestamp_in_sec, iv, tv, spec.recipe.action_type,
+                       spec.recipe.aggressiveness))
 
         return are_valid

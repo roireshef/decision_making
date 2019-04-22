@@ -110,17 +110,17 @@ class Poly1D:
         :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
         :return: 1D numpy array of booleans where True means the restrictions are met.
         """
-        # a(0) and a(T) checks are omitted as they they are provided by the user.
+        # a(0) and a(T) checks are omitted as they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
         poly_der = Math.polyder2d(poly_coefs, m=degree+1)
         poly = Math.polyder2d(poly_coefs, m=degree)
 
         # TODO: implement tests for those cases
-        if poly_der.shape[-1] == 0: # No derivative - polynomial is constant
-            if poly.shape[-1] == 0: # Also polynomial is zero (null)
-                return NumpyUtils.is_in_limits(np.full((poly.shape[0], 1), 0), limits)
+        if poly_der.shape[-1] == 0:  # No derivative - polynomial is constant
+            if poly.shape[-1] == 0:  # Also polynomial is zero (null)
+                return np.array(NumpyUtils.is_in_limits(np.full((poly.shape[0], 1), 0), limits))
             else:
-                return NumpyUtils.is_in_limits(poly[:, 0], limits)
+                return np.array([NumpyUtils.is_in_limits(poly[:, 0], limits)])
         elif poly_der.shape[-1] == 1:  # 1st order derivative is constant - Polynomial is a*x+b
             # No need to test for t=0 (assuming it's valid), only t=T
             return NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits)

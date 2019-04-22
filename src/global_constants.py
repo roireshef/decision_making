@@ -59,7 +59,8 @@ OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects
 DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
-DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigm
+# oid)
 SHOULDER_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of going out-of-shoulder
 SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
@@ -74,8 +75,10 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
+
+
 # [m/sec] speed to plan towards by default in BP
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 30/3.6  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 VELOCITY_LIMITS = np.array([0.0, 100/3.6])
