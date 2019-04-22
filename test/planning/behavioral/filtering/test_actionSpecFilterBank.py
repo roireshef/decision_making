@@ -1,12 +1,18 @@
 import numpy as np
+from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
+from decision_making.src.planning.types import FS_SX
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 from unittest.mock import patch
 
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, StaticActionRecipe
+from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, StaticActionRecipe, ActionSpec, \
+    ActionRecipe, RelativeLane, ActionType, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, \
-    FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle
+    FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle, StaticTrafficFlowControlFilter, \
+    BeyondSpecStaticTrafficFlowControlFilter
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as FilterRecipeIfNone
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -20,7 +26,57 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, \
     state_with_objects_for_filtering_almost_tracking_mode, \
     behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode, \
-    state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes
+    state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
+    behavioral_grid_state_with_traffic_control, state_with_traffic_control
+
+def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control, scene_static):
+    ego_location = behavioral_grid_state_with_traffic_control.ego_state.map_state.lane_fstate[FS_SX]
+
+    gff = behavioral_grid_state_with_traffic_control.extended_lane_frames[RelativeLane.SAME_LANE]
+    gff_state = np.array([[ego_location + 12.0, 0., 0., 0., 0., 0.]])
+    lane_id, segment_states = gff.convert_to_segment_states(gff_state)
+    segment_s = segment_states[0][0]
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
+                                         e_Pct_confidence=1.0)
+    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+
+    filter = StaticTrafficFlowControlFilter()
+    t, v, s, d = 10, 20, ego_location + 40.0, 0
+    action_specs = [ActionSpec(t, v, s, d,
+                               ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
+    expected = [False]
+    assert actual == expected
+
+
+def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control, scene_static):
+
+    ego_location = behavioral_grid_state_with_traffic_control.ego_state.map_state.lane_fstate[FS_SX]
+    gff = behavioral_grid_state_with_traffic_control.extended_lane_frames[RelativeLane.SAME_LANE]
+
+    gff_stop_sign_location = ego_location + 42.0
+
+    gff_state = np.array([[gff_stop_sign_location, 0., 0., 0., 0., 0.]])
+    lane_id, segment_states = gff.convert_to_segment_states(gff_state)
+    segment_s = segment_states[0][0]
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
+                                         e_Pct_confidence=1.0)
+    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+
+    filter = BeyondSpecStaticTrafficFlowControlFilter()
+    t, v, s, d = 10, 20, gff_stop_sign_location - 2.0, 0
+    action_specs = [ActionSpec(t, v, s, d,
+                               ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
+    expected = [False]
+    assert actual == expected
+
+
+
 
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
@@ -74,6 +130,10 @@ def test_filter_closeToTrackingMode_allActionsAreValid(
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
 ]))
+
+
+
+
 def test_filter_trackingMode_allActionsAreValid(
         behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
