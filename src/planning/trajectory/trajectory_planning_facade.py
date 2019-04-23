@@ -205,7 +205,7 @@ class TrajectoryPlanningFacade(DmModule):
             if self._started_receiving_states:
                 # PubSub queue is empty after being non-empty for a while
                 raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_STATE_LCM)
+                                              UC_SYSTEM_STATE_LCM)
             else:
                 # Pubsub queue is empty since planning module is up
                 raise StateHasNotArrivedYet("Waiting for data from SceneProvider/StateModule")

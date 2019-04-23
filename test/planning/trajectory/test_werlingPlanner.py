@@ -46,8 +46,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     goal_pos = np.array([15, 0.005])
     goal_s = reference_route.cpoint_to_fpoint(goal_pos)[0]
-    goal = np.concatenate(
-        (goal_pos, reference_route.get_yaw(np.array([goal_s])), [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
+    goal = np.concatenate((goal_pos, reference_route.get_yaw(np.array([goal_s])), [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
 
     pos1 = np.array([7, -.5])
     yaw1 = 0
@@ -137,7 +136,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
-    ROAD_ID = 1
+    road_id = 1
     lane_width = 3.6
     num_lanes = 2
     road_width = num_lanes * lane_width
@@ -181,10 +180,10 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         # Create reference route (normal and extended). The extension is intended to prevent
         # overflow of projection on the ref route
-        route_points, ext_route_points, map = create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width,
-                                                                                   reference_route_latitude, lng, ext,
-                                                                                   curvature)
-        with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda: map):
+        route_points, ext_route_points, map = create_route_for_test_werlingPlanner(road_id, num_lanes, lane_width,
+                                                                              reference_route_latitude, lng, ext,
+                                                                              curvature)
+        with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda : map):
 
             frenet = FrenetSerret2DFrame.fit(ext_route_points[:, :2])
 
@@ -192,9 +191,8 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
                                                                v0, vT, start_ego_lat, goal_latitude)
 
-            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID,
-                                                                           ego_size=state.ego_state.size,
-                                                                           reference_route_latitude=reference_route_latitude)
+            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=road_id, ego_size=state.ego_state.size,
+                                                                          reference_route_latitude=reference_route_latitude)
 
             # run Werling planner
             planner = WerlingPlanner(logger, predictor)
@@ -450,10 +448,8 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
         T_d=1.0,
         T_extended=1.5,
         frenet_frame=frenet,
-        poly_s_coefs=np.array(
-            [-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),
-        poly_d_coefs=np.array(
-            [-1.44408865e+01, 3.62482582e+01, -2.42818417e+01, -3.62145365e-02, 1.03423064e-02, 5.01250837e-01])
+        poly_s_coefs=np.array([-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),
+        poly_d_coefs=np.array([-1.44408865e+01, 3.62482582e+01, -2.42818417e+01, -3.62145365e-02, 1.03423064e-02, 5.01250837e-01])
     )
 
     fstate_terminal = frenet.cstate_to_fstate(trajectory.sample(

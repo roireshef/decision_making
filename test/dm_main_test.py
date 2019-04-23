@@ -70,7 +70,6 @@ def main():
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
             DmProcess(DmInitialization.create_trajectory_planner,
-            # DmProcess(DmMockInitialization.create_trajectory_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]

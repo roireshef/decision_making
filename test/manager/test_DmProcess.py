@@ -16,14 +16,13 @@ from decision_making.test.planning import custom_fixtures
 def create_behavioral_planner() -> BehavioralPlanningFacade:
 
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
-    trajectory_params = None
-    behavioral_visualization_msg = None
 
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
-    behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trajectory_params=trajectory_params,
-                                             visualization_msg=behavioral_visualization_msg, trigger_pos=None)
+    behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trigger_pos=None, trajectory_params=None,
+                                             visualization_msg=None)
     return behavioral_module
+
 
 @pytest.fixture()
 def dm_process():

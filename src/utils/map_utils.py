@@ -47,7 +47,6 @@ class MapUtils:
         :param lane_id:
         :return: lane's ordinal
         """
-        # TODO: extract ordinal from lane_id numerically (lowest hexadecimal digit)
         return MapUtils.get_lane(lane_id).e_Cnt_right_adjacent_lane_count
 
     @staticmethod
@@ -120,16 +119,6 @@ class MapUtils:
         if len(left_lanes) > 0:
             relative_lane_ids[RelativeLane.LEFT_LANE] = left_lanes[0]
         return relative_lane_ids
-
-    @staticmethod
-    def _get_all_middle_lanes():
-        """
-        Returns the middle lane of each road segment.
-        :return:
-        """
-        lanes_per_roads = [MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-                           for road_segment_id in MapUtils.get_road_segment_ids()]
-        return [lanes[int(len(lanes) / 2)] for lanes in lanes_per_roads]
 
     @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D) -> int:
@@ -211,24 +200,6 @@ class MapUtils:
                                          NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s))
         return (nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
                 -nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
-
-    @staticmethod
-    def get_dist_to_road_borders(lane_id: int, s: float) -> (float, float):
-        """
-         Get distance from the lane center to the road borders at given longitude from the lane's origin
-        :param lane_id:
-        :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
-        :return: distance from the right road border, distance from the left road border
-        """
-        # TODO: Currently assuming that s is consistent across all lanes.
-
-        right_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.RIGHT_LANE)
-        left_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE)
-        right_distance = np.sum([MapUtils.get_dist_to_lane_borders(right_lane, s) for right_lane in right_lanes])
-        left_distance = np.sum([MapUtils.get_dist_to_lane_borders(left_lane, s) for left_lane in left_lanes])
-        right_from_lane, left_from_lane = MapUtils.get_dist_to_lane_borders(lane_id, s)
-
-        return right_from_lane + right_distance, left_from_lane + left_distance
 
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:
@@ -433,7 +404,6 @@ class MapUtils:
     @raises(RoadNotFound)
     def get_road_segment(road_id: int) -> SceneRoadSegment:
         """
-
         Retrieves road by road_id  according to the last message
         :param road_id:
         :return:

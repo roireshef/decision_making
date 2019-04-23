@@ -72,7 +72,7 @@ class DmInitialization:
         return state_module
 
     @staticmethod
-    def create_navigation_planner(map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
+    def create_navigation_planner(map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
@@ -109,7 +109,7 @@ class DmInitialization:
         return behavioral_module
 
     @staticmethod
-    def create_trajectory_planner(map_file: str=DEFAULT_MAP_FILE) -> TrajectoryPlanningFacade:
+    def create_trajectory_planner(map_file: str = DEFAULT_MAP_FILE) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()

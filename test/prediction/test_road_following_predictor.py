@@ -12,6 +12,7 @@ from decision_making.test.prediction.conftest import road_following_predictor, i
 from decision_making.test.prediction.utils import Utils
 from mapping.test.model.testable_map_fixtures import map_api_mock
 
+
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_PredictObjects_StraightRoad_AccuratePrediction(road_following_predictor: EgoAwarePredictor,
                                                         init_state: State, prediction_timestamps: np.ndarray,
@@ -19,8 +20,8 @@ def test_PredictObjects_StraightRoad_AccuratePrediction(road_following_predictor
                                                         ego_samplable_trajectory: SamplableTrajectory):
 
     predicted_objects = road_following_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
-                                                  prediction_timestamps=prediction_timestamps,
-                                                  action_trajectory=ego_samplable_trajectory)
+                                                                 prediction_timestamps=prediction_timestamps,
+                                                                 action_trajectory=ego_samplable_trajectory)
 
     actual_num_predictions = len(predicted_objects[DYNAMIC_OBJECT_ID])
     expected_num_predictions = len(prediction_timestamps)
@@ -32,7 +33,7 @@ def test_PredictObjects_StraightRoad_AccuratePrediction(road_following_predictor
     for actual_predicted_object in predicted_objects[DYNAMIC_OBJECT_ID]:
         assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[timestamp_ind])
         Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_object,
-                                                        predicted_dyn_object_states_road_yaw[timestamp_ind])
+                                                            predicted_dyn_object_states_road_yaw[timestamp_ind])
         timestamp_ind += 1
 
 
@@ -43,8 +44,8 @@ def test_PredictState_StraightRoad_AccuratePrediction(road_following_predictor: 
                                                       ego_samplable_trajectory: SamplableTrajectory):
 
     predicted_states = road_following_predictor.predict_state(state=init_state,
-                                               prediction_timestamps=prediction_timestamps,
-                                               action_trajectory=ego_samplable_trajectory)
+                                                              prediction_timestamps=prediction_timestamps,
+                                                              action_trajectory=ego_samplable_trajectory)
 
     actual_num_predictions = len(predicted_states)
     expected_num_predictions = len(prediction_timestamps)
@@ -71,11 +72,9 @@ def test_PredictObjects_StraightRoad_NoCartesian(road_following_predictor: EgoAw
                                                  predicted_dyn_object_states_road_yaw: List[DynamicObject],
                                                  ego_samplable_trajectory: SamplableTrajectory):
 
-
-
     with patch(CARTESIAN_CREATION) as cartesian_creation_mock:
         _ = road_following_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
-                                                      prediction_timestamps=prediction_timestamps,
-                                                      action_trajectory=ego_samplable_trajectory)
+                                                     prediction_timestamps=prediction_timestamps,
+                                                     action_trajectory=ego_samplable_trajectory)
 
         cartesian_creation_mock.assert_not_called()
