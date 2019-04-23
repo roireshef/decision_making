@@ -29,7 +29,7 @@ def dm_process():
     # Initializations
 
     dm_process_behavioral = DmProcess(create_behavioral_planner, trigger_type=DmTriggerType.DM_TRIGGER_NONE,
-                                      trigger_args={})
+                                      trigger_args={}, name='BP')
 
     dm_process_behavioral.start_process()
 
@@ -42,7 +42,7 @@ def dm_process():
 # Integration test
 def test_StartProcess_SanityCheck_ValidResult(dm_process):
 
-    expected_module_name = "create_behavioral_planner"
+    expected_module_name = 'BP'
 
     assert dm_process.name == expected_module_name
     assert dm_process.process.is_alive()
