@@ -108,7 +108,6 @@ class DmLogParser:
             if tp_impl_time_match is not None:
                 tp_impl_times.append(float(tp_impl_time_match.groups()[2]))
 
-
         return bp_impl_times, tp_impl_times
 
     @staticmethod

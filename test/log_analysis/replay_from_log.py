@@ -20,9 +20,9 @@ from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
-#LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
 LOG_PATH_FOR_ANALYSIS = '/home/xzjsyy/av_code/spav/logs/AV_Log_dm_main.log'
 TARGET_LOG_TIME = 57906.0
+
 
 # TODO: Remove temporary TP facade. used only to bypass the Lcm Ser/Deser methods
 class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
@@ -137,6 +137,7 @@ def main():
     try:
         execute_tp(state_serialized=tp_state_serialized, tp_params_serialized=tp_params_serialized)
         assert True
+
     except Exception as e:
         assert False
 

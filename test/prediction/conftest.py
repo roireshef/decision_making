@@ -3,9 +3,8 @@ from typing import List
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, C_V
+from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -264,6 +263,7 @@ def predicted_dynamic_ego_states(predicted_ego_cartesian_state_0: CartesianExten
     ]
 
     yield ego_states
+
 
 @pytest.fixture(scope='function')
 def ego_samplable_trajectory(static_cartesian_state: CartesianExtendedState) -> SamplableTrajectory:

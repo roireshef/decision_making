@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, A
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.math_utils import Math
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from logging import Logger
 from sklearn.utils.extmath import cartesian

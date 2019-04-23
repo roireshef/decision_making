@@ -1,29 +1,24 @@
+from decision_making.src.planning.navigation.default_config import NAVIGATION_PLAN_OVAL_TRACK
 from os import getpid
 
-import numpy as np
-
 from decision_making.src import global_constants
-from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, DEFAULT_MAP_FILE
+from decision_making.src.dm_main import DmInitialization, DEFAULT_MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, \
     FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN, STATE_MODULE_NAME_FOR_LOGGING
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.trajectory_parameters import TrajectoryParams
-from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import C_Y, C_X, CartesianExtendedTrajectory
+from decision_making.src.planning.types import C_Y
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
-from decision_making.src.state.state import ObjectSize, OccupancyState
 from decision_making.src.state.state_module import StateModule
 from decision_making.test import constants
-from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME, BP_MOCK_FIXED_SPECS
+from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
 from decision_making.test.utils_for_tests import Utils
@@ -32,14 +27,18 @@ from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from decision_making.src.infra.pubsub import PubSub
 
+
 class DmMockInitialization:
 
     @staticmethod
-
-    #The purpose of this initialization is to generate a state module holding an initial empty list of dyanmic object.
-    #The purpose here is to continuousely publish localization (as long as it is available from the IMU) wihtout waiting
-    #for a dynamic object update.
     def create_state_module(map_file: str) -> StateModule:
+        """
+        The purpose of this initialization is to generate a state module holding an initial empty list of dynamic object.
+        The purpose here is to continuously publish localization (as long as it is available from the IMU) without waiting
+        for a dynamic object update.
+        :param map_file:
+        :return:
+        """
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
@@ -77,8 +76,7 @@ class DmMockInitialization:
         return trajectory_planning_module
 
 
-
-def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
+def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN_OVAL_TRACK):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.

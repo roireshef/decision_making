@@ -6,7 +6,6 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STA
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
@@ -25,7 +24,7 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import map_api_mock, short_map_api_mock
+from mapping.test.model.testable_map_fixtures import short_map_api_mock
 
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
@@ -43,7 +42,6 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         state_module: StateModule,
                                                                         short_testable_map_api):
-
 
     short_scene_static = create_scene_static_from_map_api(short_testable_map_api)
     SceneStaticModel.get_instance().set_scene_static(short_scene_static)

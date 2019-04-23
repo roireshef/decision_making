@@ -79,11 +79,9 @@ def test_PredictObjects_StraightRoad_NoCartesian(constant_velocity_predictor: Ma
                                                  predicted_dyn_object_states_road_yaw: List[DynamicObject],
                                                  ego_samplable_trajectory: SamplableTrajectory):
 
-
-
     with patch(CARTESIAN_CREATION) as cartesian_creation_mock:
         _ = constant_velocity_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
-                                                      prediction_timestamps=prediction_timestamps,
-                                                      action_trajectory=ego_samplable_trajectory)
+                                                        prediction_timestamps=prediction_timestamps,
+                                                        action_trajectory=ego_samplable_trajectory)
 
         cartesian_creation_mock.assert_not_called()

@@ -1,8 +1,7 @@
 import numpy as np
 
 from decision_making.src.global_constants import VELOCITY_LIMITS
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D, \
-    QuarticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 
 
 def test_optimalControlUtils_validPolynomZeroToZero_returnsTrue():

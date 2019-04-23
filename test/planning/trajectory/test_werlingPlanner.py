@@ -138,7 +138,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
-    ROAD_ID = 1
+    road_id = 1
     lane_width = 3.6
     num_lanes = 2
     road_width = num_lanes * lane_width
@@ -159,7 +159,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             curvature = 0.2
 
         if test_idx < 40:  # test safety vs deviations vs goal, and consistency for small changes
-            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx%20)*0.2])])
+            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx % 20)*0.2])])
             goal_latitude = lane_width / 2
         else:  # test jerk vs. goal
             obs_poses = np.array([])
@@ -183,7 +183,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         # Create reference route (normal and extended). The extension is intended to prevent
         # overflow of projection on the ref route
-        route_points, ext_route_points, map = create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width,
+        route_points, ext_route_points, map = create_route_for_test_werlingPlanner(road_id, num_lanes, lane_width,
                                                                               reference_route_latitude, lng, ext,
                                                                               curvature)
         with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda : map):
@@ -194,7 +194,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
                                                                v0, vT, start_ego_lat, goal_latitude)
 
-            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
+            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=road_id, ego_size=state.ego_state.size,
                                                                           reference_route_latitude=reference_route_latitude)
 
             # run Werling planner
