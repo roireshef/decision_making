@@ -46,7 +46,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
 
-        ego_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(state.ego_state.cartesian_state)
+        ego_frenet_state: FrenetState2D = projected_obj_fstates[state.ego_state.obj_id]
 
         # define constraints for the initial state
         fconstraints_t0 = FrenetConstraints.from_state(ego_frenet_state)

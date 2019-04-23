@@ -129,7 +129,7 @@ class TrajectoryPlanningFacade(DmModule):
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
                 state, ctrajectories, max(T_target_horizon, T_trajectory_end_horizon),
-                self._strategy_handlers[params.strategy].predictor, params.reference_route)
+                self._strategy_handlers[params.strategy].predictor, params.reference_route, projected_obj_fstates)
 
             self._publish_debug(debug_results)
 
@@ -161,9 +161,9 @@ class TrajectoryPlanningFacade(DmModule):
         :param reference_route: GFF to project on
         :return: dictionary from obj_id to its projected map_states on the reference route
         """
-        projected_obj_fstates = {}
-        projected_state = copy.deepcopy(state)
-        for obj in projected_state.dynamic_objects:
+        projected_obj_fstates = dict()
+        projected_obj_fstates[state.ego_state.obj_id] = reference_route.cstate_to_fstate(state.ego_state.cartesian_state)
+        for obj in state.dynamic_objects:
             try:
                 projected_obj_fstates[obj.obj_id] = reference_route.cstate_to_fstate(obj.cartesian_state)
             except Exception:  # too far object
@@ -282,9 +282,9 @@ class TrajectoryPlanningFacade(DmModule):
 
     @staticmethod
     @prof.ProfileFunction()
-    def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
-                                   planning_horizon: float, predictor: EgoAwarePredictor,
-                                   reference_route: GeneralizedFrenetSerretFrame) -> TrajectoryVisualizationMsg:
+    def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories, planning_horizon: float,
+                                   predictor: EgoAwarePredictor, reference_route: GeneralizedFrenetSerretFrame,
+                                   projected_obj_fstates: np.array) -> TrajectoryVisualizationMsg:
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
@@ -305,7 +305,7 @@ class TrajectoryPlanningFacade(DmModule):
         # visualize objects' predictions
         # TODO: create 3 GFFs in TP and convert objects' predictions on them
         objects_visualizations = []
-        for obj_id, obj_fstate in objects_fstates.items():
+        for obj_id, obj_fstate in projected_obj_fstates.items():
             obj_fpredictions = predictor.predict_2d_frenet_states(np.array([obj_fstate]),
                                                                   prediction_horizons)[0][:, [FS_SX, FS_DX]]
             # skip objects having predictions out of reference_route
