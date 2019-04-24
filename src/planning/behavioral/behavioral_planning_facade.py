@@ -46,9 +46,9 @@ class BehavioralPlanningFacade(DmModule):
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
-        self.pubsub.subscribe(UC_SYSTEM_STATE, None)
-        self.pubsub.subscribe(UC_SYSTEM_NAVIGATION_PLAN, None)
-        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
+        self.pubsub.subscribe(UC_SYSTEM_STATE)
+        self.pubsub.subscribe(UC_SYSTEM_NAVIGATION_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):

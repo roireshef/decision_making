@@ -17,7 +17,7 @@ class PubSubMock(PubSub):
     def __del__(self):
         pass
 
-    def subscribe(self, topic, callback, message_type = None, max_data_samples = 10) -> None:
+    def subscribe(self, topic, callback = None, message_type = None, max_data_samples = 10) -> None:
         """Set a callback on a topic"""
         if callback is not None:
             self.topic_callback_mapping[topic].append(callback)
