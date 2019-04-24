@@ -1,20 +1,18 @@
+import copy
+
 import numpy as np
-import os
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.paths import Paths
 from decision_making.src.exceptions import ConstraintFilterPreConstraintValue
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
-    PREDICATES_FOLDER
+    FILTER_V_0_GRID, FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.global_constants import SAFETY_HEADWAY
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, StaticActionRecipe, AggressivenessLevel, ActionType, RelativeLane
+    RelativeLongitudinalPosition, StaticActionRecipe, AggressivenessLevel, RelativeLane
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -262,7 +260,6 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :param behavioral_state:
         :return:
         """
-        # TODO: Can/Should we parallalize over the ActionSpecs?
         mask = []
         for action_spec in action_specs:
             try:
@@ -280,6 +277,23 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
     A class with additional access to beyond spec indecis
     """
 
+    @staticmethod
+    def extend_action_specs(action_specs: List[ActionSpec]):
+        min_action_time = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+        extended_specs = []
+        # TODO: Replace for with list comprehension
+        for spec in action_specs:
+            if spec.t < min_action_time:
+                extended_spec = copy.copy(spec)
+                extended_spec.s += (min_action_time - spec.t) * spec.v
+                extended_specs.append(extended_spec)
+            else:
+                extended_specs.append(spec)
+        return extended_specs
+
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        return super().filter(BeyondSpecConstraintFilter.extend_action_specs(action_specs), behavioral_state)
+
     def _get_beyond_spec_frenet_idxs(self, action_spec, behavioral_state):
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         if action_spec.s >= target_lane_frenet.s_max:
@@ -289,7 +303,6 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
         # find all Frenet points beyond spec.s, where velocity limit (by curvature) is lower then spec.v
         beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
         return beyond_spec_frenet_idxs
-
 
 
 class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
@@ -305,26 +318,7 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
     """
 
     def __init__(self):
-        predicate_folder = PREDICATES_FOLDER
-        self.distances = BeyondSpecLateralAccelerationFilter._read_distances(predicate_folder)
-
-    @staticmethod
-    def _read_distances(path):
-        """
-        This method reads maps from file into a dictionary mapping a tuple of (action_type,weights) to a LUT.
-        :param path: The directory holding all maps (.npy files)
-        :return: a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
-        """
-        directory = Paths.get_resource_absolute_path_filename(path)
-        distances = {}
-        for filename in os.listdir(directory):
-            if filename.endswith(".npy"):
-                predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (path, filename))
-                action_type = filename.split('.bin')[0].split('_distances')[0]
-                wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
-                          float(filename.split('.bin')[0].split('_')[6])]
-                distances[(action_type, wT, wJ)] = np.load(file=predicate_path)
-        return distances
+        self.distances = BreakingDistances.create_braking_distances()
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
         """
@@ -336,9 +330,16 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         if action_spec is None:
             self._raise_false()
 
-        points_velocity_limits, beyond_spec_frenet_idxs = self._get_velocity_limits_of_points(action_spec,
+        # in case of too short spec extend it to MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+        extended_spec = copy.copy(action_spec)
+        min_action_time = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+        if action_spec.t < min_action_time:
+            extended_spec.t = min_action_time
+            extended_spec.s += (min_action_time - action_spec.t) * action_spec.v
+
+        points_velocity_limits, beyond_spec_frenet_idxs = self._get_velocity_limits_of_points(extended_spec,
                                                                                               behavioral_state)
-        slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
+        slow_points = np.where(points_velocity_limits < extended_spec.v)[0]  # points that require braking after spec
         # set edge case
         if len(slow_points) == 0:
             self._raise_true()
@@ -346,15 +347,19 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
 
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: np.ndarray) \
             -> np.ndarray:
-        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
+        """
+        The braking distance required by using the CALM aggressiveness level for slow points.
+        :param behavioral_state:
+        :param action_spec:
+        :param points:
+        :return:
+        """
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
-        brake_dist = self.distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
-                     FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
+        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
 
         points_velocity_limits, _ = self._get_velocity_limits_of_points(action_spec, behavioral_state)
         slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
         vel_limit_in_points = points_velocity_limits[slow_points]
-
         return brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)]
 
     def _get_velocity_limits_of_points(self, action_spec, behavioral_state):
@@ -382,22 +387,18 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
     """
     Checks if there is  a stop bar between ego and the goal
     """
-
-    def _has_stop_bar_until_goal(self, action_spec: ActionSpec, behavioral_state: BehavioralGridState):
+    @staticmethod
+    def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState):
 
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         stop_bar_locations = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
-   #     if len(stop_bar_locations) > 0:
-   #         print(f'stop_bar_locations:{stop_bar_locations} ego_location: {ego_location} action_spec:{action_spec.s}')
-   #         print(f'(ego_location <= stop_bar_locations < action_spec.s): {(ego_location <= stop_bar_locations < action_spec.s)}')
-
         return (ego_location <= stop_bar_locations < action_spec.s).any()
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         valid_specs = []
         for action_spec in action_specs:
-            valid_specs.append(not self._has_stop_bar_until_goal(action_spec, behavioral_state))
+            valid_specs.append(not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state))
             print(f'StaticTrafficFlowControlFilter  v:{action_spec.v:.2f},  value:{valid_specs[-1]} '
                   f'ego_location:{behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]:.2f} '
                   f'stop_bar_location:{MapUtils.get_static_traffic_flow_controls_s(behavioral_state.extended_lane_frames[action_spec.relative_lane])}'
@@ -412,9 +413,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
     Assumptions:  Actions where the stop_sign in between location and goal are filtered.
     """
     def __init__(self):
-        # TODO:  Remove this  or use it's own
-        #predicate_folder = PREDICATES_FOLDER
-        self.distances = BreakingDistances.create_braking_distances()#._read_distances(predicate_folder)
+        self.distances = BreakingDistances.create_braking_distances()
 
     def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> int:
         stop_bars = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
@@ -446,7 +445,6 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         """
         # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
-        #brake_dist = self.distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
         brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v),FILTER_V_T_GRID.get_index(0)]
         return brake_dist
 
@@ -470,10 +468,11 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
 
 
 class BreakingDistances:
-
-
+    """
+    Calculates  breaking distances
+    """
     @staticmethod
-    def create_braking_distances() -> np.array:
+    def create_braking_distances(aggresiveness_level=AggressivenessLevel.CALM.value) -> np.array:
         """
         Creates distances of all follow_lane CALM braking actions with a0 = 0
         :return: the actions' distances
@@ -482,7 +481,7 @@ class BreakingDistances:
         v0, vT = np.meshgrid(FILTER_V_0_GRID.array, FILTER_V_T_GRID.array, indexing='ij')
         v0, vT = np.ravel(v0), np.ravel(vT)
         # calculate distances for braking actions
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggresiveness_level]
         distances = np.zeros_like(v0)
         distances[v0 > vT] = BreakingDistances._calc_actions_distances_for_given_weights(w_T, w_J, v0[v0 > vT], vT[v0 > vT])
         return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
