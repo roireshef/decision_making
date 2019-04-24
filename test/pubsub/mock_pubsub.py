@@ -1,8 +1,8 @@
 from collections import defaultdict
 from logging import Logger
-from typing import Dict, List
 
 from decision_making.src.infra.pubsub import PubSub
+
 
 class PubSubMock(PubSub):
     def __init__(self, logger):

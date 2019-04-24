@@ -285,6 +285,7 @@ class State(PUBSUB_MSG_IMPL):
         self.ego_state = ego_state
 
     def clone_with(self, is_sampled=None, occupancy_state=None, dynamic_objects=None, ego_state=None):
+        # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> State
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!

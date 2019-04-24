@@ -24,7 +24,7 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import map_api_mock, short_map_api_mock
+from mapping.test.model.testable_map_fixtures import short_map_api_mock
 
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
@@ -42,7 +42,6 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         state_module: StateModule,
                                                                         short_testable_map_api):
-
 
     short_scene_static = create_scene_static_from_map_api(short_testable_map_api)
     SceneStaticModel.get_instance().set_scene_static(short_scene_static)

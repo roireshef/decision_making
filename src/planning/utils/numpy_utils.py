@@ -72,6 +72,7 @@ class NumpyUtils:
 
         return c
 
+
 class UniformGrid:
     """Lean version of a uniform grid (inclusive)"""
     def __init__(self, limits: Limits, resolution: float):
