@@ -34,6 +34,7 @@ import rte.python.profiler as prof
 def patch_scene_static(lane_id=58369795, s=75):
     """
     Patches the scene_static message with a stop sign
+    This is a temporary patch. To be removed when stop signs are available on SceneProvider
     :param lane_id:
     :param s:
     :return:
