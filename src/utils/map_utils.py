@@ -122,6 +122,15 @@ class MapUtils:
             relative_lane_ids[RelativeLane.LEFT_LANE] = left_lanes[0]
         return relative_lane_ids
 
+    def _get_all_middle_lanes():
+        """
+        Returns the middle lane of each road segment.
+        :return:
+        """
+        lanes_per_roads = [MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+                           for road_segment_id in MapUtils.get_road_segment_ids()]
+        return [lanes[int(len(lanes) / 2)] for lanes in lanes_per_roads]
+
     @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D) -> int:
         """
@@ -384,8 +393,12 @@ class MapUtils:
         while total_dist < backward_dist:
             prev_lane_ids = MapUtils.get_upstream_lanes(prev_lane_id)
             if len(prev_lane_ids) == 0:
+                # TODO: the lane can actually have no upstream; should we continue with the exisiting path instead of
+                #   raising exception, if total_dist > TBD
                 raise UpstreamLaneNotFound(
                     "MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % (prev_lane_id))
+            # TODO: in case there are multiple upstreams, choose the one which is in the route plan's road segment
+            # TODO: how to choose between multiple upstreams if all of them belong to route plan road segment
             prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
             total_dist += MapUtils.get_lane_length(prev_lane_id)
