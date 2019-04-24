@@ -1,3 +1,4 @@
+from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from logging import Logger
@@ -48,7 +49,10 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         terminal_velocities = np.unique([recipe.velocity for i, recipe in enumerate(action_recipes)
                                          if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
                                          and recipe.relative_lane == RelativeLane.SAME_LANE])
-        maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
+        try:
+            maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
+        except ValueError:
+            raise NoActionsLeftForBPError()
 
         # find the most calm same-lane static action with the maximal existing velocity
         follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)

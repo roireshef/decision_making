@@ -462,7 +462,6 @@ class MapUtils:
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
                 stations.append(static_traffic_flow_control.e_l_station)
-
         return lane_frenet.convert_s_from_segments(stations, lane_ids)
 
 

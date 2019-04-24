@@ -139,7 +139,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     def convert_s_from_segments(self, frenet_s: np.array, segment_ids: NumpyIndicesArray) -> np.array:
         """
-        Translate into GFF S
+        Translate into GFF longitudinal frenet
         :param frenet_s:
         :param segment_ids:
         :return:

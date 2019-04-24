@@ -1,5 +1,6 @@
 import time
 import traceback
+from decision_making.src.utils.map_utils import MapUtils
 from logging import Logger
 
 import numpy as np
@@ -16,7 +17,7 @@ from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTP
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, RoadObjectType
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
@@ -28,6 +29,13 @@ from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
+
+
+def patch_scene_static(lane_id, s):
+    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=s,
+                                         e_Pct_confidence=1.0)
+    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+
 
 
 class BehavioralPlanningFacade(DmModule):
@@ -69,6 +77,17 @@ class BehavioralPlanningFacade(DmModule):
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
+
+            patch_scene_static(58369795, 75)
+
+            #MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id).fpoint_to_cpoint([75,0])
+
+
+
+            print(f'* located at lane:{state.ego_state.map_state.lane_id}'
+                  f' with s:{state.ego_state.map_state.lane_fstate[0]} and'
+                  f' beyond_stop_bar: {state.ego_state.map_state.lane_fstate[0]>75}')
+
 
             with prof.time_range('BP-IF'):
                 # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
