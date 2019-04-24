@@ -268,6 +268,7 @@ class State(PUBSUB_MSG_IMPL):
     occupancy_state = OccupancyState
     dynamic_objects = List[DynamicObject]
     ego_state = EgoState
+    is_sampled = bool
 
     def __init__(self, is_sampled, occupancy_state, dynamic_objects, ego_state):
         # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> None
@@ -295,6 +296,8 @@ class State(PUBSUB_MSG_IMPL):
     def serialize(self):
         # type: () -> TsSYSState
         pubsub_msg = TsSYSState()
+
+        pubsub_msg.e_b_isSampled = self.is_sampled
         pubsub_msg.s_OccupancyState = self.occupancy_state.serialize()
         ''' resize the list at once to the right length '''
         pubsub_msg.e_Cnt_NumOfObjects = len(self.dynamic_objects)
@@ -310,7 +313,8 @@ class State(PUBSUB_MSG_IMPL):
         dynamic_objects = list()
         for i in range(pubsubMsg.e_Cnt_NumOfObjects):
             dynamic_objects.append(DynamicObject.deserialize(pubsubMsg.s_DynamicObjects[i]))
-        return cls(OccupancyState.deserialize(pubsubMsg.s_OccupancyState)
+        return cls(pubsubMsg.e_b_isSampled
+                   , OccupancyState.deserialize(pubsubMsg.s_OccupancyState)
                    , dynamic_objects
                    , EgoState.deserialize(pubsubMsg.s_EgoState))
 
