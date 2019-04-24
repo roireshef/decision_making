@@ -10,7 +10,8 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -230,7 +231,7 @@ class CostBasedBehavioralPlanner:
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
                                            lon_jerk_cost=LON_JERK_COST_WEIGHT,
                                            lat_jerk_cost=LAT_JERK_COST_WEIGHT,
-                                           velocity_limits=VELOCITY_LIMITS,
+                                           velocity_limits=np.array([0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]),
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
 

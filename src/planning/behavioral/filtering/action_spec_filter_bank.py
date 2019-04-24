@@ -3,7 +3,7 @@ from typing import List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    SAFETY_HEADWAY
+    SAFETY_HEADWAY, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -64,7 +64,7 @@ class FilterForKinematics(ActionSpecFilter):
             # degree), so we clip the first zero coefficients and send a polynomial with lower degree
             first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
             is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
-                                                                                     LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
+                                                                                     LON_ACC_LIMITS, np.array([0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]), frenet_frame.s_limits)[0]
 
             # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
             # we can save time by not checking cartesian limits
@@ -81,7 +81,8 @@ class FilterForKinematics(ActionSpecFilter):
 
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+                                                                              np.array([0,
+                                                                                        BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]), LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
 
             are_valid.append(is_valid_in_cartesian)
 
