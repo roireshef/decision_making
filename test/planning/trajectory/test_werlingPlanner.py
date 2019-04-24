@@ -80,8 +80,8 @@ def test_werlingPlanner_toyScenario_noException():
                                        obstacle_cost_y=SigmoidFunctionParams(100, 10.0, 0.3),
                                        dist_from_goal_cost=SigmoidFunctionParams(100, 10.0, 0.3),
                                        dist_from_goal_lat_factor=1.0,
-                                       lon_jerk_cost=LON_JERK_COST_WEIGHT,
-                                       lat_jerk_cost=LAT_JERK_COST_WEIGHT,
+                                       lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
+                                       lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                        velocity_limits=VELOCITY_LIMITS,
                                        lon_acceleration_limits=LON_ACC_LIMITS,
                                        lat_acceleration_limits=LAT_ACC_LIMITS)
