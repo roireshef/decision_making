@@ -31,7 +31,13 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 
 
-def patch_scene_static(lane_id, s):
+def patch_scene_static(lane_id=58369795, s=75):
+    """
+    Patches the scene_static message with a stop sign
+    :param lane_id:
+    :param s:
+    :return:
+    """
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=s,
                                          e_Pct_confidence=1.0)
     MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
@@ -77,17 +83,7 @@ class BehavioralPlanningFacade(DmModule):
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
-
-            patch_scene_static(58369795, 75)
-
-            #MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id).fpoint_to_cpoint([75,0])
-
-
-
-            print(f'* located at lane:{state.ego_state.map_state.lane_id}'
-                  f' with s:{state.ego_state.map_state.lane_fstate[0]} and'
-                  f' beyond_stop_bar: {state.ego_state.map_state.lane_fstate[0]>75}')
-
+            #patch_scene_static(58369795, 75)
 
             with prof.time_range('BP-IF'):
                 # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
@@ -96,7 +92,8 @@ class BehavioralPlanningFacade(DmModule):
                 # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
                 if LocalizationUtils.is_actual_state_close_to_expected_state(
                         state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                    updated_state = self._get_state_with_expected_ego(state)
+                    updated_state =\
+                        self._get_state_with_expected_ego(state)
                     self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                       "according to previous plan")
                 else:

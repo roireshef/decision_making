@@ -8,7 +8,52 @@ from decision_making.test.planning.trajectory.utils import RouteFixture
 
 
 def test_convertSfromSegments_correctTranslation():
-    assert False, 'TODO'
+
+    ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
+    cpoints = np.array([[100.0, 0.0, -np.pi / 8, 0.1, 1.0, 1e-2], [130.0, 0.0, np.pi / 6, 0.1, 1.1, 1e-2],
+                        [150.0, 40.0, np.pi / 7, 10.0, -0.9, 1e-2], [450.0, 50.0, np.pi / 8, 3, -0.5, -5 * 1e-2],
+                        [460.0, 50.0, np.pi / 9, 0.1, -2, 0]
+                        ])
+
+    # split into two frenet frames that coincide in their last and first points
+    full_frenet = FrenetSerret2DFrame.fit(route_points)
+    n = (len(full_frenet.points) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+                                          full_frenet.N[:(n + 1)],
+                                          full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+                                            full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
+
+    upstream_s_start = 0
+    upstream_s_end = upstream_frenet.s_max
+    downstream_s_start = 0
+    downstream_s_end = downstream_frenet.s_max
+
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
+    generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
+                                                            sub_segments=segmentation)
+
+    upstream_cpoints = cpoints[:3]
+    downstream_cpoints = cpoints[3:]
+
+    upstream_fpoints = upstream_frenet.ctrajectory_to_ftrajectory(upstream_cpoints)
+    downstream_fpoints = downstream_frenet.ctrajectory_to_ftrajectory(downstream_cpoints)
+    upstream_s_coords = upstream_fpoints[:, FS_SX]
+    downstream_s_coords = downstream_fpoints[:, FS_SX]
+
+    upstream_gen_fpoints_s = generalized_frenet.convert_s_from_segments(upstream_s_coords, [0] * len(upstream_fpoints))
+    downstream_gen_fpoints_s = generalized_frenet.convert_s_from_segments(downstream_s_coords,
+                                                                              [1] * len(downstream_fpoints))
+
+    upstream_gen_fpoints = generalized_frenet.convert_from_segment_states(upstream_fpoints, [0] * len(upstream_fpoints))
+    downstream_gen_fpoints = generalized_frenet.convert_from_segment_states(downstream_fpoints,
+                                                                              [1] * len(downstream_fpoints))
+
+    assert np.isclose(downstream_gen_fpoints[:, FS_SX],downstream_gen_fpoints_s).all()
+    assert np.isclose(upstream_gen_fpoints[:, FS_SX], upstream_gen_fpoints_s).all()
+
 
 
 def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_accurate():

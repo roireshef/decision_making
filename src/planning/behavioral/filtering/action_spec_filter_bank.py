@@ -267,7 +267,6 @@ class ConstraintSpecFilter(ActionSpecFilter):
             except ConstraintFilterPreConstraintValue as e:
                 mask_value = e.value
             mask.append(mask_value)
-            print(f'{self.__class__.__name__}: v:{action_spec.v} value: {mask[-1]}')
         return mask
 
 
@@ -279,6 +278,11 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
 
     @staticmethod
     def extend_action_specs(action_specs: List[ActionSpec]):
+        """
+        # TODO: Carefully Explain why this is necessary
+        :param action_specs:
+        :return:
+        """
         min_action_time = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
         extended_specs = []
         # TODO: Replace for with list comprehension
@@ -292,7 +296,8 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
         return extended_specs
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return super().filter(BeyondSpecConstraintFilter.extend_action_specs(action_specs), behavioral_state)
+        return super(BeyondSpecConstraintFilter, self).filter(BeyondSpecConstraintFilter.extend_action_specs(action_specs),
+                                                        behavioral_state)
 
     def _get_beyond_spec_frenet_idxs(self, action_spec, behavioral_state):
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
@@ -330,16 +335,9 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         if action_spec is None:
             self._raise_false()
 
-        # in case of too short spec extend it to MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-        extended_spec = copy.copy(action_spec)
-        min_action_time = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-        if action_spec.t < min_action_time:
-            extended_spec.t = min_action_time
-            extended_spec.s += (min_action_time - action_spec.t) * action_spec.v
-
-        points_velocity_limits, beyond_spec_frenet_idxs = self._get_velocity_limits_of_points(extended_spec,
+        points_velocity_limits, beyond_spec_frenet_idxs = self._get_velocity_limits_of_points(action_spec,
                                                                                               behavioral_state)
-        slow_points = np.where(points_velocity_limits < extended_spec.v)[0]  # points that require braking after spec
+        slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
         # set edge case
         if len(slow_points) == 0:
             self._raise_true()

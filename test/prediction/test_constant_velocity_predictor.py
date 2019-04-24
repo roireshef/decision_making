@@ -13,7 +13,7 @@ from decision_making.test.prediction.conftest import constant_velocity_predictor
 from decision_making.test.prediction.utils import Utils
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.src.prediction.ego_aware_prediction.maneuver_based_predictor import ManeuverBasedPredictor
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture, \
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, \
     testable_map_api
 
 
