@@ -14,7 +14,7 @@ import json
 component_merges = {'TP': 'TP_bp_time', 'BP': 'BP_ts'}
 
 
-class ConvertJsonsScript():
+class ConvertJsonsScript:
 
     @staticmethod
     def simple_strip():
@@ -29,14 +29,12 @@ class ConvertJsonsScript():
                     ret.append(s[:-1])
         return ret
 
-
     @staticmethod
     def extract_component(j):
         c_set = set(k.split('_')[0] for k in j if '_' in k)
         if len(c_set) == 0:
             return None
         return c_set.pop()
-
 
     @staticmethod
     def do_dump_jsons():
@@ -62,5 +60,5 @@ if __name__ == '__main__':
         else:
             for j in ConvertJsonsScript.simple_strip():
                 print(j)
-    except:
-        "Usage: {0} <Json log location> [-m]" % argv[0]
+    except Exception as e:
+        print("Usage: {0} <Json log location> [-m]" % argv[0])

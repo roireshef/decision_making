@@ -58,9 +58,9 @@ class TrajectoryPlanningFacade(DmModule):
         self._started_receiving_states = False
 
     def _start_impl(self):
-        self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, None)
-        self.pubsub.subscribe(UC_SYSTEM_STATE_LCM, None)
-        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
+        self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
+        self.pubsub.subscribe(UC_SYSTEM_STATE_LCM)
+        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
@@ -202,7 +202,7 @@ class TrajectoryPlanningFacade(DmModule):
             if self._started_receiving_states:
                 # PubSub queue is empty after being non-empty for a while
                 raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_STATE_LCM)
+                                              UC_SYSTEM_STATE_LCM)
             else:
                 # Pubsub queue is empty since planning module is up
                 raise StateHasNotArrivedYet("Waiting for data from SceneProvider/StateModule")

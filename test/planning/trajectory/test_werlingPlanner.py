@@ -154,7 +154,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             curvature = 0.2
 
         if test_idx < 40:  # test safety vs deviations vs goal, and consistency for small changes
-            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx%20)*0.2])])
+            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx % 20)*0.2])])
             goal_latitude = lane_width / 2
         else:  # test jerk vs. goal
             obs_poses = np.array([])

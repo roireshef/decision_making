@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from decision_making.src.planning.types import FP_SX, FS_DX, FS_SX, C_X, C_Y
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import FS_DX, FS_SX, C_X, C_Y
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
@@ -34,8 +33,8 @@ def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_ge
                                            T_d=PREDICTION_HORIZON / 2.0)
 
     samplable_trajectory = werling_trajectory_generator.generate_trajectory(timestamp_in_sec=target_obj.timestamp_in_sec,
-                                                                 frenet_frame=lane_frenet_frame,
-                                                                 predicted_maneuver_spec=predicted_maneuver_spec)
+                                                                            frenet_frame=lane_frenet_frame,
+                                                                            predicted_maneuver_spec=predicted_maneuver_spec)
 
     sampling_times = np.linspace(target_obj.timestamp_in_sec, target_obj.timestamp_in_sec + PREDICTION_HORIZON, 30)
     generated_ftrajectory = samplable_trajectory.sample_frenet(time_points=sampling_times)

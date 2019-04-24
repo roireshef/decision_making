@@ -134,19 +134,23 @@ def main():
         [
             DmProcess(lambda: DmInitialization.create_navigation_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
+                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
+                      name='NP'),
 
             DmProcess(lambda: DmInitialization.create_state_module(),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
-                      trigger_args={}),
+                      trigger_args={},
+                      name='SM'),
 
             DmProcess(lambda: DmInitialization.create_behavioral_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
+                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
+                      name='BP'),
 
             DmProcess(lambda: DmInitialization.create_trajectory_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
+                      trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD},
+                      name='TP')
         ]
 
     manager = DmManager(logger, modules_list)
