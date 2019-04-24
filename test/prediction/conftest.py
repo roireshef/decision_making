@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState
+from decision_making.src.planning.types import CartesianExtendedState, C_YAW
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
