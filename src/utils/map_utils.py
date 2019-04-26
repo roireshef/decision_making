@@ -293,10 +293,10 @@ class MapUtils:
             # add road ids from behind the ego vehicle to the route_plan road segment list:
             ego_road_id = MapUtils.get_road_segment_id_from_lane_id(lane_id)
             ego_road_index = np.argwhere(route_plan_road_segment_ids == ego_road_id)[0][0]
+            route_plan_road_segment_ids = route_plan_road_segment_ids[ego_road_index:]
             for lane_seg_id in lane_ids[1:]:
                 road_seg_id = MapUtils.get_road_segment_id_from_lane_id(lane_seg_id)
-                if road_seg_id not in route_plan_road_segment_ids[:ego_road_index+1]:
-                    route_plan_road_segment_ids = np.insert(route_plan_road_segment_ids, 0, road_seg_id)
+                route_plan_road_segment_ids = np.insert(route_plan_road_segment_ids, 0, road_seg_id)
         else:  # the starting point is within or after lane_id
             init_lane_id, init_lon = lane_id, starting_lon
 
@@ -326,7 +326,7 @@ class MapUtils:
         :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
-        # TODO: should we start the nav. plan from a distance backward (currently start from current road segment)
+        # TODO: what will happen if there is a lane split ahead for left/right lanes and the doenstream road is not part of the nav. plan
 
         # road_ids = route_plan.s_Data.a_i_road_segment_ids
         # initial_road_idx_on_plan = route_plan.get_road_index_in_plan(initial_road_segment_id)
