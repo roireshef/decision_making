@@ -286,14 +286,22 @@ class MapUtils:
         :return: generalized Frenet frame for the given route part
         """
         # find the starting point
+        route_plan_road_segment_ids = route_plan.s_Data.a_i_road_segment_ids
         if starting_lon <= 0:  # the starting point is behind lane_id
             lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
             init_lane_id = lane_ids[-1]
+            # add road ids from behind the ego vehicle to the route_plan road segment list:
+            ego_road_id = MapUtils.get_road_segment_id_from_lane_id(lane_id)
+            ego_road_index = np.argwhere(route_plan_road_segment_ids == ego_road_id)[0][0]
+            for lane_seg_id in lane_ids[1:]:
+                road_seg_id = MapUtils.get_road_segment_id_from_lane_id(lane_seg_id)
+                if road_seg_id not in route_plan_road_segment_ids[:ego_road_index+1]:
+                    route_plan_road_segment_ids = np.insert(route_plan_road_segment_ids, 0, road_seg_id)
         else:  # the starting point is within or after lane_id
             init_lane_id, init_lon = lane_id, starting_lon
 
         # get the full lanes path
-        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, route_plan)
+        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, route_plan_road_segment_ids)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
         # create GFF
@@ -306,7 +314,7 @@ class MapUtils:
     @raises(RoadNotFound, DownstreamLaneNotFound)
     @prof.ProfileFunction()
     def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         route_plan: RoutePlan) -> List[FrenetSubSegment]:
+                         route_plan_road_ids: np.ndarray) -> List[FrenetSubSegment]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to <navigation_plan>, and finally return a configuration of lane-subsegments.
@@ -314,13 +322,19 @@ class MapUtils:
         :param initial_lane_id: the initial lane_id (the vehicle is current on)
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
-        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
+        :param route_plan_road_ids: the relevant navigation plan to iterate over its road IDs.
         :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
+        # TODO: should we start the nav. plan from a distance backward (currently start from current road segment)
 
-        road_ids = route_plan.s_Data.a_i_road_segment_ids
-        initial_road_idx_on_plan = route_plan.get_road_index_in_plan(initial_road_segment_id)
+        # road_ids = route_plan.s_Data.a_i_road_segment_ids
+        # initial_road_idx_on_plan = route_plan.get_road_index_in_plan(initial_road_segment_id)
+        try:
+            initial_road_idx_on_plan = np.where(route_plan_road_ids == initial_road_segment_id)[0][0]
+        except IndexError:
+            raise RoadNotFound("Road ID {} is not in not found in the route plan road segment list"
+                               .format(initial_road_segment_id))
 
         cumulative_distance = 0.
         lane_subsegments = []
@@ -343,17 +357,17 @@ class MapUtils:
                 break
 
             next_road_idx_on_plan = current_road_idx_on_plan + 1
-            if next_road_idx_on_plan > len(road_ids) - 1:
+            if next_road_idx_on_plan > len(route_plan_road_ids) - 1:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
                                              "current_segment_end_s=%f lookahead_distance=%f" %
-                                             (road_ids, lookahead_distance - cumulative_distance,
+                                             (route_plan_road_ids, lookahead_distance - cumulative_distance,
                                               current_segment_end_s, lookahead_distance))
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
             # road segment. This assumes a single correct downstream segment.
-            next_road_segment_id_on_plan = road_ids[next_road_idx_on_plan]
+            next_road_segment_id_on_plan = route_plan_road_ids[next_road_idx_on_plan]
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
-
+            # TODO: what if lane is deadend or it is the last road segment in the nav. plan (destination reached)
             if len(downstream_lanes_ids) == 0:
                 raise DownstreamLaneNotFound(
                     "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
@@ -364,11 +378,12 @@ class MapUtils:
 
             if len(downstream_lanes_ids_on_plan) == 0:
                 raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan %s",
-                                                  (road_ids))
+                                                  (route_plan_road_ids))
+            # TODO: we can have multiple downstream lanes for when lanes are opened up (3 lanes to 4 lanes)
             if len(downstream_lanes_ids_on_plan) > 1:
                 raise AmbiguousNavigationPlan("More than 1 downstream lanes according to the nav. plan %s",
-                                              (road_ids))
-
+                                              (route_plan_road_ids))
+            # TODO: which one to choose if multiple downstreams exist
             current_lane_id = downstream_lanes_ids_on_plan[0]
             current_segment_start_s = 0
             current_road_idx_on_plan = next_road_idx_on_plan
