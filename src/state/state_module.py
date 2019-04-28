@@ -17,7 +17,8 @@ from logging import Logger
 from threading import Lock
 from traceback import format_exc
 from typing import Optional, Any, List
-
+import time
+import datetime
 
 class DynamicObjectsData:
     def __init__(self, num_objects: int, objects_localization: List[ObjectLocalization], timestamp: int):
@@ -63,6 +64,23 @@ class StateModule(DmModule):
             with self._scene_dynamic_lock:
 
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
+                # time since
+                TIME1970 = 2208988800  # Seconds from 1900-01-01 00:00:00 till 1970-01-01 00:00:00
+                send_timestamp = self._scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds
+                header_timestamp = self._scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds
+                data_recv_timestamp = self._scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds
+                data_compute_timestamp = self._scene_dynamic.s_Data.s_ComputeTimestamp.timestamp_in_seconds
+                recv_time_unix = time.time()
+                send_time_unix = send_timestamp - TIME1970
+                self.logger.warning("scene_dynamic.s_Header.s_Timestamp: %f ; _scene_dynamic.s_Data.s_RecvTimestamp %f ; _scene_dynamic.s_Data.s_ComputeTimestamp [ms] %f",
+                                    header_timestamp,
+                                    data_recv_timestamp,
+                                    data_compute_timestamp)
+
+                self.logger.warning("self._scene_dynamic Timestamp send (NTP): %f ; recv (UNIX) %f ; elapsed [ms] %f",
+                                    send_timestamp,
+                                    recv_time_unix,
+                                    (recv_time_unix - send_time_unix) * 1000)
 
                 state = self.create_state_from_scene_dynamic(self._scene_dynamic)
 

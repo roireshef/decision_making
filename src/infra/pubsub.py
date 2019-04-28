@@ -15,6 +15,7 @@ class PubSub:
         :return:
         """
         if callback is None:
+            print("!!! " + str(topic))
             topic.register_cb(callback)
         else:
             """
@@ -23,6 +24,7 @@ class PubSub:
             "Class _callback_function".
             """
             event_scheduler_name = "{}{}".format(callback.__self__.__class__.__name__, callback.__name__)
+            print("### " + event_scheduler_name)
             print('Registered EvenScheduler callback: ', event_scheduler_name)
             event_scheduler = EventScheduler(event_scheduler_name)
             event_scheduler.register_cb(topic, callback)
