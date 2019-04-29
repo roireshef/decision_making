@@ -83,6 +83,8 @@ class BehavioralPlanningFacade(DmModule):
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
+            # TODO: remove call when SceneProvider has stop bars
+            #patch_scene_static(lane_id=58369795, s=75 - EGO_LENGTH / 2)
 
             with prof.time_range('BP-IF'):
                 # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
