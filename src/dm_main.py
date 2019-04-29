@@ -2,8 +2,12 @@ from logging import Logger
 from os import getpid
 
 import numpy as np
+import os
+
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
+from rte.python.parser import av_argument_parser
+
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
@@ -32,8 +36,6 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
-from mapping.src.service.map_service import MapService
-from rte.python.parser import av_argument_parser
 
 # TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
@@ -62,33 +64,27 @@ class DmInitialization:
     """
 
     @staticmethod
-    def create_state_module(map_file: str = DEFAULT_MAP_FILE) -> StateModule:
+    def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
-        # MapService should be initialized in each process according to the given map_file
-        MapService.initialize(map_file)
         state_module = StateModule(pubsub, logger, None)
         return state_module
 
     @staticmethod
-    def create_navigation_planner(map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN) -> NavigationFacade:
+    def create_navigation_planner(nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
-        # MapService should be initialized in each process according to the given map_file
-        MapService.initialize(map_file)
 
         navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
         return navigation_module
 
     @staticmethod
-    def create_behavioral_planner(map_file: str = DEFAULT_MAP_FILE) -> BehavioralPlanningFacade:
+    def create_behavioral_planner() -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
-        # MapService should be initialized in each process according to the given map_file
-        MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
 
@@ -109,12 +105,10 @@ class DmInitialization:
         return behavioral_module
 
     @staticmethod
-    def create_trajectory_planner(map_file: str = DEFAULT_MAP_FILE) -> TrajectoryPlanningFacade:
+    def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
-        # MapService should be initialized in each process according to the given map_file
-        MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
 
@@ -137,22 +131,22 @@ def main():
 
     modules_list = \
         [
-            DmProcess(lambda: DmInitialization.create_navigation_planner(DEFAULT_MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_navigation_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
                       name='NP'),
 
-            DmProcess(lambda: DmInitialization.create_state_module(DEFAULT_MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_state_module(),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={},
                       name='SM'),
 
-            DmProcess(lambda: DmInitialization.create_behavioral_planner(DEFAULT_MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_behavioral_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
                       name='BP'),
 
-            DmProcess(lambda: DmInitialization.create_trajectory_planner(DEFAULT_MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_trajectory_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD},
                       name='TP')

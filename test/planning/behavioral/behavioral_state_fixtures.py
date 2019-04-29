@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
@@ -22,7 +22,7 @@ EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_segment_id = 20
 
@@ -69,7 +69,7 @@ def state_with_sorrounding_objects():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_almost_tracking_mode():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
@@ -143,7 +143,7 @@ def state_with_objects_for_filtering_exact_tracking_mode():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_negative_sT():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
@@ -181,7 +181,7 @@ def state_with_objects_for_filtering_negative_sT():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_too_aggressive():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 

@@ -1,11 +1,15 @@
 import sys
+
+from decision_making.paths import Paths
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from typing import Dict
 
 import numpy as np
+import pickle
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
-from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING, PG_PICKLE_FILE_NAME
 from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -17,7 +21,6 @@ from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIER_STRING_BP, \
     STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, DmLogParser
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
-from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 LOG_PATH_FOR_ANALYSIS = '/home/xzjsyy/av_code/spav/logs/AV_Log_dm_main.log'
@@ -57,6 +60,8 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     :param tp_params_serialized: serialized trajectory parameters input message
     :return:
     """
+    scene_static_pg_no_split = pickle.load(open(Paths.get_map_absolute_path_filename(PG_PICKLE_FILE_NAME), 'rb'))
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
 
     # Create PubSub Mock
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
@@ -67,7 +72,6 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
 
     # Initialize TP
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-    MapService.initialize()
     predictor = RoadFollowingPredictor(logger)
     planner = WerlingPlanner(logger, predictor)
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,

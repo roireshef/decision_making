@@ -1,6 +1,9 @@
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 from logging import Logger
 
 import numpy as np
+import pickle
 
 from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -15,10 +18,10 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, DynamicObject, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
+from decision_making.paths import Paths
 
 
-def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
+def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_pg_split):
     """
     Test TP obstacle cost.
     Ego has 3 lane-change trajectories (from right to left) with same init/end constraints but different T_d: [4, 6, 8].
@@ -28,9 +31,12 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     The second trajectory is too close to the object.
     The third trajectory collides with the object.
     """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+
     logger = Logger("test_computeCost_threeSRoutesOneObstacle_validScore")
     road_id = 20
-    lane_width = MapService.get_instance().get_road(road_id).lane_width
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
+    lane_width = MapUtils.get_lane_width(lane_id, s=0)
     s = 0
     init_d = 0
     end_d = init_d + lane_width
@@ -45,7 +51,6 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     target_fstates = np.tile(target_fstate, 3).reshape(3, 6)
 
     # Dynamic object is static, located on the right lane, such that ego reaches it longitudinally at time t = 4.
-    lane_id = MapService().get_instance()._lane_by_address[(road_id, 0)]
     obj_map_state = MapState(np.array([s + T_d[0] * v, EPS, 0, init_d, 0, 0]), lane_id)
     obj_size = ObjectSize(4, 1.8, 0)
     time_points = np.arange(0, T + EPS, 0.1)
