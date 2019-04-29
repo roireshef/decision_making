@@ -192,63 +192,45 @@ class BehavioralPlanningFacade(DmModule):
         # find ego road segment row index in as_route_plan_lane_segments 2-d array which matches the index in a_i_road_segment_ids 1-d array
         route_plan_start_idx = np.argwhere(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
 
-        if len(route_plan_start_idx[0]) == 0: # check if ego road segment Id is listed inside route plan data
+        if len(route_plan_start_idx[0]) == 0:  # check if ego road segment Id is listed inside route plan data
             raise EgoRoadSegmentNotFound('Route plan does not include data for ego road segment ID {0}'.format(ego_road_segment_id))
-        if len(route_plan_start_idx[0]) > 1 :
+        if len(route_plan_start_idx[0]) > 1:
             raise RepeatedRoadSegments('Route Plan has repeated data for road segment ID {0}'.format(ego_road_segment_id))
 
         ego_row_idx = route_plan_start_idx[0][0]
 
-        ego_station = ego_state.map_state.lane_fstate[FS_SX]
-
-        #find length of the lane segment
-        lane = MapUtils.get_lane(ego_lane_segment_id)
-        ego_lane_length = lane.e_l_length
-
-        dist_to_end = ego_lane_length - ego_station
-
-        if  dist_to_end < 0 :
-            raise EgoStationBeyondLaneLength('ego station is greater than the lane length for lane segment ID {0}'.format(ego_lane_segment_id))
+        dist_to_end = 0
+        road_segment_blocked = True
 
         # iterate through all road segments within DISTANCE_TO_SET_TAKEOVER_FLAG
-        for i in range(ego_row_idx, route_plan_data.e_Cnt_num_road_segments):
+        for route_row_idx in range(ego_row_idx, route_plan_data.e_Cnt_num_road_segments):
 
             road_segment_blocked = True
 
             # raise exception if ego lane occupancy cost is 1
-            if i == ego_row_idx :
+            if route_row_idx == ego_row_idx:
                 ego_road_lane_ids = np.array([route_lane.e_i_lane_segment_id for route_lane in route_plan_data.as_route_plan_lane_segments[ego_row_idx]])
-                ego_col_idx = np.argwhere(ego_road_lane_ids==ego_lane_segment_id)[0][0]
+                ego_col_idx = np.argwhere(ego_road_lane_ids == ego_lane_segment_id)[0][0]
                 if route_plan_data.as_route_plan_lane_segments[ego_row_idx][ego_col_idx].e_cst_lane_occupancy_cost == 1:
                     raise EgoLaneOccupancyCostIncorrect('Occupancy cost is 1 for ego lane segment ID {0}'.format(ego_lane_segment_id))
 
             # check the end cost for all lane segments within a road segment
-            for j in range(route_plan_data.a_Cnt_num_lane_segments[i]):
+            lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
+            if np.any(lane_end_costs < 1):
+                road_segment_blocked = False
 
-                # raise exception if ego lane occupancy cost is 1
-                if i == row_idx and route_plan_data.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == ego_lane_segment_id \
-                    and  route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == 1 :
-                    raise EgoLaneOccupancyCostIncorrect('Occupancy cost is 1 for ego lane segment ID {0}'.format(ego_lane_segment_id))
+            # find the length of the first lane segment in the next road segment,
+            # assuming that road segment length is similar to its first lane segment length
+            road_segment_lane_id = route_plan_data.as_route_plan_lane_segments[route_row_idx][0].e_i_lane_segment_id
+            lane = MapUtils.get_lane(road_segment_lane_id)
+            lane_length = lane.e_l_length
 
-                if route_plan_data.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost < 1 :
-                    road_segment_blocked = False
-                    break
-
-            # continue looking at the next road segments if current road segment is not blocked
-            if i > ego_row_idx and not road_segment_blocked:
-
-                # find the length of the first lane segment in the next road segment,
-                # assuming that road segment length is similar to its first lane segmnet length
-                next_road_segment_lane_id = route_plan_data.as_route_plan_lane_segments[i][0].e_i_lane_segment_id
-                lane = MapUtils.get_lane(next_road_segment_lane_id)
-                lane_length = lane.e_l_length
-
+            if route_row_idx == ego_row_idx:
+                dist_to_end = lane_length - ego_state.map_state.lane_fstate[FS_SX]
+            else:
                 dist_to_end += lane_length
 
-                # check if this road segment lies within the DISTANCE_TO_SET_TAKEOVER_FLAG
-                if dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG :
-                    break
-            elif road_segment_blocked:
+            if road_segment_blocked or dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG:
                 break
 
         takeover_flag = road_segment_blocked and dist_to_end < DISTANCE_TO_SET_TAKEOVER_FLAG
@@ -259,7 +241,6 @@ class BehavioralPlanningFacade(DmModule):
                                     s_Data=DataTakeover(takeover_flag))
 
         return takeover_message
-
 
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
