@@ -228,3 +228,6 @@ LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from ac
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
+
+PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
+PG_PICKLE_FILE_NAME = 'PG.pkl'

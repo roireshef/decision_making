@@ -1,10 +1,13 @@
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.utils.map_utils import MapUtils
+from decision_making.test.messages.scene_static_fixture import scene_static_testable
 from typing import List
 
 import numpy as np
 import pytest
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState
+from decision_making.src.planning.types import CartesianExtendedState, C_YAW
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -17,8 +20,6 @@ from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.w
     WerlingTrajectoryGenerator
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 from decision_making.test.planning.trajectory.mock_samplable_trajectory import MockSamplableTrajectory
-from mapping.src.service.map_service import MapService
-from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 from unittest.mock import patch
 
@@ -275,51 +276,55 @@ def ego_samplable_trajectory(static_cartesian_state: CartesianExtendedState) -> 
 
 
 @pytest.fixture(scope='function')
-def original_state_with_sorrounding_objects():
-    with patch.object(MapService, 'get_instance', map_api_mock):
-        # Stub of occupancy grid
-        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+def original_state_with_sorrounding_objects(scene_static_testable):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
-        car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
 
-        # Ego state
-        ego_road_id = 1
-        ego_road_lon = 15.0
-        ego_road_lat = 4.5
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-        ego_pos, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_segment_id=ego_road_id,
-                                                                                        lon=ego_road_lon,
-                                                                                        lat=ego_road_lat)
+    # Ego state
+    road_segment_id = 1
+    ego_lane_lon = 15.0
+    ego_lane_ordinal = 1
 
-        ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=np.array(
-            [ego_pos[0], ego_pos[1], ego_yaw, 0.0, 0.0, 0.0]),
-                                                         size=car_size, confidence=1.0)
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[ego_lane_ordinal]
+    frenet_frame = MapUtils.get_lane_frenet_frame(lane_id)
+    cstate = frenet_frame.fstate_to_cstate(np.array([ego_lane_lon, 0, 0, 0, 0, 0]))
+    ego_pos = cstate[:C_YAW]
+    ego_yaw = cstate[C_YAW]
 
-        # Generate objects at the following locations:
-        obj_id = 1
-        obj_road_id = 1
-        obj_road_lons = [5.0, 10.0, 15.0, 20.0, 25.0]
-        obj_road_lats = [1.5, 4.5, 6.0]
+    ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=np.array(
+        [ego_pos[0], ego_pos[1], ego_yaw, 0.0, 0.0, 0.0]),
+                                                     size=car_size, confidence=1.0)
 
-        dynamic_objects: List[DynamicObject] = list()
-        for obj_road_lon in obj_road_lons:
-            for obj_road_lat in obj_road_lats:
+    # Generate objects at the following locations:
+    obj_id = 1
+    obj_lane_lons = [5.0, 10.0, 15.0, 20.0, 25.0]
+    obj_lane_ordinals = [0, 1, 2]
 
-                if obj_road_lon == ego_road_lon and obj_road_lat == ego_road_lat:
-                    # Don't create an object where the ego is
-                    continue
+    dynamic_objects: List[DynamicObject] = list()
+    for obj_lane_lon in obj_lane_lons:
+        for obj_lane_ordinal in obj_lane_ordinals:
 
-                obj_pos, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_segment_id=obj_road_id,
-                                                                                                lon=obj_road_lon,
-                                                                                                lat=obj_road_lat)
+            if obj_lane_lon == ego_lane_lon and obj_lane_ordinal == ego_lane_ordinal:
+                # Don't create an object where the ego is
+                continue
 
-                dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
-                                                                           cartesian_state=np.array(
-                                                                                  [obj_pos[0], obj_pos[1], obj_yaw, 0.0,
-                                                                                   0.0, 0.0]),
-                                                                           size=car_size, confidence=1.0)
+            lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[obj_lane_ordinal]
+            frenet_frame = MapUtils.get_lane_frenet_frame(lane_id)
+            cstate = frenet_frame.fstate_to_cstate(np.array([obj_lane_lon, 0, 0, 0, 0, 0]))
+            obj_pos = cstate[:C_YAW]
+            obj_yaw = cstate[C_YAW]
 
-                dynamic_objects.append(dynamic_object)
-                obj_id += 1
+            dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
+                                                                       cartesian_state=np.array(
+                                                                              [obj_pos[0], obj_pos[1], obj_yaw, 0.0,
+                                                                               0.0, 0.0]),
+                                                                       size=car_size, confidence=1.0)
 
-        yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+            dynamic_objects.append(dynamic_object)
+            obj_id += 1
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)

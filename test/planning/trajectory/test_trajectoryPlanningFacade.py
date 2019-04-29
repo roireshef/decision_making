@@ -12,10 +12,9 @@ from decision_making.src.state.state import ObjectSize, EgoState
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 from decision_making.test.planning.custom_fixtures import state
 import numpy as np
-
-from decision_making.test.planning.custom_fixtures import short_testable_map_api
 
 
 def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTrue():
