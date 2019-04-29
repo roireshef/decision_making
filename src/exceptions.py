@@ -112,12 +112,15 @@ class NoActionsLeftForBPError(Exception):
     pass
 
 
-class ConstraintFilterPreConstraintValue(Exception):
-    def __init__(self,value):
+class ConstraintFilterHaltWithValue(Exception):
+    """
+    This is raised internally within ConstraintFilter when halt is needed (with value)
+    """
+    def __init__(self, value: bool):
         self._value = value
 
     @property
-    def value(self):
+    def value(self) -> bool:
         return self._value
 
 

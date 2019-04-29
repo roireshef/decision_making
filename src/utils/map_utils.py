@@ -456,6 +456,7 @@ class MapUtils:
         :return:
         """
         lane_ids = []
+        # stations are s coordinates
         stations = []
         for lane_id in lane_frenet.segment_ids:
             lane_segment = MapUtils.get_lane(lane_id)

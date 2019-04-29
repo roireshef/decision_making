@@ -142,7 +142,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         Translate into GFF longitudinal frenet
         :param frenet_s: A numpy array of s coordinates
         :param segment_ids: segment ids corresponding to the frenet_s coordinates
-        :return:
+        :return: the s (in gff) corresponding to inputs
         """
         segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
         s_offset = self._segments_s_offsets[segment_idxs]

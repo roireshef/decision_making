@@ -4,7 +4,7 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.exceptions import ConstraintFilterPreConstraintValue
+from decision_making.src.exceptions import ConstraintFilterHaltWithValue
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
@@ -25,7 +25,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
-from typing import List
+from typing import List, Any
 
 
 class FilterIfNone(ActionSpecFilter):
@@ -195,7 +195,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
     """
 
     @abstractmethod
-    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
         """
         selects relevant points from the action_spec (e.g., slow points)
         :param action_spec:
@@ -205,7 +205,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
 
     @abstractmethod
     def _target_function(self, behavioral_state: BehavioralGridState,
-                         action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
+                         action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
         The definition of the function to be tested.
         :param behavioral_state:  A behavioral grid state
@@ -215,8 +215,8 @@ class ConstraintSpecFilter(ActionSpecFilter):
         pass
 
     @abstractmethod
-    def _constraint_function(self, behavioral_state: BehavioralGridState,
-                             action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
+    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) \
+            -> np.ndarray:
         """
         Defines the constraint function over points.
 
@@ -242,7 +242,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
         No need to implement this method in your subtype
         :return: None
         """
-        raise ConstraintFilterPreConstraintValue(False)
+        raise ConstraintFilterHaltWithValue(False)
 
     def _raise_true(self):
         """
@@ -250,7 +250,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
         No need to implement this method in your subtype
         :return:
         """
-        raise ConstraintFilterPreConstraintValue(True)
+        raise ConstraintFilterHaltWithValue(True)
 
     def _check_condition(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> bool:
         """
@@ -277,7 +277,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
         for action_spec in action_specs:
             try:
                 mask_value = self._check_condition(behavioral_state, action_spec)
-            except ConstraintFilterPreConstraintValue as e:
+            except ConstraintFilterHaltWithValue as e:
                 mask_value = e.value
             mask.append(mask_value)
         return mask
@@ -297,7 +297,7 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
         return extended_spec
 
     @staticmethod
-    def extend_action_specs(action_specs: List[ActionSpec]):
+    def extend_action_specs(action_specs: List[ActionSpec]) -> List[ActionSpec]:
         """
         # TODO: Carefully Explain why this is necessary (add use cases maybe)
         Compensate for delays in super short action specs to increase filter efficiency
@@ -331,7 +331,6 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
             self._raise_false()
         # get the Frenet point index near the goal action_spec.s
         spec_s_point_idx = target_lane_frenet.get_index_on_frame_from_s(np.array([action_spec.s]))[0][0]
-        # find all Frenet points beyond spec.s, where velocity limit (by curvature) is lower then spec.v
         beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
         return beyond_spec_frenet_idxs
 
@@ -350,7 +349,23 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
     def __init__(self):
         self.distances = BreakingDistances.create_braking_distances()
 
-    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
+    def _get_velocity_limits_of_points(self, action_spec, behavioral_state):
+        """
+        Retuns the indecis and velocity limits of the points that needs to slow down # TODO correct
+        :param action_spec:
+        :param behavioral_state:
+        :return:
+        """
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
+        if action_spec.s >= target_lane_frenet.s_max:
+            self._raise_false()
+        # get the Frenet point index near the goal action_spec.s
+        beyond_spec_frenet_idxs = self._get_beyond_spec_frenet_idxs(action_spec, behavioral_state)
+        curvatures = np.maximum(np.abs(target_lane_frenet.k[beyond_spec_frenet_idxs, 0]), EPS)
+        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
+        return points_velocity_limits, beyond_spec_frenet_idxs
+
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
         """
         Finds 'slow' points indices
         :param behavioral_state:
@@ -366,9 +381,9 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         # set edge case
         if len(slow_points) == 0:
             self._raise_true()
-        return beyond_spec_frenet_idxs[slow_points]
+        return beyond_spec_frenet_idxs[slow_points], points_velocity_limits[slow_points]
 
-    def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: np.ndarray) \
+    def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) \
             -> np.ndarray:
         """
         The braking distance required by using the CALM aggressiveness level for slow points.
@@ -377,25 +392,14 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         :param points:
         :return:
         """
+
+        _,slow_points_velocity_limits = points
         brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
+        return brake_dist[FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
 
-        points_velocity_limits, _ = self._get_velocity_limits_of_points(action_spec, behavioral_state)
-        slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
-        vel_limit_in_points = points_velocity_limits[slow_points]
-        return brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)]
-
-    def _get_velocity_limits_of_points(self, action_spec, behavioral_state):
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        if action_spec.s >= target_lane_frenet.s_max:
-            self._raise_false()
-        # get the Frenet point index near the goal action_spec.s
-        beyond_spec_frenet_idxs = self._get_beyond_spec_frenet_idxs(action_spec, behavioral_state)
-        curvatures = np.maximum(np.abs(target_lane_frenet.k[beyond_spec_frenet_idxs, 0]), EPS)
-        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
-        return points_velocity_limits, beyond_spec_frenet_idxs
 
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
-                             points: np.ndarray) -> np.ndarray:
+                             points: Any) -> np.ndarray:
         """
         The distance from current points to the 'slow points'
         :param behavioral_state:
@@ -403,9 +407,10 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         :param points:
         :return:
         """
+
+        slow_points_ids, _ = points
         frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
-        # create constraints for static actions per point beyond the given spec
-        dist_to_points = frenet.get_s_from_index_on_frame(points, delta_s=0) - action_spec.s
+        dist_to_points = frenet.get_s_from_index_on_frame(slow_points_ids, delta_s=0) - action_spec.s
         return dist_to_points
 
     def _condition(self, target_values, constraints_values) -> bool:
@@ -437,14 +442,11 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         stop_bar_locations = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
-        return (ego_location <= stop_bar_locations < action_spec.s).any()
+
+        return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        valid_specs = []
-        for action_spec in action_specs:
-            valid_specs.append(
-                not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state))
-        return valid_specs
+        return  [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state) for action_spec in action_specs]
 
 
 class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
@@ -463,23 +465,25 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         :param action_spec_s:
         :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
         """
-        stop_bars = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
-        stop_bars = stop_bars[stop_bars >= action_spec_s]
-        return -1 if len(stop_bars) == 0 else stop_bars[0]
+        traffic_control_s = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
+        traffic_control_s = traffic_control_s[traffic_control_s >= action_spec_s]
+        return -1 if len(traffic_control_s) == 0 else traffic_control_s[0]
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
         """
-        Basically just checks if there are stop signs
+        Basically just checks if there are stop signs. Returns the `s` of the first stop-sign
         :param behavioral_state:
         :param action_spec:
         :return: The index of the end point
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_index = self._get_first_stop_s(target_lane_frenet, action_spec.s)
-        if stop_bar_index == -1:
+        stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
+        if stop_bar_s == -1:
+            # no stop bars
             self._raise_true()
         if action_spec.s >= target_lane_frenet.s_max:
             self._raise_false()
+        return np.array([stop_bar_s])
 
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                          points: np.ndarray) -> np.ndarray:
@@ -503,9 +507,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         :param points:
         :return: The distance from the goal to the
         """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        dist_to_points = self._get_first_stop_s(target_lane_frenet=target_lane_frenet, action_spec_s=action_spec.s) \
-                         - action_spec.s
+        dist_to_points = points[0] - action_spec.s
         assert dist_to_points >= 0, 'Stop Sign must be ahead'
         return dist_to_points
 

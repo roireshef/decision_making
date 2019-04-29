@@ -14,7 +14,8 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZA
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
+    EGO_LENGTH
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, RoadObjectType
@@ -84,7 +85,7 @@ class BehavioralPlanningFacade(DmModule):
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
-            #patch_scene_static(58369795, 75)
+            patch_scene_static(58369795, 75 - EGO_LENGTH/2)
 
             with prof.time_range('BP-IF'):
                 # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
