@@ -10,7 +10,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    LATERAL_SAFETY_MARGIN_FROM_OBJECT, LARGE_DISTANCE_FROM_SHOULDER
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT, LARGE_DISTANCE_FROM_SHOULDER, ROAD_SHOULDERS_WIDTH
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -31,7 +31,6 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
 @six.add_metaclass(ABCMeta)

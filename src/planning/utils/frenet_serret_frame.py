@@ -14,7 +14,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A, \
     CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState2D, CartesianExtendedState
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
+from decision_making.src.utils.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):

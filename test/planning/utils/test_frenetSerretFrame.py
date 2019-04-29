@@ -7,7 +7,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.planning.trajectory.utils import RouteFixture
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.utils.geometry_utils import CartesianFrame
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_no_split
 
 
