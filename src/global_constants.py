@@ -99,7 +99,7 @@ FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use V
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
 # Distance ahead to raise takeover flag
-DISTANCE_TO_SET_TAKEOVER_FLAG = 100
+DISTANCE_TO_SET_TAKEOVER_FLAG = 150
 
 # Trajectory Planner #
 
