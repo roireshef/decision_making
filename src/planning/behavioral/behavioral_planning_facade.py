@@ -85,7 +85,7 @@ class BehavioralPlanningFacade(DmModule):
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
-            patch_scene_static(58369795, 75 - EGO_LENGTH/2)
+            # patch_scene_static(58369795, 75 - EGO_LENGTH/2)
 
             with prof.time_range('BP-IF'):
                 # Tests if actual localization is close enough to desired localization, and if it is, it starts planning

@@ -72,7 +72,6 @@ def test_MetricLogger_simpleoutput_OutputsToLogFile():
     ll = get_loglines()[0]
     assert ll['message'] == simple_message
     AV_Logger.shutdown_logger()
-    sleep(2)
 
 
 def test_MetricLogger_withAutobinding_correctReport():
@@ -90,7 +89,6 @@ def test_MetricLogger_withAutobinding_correctReport():
     assert get_loglines()[0]['TEST_a'] == 'arg1'
     assert get_loglines()[0]['TEST_b'] == 'arg2'
     AV_Logger.shutdown_logger()
-    sleep(1)
 
 
 def test_MetricLogger_simpleBinding_correctReport():
@@ -106,7 +104,6 @@ def test_MetricLogger_simpleBinding_correctReport():
 
     assert get_loglines()[0]['TEST_data'] == {'x': 10}
     AV_Logger.shutdown_logger()
-    sleep(1)
 
 
 def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
@@ -129,7 +126,6 @@ def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
     assert get_loglines()[1]['TEST_b'] == 2
 
     AV_Logger.shutdown_logger()
-    sleep(1)
 
 
 def test_MetricLogger_unbinding():
@@ -156,4 +152,3 @@ def test_MetricLogger_unbinding():
     assert 'TEST_a' not in get_loglines()[2]
     assert 'TEST_b' not in get_loglines()[2]
     AV_Logger.shutdown_logger()
-    sleep(1)
