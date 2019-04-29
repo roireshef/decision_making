@@ -35,7 +35,7 @@ from decision_making.test.planning.custom_fixtures import pubsub, behavioral_fac
 
 from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
     create_scene_static_from_map_api
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture,\
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, \
     short_testable_map_api, testable_map_api
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)

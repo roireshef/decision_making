@@ -320,6 +320,24 @@ class QuarticPoly1D(Poly1D):
                           - 2*T * (2 * T * a_0 + 3 * v_0 - 3 * v_T)]) / T ** 3
         return coefs
 
+    @staticmethod
+    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
+        """
+        Given a set of quartic actions, i.e. arrays of v_0, v_T, a_0 and T (all arrays of the same size), calculate
+        coefficients for longitudinal polynomial profile for each action.
+        :param a_0: array of initial accelerations
+        :param v_0: array of initial velocities
+        :param v_T: array of target velocities
+        :param T: [sec] array of action times
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        return np.c_[
+            (0.25 * T * a_0 + 0.5 * v_0 - 0.5 * v_T) / T ** 3,
+            (-0.666666666666667 * T * a_0 - 1.0 * v_0 + 1.0 * v_T) / T ** 2,
+            0.5 * a_0,
+            v_0,
+            np.zeros_like(v_0)]
+
 
 class QuinticPoly1D(Poly1D):
     """

@@ -16,7 +16,7 @@ from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
     dynamic_objects_negative_velocity
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture, testable_map_api
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, testable_map_api
 
 
 # @pytest.mark.skip(reason="Irrelevent when no out-of-fov data is available")
