@@ -6,8 +6,8 @@ from decision_making.src.planning.trajectory.frenet_constraints import FrenetCon
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, C_A, C_K, CartesianExtendedTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.test.planning.trajectory.utils import WerlingVisualizer
+from rte.ctm.src import CtmService
 
 
 class OfflineTrajectoryGenerator:
@@ -30,7 +30,8 @@ class OfflineTrajectoryGenerator:
         :param lane_width: [m] assumes constant lane widths on the road, used for offsetting the center of lanes
         :return: a single trajectory that goes through all intermediate goals specified
         """
-        map_coordinates = np.array(Transformations.convert_geo_to_map_coordinates(geo_coordinates[0], geo_coordinates[1]))
+        ctm_transform = CtmService.get_ctm()
+        map_coordinates = np.array(ctm_transform.transform_geo_location_to_map(geo_coordinates[0], geo_coordinates[1]))
 
         finit = self.frenet.cpoint_to_fpoint(map_coordinates)
         init_fstate_vec = np.array([finit[FP_SX], init_velocity, 0, finit[FP_DX], 0, 0])
