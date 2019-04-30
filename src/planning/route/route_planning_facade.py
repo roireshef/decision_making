@@ -47,26 +47,7 @@ class RoutePlanningFacade(DmModule):
             start_time = time.time()
             scene_static_base , scene_static_nav_plan  = self._get_current_scene_static()
             route_planner_input = RoutePlannerInputData()
-            route_planner_input.reformat_input_data(scene=scene_static_base, nav_plan=scene_static_nav_plan )
-
-            # print("start of SCENE")
-            # for road_seg in scene_static_base.as_scene_road_segment :
-            #     print("road segment ID:", road_seg.e_i_road_segment_id)
-            #     for lane_id in road_seg.a_i_lane_segment_ids :
-            #         print("lane segment ID: ", lane_id)
-            #         for lane_base in scene_static_base.as_scene_lane_segments:
-            #             if lane_base.e_i_lane_segment_id == lane_id :
-            #                 for lane in lane_base.as_downstream_lanes :
-            #                     print("downstream lane ID: ", lane.e_i_lane_segment_id, ", downstream road ID: ",
-            #                           [lane2.e_i_road_segment_id for lane2 in scene_static_base.as_scene_lane_segments if lane2.e_i_lane_segment_id == lane.e_i_lane_segment_id])
-            #                 for lane in lane_base.as_upstream_lanes:
-            #                     print("upstream lane ID: ", lane.e_i_lane_segment_id, ", upstream road ID: ",
-            #                           [lane2.e_i_road_segment_id for lane2 in scene_static_base.as_scene_lane_segments if lane2.e_i_lane_segment_id == lane.e_i_lane_segment_id])
-            #         print("")
-            #     print("******************")
-            # print("end of SCENE")
-            # print("")
-            # print("")
+            route_planner_input.reformat_input_data(scene=scene_static_base, nav_plan=scene_static_nav_plan)
 
             # Plan
             route_plan = self.__planner.plan(route_planner_input)
