@@ -328,8 +328,6 @@ class MapUtils:
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
         # TODO: what will happen if there is a lane split ahead for left/right lanes and the doenstream road is not part of the nav. plan
 
-        # road_ids = route_plan.s_Data.a_i_road_segment_ids
-        # initial_road_idx_on_plan = route_plan.get_road_index_in_plan(initial_road_segment_id)
         try:
             initial_road_idx_on_plan = np.where(route_plan_road_ids == initial_road_segment_id)[0][0]
         except IndexError:
@@ -408,11 +406,10 @@ class MapUtils:
         while total_dist < backward_dist:
             prev_lane_ids = MapUtils.get_upstream_lanes(prev_lane_id)
             if len(prev_lane_ids) == 0:
-                # TODO: the lane can actually have no upstream; should we continue with the exisiting path instead of
+                # TODO: the lane can actually have no upstream; should we continue with the existing path instead of
                 #   raising exception, if total_dist > TBD
                 raise UpstreamLaneNotFound(
                     "MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % (prev_lane_id))
-            # TODO: in case there are multiple upstreams, choose the one which is in the route plan's road segment
             # TODO: how to choose between multiple upstreams if all of them belong to route plan road segment
             prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
