@@ -6,6 +6,8 @@ from decision_making.src.global_constants import EXP_CLIP_TH
 from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
+DIVISION_FLOATING_ACCURACY = 10 ** -10
+
 
 class Math:
     T = TypeVar('T', bound=Union[float, np.ndarray])
@@ -132,3 +134,29 @@ class Math:
         is_in_limits = NumpyUtils.is_in_limits(real_roots, value_limits)
         real_roots[~np.logical_and(is_real, is_in_limits)] = np.nan
         return real_roots
+
+    @staticmethod
+    def div(a,  b, precision=DIVISION_FLOATING_ACCURACY):
+        # type: (T,  T, float) -> T
+        """
+        divides a/b with desired floating-point precision
+        """
+        div = np.divide(a, b).astype(np.int_)
+        mod = np.subtract(a, np.multiply(div, b))
+        add_ones = 1 * (np.fabs(mod - b) < precision)
+
+        if isinstance(div, np.ndarray):
+            return (div + add_ones).astype(np.int_)
+        else:
+            return int(div + add_ones)
+
+    @staticmethod
+    def mod(a,  b, precision=DIVISION_FLOATING_ACCURACY):
+        # type: (T,  T, float ) -> T
+        """
+        modulo a % b with desired floating-point precision
+        """
+        div = np.divide(a, b).astype(np.int_)
+        mod = np.subtract(a, np.multiply(div, b))
+
+        return b * (np.fabs(mod - b) < precision) + mod * (np.fabs(mod - b) > precision) * (np.fabs(mod) > precision)

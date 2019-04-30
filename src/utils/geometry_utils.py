@@ -6,7 +6,7 @@ from scipy import interpolate as interp
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
 from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront
-from decision_making.src.utils.math_utils import Math
+from decision_making.src.planning.utils.math_utils import Math
 
 
 class Euclidean:
