@@ -1,4 +1,5 @@
 import numpy as np
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits
 from decision_making.src.planning.types import CartesianExtendedTrajectories
@@ -50,9 +51,19 @@ class KinematicUtils:
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
-
+        valid_lon_velocities = []
+        for v_traj in lon_velocity:
+            valid_velocities_idx = []
+            for i, v in enumerate(v_traj):
+                if (velocity_limits[1] + 10 ** -2) >= v >= velocity_limits[0]:
+                    valid_velocities_idx.append(i)
+            valid_lon_velocities.append(((len(valid_velocities_idx) > 0) and
+                                         ((len(v_traj) - valid_velocities_idx[0]) == len(valid_velocities_idx))
+                                         and (all(earlier >= later for earlier, later
+                                                  in zip(v_traj[:valid_velocities_idx[0]],
+                                                         v_traj[1:valid_velocities_idx[0]])))))
         conforms = np.all(
-            NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
+            np.array(valid_lon_velocities) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
 
