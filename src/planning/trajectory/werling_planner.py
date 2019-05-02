@@ -83,8 +83,9 @@ class WerlingPlanner(TrajectoryPlanner):
         is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
         # calculate frenet state in ego time, such that its prediction in goal time is goal_frenet_state
-        ego_by_goal_state = np.copy(goal_frenet_state)  # is used only when not is_target_ahead
-        ego_by_goal_state[FS_SX] -= T_target_horizon * goal_frenet_state[FS_SV]
+        # it is used only when not is_target_ahead
+        ego_by_goal_state = np.array([goal_frenet_state[FS_SX] - T_target_horizon * goal_frenet_state[FS_SV],
+                                      goal_frenet_state[FS_SV], 0, 0, 0, 0])
 
         # solve the optimization problem in frenet-frame from t=0 to t=T
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
