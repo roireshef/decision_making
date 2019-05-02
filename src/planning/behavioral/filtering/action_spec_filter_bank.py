@@ -290,6 +290,9 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
     Also this adds an action_spec 'extension' for short action specs.
     """
 
+    def __init__(self):
+        self.distances = BreakingDistances.create_braking_distances()
+
     @staticmethod
     def extend_spec(spec: ActionSpec, min_action_time: float) -> ActionSpec:
         extended_spec = copy.copy(spec)
@@ -329,10 +332,12 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         if action_spec.s >= target_lane_frenet.s_max:
             self._raise_false()
-        # get the Frenet point index near the goal action_spec.s
-        spec_s_point_idx = target_lane_frenet.get_index_on_frame_from_s(np.array([action_spec.s]))[0][0]
-        beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
-        return beyond_spec_frenet_idxs
+        # get the worst case braking distance from spec.v to 0
+        max_braking_distance = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
+        max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
+        # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
+        points_range = target_lane_frenet.get_index_on_frame_from_s(np.array([action_spec.s, max_relevant_s]))[0] + 1
+        return np.array(range(points_range[0], points_range[1]))
 
 
 class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
@@ -345,9 +350,8 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
     (B) (spec.s >= target_lane_frenet.s_max then continue)
 
     """
-
     def __init__(self):
-        self.distances = BreakingDistances.create_braking_distances()
+        super().__init__()
 
     def _get_velocity_limits_of_points(self, action_spec, behavioral_state):
         """
@@ -393,10 +397,9 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         :return:
         """
 
-        _,slow_points_velocity_limits = points
+        _, slow_points_velocity_limits = points
         brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
         return brake_dist[FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
-
 
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                              points: Any) -> np.ndarray:
@@ -427,7 +430,6 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
     """
     Checks if there is a StaticTrafficFlowControl between ego and the goal
     Currently treats every 'StaticTrafficFlowControl' as a stop event.
-
     """
 
     @staticmethod
@@ -456,7 +458,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
     """
 
     def __init__(self):
-        self.distances = BreakingDistances.create_braking_distances()
+        super().__init__()
 
     def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> int:
         """
