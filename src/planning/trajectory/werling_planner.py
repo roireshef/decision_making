@@ -82,6 +82,10 @@ class WerlingPlanner(TrajectoryPlanner):
 
         is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
+        # calculate frenet state in ego time, such that its prediction in goal time is goal_frenet_state
+        ego_by_goal_state = np.copy(goal_frenet_state)  # is used only when not is_target_ahead
+        ego_by_goal_state[FS_SX] -= T_target_horizon * goal_frenet_state[FS_SV]
+
         # solve the optimization problem in frenet-frame from t=0 to t=T
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
@@ -109,7 +113,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
         else:
             # only pad
-            ftrajectories = self.predictor.predict_2d_frenet_states(ego_frenet_state[np.newaxis, :],
+            ftrajectories = self.predictor.predict_2d_frenet_states(ego_by_goal_state[np.newaxis, :],
                                                                     np.arange(0, planning_horizon + EPS, self.dt))
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories)
 
@@ -178,8 +182,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            poly_s, poly_d = WerlingPlanner._create_linear_profile_polynomials(
-                ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, :])
+            poly_s, poly_d = WerlingPlanner._create_linear_profile_polynomials(ego_by_goal_state)
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
                                                               planning_horizon, planning_horizon, planning_horizon,
                                                               reference_route, poly_s, poly_d)
