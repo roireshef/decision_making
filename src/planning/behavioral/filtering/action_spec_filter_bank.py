@@ -378,6 +378,8 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         """
         if action_spec is None:
             self._raise_false()
+        if action_spec.v == 0:
+            self._raise_true()
 
         points_velocity_limits, beyond_spec_frenet_idxs = self._get_velocity_limits_of_points(action_spec,
                                                                                               behavioral_state)
