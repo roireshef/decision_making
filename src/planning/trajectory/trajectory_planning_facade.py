@@ -95,7 +95,8 @@ class TrajectoryPlanningFacade(DmModule):
             with prof.time_range('TP-IF'):
                 if LocalizationUtils.is_actual_state_close_to_expected_state(
                         state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                    sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
+                    sampled_state = self._get_state_with_expected_ego(
+                        state) if self._last_trajectory is not None else None
                     updated_state = sampled_state
                 else:
                     updated_state = state
@@ -106,13 +107,6 @@ class TrajectoryPlanningFacade(DmModule):
             samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, T_target_horizon,
                      T_trajectory_end_horizon, params.cost_params)
-
-            if self._last_trajectory is not None and samplable_trajectory is not None:
-                self.logger.debug('Previous SamplableTrajectory : %s.', self._last_trajectory.__dict__)
-                self.logger.debug('Current SamplableTrajectory : %s.', samplable_trajectory.__dict__)
-                self.logger.debug('time: %.3f,d_T: %.3f,d_time: %.3f', state.ego_state.timestamp_in_sec,
-                                  self._last_trajectory.T-samplable_trajectory.T,
-                                  samplable_trajectory.timestamp_in_sec - self._last_trajectory.timestamp_in_sec)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
@@ -136,12 +130,12 @@ class TrajectoryPlanningFacade(DmModule):
 
         except MsgDeserializationError:
             self.logger.warning("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
-                              traceback.format_exc())
+                                traceback.format_exc())
 
         # TODO - we need to handle this as an emergency.
         except CartesianLimitsViolated:
-            self.logger.error("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s",
-                              traceback.format_exc())
+            self.logger.critical("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s",
+                                 traceback.format_exc())
 
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
@@ -222,7 +216,8 @@ class TrajectoryPlanningFacade(DmModule):
         :return: deserialized trajectory parameters
         """
         with prof.time_range('_get_mission_params.get_latest_sample'):
-            is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
+            is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM,
+                                                                          timeout=1)
         if serialized_params is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed' %
                                           UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
@@ -272,7 +267,8 @@ class TrajectoryPlanningFacade(DmModule):
         """
         # TODO: add recipe to trajectory_params for goal's description
         # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = np.round(np.linspace(0, len(ctrajectories)-1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
+        alternative_ids_skip_range = np.round(
+            np.linspace(0, len(ctrajectories) - 1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
         # slice alternative trajectories by skipping indices - for visualization
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
 
@@ -299,6 +295,7 @@ class TrajectoryPlanningFacade(DmModule):
         trajectory_length = ctrajectories.shape[1]
         points_step = int(trajectory_length / MAX_NUM_POINTS_FOR_VIZ) + 1
         visualization_data = DataTrajectoryVisualization(
-            sliced_ctrajectories[:, :trajectory_length:points_step, :(C_Y+1)],  # at most MAX_NUM_POINTS_FOR_VIZ points
+            sliced_ctrajectories[:, :trajectory_length:points_step, :(C_Y + 1)],
+            # at most MAX_NUM_POINTS_FOR_VIZ points
             objects_visualizations, "")
         return TrajectoryVisualizationMsg(header, visualization_data)
