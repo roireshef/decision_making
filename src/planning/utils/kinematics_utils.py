@@ -51,19 +51,19 @@ class KinematicUtils:
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
-        valid_lon_velocities = []
-        for v_traj in lon_velocity:
-            valid_velocities_idx = []
-            for i, v in enumerate(v_traj):
-                if (velocity_limits[1] + 10 ** -2) >= v >= velocity_limits[0]:
-                    valid_velocities_idx.append(i)
-            valid_lon_velocities.append(((len(valid_velocities_idx) > 0) and
-                                         ((len(v_traj) - valid_velocities_idx[0]) == len(valid_velocities_idx))
-                                         and (all(earlier >= later for earlier, later
-                                                  in zip(v_traj[:valid_velocities_idx[0]],
-                                                         v_traj[1:valid_velocities_idx[0]])))))
+        # valid_lon_velocities = []
+        # for v_traj in lon_velocity:
+        #     valid_velocities_idx = []
+        #     for i, v in enumerate(v_traj):
+        #         if (velocity_limits[1] + 10 ** -2) >= v >= velocity_limits[0]:
+        #             valid_velocities_idx.append(i)
+        #     traj_valid = ((len(valid_velocities_idx) > 0) and
+        #                   ((len(v_traj) - valid_velocities_idx[0]) == len(valid_velocities_idx)) and
+        #                   (all(earlier >= later for earlier, later in zip(v_traj[:valid_velocities_idx[0]],
+        #                                                                   v_traj[1:valid_velocities_idx[0]]))))
+        #     valid_lon_velocities.append([traj_valid]*len(v_traj))
         conforms = np.all(
-            np.array(valid_lon_velocities) &
+            #np.array(valid_lon_velocities) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
 

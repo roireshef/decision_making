@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN
+from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN, C_V
 from decision_making.src.planning.types import FS_SX, FS_SV, LAT_CELL
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -84,17 +84,17 @@ class FilterForKinematics(ActionSpecFilter):
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
                                                                               np.array([0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]), LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
-            if not is_valid_in_cartesian and spec.v <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED:
-                print("{}. invalid-car action: {}, {}, {}, {}, current velocity: {}".format(
-                    behavioral_state.ego_state.timestamp_in_sec, spec.recipe.action_type, spec.recipe.aggressiveness,
-                    spec.t, spec.v, iv))
-                is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
-                                                                    LON_ACC_LIMITS, np.array(
-                        [0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]), frenet_frame.s_limits)[0]
-                is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                                  np.array([0,
-                                                                                            BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]),
-                                                                                  LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+            #if not is_valid_in_cartesian and spec.v <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED:
+            #    print("{}. invalid-car action: {}, {}, {}, {}, current velocity: {}".format(
+            #        behavioral_state.ego_state.timestamp_in_sec, spec.recipe.action_type, spec.recipe.aggressiveness,
+            #        spec.t, spec.v, iv))
+            #    is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
+            #                                                        LON_ACC_LIMITS, np.array(
+            #            [0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]), frenet_frame.s_limits)[0]
+            #    is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
+            #                                                                      np.array([0,
+            #                                                                                BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]),
+            #                                                                      LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
             are_valid.append(is_valid_in_cartesian)
 
         # TODO: remove - for debug only
