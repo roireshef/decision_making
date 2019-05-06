@@ -25,7 +25,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
-from typing import List, Any
+from typing import List, Any, Union
 
 
 class FilterIfNone(ActionSpecFilter):
@@ -107,15 +107,6 @@ class FilterForKinematics(ActionSpecFilter):
 
             are_valid.append(is_valid_in_cartesian)
 
-            # TODO: remove it
-            # if is_valid_in_cartesian and abs(spec.v - 3) < 1.2:
-            #     lat_acc = np.abs(cartesian_points[:, C_V] ** 2 * cartesian_points[:, C_K])
-            #     worst_t = np.argmax(lat_acc)
-            #     worst_v = cartesian_points[worst_t, C_V]
-            #     worst_k = cartesian_points[worst_t, C_K]
-            #     print('BP %.3f: spec.t=%.3f spec.v=%.3f; worst_lat_acc: t=%.1f v=%.3f k=%.3f' %
-            #           (behavioral_state.ego_state.timestamp_in_sec, spec.t, spec.v, worst_t * 0.1, worst_v, worst_k))
-
         # TODO: remove it
         if not any(are_valid):
             ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
@@ -179,7 +170,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
 
 @six.add_metaclass(ABCMeta)
-class ConstraintSpecFilter(ActionSpecFilter):
+class BeyondSpecConstraintFilter(ActionSpecFilter):
     """
     An ActionSpecFilter which implements a predefined constraint.
      The filter is defined by:
@@ -189,10 +180,12 @@ class ConstraintSpecFilter(ActionSpecFilter):
      (4) the condition function between target and constraints (_condition function)
 
      Usage:
-        extend ConstraintSpecFilter class and implement the appropriate functions: (at least the four methods described
-        above).
+        extend BeyondSpecConstraintFilter class and implement the appropriate functions: (at least the four methods
+        described above).
         To terminate the filter calculation use _raise_true/_raise_false  at any stage.
     """
+    def __init__(self):
+        self.distances = BreakingDistances.create_braking_distances()
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
@@ -204,35 +197,20 @@ class ConstraintSpecFilter(ActionSpecFilter):
         pass
 
     @abstractmethod
-    def _target_function(self, behavioral_state: BehavioralGridState,
-                         action_spec: ActionSpec, points: Any) -> np.ndarray:
+    def _target_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
         The definition of the function to be tested.
-        :param behavioral_state:  A behavioral grid state
         :param action_spec: the action spec which to filter
         :return: the result of the target function as an np.ndarray
         """
         pass
 
     @abstractmethod
-    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) \
-            -> np.ndarray:
+    def _constraint_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
         Defines the constraint function over points.
-
-        :param behavioral_state:  A behavioral grid state
         :param action_spec: the action spec which to filter
         :return: the result of the constraint function as an np.ndarray
-        """
-        pass
-
-    @abstractmethod
-    def _condition(self, target_values, constraints_values) -> bool:
-        """
-        The test condition to apply on the results of target and constraint values
-        :param target_values: the (externally calculated) target function
-        :param constraints_values: the (externally calculated) constraint values
-        :return:
         """
         pass
 
@@ -256,14 +234,37 @@ class ConstraintSpecFilter(ActionSpecFilter):
         """
         Tests the condition defined by this filter
         No need to implement this method in your subtype
-
         :param behavioral_state:
         :param action_spec:
         :return:
         """
         points_under_test = self._select_points(behavioral_state, action_spec)
-        return self._condition(self._target_function(behavioral_state, action_spec, points_under_test),
-                               self._constraint_function(behavioral_state, action_spec, points_under_test))
+        return (self._target_function(action_spec, points_under_test) <
+                self._constraint_function(action_spec, points_under_test)).all()
+
+    @staticmethod
+    def _extend_spec(spec: ActionSpec) -> ActionSpec:
+        """
+        # TODO: Carefully Explain why this is necessary (add use cases maybe)
+        Compensate for delays in super short action specs to increase filter efficiency
+        :param spec:
+        :return: A list of action specs with potentially extended copies of short ones
+        """
+        min_t = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+        return spec if spec.t >= min_t else ActionSpec(min_t, spec.v, spec.s + (min_t - spec.t) * spec.v, spec.d, spec.recipe)
+
+    def _get_beyond_spec_frenet_range(self, action_spec: ActionSpec, frenet_frame: GeneralizedFrenetSerretFrame) -> np.array:
+        """
+        Returns range of Frenet frame indices of type np.array([from_idx, till_idx]) beyond the action_spec goal
+        :param action_spec:
+        :param frenet_frame:
+        :return: the range of indices beyond the action_spec goal
+        """
+        # get the worst case braking distance from spec.v to 0
+        max_braking_distance = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
+        max_relevant_s = min(action_spec.s + max_braking_distance, frenet_frame.s_max)
+        # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
+        return frenet_frame.get_index_on_frame_from_s(np.array([action_spec.s, max_relevant_s]))[0] + 1
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
@@ -276,98 +277,43 @@ class ConstraintSpecFilter(ActionSpecFilter):
         mask = []
         for action_spec in action_specs:
             try:
-                mask_value = self._check_condition(behavioral_state, action_spec)
+                mask_value = self._check_condition(behavioral_state, BeyondSpecConstraintFilter._extend_spec(action_spec))
             except ConstraintFilterHaltWithValue as e:
                 mask_value = e.value
             mask.append(mask_value)
         return mask
 
 
-@six.add_metaclass(ABCMeta)
-class BeyondSpecConstraintFilter(ConstraintSpecFilter):
-    """
-    A ConstraintSpecFilter class with additional access to beyond spec indices.
-    Also this adds an action_spec 'extension' for short action specs.
-    """
-
-    def __init__(self):
-        self.distances = BreakingDistances.create_braking_distances()
-
-    @staticmethod
-    def extend_spec(spec: ActionSpec, min_action_time: float) -> ActionSpec:
-        extended_spec = copy.copy(spec)
-        extended_spec.s += (min_action_time - spec.t) * spec.v
-        return extended_spec
-
-    @staticmethod
-    def extend_action_specs(action_specs: List[ActionSpec]) -> List[ActionSpec]:
-        """
-        # TODO: Carefully Explain why this is necessary (add use cases maybe)
-        Compensate for delays in super short action specs to increase filter efficiency
-        :param action_specs:
-        :return: A list of action specs with potentially extended copies of short ones
-        """
-        min_action_time = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-        return [spec if spec.t >= min_action_time else BeyondSpecConstraintFilter.extend_spec(spec, min_action_time)
-                for spec in action_specs]
-
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        """
-        Overridden  filter function
-        :param action_specs:
-        :param behavioral_state:
-        :return:
-        """
-        return super(BeyondSpecConstraintFilter, self).filter(
-            BeyondSpecConstraintFilter.extend_action_specs(action_specs),
-            behavioral_state)
-
-    def _get_beyond_spec_frenet_idxs(self, action_spec, behavioral_state):
-        """
-        Returns the indices beyond the action_spec goal
-        :param action_spec:
-        :param behavioral_state:
-        :return: the indices beyond the action_spec goal
-        """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        if action_spec.s >= target_lane_frenet.s_max:
-            self._raise_false()
-        # get the worst case braking distance from spec.v to 0
-        max_braking_distance = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
-        max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
-        # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
-        points_range = target_lane_frenet.get_index_on_frame_from_s(np.array([action_spec.s, max_relevant_s]))[0] + 1
-        return np.array(range(points_range[0], points_range[1]))
-
-
 class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
     """
     Checks if it is possible to break to desired lateral acceleration limit from the goal to the end of the frenet frame
-
     the following edge cases are treated by raise_true/false:
-
     (A) spec is not None
     (B) (spec.s >= target_lane_frenet.s_max then continue)
-
     """
     def __init__(self):
         super().__init__()
 
-    def _get_velocity_limits_of_points(self, action_spec, behavioral_state):
+    def _get_velocity_limits_of_points(self, action_spec: ActionSpec, frenet_frame: GeneralizedFrenetSerretFrame) -> \
+            [np.array, np.array]:
         """
-        Retuns the indecis and velocity limits of the points that needs to slow down # TODO correct
+        Returns s and velocity limits of the points that needs to slow down
         :param action_spec:
-        :param behavioral_state:
+        :param frenet_frame:
         :return:
         """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        if action_spec.s >= target_lane_frenet.s_max:
-            self._raise_false()
-        # get the Frenet point index near the goal action_spec.s
-        beyond_spec_frenet_idxs = self._get_beyond_spec_frenet_idxs(action_spec, behavioral_state)
-        curvatures = np.maximum(np.abs(target_lane_frenet.k[beyond_spec_frenet_idxs, 0]), EPS)
+        # get the worst case braking distance from spec.v to 0
+        max_braking_distance = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
+        max_relevant_s = min(action_spec.s + max_braking_distance, frenet_frame.s_max)
+        # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
+        beyond_spec_range = frenet_frame.get_index_on_frame_from_s(np.array([action_spec.s, max_relevant_s]))[0] + 1
+        # get s for all points in the range
+        points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])),
+                                                          delta_s=0)
+        # get velocity limits for all points in the range
+        curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[0]:beyond_spec_range[1], 0]), EPS)
         points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
-        return points_velocity_limits, beyond_spec_frenet_idxs
+        return points_s, points_velocity_limits
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
         """
@@ -376,56 +322,37 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         :param action_spec:
         :return:
         """
-        if action_spec is None:
-            self._raise_false()
         if action_spec.v == 0:
             self._raise_true()
-
-        points_velocity_limits, beyond_spec_frenet_idxs = self._get_velocity_limits_of_points(action_spec,
-                                                                                              behavioral_state)
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
+        beyond_spec_s, points_velocity_limits = self._get_velocity_limits_of_points(action_spec, target_lane_frenet)
         slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
         # set edge case
         if len(slow_points) == 0:
             self._raise_true()
-        return beyond_spec_frenet_idxs[slow_points], points_velocity_limits[slow_points]
+        return beyond_spec_s[slow_points], points_velocity_limits[slow_points]
 
-    def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) \
-            -> np.ndarray:
+    def _target_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
         The braking distance required by using the CALM aggressiveness level for slow points.
-        :param behavioral_state:
         :param action_spec:
         :param points:
         :return:
         """
-
         _, slow_points_velocity_limits = points
         brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
         return brake_dist[FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
 
-    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
-                             points: Any) -> np.ndarray:
+    def _constraint_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
         The distance from current points to the 'slow points'
-        :param behavioral_state:
         :param action_spec:
         :param points:
         :return:
         """
-
-        slow_points_ids, _ = points
-        frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
-        dist_to_points = frenet.get_s_from_index_on_frame(slow_points_ids, delta_s=0) - action_spec.s
+        slow_points_s, _ = points
+        dist_to_points = slow_points_s - action_spec.s
         return dist_to_points
-
-    def _condition(self, target_values, constraints_values) -> bool:
-        """
-        Checks if all points are "brakeable"
-        :param target_values:
-        :param constraints_values:
-        :return:
-        """
-        return (target_values < constraints_values).all()
 
 
 class StaticTrafficFlowControlFilter(ActionSpecFilter):
@@ -442,15 +369,14 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :param behavioral_state:
         :return:
         """
-
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         stop_bar_locations = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
-
         return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return  [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state) for action_spec in action_specs]
+        return [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
+                for action_spec in action_specs]
 
 
 class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
@@ -462,7 +388,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
     def __init__(self):
         super().__init__()
 
-    def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> int:
+    def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> Union[float, None]:
         """
         Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
         :param target_lane_frenet:
@@ -471,7 +397,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         """
         traffic_control_s = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
         traffic_control_s = traffic_control_s[traffic_control_s >= action_spec_s]
-        return -1 if len(traffic_control_s) == 0 else traffic_control_s[0]
+        return traffic_control_s[0] if len(traffic_control_s) > 0 else None
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
         """
@@ -482,18 +408,13 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
-        if stop_bar_s == -1:
-            # no stop bars
+        if stop_bar_s is None:  # no stop bars
             self._raise_true()
-        if action_spec.s >= target_lane_frenet.s_max:
-            self._raise_false()
         return np.array([stop_bar_s])
 
-    def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
-                         points: np.ndarray) -> np.ndarray:
+    def _target_function(self, action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
         """
         Braking distance from current velocity to 0
-        :param behavioral_state:
         :param action_spec:
         :param points:
         :return:
@@ -502,11 +423,9 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
         return brake_dist
 
-    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
-                             points: np.ndarray) -> np.ndarray:
+    def _constraint_function(self, action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
         """
         The distance from first stop sign to current location
-        :param behavioral_state:
         :param action_spec:
         :param points:
         :return: The distance from the goal to the
@@ -515,14 +434,12 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         assert dist_to_points >= 0, 'Stop Sign must be ahead'
         return dist_to_points
 
-    def _condition(self, target_values, constraints_values) -> bool:
-        return target_values < constraints_values
-
 
 class BreakingDistances:
     """
     Calculates breaking distances
     """
+    # TODO: make it singleton, since a few filters use the braking distances
 
     @staticmethod
     def create_braking_distances(aggresiveness_level=AggressivenessLevel.CALM.value) -> np.array:

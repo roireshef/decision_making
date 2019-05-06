@@ -49,7 +49,7 @@ class ActionSpecFiltering:
             valid_action_specs = list(compress(action_specs, mask))
             # a mask only on the valid action specs
             current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
-            print(f' {action_spec_filter.__class__.__name__}: {np.sum(current_mask)}/{len(current_mask)}')
+            # print(f' {action_spec_filter.__class__.__name__}: {np.sum(current_mask)}/{len(current_mask)}')
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
         return mask.tolist()
