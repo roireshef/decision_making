@@ -200,12 +200,10 @@ class BehavioralPlanningFacade(DmModule):
         ego_row_idx = route_plan_start_idx[0][0]
 
         dist_to_end = 0
-        road_segment_blocked = True
+        takeover_flag = False
 
         # iterate through all road segments within DISTANCE_TO_SET_TAKEOVER_FLAG
         for route_row_idx in range(ego_row_idx, route_plan_data.e_Cnt_num_road_segments):
-
-            road_segment_blocked = True
 
             # raise exception if ego lane occupancy cost is 1
             if route_row_idx == ego_row_idx:
@@ -214,13 +212,8 @@ class BehavioralPlanningFacade(DmModule):
                 if route_plan_data.as_route_plan_lane_segments[ego_row_idx][ego_col_idx].e_cst_lane_occupancy_cost == 1:
                     raise EgoLaneOccupancyCostIncorrect('Occupancy cost is 1 for ego lane segment ID {0}'.format(ego_lane_segment_id))
 
-            # check the end cost for all lane segments within a road segment
-            lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
-            if np.any(lane_end_costs < 1):
-                road_segment_blocked = False
-
-            # find the length of the first lane segment in the next road segment,
-            # assuming that road segment length is similar to its first lane segment length
+            # find the length of the road segment, assuming that road segment length is similar
+            # to its first lane segment length
             road_segment_lane_id = route_plan_data.as_route_plan_lane_segments[route_row_idx][0].e_i_lane_segment_id
             lane = MapUtils.get_lane(road_segment_lane_id)
             lane_length = lane.e_l_length
@@ -230,10 +223,13 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 dist_to_end += lane_length
 
-            if road_segment_blocked or dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG:
-                break
+            # check the end cost for all lane segments within a road segment
+            lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
 
-        takeover_flag = road_segment_blocked and dist_to_end < DISTANCE_TO_SET_TAKEOVER_FLAG
+            takeover_flag = np.all(lane_end_costs == 1)
+
+            if takeover_flag or dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG:
+                break
 
         takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,
                                                     s_Timestamp=Timestamp.from_seconds(ego_state.timestamp_in_sec),
