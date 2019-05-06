@@ -2,8 +2,7 @@ from logging import Logger
 from os import getpid
 
 import numpy as np
-from rte.python.logger.AV_logger import AV_Logger
-from rte.python.os import catch_interrupt_signals
+import os
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
@@ -33,6 +32,9 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
 from mapping.src.service.map_service import MapService
+from rte.python.logger.AV_logger import AV_Logger
+from rte.python.os import catch_interrupt_signals
+from rte.python.parser import av_argument_parser
 
 # TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
@@ -128,6 +130,7 @@ class DmInitialization:
 
 
 def main():
+    av_argument_parser.parse_arguments()
     # register termination signal handler
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (DM main) registered signal handler', getpid())
