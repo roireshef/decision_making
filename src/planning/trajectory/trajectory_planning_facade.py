@@ -92,13 +92,12 @@ class TrajectoryPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            with prof.time_range('TP-IF'):
-                if LocalizationUtils.is_actual_state_close_to_expected_state(
-                        state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                    sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
-                    updated_state = sampled_state
-                else:
-                    updated_state = state
+            if LocalizationUtils.is_actual_state_close_to_expected_state(
+                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
+                updated_state = sampled_state
+            else:
+                updated_state = state
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
@@ -107,20 +106,12 @@ class TrajectoryPlanningFacade(DmModule):
                 plan(updated_state, params.reference_route, params.target_state, T_target_horizon,
                      T_trajectory_end_horizon, params.cost_params)
 
-            if self._last_trajectory is not None and samplable_trajectory is not None:
-                self.logger.debug('Previous SamplableTrajectory : %s.', self._last_trajectory.__dict__)
-                self.logger.debug('Current SamplableTrajectory : %s.', samplable_trajectory.__dict__)
-                self.logger.debug('time: %.3f,d_T: %.3f,d_time: %.3f', state.ego_state.timestamp_in_sec,
-                                  self._last_trajectory.T-samplable_trajectory.T,
-                                  samplable_trajectory.timestamp_in_sec - self._last_trajectory.timestamp_in_sec)
-
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
 
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
 
-            # TODO: handle viz for fixed trajectories
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
                 state, ctrajectories, max(T_target_horizon, T_trajectory_end_horizon),
@@ -197,8 +188,7 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        with prof.time_range('_get_current_state.get_latest_sample'):
-            is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
+        is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
 
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_state is None:
@@ -221,8 +211,7 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        with prof.time_range('_get_mission_params.get_latest_sample'):
-            is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
+        is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
         if serialized_params is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed' %
                                           UC_SYSTEM_TRAJECTORY_PARAMS_LCM)

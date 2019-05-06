@@ -70,18 +70,17 @@ class BehavioralPlanningFacade(DmModule):
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            with prof.time_range('BP-IF'):
-                # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
-                # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
-                # Optimal Control and the fact it complies with Bellman principle of optimality.
-                # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-                if LocalizationUtils.is_actual_state_close_to_expected_state(
-                        state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                    updated_state = self._get_state_with_expected_ego(state)
-                    self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
-                                      "according to previous plan")
-                else:
-                    updated_state = state
+            # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
+            # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
+            # Optimal Control and the fact it complies with Bellman principle of optimality.
+            # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
+            if LocalizationUtils.is_actual_state_close_to_expected_state(
+                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                updated_state = self._get_state_with_expected_ego(state)
+                self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
+                                  "according to previous plan")
+            else:
+                updated_state = state
 
             navigation_plan = self._get_current_navigation_plan()
 
@@ -121,8 +120,7 @@ class BehavioralPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        with prof.time_range('_get_current_state.get_latest_sample'):
-            is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
+        is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
 
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_state is None:
@@ -139,8 +137,7 @@ class BehavioralPlanningFacade(DmModule):
         return state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        with prof.time_range('_get_current_navigation_plan.get_latest_sample'):
-            is_success, serialized_nav_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_NAVIGATION_PLAN_LCM, timeout=1)
+        is_success, serialized_nav_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_NAVIGATION_PLAN_LCM, timeout=1)
 
         if serialized_nav_plan is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
@@ -150,15 +147,13 @@ class BehavioralPlanningFacade(DmModule):
         return nav_plan
 
     def _get_current_scene_static(self) -> SceneStatic:
-        with prof.time_range('_get_current_scene_static.get_latest_sample'):
-            is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
 
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
-        with prof.time_range('_get_current_scene_static.SceneStatic.deserialize'):
-            scene_static = SceneStatic.deserialize(serialized_scene_static)
+        scene_static = SceneStatic.deserialize(serialized_scene_static)
         if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
             raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))

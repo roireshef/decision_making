@@ -53,7 +53,7 @@ class FilterForKinematics(ActionSpecFilter):
         are_valid = []
         for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
             # TODO: in the future, consider leaving only a single action (for better "learnability")
-            if spec.in_track_mode:
+            if spec.only_padding_mode:
                 are_valid.append(True)
                 continue
 
