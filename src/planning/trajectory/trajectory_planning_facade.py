@@ -131,7 +131,7 @@ class TrajectoryPlanningFacade(DmModule):
 
         # TODO - we need to handle this as an emergency.
         except CartesianLimitsViolated:
-            self.logger.error("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s",
+            self.logger.critical("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s",
                               traceback.format_exc())
 
         except Exception:
