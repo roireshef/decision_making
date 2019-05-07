@@ -4,7 +4,6 @@ from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
-UNKNOWN_DEFAULT_VAL = 0.0
 EPS = np.finfo(np.float32).eps
 
 # Communication Layer
@@ -18,36 +17,11 @@ PUBSUB_MSG_IMPL = StrSerializable
 # [m] high-level behavioral planner lookahead distance
 PLANNING_LOOKAHEAD_DIST = 100.0
 
-# [m] When BP sends to TP the reference route, this parameter specifies how much margins (backward and forward) should
-# it take.
-REFERENCE_ROUTE_MARGINS = PLANNING_LOOKAHEAD_DIST
-
-# When retrieving the lookahead path of a given dynamic object, we will multiply the path length
-# by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
-# and linearization errors)
-PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
-
 # [m] Maximal horizon distance for building Generalized Frenet Frames
 MAX_HORIZON_DISTANCE = 400
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
-
-# A lower and upper thresholds on the longitudinal offset between object and ego.
-# Any object out of this scope won't be accounted in the behavioral planning process
-# currently unused
-MAX_PLANNING_DISTANCE_BACKWARD = -20.0
-MAX_PLANNING_DISTANCE_FORWARD = 80.0
-
-# Planning horizon in [sec]: prediction horizon in the behavioral planner
-BEHAVIORAL_PLANNING_HORIZON = 7.0
-BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
-
-# Planning resolution in [sec].
-# Used for prediction resolution, i.e. the resolution of states along the path to be used for acda computations:
-# This may have an effect on efficiency if the acda computation is costly.
-BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
-
 
 # After a change of TP costs run the following test:
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
@@ -70,6 +44,9 @@ DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3       # ratio between lateral and longitud
 DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation from the goal
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
+
+LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being very far from road shoulders (so we don't
+                                            # penalize on that).
 
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
@@ -121,23 +98,14 @@ FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_P
 
 # Trajectory Planner #
 
-# [m] length of reference trajectory provided by behavioral planner
-REFERENCE_TRAJECTORY_LENGTH = 30.0
-
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.5
 
 # [seconds] Resolution for the visualization of predicted dynamic objects
 VISUALIZATION_PREDICTION_RESOLUTION = 1.0
 
-# Time to remember object after it disappears from perception (in nanoseconds)
-OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
-
 # Curve interpolation type (order)
 TRAJECTORY_CURVE_SPLINE_FIT_ORDER = 4
-
-# [m] Do not consider obstacles that are distant than this threshold
-TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
 
 # Desired resolution of map [m], used for accuracy test on Frenet-Serret transformations
 ROAD_MAP_REQUIRED_RES = 5
@@ -150,9 +118,6 @@ MAX_VIS_TRAJECTORIES_NUMBER = 64
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
 MAX_NUM_POINTS_FOR_VIZ = 60
-
-# in meters, to be used as an argument in the resample_curve method
-DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 2
 
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as if the ego vehicle is
@@ -172,6 +137,16 @@ MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
 MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.0
+
+# TODO: set real values from map / perception
+# Road shoulders width in [m]
+ROAD_SHOULDERS_WIDTH = 1.5
+
+# Amount of error in fitting points to map curve, smaller means using more spline polynomials for the fit (and smaller
+# error). This factor is the maximum mean square error (per point) allowed. For example, 0.0001 mean that the
+# max. standard deviation is 1 [cm] so the max. squared standard deviation is 10e-4.
+SPLINE_POINT_DEVIATION = 0.0001
+
 
 # Werling Planner #
 
@@ -218,16 +193,13 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 # [m] Bounding box size around ego vehicle
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 
-# [m] The distance from ego frame origin to ego rear
-EGO_ORIGIN_LON_FROM_CENTER = 1.5
-
-#The id of the ego object
+# The id of the ego object
 EGO_ID = 0
 
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.
 
-#Cutoff thershold to avoid negative velocities. Hack.
+# Cutoff thershold to avoid negative velocities. Hack.
 VELOCITY_MINIMAL_THRESHOLD = 0.001
 
 # Whether we filter out dynamic objects that are not on the road
@@ -240,23 +212,16 @@ BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.3
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
 
 #### NAMES OF MODULES FOR LOGGING ####
-MAP_NAME_FOR_LOGGING = "Map API"
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
 NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
-NAVIGATION_PLANNING_NAME_FOR_METRICS = "NP"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
-BEHAVIORAL_STATE_NAME_FOR_LOGGING = "Behavioral State"
-BEHAVIORAL_POLICY_NAME_FOR_LOGGING = "Behavioral Policy"
-ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
-RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
-
 
 #### MetricLogger
-METRIC_LOGGER_DELIMITER= '_'
+METRIC_LOGGER_DELIMITER = '_'
 
 ##### Log messages
 # TODO: update decision_making_sim messages
@@ -269,7 +234,6 @@ LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
 LOG_MSG_RECEIVED_STATE = "Received state"
 LOG_MSG_STATE_MODULE_PUBLISH_STATE = "Publishing State"
-LOG_MSG_STATE_MODULE_PUBLISH_DYNAMIC_SCENE = "Publishing Scene"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
 LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_to_expected_state timestamp to sample is " \
@@ -277,7 +241,8 @@ LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_
 LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from desired location (desired frenet: %s, actual frenet: %s)"
 LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from actual location (actual frenet: %s)"
 
-
-
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
+
+PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
+PG_PICKLE_FILE_NAME = 'PG.pkl'
