@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.types import C_A, C_V, C_K, C_X, C_Y, FS_SX
+from decision_making.src.planning.types import C_A, C_V, C_K, C_X, C_Y, FS_SX, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -555,3 +555,17 @@ def test_buildAndConvert_singleFrenetFrame_conversionsAreAccurate():
     np.testing.assert_array_equal(segment_idxs, new_segment_idxs, 'Segment indices came out wrong')
 
     assert len(generalized_frenet.points) == point_idx_end - point_idx_start + 1, 'Segment indices came out wrong'
+
+
+def test_lateralConsistency_twoOverlappingGFFs_cartesianPointHasSameLatitudeWRTbothGFFs():
+    route_points = RouteFixture.create_cubic_route()
+    full_frenet = FrenetSerret2DFrame.fit(route_points)
+    segmentation1 = [FrenetSubSegment(0, 0.4, 40)]
+    gff1 = GeneralizedFrenetSerretFrame.build(frenet_frames=[full_frenet], sub_segments=segmentation1)
+    segmentation2 = [FrenetSubSegment(0, 0.1, 40)]
+    gff2 = GeneralizedFrenetSerretFrame.build(frenet_frames=[full_frenet], sub_segments=segmentation2)
+    cpoint = np.array([-7, 0])
+    fpoint1 = gff1.cpoint_to_fpoint(cpoint)
+    fpoint2 = gff2.cpoint_to_fpoint(cpoint)
+    assert fpoint1[FP_DX] == fpoint2[FP_DX] and \
+           fpoint1[FS_SX] + segmentation1[0].s_start == fpoint2[FS_SX] + segmentation2[0].s_start
