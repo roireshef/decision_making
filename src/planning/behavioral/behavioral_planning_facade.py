@@ -77,7 +77,7 @@ class BehavioralPlanningFacade(DmModule):
          processes them into the behavioral state, and then performs behavioral planning. The results are then published
           to the trajectory planner and as debug information to the visualizer.
         :return: void
-        """
+       """
 
         try:
             start_time = time.time()

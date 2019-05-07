@@ -50,7 +50,7 @@ class FilterForKinematics(ActionSpecFilter):
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
         T = np.array([spec.t for spec in action_specs])
 
-        # creare boolean arrays indicating whether the specs are in tracking mode
+        # create boolean arrays indicating whether the specs are in tracking mode
         in_track_mode = np.array([spec.in_track_mode for spec in action_specs])
         no_track_mode = np.logical_not(in_track_mode)
 
@@ -517,6 +517,52 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
 
     def _condition(self, target_values, constraints_values) -> bool:
         return target_values < constraints_values
+
+
+class BeyondSpecSpeedLimitFilter(BeyondSpecConstraintFilter)
+    """
+    Checks if the speed limit will be exceeded.
+    
+    If the upcoming speed greater or equal than the current speed limit, 
+    this filter will raise true.
+    """
+    def __init__(self):
+        super().__init__()
+
+    def _get_upcoming_min_speed_limit(self, behavioral_state: BehavioralGridState, action_spec:ActionSpec) -> (int, float):
+        """
+        Finds the lowest speed limit in the upcoming segments
+        :param behavioral_state
+        :param action_spec:
+        :return: tuple of (Frenet index with lowest speed limit, value of lowest speed limit)
+        """
+
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
+        if action_spec.s >= target_lane_frenet.s_max:
+            self._raise_false()
+        # get the Frenet point index near the goal action_spec.s
+        beyond_spec_frenet_idx = self._get_beyond_spec_frenet_idxs(action_spec, behavioral_state)
+        # get lane ids of the beyond spec points
+        lane_ids = target_lane_frenet.segment_ids[beyond_spec_frenet_idx]
+        # find speed limits of beyond spec points
+        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids]
+        # get Frenet point with lowest speed limit
+        min_speed_idx = beyond_spec_frenet_idx[np.argmin(speed_limits)]
+        min_speed = speed_limits[min_speed_idx]
+        return (min_speed_idx, min_speed)
+
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec):
+        pass
+
+    def _target_function(self, behavioral_state: BehavioralGridState,
+                         action_spec: ActionSpec, points: Any):
+        pass
+
+    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any):
+        pass
+
+    def _condition(self, target_values, constraints_values):
+       pass
 
 
 class BreakingDistances:

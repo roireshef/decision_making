@@ -26,8 +26,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         :param points: 2D numpy array of points sampled from a smooth curve (x,y axes; ideally a spline of high order)
         :param T: 2D numpy array of tangent unit vectors (x,y axes) of <points>
         :param N: 2D numpy array of normal unit vectors (x,y axes) of <points>
-        :param k: 1D numpy array of curvature values at each point in <points>
-        :param k_tag: 1D numpy array of values of 1st derivative of curvature at each point in <points>
+        :param k: 2D numpy array of curvature values at each point in <points>
+        :param k_tag: 2D numpy array of values of 1st derivative of curvature at each point in <points>
         :param ds: the resolution of longitudinal distance along the curve (progress diff between points in <points>)
         """
         self.O = points     # origins (x,y values of points along the curve)
