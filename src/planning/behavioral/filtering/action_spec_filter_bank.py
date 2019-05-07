@@ -2,8 +2,8 @@ import numpy as np
 from typing import List
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    SAFETY_HEADWAY, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -12,8 +12,8 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN
-from decision_making.src.planning.types import FS_SX, FS_SV, LAT_CELL
+from decision_making.src.planning.types import FS_SA, FS_DX
+from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
