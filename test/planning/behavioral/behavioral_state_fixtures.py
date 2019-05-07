@@ -107,7 +107,7 @@ def state_with_objects_for_filtering_almost_tracking_mode():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_exact_tracking_mode():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
