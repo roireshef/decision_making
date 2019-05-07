@@ -196,6 +196,9 @@ TD_STEPS = 1
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3
 
+# negative close to zero trajectory velocity, which may be replaced by zero velocity
+CLOSE_TO_ZERO_NEGATIVE_VELOCITY = -0.1
+
 # Frenet-Serret Conversions #
 
 # [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)
