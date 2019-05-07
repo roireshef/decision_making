@@ -196,23 +196,27 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         """
         pass
 
-    @abstractmethod
     def _target_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
-        The definition of the function to be tested.
-        :param action_spec: the action spec which to filter
-        :return: the result of the target function as an np.ndarray
+        The braking distance required by using the CALM aggressiveness level for slow points.
+        :param action_spec:
+        :param points:
+        :return:
         """
-        pass
+        _, slow_points_velocity_limits = points
+        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
+        return brake_dist[FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
 
-    @abstractmethod
     def _constraint_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
-        Defines the constraint function over points.
-        :param action_spec: the action spec which to filter
-        :return: the result of the constraint function as an np.ndarray
+        The distance from current points to the 'slow points'
+        :param action_spec:
+        :param points:
+        :return:
         """
-        pass
+        slow_points_s, _ = points
+        dist_to_points = slow_points_s - action_spec.s
+        return dist_to_points
 
     def _raise_false(self):
         """
@@ -332,28 +336,6 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
             self._raise_true()
         return beyond_spec_s[slow_points], points_velocity_limits[slow_points]
 
-    def _target_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
-        """
-        The braking distance required by using the CALM aggressiveness level for slow points.
-        :param action_spec:
-        :param points:
-        :return:
-        """
-        _, slow_points_velocity_limits = points
-        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
-        return brake_dist[FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
-
-    def _constraint_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
-        """
-        The distance from current points to the 'slow points'
-        :param action_spec:
-        :param points:
-        :return:
-        """
-        slow_points_s, _ = points
-        dist_to_points = slow_points_s - action_spec.s
-        return dist_to_points
-
 
 class StaticTrafficFlowControlFilter(ActionSpecFilter):
     """
@@ -399,7 +381,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         traffic_control_s = traffic_control_s[traffic_control_s >= action_spec_s]
         return traffic_control_s[0] if len(traffic_control_s) > 0 else None
 
-    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
         """
         Basically just checks if there are stop signs. Returns the `s` of the first stop-sign
         :param behavioral_state:
@@ -410,29 +392,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
         if stop_bar_s is None:  # no stop bars
             self._raise_true()
-        return np.array([stop_bar_s])
-
-    def _target_function(self, action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
-        """
-        Braking distance from current velocity to 0
-        :param action_spec:
-        :param points:
-        :return:
-        """
-        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
-        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
-        return brake_dist
-
-    def _constraint_function(self, action_spec: ActionSpec, points: np.ndarray) -> np.ndarray:
-        """
-        The distance from first stop sign to current location
-        :param action_spec:
-        :param points:
-        :return: The distance from the goal to the
-        """
-        dist_to_points = points[0] - action_spec.s
-        assert dist_to_points >= 0, 'Stop Sign must be ahead'
-        return dist_to_points
+        return np.array([stop_bar_s]), np.array([0])
 
 
 class BreakingDistances:
