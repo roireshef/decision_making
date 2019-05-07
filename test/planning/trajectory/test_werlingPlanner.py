@@ -176,10 +176,10 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(map_state=goal_map_state, ego_size=state.ego_state.size)
 
-            # run Werling planner
-            planner = WerlingPlanner(logger, predictor)
-            _, ctrajectories, costs = planner.plan(state=state, reference_route=frenet,
-                                                   goal=goal, T_target_horizon=T, cost_params=cost_params)
+        # run Werling planner
+        planner = WerlingPlanner(logger, predictor)
+        _, ctrajectories, costs = planner.plan(state=state, reference_route=frenet,
+                                               goal=goal, T_target_horizon=T, cost_params=cost_params)
 
         time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + \
                        state.ego_state.timestamp_in_sec
@@ -195,9 +195,9 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         pixels, pixel_costs = compute_pixel_costs(route_points, reference_route_latitude, road_width, state,
                                                   cost_params, time_samples[t:(t + 1)], planner, frenet)
 
-            visualize_test_scenario(route_points, reference_route_latitude, road_width, state, goal, ctrajectories,
-                                    costs,
-                                    pixels, pixel_costs, plottable_obs, 'test_costs' + str(test_idx) + '.png')
+        visualize_test_scenario(route_points, reference_route_latitude, road_width, state, goal, ctrajectories,
+                                costs,
+                                pixels, pixel_costs, plottable_obs, 'test_costs' + str(test_idx) + '.png')
 
 
 def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_width: float,

@@ -2,7 +2,6 @@ import time
 
 import numpy as np
 import traceback
-from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
@@ -32,6 +31,9 @@ from decision_making.src.planning.utils.localization_utils import LocalizationUt
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
+from logging import Logger
+from typing import Dict
+import rte.python.profiler as prof
 
 
 class TrajectoryPlanningFacade(DmModule):
