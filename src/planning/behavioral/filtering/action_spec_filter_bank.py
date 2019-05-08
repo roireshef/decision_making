@@ -570,13 +570,39 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecConstraintFilter):
 
     def _target_function(self, behavioral_state: BehavioralGridState,
                          action_spec: ActionSpec, points: Any):
-        pass
+        """
+        Returns braking distances required by lower speed limits
+        :param behavioral_state:
+        :param action_spec:
+        :param points:
+        :return:
+        """
+        _, speed_limits = points
+        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
+        return brake_dist[FILTER_V_T_GRID.get_indices(speed_limits)]
+
 
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any):
-        pass
+        """
+        Returns distances to points that have a slower speed limit
+        :param behavioral_state:
+        :param action_spec:
+        :param points:
+        :return:
+        """
+        slow_points_ids, _ = points
+        frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
+        dist_to_points = frenet.get_s_from_index_on_frame(slow_points_ids, delta_s=0) - action_spec.s
+        return dist_to_points
 
-    def _condition(self, target_values, constraints_values):
-       pass
+    def _condition(self, target_values, constraints_values) -> bool:
+        """
+        Checks that there is enough distance to slow down for speed limit
+        :param target_values:
+        :param constraints_values:
+        :return:
+        """
+        return (target_values < constraints_values).all()
 
 
 class BreakingDistances:
