@@ -519,7 +519,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
         return target_values < constraints_values
 
 
-class BeyondSpecSpeedLimitFilter(BeyondSpecConstraintFilter)
+class BeyondSpecSpeedLimitFilter(BeyondSpecConstraintFilter):
     """
     Checks if the speed limit will be exceeded.
     
@@ -529,9 +529,9 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecConstraintFilter)
     def __init__(self):
         super().__init__()
 
-    def _get_upcoming_min_speed_limit(self, behavioral_state: BehavioralGridState, action_spec:ActionSpec) -> (int, float):
+    def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec:ActionSpec) -> (int, float):
         """
-        Finds the lowest speed limit in the upcoming segments
+        Finds speed limits in upcoming points
         :param behavioral_state
         :param action_spec:
         :return: tuple of (Frenet index with lowest speed limit, value of lowest speed limit)
@@ -541,18 +541,32 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecConstraintFilter)
         if action_spec.s >= target_lane_frenet.s_max:
             self._raise_false()
         # get the Frenet point index near the goal action_spec.s
-        beyond_spec_frenet_idx = self._get_beyond_spec_frenet_idxs(action_spec, behavioral_state)
+        beyond_spec_frenet_idxs = self._get_beyond_spec_frenet_idxs(action_spec, behavioral_state)
         # get lane ids of the beyond spec points
-        lane_ids = target_lane_frenet.segment_ids[beyond_spec_frenet_idx]
+        lane_ids = target_lane_frenet.segment_ids[beyond_spec_frenet_idxs]
         # find speed limits of beyond spec points
         speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids]
-        # get Frenet point with lowest speed limit
-        min_speed_idx = beyond_spec_frenet_idx[np.argmin(speed_limits)]
-        min_speed = speed_limits[min_speed_idx]
-        return (min_speed_idx, min_speed)
+        return (beyond_spec_frenet_idxs, speed_limits)
 
-    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec):
-        pass
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
+        """
+        Find points with speed limit slower than the spec velocity
+        :param behavioral_state:
+        :param action_spec:
+        :return:
+        """
+        if action_spec is None:
+            self._raise_false()
+        if action_spec.v == 0:
+            self._raise_true()
+
+        beyond_spec_frenet_idxs, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
+        # find points that require braking after spec
+        slow_points = np.where(speed_limits < action_spec.v)[0]
+        # edge case
+        if len(slow_points) == 0:
+            self._raise_true()
+        return beyond_spec_frenet_idxs[slow_points], speed_limits[slow_points]
 
     def _target_function(self, behavioral_state: BehavioralGridState,
                          action_spec: ActionSpec, points: Any):
