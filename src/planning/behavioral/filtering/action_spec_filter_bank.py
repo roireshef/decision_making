@@ -542,11 +542,15 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecConstraintFilter):
             self._raise_false()
         # get the Frenet point index near the goal action_spec.s
         beyond_spec_frenet_idxs = self._get_beyond_spec_frenet_idxs(action_spec, behavioral_state)
+        # remove indexes that are past the current gff
+        beyond_spec_frenet_idxs = [x for x in beyond_spec_frenet_idxs if x <= target_lane_frenet.s_max]
+        beyond_spec_gff_states = np.array([[idx, 0., 0., 0., 0., 0.] for idx in beyond_spec_frenet_idxs])
         # get lane ids of the beyond spec points
-        lane_ids = target_lane_frenet.segment_ids[beyond_spec_frenet_idxs]
+        #lane_ids = target_lane_frenet.segment_ids[beyond_spec_frenet_idxs]
+        lane_ids, segment_states = target_lane_frenet.convert_to_segment_states(beyond_spec_gff_states)
         # find speed limits of beyond spec points
         speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids]
-        return (beyond_spec_frenet_idxs, speed_limits)
+        return (np.array(beyond_spec_frenet_idxs), np.array(speed_limits))
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
         """
@@ -562,7 +566,7 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecConstraintFilter):
 
         beyond_spec_frenet_idxs, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
         # find points that require braking after spec
-        slow_points = np.where(speed_limits < action_spec.v)[0]
+        slow_points = np.where(np.array(speed_limits) < action_spec.v)[0]
         # edge case
         if len(slow_points) == 0:
             self._raise_true()

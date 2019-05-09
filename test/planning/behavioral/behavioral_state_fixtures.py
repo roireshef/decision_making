@@ -21,7 +21,7 @@ EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 
 
 @pytest.fixture(scope='function')
-def state_with_sorrounding_objects():
+def state_with_surrounding_objects():
 
     SceneStaticModel.get_instance().set_scene_static(scene_static())
 
@@ -274,8 +274,8 @@ def state_with_objects_for_filtering_too_aggressive():
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state(state_with_sorrounding_objects: State):
-    yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
+def behavioral_grid_state(state_with_surrounding_objects):
+    yield BehavioralGridState.create_from_state(state_with_surrounding_objects,
                                                 NAVIGATION_PLAN, None)
 
 
