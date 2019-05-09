@@ -83,7 +83,6 @@ def test_BeyondSpecSpeedLimitFilter_SlowLaneAhead(behavioral_grid_state, scene_s
     gff = behavioral_grid_state.extended_lane_frames[RelativeLane.SAME_LANE]
 
     gff_states_up_to_speed_limit = np.array([[np.float(i), 0., 0., 0., 0., 0.] for i in range(int(ego_location), int(ego_location)+3)])
-    curr_lane_ids, curr_segment_states = gff.convert_to_segment_states(gff_states_up_to_speed_limit)
 
     # put some slow speed limits into scene_static
     for i in range(1,23):
@@ -104,11 +103,6 @@ def test_BeyondSpecSpeedLimitFilter_NoSpeedLimitChange(behavioral_grid_state, sc
     gff = behavioral_grid_state.extended_lane_frames[RelativeLane.SAME_LANE]
 
     gff_states_up_to_speed_limit = np.array([[np.float(i), 0., 0., 0., 0., 0.] for i in range(int(ego_location), int(ego_location)+3)])
-    curr_lane_ids, curr_segment_states = gff.convert_to_segment_states(gff_states_up_to_speed_limit)
-
-    # put some slow speed limits into scene_static
-    for i in range(1,23):
-        scene_static.s_Data.as_scene_lane_segment[-i].e_v_nominal_speed = 10
 
     SceneStaticModel.get_instance().set_scene_static(scene_static)
 
@@ -116,7 +110,7 @@ def test_BeyondSpecSpeedLimitFilter_NoSpeedLimitChange(behavioral_grid_state, sc
     t, v, s, d = 10, 34,  ego_location + 80, 0
     action_specs = [ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state)
-    expected = [False]
+    expected = [True]
     assert actual == expected
 
 
