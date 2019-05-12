@@ -196,7 +196,7 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         """
         pass
 
-    def _target_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
+    def _braking_distances(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
         The braking distance required by using the CALM aggressiveness level for slow points.
         :param action_spec:
@@ -204,10 +204,10 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         :return:
         """
         _, slow_points_velocity_limits = points
-        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
-        return brake_dist[FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
+        return self.distances[FILTER_V_0_GRID.get_index(action_spec.v),
+                              FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
 
-    def _constraint_function(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
+    def _actual_distances(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
         """
         The distance from current points to the 'slow points'
         :param action_spec:
@@ -215,8 +215,7 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         :return:
         """
         slow_points_s, _ = points
-        dist_to_points = slow_points_s - action_spec.s
-        return dist_to_points
+        return slow_points_s - action_spec.s
 
     def _raise_false(self):
         """
@@ -234,7 +233,7 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         """
         raise ConstraintFilterHaltWithValue(True)
 
-    def _check_condition(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> bool:
+    def _check_ability_to_brake(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> bool:
         """
         Tests the condition defined by this filter
         No need to implement this method in your subtype
@@ -243,8 +242,8 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         :return:
         """
         points_under_test = self._select_points(behavioral_state, action_spec)
-        return (self._target_function(action_spec, points_under_test) <
-                self._constraint_function(action_spec, points_under_test)).all()
+        return (self._braking_distances(action_spec, points_under_test) <
+                self._actual_distances(action_spec, points_under_test)).all()
 
     @staticmethod
     def _extend_spec(spec: ActionSpec) -> ActionSpec:
@@ -281,7 +280,7 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         mask = []
         for action_spec in action_specs:
             try:
-                mask_value = self._check_condition(behavioral_state, BeyondSpecConstraintFilter._extend_spec(action_spec))
+                mask_value = self._check_ability_to_brake(behavioral_state, BeyondSpecConstraintFilter._extend_spec(action_spec))
             except ConstraintFilterHaltWithValue as e:
                 mask_value = e.value
             mask.append(mask_value)
