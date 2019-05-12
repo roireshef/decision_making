@@ -7,13 +7,13 @@ import numpy as np
 import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
-from decision_making.src.planning.types import FS_SV, C_V
+from decision_making.src.planning.types import C_V
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
@@ -70,7 +70,7 @@ class StateModule(DmModule):
 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, postprocessed_state)
 
-                self.pubsub.publish(UC_SYSTEM_STATE_LCM, postprocessed_state.serialize())
+                self.pubsub.publish(UC_SYSTEM_STATE, postprocessed_state.serialize())
 
         except Exception:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())

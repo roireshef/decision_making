@@ -138,6 +138,16 @@ MAX_TRAJECTORY_WAYPOINTS = 100
 # [sec] Minimum required time horizon for trajectory (including padding)
 MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.0
 
+# TODO: set real values from map / perception
+# Road shoulders width in [m]
+ROAD_SHOULDERS_WIDTH = 1.5
+
+# Amount of error in fitting points to map curve, smaller means using more spline polynomials for the fit (and smaller
+# error). This factor is the maximum mean square error (per point) allowed. For example, 0.0001 mean that the
+# max. standard deviation is 1 [cm] so the max. squared standard deviation is 10e-4.
+SPLINE_POINT_DEVIATION = 0.0001
+
+
 # Werling Planner #
 
 # [sec] Time-Resolution for planning
@@ -160,6 +170,9 @@ TD_STEPS = 1
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3
+
+# negative close to zero trajectory velocity, which may be replaced by zero velocity
+CLOSE_TO_ZERO_NEGATIVE_VELOCITY = -0.1
 
 # Frenet-Serret Conversions #
 

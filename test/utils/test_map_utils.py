@@ -113,8 +113,8 @@ def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
     assert len(sub_segments) == 5
     for seg in sub_segments:
-        assert MapUtils.get_lane_ordinal(seg.segment_id) == current_ordinal
-    tot_length = sum([seg.s_end - seg.s_start for seg in sub_segments])
+        assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
+    tot_length = sum([seg.e_i_SEnd - seg.e_i_SStart for seg in sub_segments])
     assert np.isclose(tot_length, lookahead_dist)
 
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
@@ -101,7 +101,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     navigation_facade.periodic_action()
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
 
-    pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, behavioral_publish_mock)
+    pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS, behavioral_publish_mock)
 
     bp_logger.warn.assert_not_called()
     bp_logger.error.assert_not_called()

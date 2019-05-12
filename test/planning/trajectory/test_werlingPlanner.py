@@ -5,27 +5,28 @@ from decision_making.test.utils.scene_static_utils import SceneStaticUtils
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
-    DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO
+    DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
+    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
-from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState, \
-    CartesianTrajectory
+from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
+    CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidBoxObstacle, \
     WerlingVisualizer
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.utils.geometry_utils import CartesianFrame
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -81,8 +82,8 @@ def test_werlingPlanner_toyScenario_noException():
                                        obstacle_cost_y=SigmoidFunctionParams(100, 10.0, 0.3),
                                        dist_from_goal_cost=SigmoidFunctionParams(100, 10.0, 0.3),
                                        dist_from_goal_lat_factor=1.0,
-                                       lon_jerk_cost=LON_JERK_COST_WEIGHT,
-                                       lat_jerk_cost=LAT_JERK_COST_WEIGHT,
+                                       lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
+                                       lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                        velocity_limits=VELOCITY_LIMITS,
                                        lon_acceleration_limits=LON_ACC_LIMITS,
                                        lat_acceleration_limits=LAT_ACC_LIMITS)
@@ -184,8 +185,8 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         # run Werling planner
         planner = WerlingPlanner(logger, predictor)
-        _, ctrajectories, costs = planner.plan(state=state, reference_route=frenet, goal=goal, T_target_horizon=T,
-                                               cost_params=cost_params)
+        _, ctrajectories, costs = planner.plan(state=state, reference_route=frenet,
+                                               goal=goal, T_target_horizon=T, cost_params=cost_params)
 
         time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + \
                        state.ego_state.timestamp_in_sec
@@ -220,8 +221,7 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
     :return: route_points (reference route), ext_route_points (extended reference route)
     """
     step = 0.2
-    route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step,
-                                               curvature=curvature)
+    route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
     ext_route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step,
                                                    curvature=curvature)
 
@@ -258,10 +258,9 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
 
     ego = EgoState.create_from_cartesian_state(obj_id=-1, timestamp=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
                                                confidence=1.0,
-                                               cartesian_state=np.array(
-                                                   [ctraj_start_goal[0][C_X], ctraj_start_goal[0][C_Y],
-                                                    ctraj_start_goal[0][C_YAW], ctraj_start_goal[0][C_V],
-                                                    0.0, 0.0]))
+                                               cartesian_state=np.array([ctraj_start_goal[0][C_X], ctraj_start_goal[0][C_Y],
+                                                                   ctraj_start_goal[0][C_YAW], ctraj_start_goal[0][C_V],
+                                                                   0.0, 0.0]))
 
     goal = ctraj_start_goal[1]
     goal[C_X] -= 0.001

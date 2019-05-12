@@ -4,11 +4,6 @@ from os import getpid
 import numpy as np
 import os
 
-from rte.python.logger.AV_logger import AV_Logger
-from rte.python.os import catch_interrupt_signals
-from rte.python.parser import av_argument_parser
-
-
 from decision_making.paths import Paths
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
@@ -36,6 +31,9 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
+from rte.python.logger.AV_logger import AV_Logger
+from rte.python.os import catch_interrupt_signals
+from rte.python.parser import av_argument_parser
 
 # TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,

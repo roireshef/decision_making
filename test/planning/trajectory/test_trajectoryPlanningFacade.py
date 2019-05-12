@@ -104,7 +104,7 @@ def test_prepareVisualizationMsg_withObjects_returnsValidMsg(state):
     predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
     msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
 
-    assert len(msg.s_Data.as_actors_predictions) == len(state.dynamic_objects)
+    assert len(msg.data.as_actors_predictions) == len(state.dynamic_objects)
 
 
 def test_prepareVisualizationMsg_withoutObjects_returnsValidMsg(state):
@@ -120,4 +120,4 @@ def test_prepareVisualizationMsg_withoutObjects_returnsValidMsg(state):
     predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
     msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
 
-    assert len(msg.s_Data.as_actors_predictions) == len(state.dynamic_objects)
+    assert len(msg.data.as_actors_predictions) == len(state.dynamic_objects)
