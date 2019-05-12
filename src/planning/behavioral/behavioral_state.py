@@ -1,10 +1,6 @@
-from logging import Logger
-from typing import Dict
-
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import State
+from logging import Logger
 
 
 class BehavioralState:

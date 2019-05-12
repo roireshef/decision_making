@@ -1,17 +1,12 @@
 import sys
-import json
 
+import json
 from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
-from decision_making.src.planning.types import C_V
-
 from decision_making.src.state.state import State
 from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIER_STRING_BP, \
     STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, DmLogParser
-
-import matplotlib.pyplot as plt
-
 
 # Log filename
 LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_15_56_Proving_Grounds_-_Daytime/AV_Log_dm_main_2018-02-19_15-58-06.log'
@@ -86,7 +81,7 @@ def main():
 
         # State module output
         for state_message_index in range(len(state_module_states)):
-             # Convert log messages to dict
+            # Convert log messages to dict
             state_msg = ClassSerializer.convert_message_to_dict(state_module_states[state_message_index])
 
             # Deserialize from dict to object

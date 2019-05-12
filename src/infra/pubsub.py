@@ -1,10 +1,10 @@
-from typing import Callable, Any, List, Optional
+from typing import Callable, Any, Optional, Dict
 from rte.python.scheduling.event_scheduler import EventScheduler
 
 
 class PubSub:
     def __init__(self):
-        self._event_schedulers: List[EventScheduler] = []
+        self._event_schedulers: Dict[Any, EventScheduler] = {}
 
     def subscribe(self, topic, callback: Optional[Callable] = None):
         """
@@ -24,12 +24,11 @@ class PubSub:
             "Class _callback_function".
             """
             event_scheduler_name = "{}{}".format(callback.__self__.__class__.__name__, callback.__name__)
-            print("### " + event_scheduler_name)
             print('Registered EvenScheduler callback: ', event_scheduler_name)
             event_scheduler = EventScheduler(event_scheduler_name)
             event_scheduler.register_cb(topic, callback)
 
-            self._event_schedulers.append(event_scheduler)
+            self._event_schedulers[topic] = event_scheduler
 
     @staticmethod
     def get_latest_sample(topic, timeout: float = 0):
@@ -51,12 +50,14 @@ class PubSub:
         """
         topic.send(data)
 
-    @staticmethod
-    def unsubscribe(topic):
+    def unsubscribe(self, topic):
         """
         Unsuscribes ALL(!) callbacks from the topic given as argument to this method.
         :param topic:
         :return:
         """
         # TODO Implement unsubscribe from a specific callback if required
-        topic.unregister_cb(None)
+        if topic not in self._event_schedulers.keys():
+            topic.unregister_cb(None)
+        else:
+            self._event_schedulers[topic].unregister_cb()

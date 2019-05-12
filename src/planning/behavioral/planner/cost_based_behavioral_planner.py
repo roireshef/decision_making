@@ -10,13 +10,13 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT, LARGE_DISTANCE_FROM_SHOULDER, ROAD_SHOULDERS_WIDTH
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -31,7 +31,6 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
 @six.add_metaclass(ABCMeta)
@@ -169,11 +168,18 @@ class CostBasedBehavioralPlanner:
         :param ego_size: ego size used to extract margins (for dilation of other objects on road)
         :return: a TrajectoryCostParams instance that encodes all parameters for TP cost computation.
         """
+
+        is_rightmost_lane = MapUtils.get_lane_ordinal(map_state.lane_id) == 0
+        is_leftmost_lane = (len(MapUtils.get_adjacent_lane_ids(map_state.lane_id, RelativeLane.LEFT_LANE)) == 0)
+
         # TODO: here we assume a constant lane width from the current state to the goal
         dist_from_right_lane_border, dist_from_left_lane_border = \
             MapUtils.get_dist_to_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
-        dist_from_right_road_border, dist_from_left_road_border = \
-            MapUtils.get_dist_to_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+
+        # the following two will dictate a cost for being too close to the road border, this is irrelevant when
+        # when being on a lane which is not the rightmost or the leftmost, so we override it with a big value.
+        dist_from_right_road_border = dist_from_right_lane_border if is_rightmost_lane else LARGE_DISTANCE_FROM_SHOULDER
+        dist_from_left_road_border = dist_from_left_lane_border if is_leftmost_lane else LARGE_DISTANCE_FROM_SHOULDER
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         right_lane_offset = dist_from_right_lane_border - ego_size.width / 2
@@ -222,8 +228,8 @@ class CostBasedBehavioralPlanner:
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
-                                           lon_jerk_cost=LON_JERK_COST_WEIGHT,
-                                           lat_jerk_cost=LAT_JERK_COST_WEIGHT,
+                                           lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
+                                           lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)

@@ -1,6 +1,4 @@
-import numpy as np
-
-from common_data.interface.Rte_Types.python.sub_structures import LcmBehavioralVisualizationMsg
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_BehavioralVisualizationMsg import TsSYSBehavioralVisualizationMsg
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D
@@ -15,13 +13,13 @@ class BehavioralVisualizationMsg(PUBSUB_MSG_IMPL):
         """
         self.reference_route_points = reference_route_points
 
-    def serialize(self) -> LcmBehavioralVisualizationMsg:
-        lcm_msg = LcmBehavioralVisualizationMsg()
-        lcm_msg.reference_route = SerializationUtils.serialize_non_typed_array(self.reference_route_points)
-        return lcm_msg
+    def serialize(self) -> TsSYSBehavioralVisualizationMsg:
+        pubsub_msg = TsSYSBehavioralVisualizationMsg()
+        pubsub_msg.reference_route = SerializationUtils.serialize_non_typed_array(self.reference_route_points)
+        return pubsub_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmBehavioralVisualizationMsg):
-        return cls(SerializationUtils.deserialize_any_array(lcmMsg.reference_route))
+    def deserialize(cls, pubsubMsg: TsSYSBehavioralVisualizationMsg):
+        return cls(SerializationUtils.deserialize_any_array(pubsubMsg.s_ReferenceRoute))
 
 

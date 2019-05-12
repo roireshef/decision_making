@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
@@ -22,7 +22,7 @@ EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_segment_id = 20
 
@@ -48,8 +48,8 @@ def state_with_sorrounding_objects():
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
         next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
-        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].s_end]
-        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].segment_id]
+        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].e_i_SEnd]
+        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].e_i_SegmentID]
 
         for i, obj_lane_lon in enumerate(obj_lane_lons):
 
@@ -69,7 +69,7 @@ def state_with_sorrounding_objects():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_tracking_mode():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
@@ -88,8 +88,8 @@ def state_with_objects_for_filtering_tracking_mode():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 10.2
 
     dynamic_objects: List[DynamicObject] = list()
@@ -107,7 +107,7 @@ def state_with_objects_for_filtering_tracking_mode():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_negative_sT():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
@@ -126,8 +126,8 @@ def state_with_objects_for_filtering_negative_sT():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
 
     dynamic_objects: List[DynamicObject] = list()
@@ -145,7 +145,7 @@ def state_with_objects_for_filtering_negative_sT():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_too_aggressive():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
@@ -164,8 +164,8 @@ def state_with_objects_for_filtering_too_aggressive():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 30
 
     dynamic_objects: List[DynamicObject] = list()

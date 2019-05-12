@@ -12,10 +12,9 @@ from decision_making.src.state.state import ObjectSize, EgoState
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 from decision_making.test.planning.custom_fixtures import state
 import numpy as np
-
-from decision_making.test.planning.custom_fixtures import short_testable_map_api
 
 
 def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTrue():
@@ -105,7 +104,7 @@ def test_prepareVisualizationMsg_withObjects_returnsValidMsg(state):
     predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
     msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
 
-    assert len(msg.s_Data.as_actors_predictions) == len(state.dynamic_objects)
+    assert len(msg.data.as_actors_predictions) == len(state.dynamic_objects)
 
 
 def test_prepareVisualizationMsg_withoutObjects_returnsValidMsg(state):
@@ -121,4 +120,4 @@ def test_prepareVisualizationMsg_withoutObjects_returnsValidMsg(state):
     predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
     msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
 
-    assert len(msg.s_Data.as_actors_predictions) == len(state.dynamic_objects)
+    assert len(msg.data.as_actors_predictions) == len(state.dynamic_objects)

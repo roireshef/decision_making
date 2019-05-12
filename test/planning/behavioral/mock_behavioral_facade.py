@@ -17,7 +17,7 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
     Operate according to to policy with an empty dummy behavioral state
     """
     def __init__(self, pubsub: PubSub, logger: Logger, trigger_pos: Optional[CartesianPoint2D],
-                 trajectory_params: TrajectoryParams, visualization_msg: BehavioralVisualizationMsg):
+                 trajectory_params: Optional[TrajectoryParams], visualization_msg: Optional[BehavioralVisualizationMsg]):
         """
         :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
