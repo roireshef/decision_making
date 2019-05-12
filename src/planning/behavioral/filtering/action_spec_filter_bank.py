@@ -186,20 +186,22 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         self.distances = BreakingDistances.create_braking_distances()
 
     @abstractmethod
-    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
         """
         selects relevant points from the action_spec (e.g., slow points)
         :param action_spec:
-        :return:
+        :return: array of s coordinates of the selected points and array of the appropriate velocity limits at these
+        points
         """
         pass
 
-    def _braking_distances(self, action_spec: ActionSpec, points: Any) -> np.ndarray:
+    def _braking_distances(self, action_spec: ActionSpec, points: np.array) -> np.ndarray:
         """
-        The braking distance required by using the CALM aggressiveness level for slow points.
+        The braking distance required by using the CALM aggressiveness level to brake from the spec velocity
+        to the given points' velocity limits.
         :param action_spec:
-        :param points:
-        :return:
+        :param points: s coordinates and the appropriate velocity limits
+        :return: braking distances from the spec velocity to the given velocities
         """
         _, slow_points_velocity_limits = points
         return self.distances[FILTER_V_0_GRID.get_index(action_spec.v),
@@ -209,8 +211,8 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         """
         The distance from current points to the 'slow points'
         :param action_spec:
-        :param points:
-        :return:
+        :param points: s coordinates and the appropriate velocity limits
+        :return: distances from the spec's endpoint (spec.s) to the given points
         """
         slow_points_s, _ = points
         return slow_points_s - action_spec.s
@@ -218,7 +220,6 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
     def _raise_false(self):
         """
         Terminates the execution of the filter with a False value.
-        No need to implement this method in your subtype
         :return: None
         """
         raise ConstraintFilterHaltWithValue(False)
@@ -226,8 +227,7 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
     def _raise_true(self):
         """
         Terminates the execution of the filter with a True value.
-        No need to implement this method in your subtype
-        :return:
+        :return: None
         """
         raise ConstraintFilterHaltWithValue(True)
 
@@ -237,7 +237,7 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         No need to implement this method in your subtype
         :param behavioral_state:
         :param action_spec:
-        :return:
+        :return: boolean: True if we are able to brake before all given points, complying their velocity limits
         """
         points_under_test = self._select_points(behavioral_state, action_spec)
         return (self._braking_distances(action_spec, points_under_test) <
@@ -246,10 +246,12 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
     @staticmethod
     def _extend_spec(spec: ActionSpec) -> ActionSpec:
         """
-        # TODO: Carefully Explain why this is necessary (add use cases maybe)
-        Compensate for delays in super short action specs to increase filter efficiency
-        :param spec:
-        :return: A list of action specs with potentially extended copies of short ones
+        If we move with constant velocity by using very short actions, at some point we reveal that there is no ability
+        to brake before a slow point, and it's too late to brake calm.
+        Therefore, in case of actions shorter than 2 seconds we extend these actions by assuming constant velocity
+        following the spec.
+        :param spec: action spec
+        :return: A list of action specs with potentially extended s
         """
         min_t = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
         return spec if spec.t >= min_t else ActionSpec(min_t, spec.v, spec.s + (min_t - spec.t) * spec.v, spec.d, spec.recipe)

@@ -446,24 +446,21 @@ class MapUtils:
         assert len(road_segments) == 1
         return road_segments[0]
 
-
-
-
     @staticmethod
     def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame):
         """
         Returns the adjusted ids of the Static_Traffic_flow_controls on the GFF
-        :return:
+        :return: s coordinates of the traffic flow controls on the GFF
         """
         lane_ids = []
         # stations are s coordinates
-        stations = []
+        stations_s_coordinates = []
         for lane_id in lane_frenet.segment_ids:
             lane_segment = MapUtils.get_lane(lane_id)
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
-                stations.append(static_traffic_flow_control.e_l_station)
-        return lane_frenet.convert_s_from_segments(stations, lane_ids)
+                stations_s_coordinates.append(static_traffic_flow_control.e_l_station)
+        return lane_frenet.convert_s_from_segments(stations_s_coordinates, lane_ids)
 
 
 
