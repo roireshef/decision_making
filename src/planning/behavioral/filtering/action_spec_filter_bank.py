@@ -1,5 +1,3 @@
-import copy
-
 import numpy as np
 import rte.python.profiler as prof
 import six
