@@ -25,7 +25,7 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
         behavioral_grid_state: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
-    predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
+    predictor = RoadFollowingPredictor(logger)
 
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=DEFAULT_DYNAMIC_RECIPE_FILTERING)
     actions = dynamic_action_space.specify_goals(follow_vehicle_recipes_towards_front_cells, behavioral_grid_state)

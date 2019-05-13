@@ -2,13 +2,13 @@ from logging import Logger
 
 import numpy as np
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, NEGLIGIBLE_DISPOSITION_LAT, \
-    NEGLIGIBLE_DISPOSITION_LON, LOG_INVALID_TRAJECTORY_SAMPLING_TIME
+from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, \
+    LOG_INVALID_TRAJECTORY_SAMPLING_TIME
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V, \
     C_A
 from decision_making.src.state.state import EgoState
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.utils.geometry_utils import CartesianFrame
 import rte.python.profiler as prof
 
 
@@ -42,19 +42,19 @@ class LocalizationUtils:
                      calling_class_name, current_time - last_trajectory.timestamp_in_sec)
 
         current_expected_state = last_trajectory.sample(np.array([current_time]))[0]  # type: CartesianExtendedState
-        current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])
+        current_actual_location = np.array([current_ego_state.x, current_ego_state.y])
 
         errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(
             global_pos=current_actual_location,
             global_yaw=0.0,  # irrelevant since yaw isn't used.
-            frame_position=np.append(current_expected_state[[C_X, C_Y]], [DEFAULT_OBJECT_Z_VALUE]),
+            frame_position=current_expected_state[[C_X, C_Y]],
             frame_orientation=current_expected_state[C_YAW]
         )
 
         distances_in_expected_frame = np.abs(errors_in_expected_frame)  # type: FrenetPoint
 
         logger.debug(("is_actual_state_close_to_expected_state stats called from %s: "
-                      "{desired_localization: %s, actual_localization(x,y,z): %s, desired_velocity: %s, "
+                      "{desired_localization: %s, actual_localization(x,y): %s, desired_velocity: %s, "
                       "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s, acceleration: %s"
                       ", timestamp is: %f}" %
                       (calling_class_name, current_expected_state, current_actual_location, current_expected_state[C_V],
