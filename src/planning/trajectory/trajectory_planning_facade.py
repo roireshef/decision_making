@@ -58,8 +58,8 @@ class TrajectoryPlanningFacade(DmModule):
         self._started_receiving_states = False
 
     def _start_impl(self):
-        self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
-        self.pubsub.subscribe(UC_SYSTEM_STATE_LCM)
+        self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
+        self.pubsub.subscribe(UC_SYSTEM_STATE)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
