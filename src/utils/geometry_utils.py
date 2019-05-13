@@ -228,7 +228,7 @@ class CartesianFrame:
         :return: The point(s) and yaw relative to coordinate system specified by <frame_position> and
         <frame_orientation>. The shapes of global_pos and yaw are kept.
         """
-        transformation_matrix = CartesianFrame.homo_matrix_2d_translation_rotation(frame_orientation, -frame_position)[:-1]
+        transformation_matrix = CartesianFrame.homo_matrix_2d_translation_rotation(-frame_orientation, -frame_position)[:-1]
         ones = np.ones((global_pos.shape[0], 1)) if global_pos.ndim > 1 else np.array([1])
         relative_pos = np.dot(transformation_matrix, np.concatenate((global_pos, ones), axis=-1).T)
         relative_yaw = global_yaw - frame_orientation
@@ -248,7 +248,7 @@ class CartesianFrame:
         :return: the point(s) in the 2D global coordinate system numpy Nx3 and global yaw [rad].
                 The shapes of global_pos and yaw are kept.
         """
-        transformation_matrix = CartesianFrame.homo_matrix_2d_rotation_translation(-frame_orientation, frame_position)[:-1]
+        transformation_matrix = CartesianFrame.homo_matrix_2d_rotation_translation(frame_orientation, frame_position)[:-1]
         ones = np.ones((relative_pos.shape[0], 1)) if relative_pos.ndim > 1 else np.array([1])
         relative_pos = np.dot(transformation_matrix, np.concatenate((relative_pos, ones), axis=-1).T)
         relative_yaw = relative_yaw + frame_orientation
