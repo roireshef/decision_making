@@ -568,4 +568,4 @@ def test_lateralConsistency_twoOverlappingGFFs_cartesianPointHasSameLatitudeWRTb
     fpoint1 = gff1.cpoint_to_fpoint(cpoint)
     fpoint2 = gff2.cpoint_to_fpoint(cpoint)
     assert fpoint1[FP_DX] == fpoint2[FP_DX] and \
-           fpoint1[FS_SX] + segmentation1[0].s_start == fpoint2[FS_SX] + segmentation2[0].s_start
+           fpoint1[FS_SX] + segmentation1[0].e_i_SStart == fpoint2[FS_SX] + segmentation2[0].e_i_SStart
