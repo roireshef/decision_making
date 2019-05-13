@@ -152,8 +152,7 @@ class CostBasedBehavioralPlanner:
         if action_spec.only_padding_mode:
             # in case of very short action, create samplable trajectory using linear polynomials from ego time,
             # such that it passes through the goal at goal time
-            ego_by_goal_state = np.copy(goal_fstate)
-            ego_by_goal_state[FS_SX] -= action_spec.v * action_spec.t
+            ego_by_goal_state = KinematicUtils.create_ego_by_goal_state(goal_fstate, action_spec.t)
             poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
         else:
             # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
