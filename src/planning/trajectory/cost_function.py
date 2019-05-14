@@ -4,9 +4,10 @@ import rte.python.profiler as prof
 from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
-    FrenetTrajectories2D, FS_DX
+    FrenetTrajectories2D, FS_DX, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math_utils import Math
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
@@ -69,21 +70,26 @@ class TrajectoryPlannerCosts:
 
             # calculate objects' map_state
             objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
-                                                 for obj in close_objects if obj.cartesian_state is not None])
+                                                 for obj in close_objects])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
-            objects_predicted_ftrajectories = predictor.predict_2d_frenet_states(
+            all_objects_predicted_ftrajectories = predictor.predict_2d_frenet_states(
                 objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
+            # filter objects, whose predictions are partially outside the reference_route limits
+            are_objects_valid = NumpyUtils.is_in_limits(all_objects_predicted_ftrajectories[:, :, FS_SX],
+                                                        reference_route.s_limits).all(axis=1)
+            if not are_objects_valid.any():
+                return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
+            objects_predicted_ftrajectories = all_objects_predicted_ftrajectories[are_objects_valid]
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
-
-            objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
+            objects_sizes = np.array([[obs.size.length, obs.size.width] for idx, obs in enumerate(close_objects)
+                                      if are_objects_valid[idx]])
             ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
             # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
             distances = TrajectoryPlannerCosts.compute_distances_to_objects(
                 ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
-
 
             # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
             k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
