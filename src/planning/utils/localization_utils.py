@@ -5,7 +5,8 @@ import numpy as np
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, \
     LOG_INVALID_TRAJECTORY_SAMPLING_TIME
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V
+from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V, \
+    C_A
 from decision_making.src.state.state import EgoState
 from decision_making.src.utils.geometry_utils import CartesianFrame
 import rte.python.profiler as prof
@@ -59,6 +60,7 @@ class LocalizationUtils:
                       (calling_class_name, current_expected_state, current_actual_location, current_expected_state[C_V],
                        current_ego_state.velocity, distances_in_expected_frame,
                        current_ego_state.velocity - current_expected_state[C_V],
+                       current_ego_state.acceleration - current_expected_state[C_A],
                        current_ego_state.timestamp_in_sec)).replace('\n', ' '))
 
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \

@@ -49,10 +49,10 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         terminal_velocities = np.unique([recipe.velocity for i, recipe in enumerate(action_recipes)
                                          if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
                                          and recipe.relative_lane == RelativeLane.SAME_LANE])
-        try:
-            maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
-        except ValueError:
+        if len(terminal_velocities) == 0:
             raise NoActionsLeftForBPError()
+
+        maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
 
         # find the most calm same-lane static action with the maximal existing velocity
         follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)

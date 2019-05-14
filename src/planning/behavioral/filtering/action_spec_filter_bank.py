@@ -53,25 +53,25 @@ class FilterForKinematics(ActionSpecFilter):
         T = np.array([spec.t for spec in action_specs])
 
         # creare boolean arrays indicating whether the specs are in tracking mode
-        in_track_mode = np.array([spec.in_track_mode for spec in action_specs])
-        no_track_mode = np.logical_not(in_track_mode)
+        padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
+        no_padding_mode = np.logical_not(padding_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[no_track_mode])
+        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[no_padding_mode])
 
         # represent initial and terminal boundary conditions (for two Frenet axes s,d) for non-tracking specs
         constraints_s = np.concatenate(
-            (initial_fstates[no_track_mode, :FS_DX], terminal_fstates[no_track_mode, :FS_DX]), axis=1)
+            (initial_fstates[no_padding_mode, :FS_DX], terminal_fstates[no_padding_mode, :FS_DX]), axis=1)
         constraints_d = np.concatenate(
-            (initial_fstates[no_track_mode, FS_DX:], terminal_fstates[no_track_mode, FS_DX:]), axis=1)
+            (initial_fstates[no_padding_mode, FS_DX:], terminal_fstates[no_padding_mode, FS_DX:]), axis=1)
 
         # solve for s(t) and d(t)
         poly_coefs_s, poly_coefs_d = np.zeros((len(action_specs), 6)), np.zeros((len(action_specs), 6))
-        poly_coefs_s[no_track_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d[no_track_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+        poly_coefs_s[no_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d[no_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
         # in tracking mode (constant velocity) the s polynomials have only two non-zero coefficients
-        poly_coefs_s[in_track_mode, 4:] = np.c_[
-            initial_fstates[in_track_mode, FS_SV], initial_fstates[in_track_mode, FS_SX]]
+        poly_coefs_s[padding_mode, 4:] = np.c_[
+            initial_fstates[padding_mode, FS_SV], initial_fstates[padding_mode, FS_SX]]
 
         are_valid = []
         for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
@@ -437,7 +437,7 @@ class BreakingDistances:
 
         # check acceleration limits
         poly_coefs = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T, T)
-        in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)[:, 0]
+        in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
 
         # calculate actions' distances, assuming a_0 = 0
         distances = T * (v_0 + v_T) / 2
