@@ -35,13 +35,17 @@ class FilterIfNone(ActionSpecFilter):
 class FilterForKinematics(ActionSpecFilter):
     @prof.ProfileFunction()
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        """ Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
+        """
+        Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
             - max longitudinal position (available in the reference frame)
             - longitudinal velocity limits - both in Frenet (analytical) and Cartesian (by sampling)
             - longitudinal acceleration limits - both in Frenet (analytical) and Cartesian (by sampling)
             - lateral acceleration limits - in Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
             conceptually "straightens" the road's shape.
-         """
+        :param action_specs: list of action specs
+        :param behavioral_state:
+        :return: boolean list per action spec: True if a spec passed the filter
+        """
         # extract all relevant information for boundary conditions
         initial_fstates = np.array(
             [behavioral_state.projected_ego_fstates[spec.relative_lane] for spec in action_specs])
@@ -76,9 +80,10 @@ class FilterForKinematics(ActionSpecFilter):
             # extract the relevant (cached) frenet frame per action according to the destination lane
             frenet_frame = behavioral_state.extended_lane_frames[spec.relative_lane]
 
-            if not spec.in_track_mode:
+            if not spec.only_padding_mode:
                 # if the action is static, there's a chance the 5th order polynomial is actually a degnerate one
                 # (has lower degree), so we clip the first zero coefficients and send a polynomial with lower degree
+                # TODO: This handling of polynomial coefficients being 5th or 4th order should happen in an inner context and get abstracted from this method
                 first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
                 is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(
                     poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_ACC_LIMITS, VELOCITY_LIMITS,
@@ -152,7 +157,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
-            target_poly_s = np.array([0, 0, 0, 0, target_fstate[FS_SV], target_fstate[FS_SX]])
+            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomials(target_fstate)
 
             # minimal margin used in addition to headway (center-to-center of both objects)
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \

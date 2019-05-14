@@ -124,6 +124,14 @@ class ConstraintFilterHaltWithValue(Exception):
         return self._value
 
 
+class OutOfSegmentBack(Exception):
+    pass
+
+
+class OutOfSegmentFront(Exception):
+    pass
+
+
 def raises(*e):
     # type: (Exception)
     """

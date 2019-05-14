@@ -150,8 +150,8 @@ class Poly1D:
         poly = Math.polyder2d(poly_coefs, m=degree)
 
         # TODO: implement tests for those cases
-        if poly_der.shape[-1] == 0: # No derivative - polynomial is constant
-            if poly.shape[-1] == 0: # Also polynomial is zero (null)
+        if poly_der.shape[-1] == 0:  # No derivative - polynomial is constant
+            if poly.shape[-1] == 0:  # Also polynomial is zero (null)
                 return NumpyUtils.is_in_limits(np.full((poly.shape[0], 1), 0), limits)
             else:
                 return NumpyUtils.is_in_limits(poly[:, 0], limits)
@@ -170,7 +170,7 @@ class Poly1D:
         is_suspected_value_in_limits = NumpyUtils.is_almost_in_limits(acc_suspected_values, limits)
 
         # for all non-complex extrema points that are inside the time range, verify their values are in [a_min, a_max]
-        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1, keepdims=True)
+        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1)
 
     @classmethod
     def are_accelerations_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:

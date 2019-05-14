@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures import LcmFrenetSerret2DFrame
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
@@ -14,7 +14,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A, \
     CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState2D, CartesianExtendedState
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
+from decision_making.src.utils.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
@@ -36,6 +36,30 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         self.k = k
         self.k_tag = k_tag
         self._ds = ds
+
+    def serialize(self):
+        # type: () -> TsSYSFrenetSerret2DFrame
+        pubsub_msg = TsSYSFrenetSerret2DFrame()
+
+        pubsub_msg.s_Points = SerializationUtils.serialize_non_typed_array(self.O)
+        pubsub_msg.s_FrenetT = SerializationUtils.serialize_non_typed_array(self.T)
+        pubsub_msg.s_FrenetN = SerializationUtils.serialize_non_typed_array(self.N)
+        pubsub_msg.s_FrenetK = SerializationUtils.serialize_non_typed_array(self.k)
+        pubsub_msg.s_FrenetKTag = SerializationUtils.serialize_non_typed_array(self.k_tag)
+
+        pubsub_msg.e_l_DS = self.ds
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSFrenetSerret2DFrame)->FrenetSerret2DFrame
+        return cls(SerializationUtils.deserialize_any_array(pubsubMsg.s_Points),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FrenetT),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FrenetN),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FrenetK),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FrenetKTag),
+                   pubsubMsg.e_l_DS)
 
     @property
     def ds(self):
@@ -413,27 +437,3 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         k_tag = np.divide(np.gradient(k), step)
 
         return T, N, np.c_[k], np.c_[k_tag]
-
-    def serialize(self):
-        # type: () -> LcmFrenetSerret2DFrame
-        lcm_msg = LcmFrenetSerret2DFrame()
-
-        lcm_msg.points = SerializationUtils.serialize_non_typed_array(self.O)
-        lcm_msg.T = SerializationUtils.serialize_non_typed_array(self.T)
-        lcm_msg.N = SerializationUtils.serialize_non_typed_array(self.N)
-        lcm_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
-        lcm_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
-
-        lcm_msg.ds = self.ds
-
-        return lcm_msg
-
-    @classmethod
-    def deserialize(cls, lcmMsg):
-        # type: (LcmFrenetSerret2DFrame)->FrenetSerret2DFrame
-        return cls(SerializationUtils.deserialize_any_array(lcmMsg.points),
-                   SerializationUtils.deserialize_any_array(lcmMsg.T),
-                   SerializationUtils.deserialize_any_array(lcmMsg.N),
-                   SerializationUtils.deserialize_any_array(lcmMsg.k),
-                   SerializationUtils.deserialize_any_array(lcmMsg.k_tag),
-                   lcmMsg.ds)
