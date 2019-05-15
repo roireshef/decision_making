@@ -54,13 +54,13 @@ class DmPeriodicTimerTrigger(DmTrigger):
     This trigger will call the given callback according to the given period
     """
 
-    def __init__(self, callback: Callable[[], None], period: float):
+    def __init__(self, callback: Callable[[], None], process_name: str, period: float):
         super().__init__()
         self._callback = callback
         self._is_active = False
         self._period = period
         if self._period > 0:
-            self._timer = PeriodicTimer(self._period, self._callback)
+            self._timer = PeriodicTimer(self._period, self._callback, name=process_name)
         else:
             raise ValueError('invalid period ({}) set for DmPeriodicTimerTrigger'.format(period))
 

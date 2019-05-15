@@ -61,6 +61,8 @@ def get_loglines():
         return [eval(ll.replace('"', '').split('data:')[1].rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST') != -1 and ll.find('data') != -1]
 
 
+# remove this skip once we start using MetricLogger
+@pytest.mark.skip(reason="MetricLogger isn't used")
 def test_MetricLogger_simpleoutput_OutputsToLogFile():
 
     simple_message = 'TEST Just a simple message'
@@ -75,6 +77,8 @@ def test_MetricLogger_simpleoutput_OutputsToLogFile():
     sleep(2)
 
 
+# remove this skip once we start using MetricLogger
+@pytest.mark.skip(reason="MetricLogger isn't used")
 def test_MetricLogger_withAutobinding_correctReport():
 
     binded_message = 'TEST Message with args: %d and binded data'
@@ -83,7 +87,7 @@ def test_MetricLogger_withAutobinding_correctReport():
         logger = get_logger_for_testing()
         logger.report(binded_message, 3, a='arg1', b='arg2')
 
-    except:
+    except Exception as e:
         pytest.fail("Exception was thrown")
 
     assert get_loglines()[0]['message'] == binded_message % 3
@@ -93,6 +97,8 @@ def test_MetricLogger_withAutobinding_correctReport():
     sleep(1)
 
 
+# remove this skip once we start using MetricLogger
+@pytest.mark.skip(reason="MetricLogger isn't used")
 def test_MetricLogger_simpleBinding_correctReport():
 
     try:
@@ -101,7 +107,7 @@ def test_MetricLogger_simpleBinding_correctReport():
         logger.bind(data={'x': 10})
         logger.report()
 
-    except:
+    except Exception as e:
         pytest.fail("Exception was thrown")
 
     assert get_loglines()[0]['TEST_data'] == {'x': 10}
@@ -109,6 +115,8 @@ def test_MetricLogger_simpleBinding_correctReport():
     sleep(1)
 
 
+# remove this skip once we start using MetricLogger
+@pytest.mark.skip(reason="MetricLogger isn't used")
 def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
 
     try:
@@ -117,7 +125,7 @@ def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
         logger.report('TEST just a message')
         logger.report('TEST just another message 1')
 
-    except:
+    except Exception as e:
         pytest.fail("Exception was thrown")
 
     assert get_loglines()[0]['message'] == 'TEST just a message'
@@ -132,6 +140,8 @@ def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
     sleep(1)
 
 
+# remove this skip once we start using MetricLogger
+@pytest.mark.skip(reason="MetricLogger isn't used")
 def test_MetricLogger_unbinding():
 
     try:
@@ -142,7 +152,7 @@ def test_MetricLogger_unbinding():
         logger.unbind('a', 'b')
         logger.report('TEST without binding')
 
-    except:
+    except Exception as e:
         pytest.fail("Exception was thrown")
 
     assert get_loglines()[0]['message'] == 'TEST initial binding'

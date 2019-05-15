@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BIG_EPS, EPS
 
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -130,3 +130,16 @@ class KinematicUtils:
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, lat_acceleration_limits)
 
         return frenet_lateral_movement_is_feasible
+
+    @staticmethod
+    def create_linear_profile_polynomials(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
+        """
+        Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
+        velocity). Those polynomials are degenerate to s(t)=v*t+x form
+        :param frenet_state: the current frenet state to pull positions and velocities from
+        :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
+        """
+        poly_s = np.array([0, 0, 0, 0, frenet_state[FS_SV], frenet_state[FS_SX]])
+        # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
+        poly_d = np.zeros(QuinticPoly1D.num_coefs())
+        return poly_s, poly_d

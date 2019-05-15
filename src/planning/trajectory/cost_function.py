@@ -10,7 +10,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.utils.geometry_utils import CartesianFrame
 
 
 class TrajectoryPlannerCosts:
@@ -61,14 +61,13 @@ class TrajectoryPlannerCosts:
         """
         # Filter close objects
         close_objects = [obs for obs in state.dynamic_objects
-                   if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
+                         if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
 
         with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(close_objects), ctrajectories.shape)):
             if len(close_objects) == 0:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
             # calculate objects' map_state
-            # TODO: consider using map_state_on_host_lane
             objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
                                                  for obj in close_objects if obj.cartesian_state is not None])
 
@@ -165,7 +164,7 @@ class TrajectoryPlannerCosts:
         :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
         """
         lon_jerks, lat_jerks = Jerk.compute_jerks(ctrajectories, dt)
-        jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
+        jerk_costs = params.lon_jerk_cost_weight * lon_jerks + params.lat_jerk_cost_weight * lat_jerks
         return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
 
