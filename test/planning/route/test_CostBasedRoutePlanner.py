@@ -1,21 +1,10 @@
 import numpy as np
-import pytest
-from logging import Logger
-from typing import List
 
-from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
-from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, NavigationPlan
+from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
 from decision_making.src.planning.route.route_planner import RoutePlannerInputData
-from decision_making.test.messages.static_scene_fixture import scene_static
-from decision_making.test.planning.route.scene_fixtures import RoutePlanTestData, \
-    construction_scene_and_expected_output, map_scene_and_expected_output,\
-    gmfa_scene_and_expected_output, lane_direction_scene_and_expected_output,\
-    combined_scene_and_expected_output
-from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
-
-from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.planning.route.scene_fixtures import RoutePlanTestData
 
 
 def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):

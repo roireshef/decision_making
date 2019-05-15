@@ -1,23 +1,18 @@
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
-from decision_making.src.messages.scene_common_messages import Header
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import create_route_plan_msg
-from unittest.mock import patch
 
-import pytest
 import numpy as np
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.messages.scene_static_message import SceneStatic, NominalPathPoint
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+
 
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
-
 
 
 def test_getRoadSegmentIdFromLaneId_correct(scene_static_pg_split):

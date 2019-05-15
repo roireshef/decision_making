@@ -3,7 +3,7 @@ import six
 from abc import abstractmethod, ABCMeta
 from decision_making.src.messages.route_plan_message import RoutePlan
 from logging import Logger
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, \

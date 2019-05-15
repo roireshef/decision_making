@@ -1,7 +1,8 @@
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneRoadSegment, MapRoadSegmentType, AdjacentLane, \
-    MovingDirection, MapLaneType, DataSceneStatic, SceneStatic, SceneLaneSegment, LaneSegmentConnectivity, ManeuverType, \
-    MapLaneMarkerType, BoundaryPoint, NominalPathPoint
+    MovingDirection, MapLaneType, DataSceneStatic, SceneStatic, SceneLaneSegment, LaneSegmentConnectivity, \
+    ManeuverType, MapLaneMarkerType, BoundaryPoint
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.types import FP_SX, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from typing import List

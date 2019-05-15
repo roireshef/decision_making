@@ -3,8 +3,9 @@ from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneN
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
 from decision_making.src.global_constants import EPS
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegmentGeometry, \
+from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -12,11 +13,8 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
 import rte.python.profiler as prof
 from typing import List, Dict
-
 
 
 class MapUtils:
@@ -122,6 +120,7 @@ class MapUtils:
             relative_lane_ids[RelativeLane.LEFT_LANE] = left_lanes[0]
         return relative_lane_ids
 
+    @staticmethod
     def _get_all_middle_lanes():
         """
         Returns the middle lane of each road segment.

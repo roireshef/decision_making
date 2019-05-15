@@ -4,9 +4,6 @@ from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
 from rte.python.logger.AV_logger import AV_Logger
 
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    state_with_sorrounding_objects, route_plan_20_30
-
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects, route_plan_20_30):
     """
     validate that 8 objects around ego create 8 grid cells in the behavioral state in multi-road map

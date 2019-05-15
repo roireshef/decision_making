@@ -1,10 +1,9 @@
-import numpy as np
-from typing import List
-
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSTakeover, TsSYSDataTakeover
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_Takeover import TsSYSTakeover
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataTakeover import TsSYSDataTakeover
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
+
 
 class DataTakeover(PUBSUB_MSG_IMPL):
     e_b_is_takeover_needed = bool
@@ -27,6 +26,7 @@ class DataTakeover(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataTakeover):
         return cls(pubsubMsg.e_b_is_takeover_needed)
+
 
 class Takeover(PUBSUB_MSG_IMPL):
     s_Header = Header

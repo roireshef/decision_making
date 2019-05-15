@@ -1,9 +1,7 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 from logging import Logger
 
 import numpy as np
-import pickle
 
 from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -18,7 +16,6 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, DynamicObject, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.paths import Paths
 
 
 def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_pg_split):

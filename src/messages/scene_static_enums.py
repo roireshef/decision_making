@@ -1,5 +1,6 @@
 from enum import IntEnum, Enum
 
+
 class MapLaneType(Enum):
 
     ControlledAccess_DividedRoadLane = 0

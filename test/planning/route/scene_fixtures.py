@@ -10,7 +10,7 @@ from decision_making.src.messages.scene_static_enums import LaneConstructionType
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import EgoState, ObjectSize
-from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
+from decision_making.test.messages.scene_static_fixture import create_scene_static_from_map_api
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
 from mapping.src.service.map_service import MapService
 

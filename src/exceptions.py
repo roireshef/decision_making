@@ -107,8 +107,18 @@ class RoadNotFound(MappingException):
 class LaneNotFound(MappingException):
     pass
 
+
+class OutOfSegmentBack(Exception):
+    pass
+
+
+class OutOfSegmentFront(Exception):
+    pass
+
+
 class EgoStationBeyondLaneLength(MappingException):
     pass
+
 
 # ROUTE PLANNING
 @six.add_metaclass(ABCMeta)

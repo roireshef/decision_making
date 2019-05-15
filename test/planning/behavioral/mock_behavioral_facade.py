@@ -13,17 +13,11 @@ from decision_making.test.constants import BP_NEGLIGIBLE_DISPOSITION_LON, BP_NEG
 
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import State, EgoState
-from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
-from decision_making.src.messages.takeover_message import Takeover, DataTakeover
-from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet ,\
-    RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
-    RoutePlanningException, MappingException, raises
-
-from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.planning.types import FS_SX
-from decision_making.src.global_constants import  DISTANCE_TO_SET_TAKEOVER_FLAG
+from decision_making.src.state.state import EgoState
+from decision_making.src.messages.route_plan_message import DataRoutePlan
+from decision_making.src.messages.takeover_message import Takeover
+from decision_making.src.exceptions import RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, \
+    EgoLaneOccupancyCostIncorrect, raises
 
 
 class BehavioralFacadeMock(BehavioralPlanningFacade):

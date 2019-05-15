@@ -1,17 +1,29 @@
 from typing import List
 import numpy as np
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint,\
-    TsSYSLaneCoupling, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl,\
-    TsSYSLaneSegmentConnectivity, TsSYSSceneLaneSegmentBase, TsSYSSceneLaneSegmentGeometry, TsSYSNavigationPlan,\
-    TsSYSSceneStaticGeometry, TsSYSSceneStaticBase, TsSYSSceneStatic, TsSYSDataSceneStatic,\
-    TsSYSSceneRoadIntersection, TsSYSSceneRoadSegment
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_AdjacentLane import TsSYSAdjacentLane
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_BoundaryPoint import TsSYSBoundaryPoint
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_LaneCoupling import TsSYSLaneCoupling
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_StaticTrafficFlowControl import TsSYSStaticTrafficFlowControl
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicStatus import TsSYSDynamicStatus
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicTrafficFlowControl import TsSYSDynamicTrafficFlowControl
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_LaneSegmentConnectivity import TsSYSLaneSegmentConnectivity
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneLaneSegmentBase import TsSYSSceneLaneSegmentBase
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneLaneSegmentGeometry import TsSYSSceneLaneSegmentGeometry
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_NavigationPlan import TsSYSNavigationPlan
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneStaticGeometry import TsSYSSceneStaticGeometry
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneStaticBase import TsSYSSceneStaticBase
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneStatic import TsSYSSceneStatic
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import TsSYSDataSceneStatic
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadIntersection import TsSYSSceneRoadIntersection
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegment import TsSYSSceneRoadSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header 
 from decision_making.src.messages.scene_static_enums import MapLaneType, MapRoadSegmentType, MovingDirection,\
-    ManeuverType, MapLaneMarkerType, RoadObjectType, TrafficSignalState, NominalPathPoint
+    ManeuverType, MapLaneMarkerType, RoadObjectType, TrafficSignalState
 
 MAX_LANE_ATTRIBUTES = 8
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
+
 
 class SceneRoadSegment(PUBSUB_MSG_IMPL):
     e_i_road_segment_id = int
@@ -555,9 +567,9 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
         self.as_lane_coupling = as_lane_coupling
         self.e_l_length = e_l_length
         self.e_Cnt_num_active_lane_attributes = e_Cnt_num_active_lane_attributes
-        self.e_i_active_lane_attribute_indices = e_i_active_lane_attribute_indices
-        self.e_cmp_lane_attributes = e_cmp_lane_attributes
-        self.e_cmp_lane_attribute_confidences = e_cmp_lane_attribute_confidences
+        self.a_i_active_lane_attribute_indices = a_i_active_lane_attribute_indices
+        self.a_cmp_lane_attributes = a_cmp_lane_attributes
+        self.a_cmp_lane_attribute_confidences = a_cmp_lane_attribute_confidences
 
     def serialize(self) -> TsSYSSceneLaneSegmentBase:
         pubsub_msg = TsSYSSceneLaneSegmentBase()

@@ -11,6 +11,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic, DataS
     MAX_NOMINAL_PATH_POINT_FIELDS, StaticTrafficFlowControl, DynamicTrafficFlowControl,\
     DynamicStatus, AdjacentLane, LaneSegmentConnectivity, LaneCoupling
 
+
 class SceneStaticPublisher:
     RoadSegmentID = int
     LaneSegmentID = int

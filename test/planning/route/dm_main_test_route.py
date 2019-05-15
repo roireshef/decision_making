@@ -1,23 +1,13 @@
-from logging import Logger
 from os import getpid
-import numpy as np
-import os
 from decision_making.paths import Paths
 from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
-from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
-    NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
-    ROUTE_PLANNING_NAME_FOR_LOGGING, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, ROUTE_PLANNING_MODULE_PERIOD
+from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
+    DM_MANAGER_NAME_FOR_LOGGING, ROUTE_PLANNING_MODULE_PERIOD
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
-from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
-# from decision_making.src.state.state_module import StateModule
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals

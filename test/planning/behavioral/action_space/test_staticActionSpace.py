@@ -1,6 +1,3 @@
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
-from decision_making.src.messages.scene_common_messages import Header
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20_30
 from logging import Logger
 
 import numpy as np
@@ -13,7 +10,6 @@ from decision_making.src.state.state import ObjectSize, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
-
 
 
 # test Specify, when ego starts with velocity very close to the target velocity

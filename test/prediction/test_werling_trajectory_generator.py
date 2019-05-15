@@ -8,9 +8,9 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.prediction.conftest import PREDICTION_HORIZON
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
     WerlingTrajectoryGenerator
-from decision_making.test.prediction.conftest import original_state_with_sorrounding_objects
 
 DEBUG_PLOT = False
+
 
 def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_generator: WerlingTrajectoryGenerator,
                                                            original_state_with_sorrounding_objects: State):

@@ -1,10 +1,11 @@
 from traceback import format_exc
 from logging import Logger
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_static import UC_SYSTEM_SCENE_STATIC
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
+
 
 class SceneStaticPublisherFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, publisher: SceneStaticPublisher):

@@ -1,14 +1,12 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from typing import List
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import numpy as np
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import DynamicObject, State, EgoState
-from decision_making.test.prediction.conftest import road_following_predictor, init_state, prediction_timestamps, \
-    predicted_dyn_object_states_road_yaw, ego_samplable_trajectory, static_cartesian_state, \
-    predicted_static_ego_states, static_cartesian_state, DYNAMIC_OBJECT_ID, CARTESIAN_CREATION
+from decision_making.test.prediction.conftest import DYNAMIC_OBJECT_ID, CARTESIAN_CREATION
 from decision_making.test.prediction.utils import Utils
 
 

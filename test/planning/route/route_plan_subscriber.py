@@ -1,29 +1,26 @@
 import numpy as np
-import time
 import traceback
 
 from logging import Logger
 from typing import List
 from rte.python.logger.AV_logger import AV_Logger
 
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN, UC_SYSTEM_SCENE_STATIC, UC_SYSTEM_TAKEOVER
+from common_data.interface.Rte_Types.python.uc_system.uc_system_route_plan import UC_SYSTEM_ROUTE_PLAN
+from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_static import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system.uc_system_takeover import UC_SYSTEM_TAKEOVER
 
 from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.global_constants import DISTANCE_TO_SET_TAKEOVER_FLAG,\
-     LOG_MSG_SCENE_STATIC_RECEIVED, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.global_constants import LOG_MSG_SCENE_STATIC_RECEIVED ,\
+     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic
-from decision_making.src.messages.takeover_message import Takeover, DataTakeover
-from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.src.messages.takeover_message import Takeover
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
-from decision_making.src.planning.types import CartesianExtendedState, C_Y, FS_SX
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.state.map_state import MapState
-from decision_making.src.utils.metric_logger import MetricLogger
+
 
 def generate_mock_state(ego_lane_id:int, ego_lane_station:float) -> State :
     
@@ -40,6 +37,7 @@ def generate_mock_state(ego_lane_id:int, ego_lane_station:float) -> State :
     dynamic_objects: List[DynamicObject] = list()
  
     return State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
 
 class RoutePlanSubscriber(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger) -> None:
@@ -135,4 +133,3 @@ class RoutePlanSubscriber(DmModule):
 
         print("TAKEOVER FLAG:  ", takeover_msg.s_Data.e_b_is_takeover_needed , "\n")
         print("------------   ROUTE MESSAGE END  ---------------------","\n\n")
-    
