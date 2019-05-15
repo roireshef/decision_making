@@ -172,10 +172,10 @@ class TrajectoryPlanningFacade(DmModule):
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
         :return: a TrajectoryPlan message ready to send to the controller
         """
-        time_samples = np.linspace(start=0,
-                    stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                    num=TRAJECTORY_NUM_POINTS) + timestamp
-        trajectory_points = samplable_trajectory.sample(time_samples)
+        trajectory_points = samplable_trajectory.sample(
+            np.linspace(start=0,
+                        stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
+                        num=TRAJECTORY_NUM_POINTS) + timestamp)
         self._last_trajectory = samplable_trajectory
 
         # TODO: remove it

@@ -47,8 +47,7 @@ class FilterForKinematics(ActionSpecFilter):
         :return: boolean list per action spec: True if a spec passed the filter
         """
         # extract all relevant information for boundary conditions
-        initial_fstates = np.array(
-            [behavioral_state.projected_ego_fstates[spec.relative_lane] for spec in action_specs])
+        initial_fstates = np.array([behavioral_state.projected_ego_fstates[spec.relative_lane] for spec in action_specs])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
         T = np.array([spec.t for spec in action_specs])
 
@@ -60,18 +59,17 @@ class FilterForKinematics(ActionSpecFilter):
         A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[no_padding_mode])
 
         # represent initial and terminal boundary conditions (for two Frenet axes s,d) for non-tracking specs
-        constraints_s = np.concatenate(
-            (initial_fstates[no_padding_mode, :FS_DX], terminal_fstates[no_padding_mode, :FS_DX]), axis=1)
-        constraints_d = np.concatenate(
-            (initial_fstates[no_padding_mode, FS_DX:], terminal_fstates[no_padding_mode, FS_DX:]), axis=1)
+        constraints_s = np.concatenate((initial_fstates[no_padding_mode, :FS_DX],
+                                        terminal_fstates[no_padding_mode, :FS_DX]), axis=1)
+        constraints_d = np.concatenate((initial_fstates[no_padding_mode, FS_DX:],
+                                        terminal_fstates[no_padding_mode, FS_DX:]), axis=1)
 
         # solve for s(t) and d(t)
         poly_coefs_s, poly_coefs_d = np.zeros((len(action_specs), 6)), np.zeros((len(action_specs), 6))
         poly_coefs_s[no_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
         poly_coefs_d[no_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
         # in tracking mode (constant velocity) the s polynomials have only two non-zero coefficients
-        poly_coefs_s[padding_mode, 4:] = np.c_[
-            initial_fstates[padding_mode, FS_SV], initial_fstates[padding_mode, FS_SX]]
+        poly_coefs_s[padding_mode, 4:] = np.c_[initial_fstates[padding_mode, FS_SV], initial_fstates[padding_mode, FS_SX]]
 
         are_valid = []
         for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
@@ -104,10 +102,9 @@ class FilterForKinematics(ActionSpecFilter):
 
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                              VELOCITY_LIMITS, LON_ACC_LIMITS,
-                                                                              BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)[
-                0]
-
+                                                                              VELOCITY_LIMITS,
+                                                                              LON_ACC_LIMITS,
+                                                                              BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)[0]
             are_valid.append(is_valid_in_cartesian)
 
         # TODO: remove it
@@ -117,7 +114,7 @@ class FilterForKinematics(ActionSpecFilter):
             init_idx = frenet.get_index_on_frame_from_s(ego_fstate[:1])[0][0]
             print('ERROR in BP %.3f: ego_fstate=%s; nominal_k=%s' %
                   (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(ego_fstate),
-                   frenet.k[init_idx:init_idx + 10, 0]))
+                   frenet.k[init_idx:init_idx + 100, 0]))
 
         return are_valid
 
@@ -316,8 +313,7 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
         beyond_spec_range = frenet_frame.get_index_on_frame_from_s(np.array([action_spec.s, max_relevant_s]))[0] + 1
         # get s for all points in the range
-        points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])),
-                                                          delta_s=0)
+        points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
         # get velocity limits for all points in the range
         curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[0]:beyond_spec_range[1], 0]), EPS)
         points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)

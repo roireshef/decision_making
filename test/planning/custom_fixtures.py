@@ -33,11 +33,6 @@ from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
 
-from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
-
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, \
-    short_testable_map_api, testable_map_api
-
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
 OLD_TIMESTAMP_PARAM = 'old_timestamp'
 

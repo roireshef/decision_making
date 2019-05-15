@@ -299,12 +299,12 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
         # calculate the offset of the first segment starting relative to the first GFF point
         # subtract this offset from s_approx for the points on the first segment (in other segments this offset is 0)
-        initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
-        intra_point_offsets = initial_intra_point_offset * (segment_idx_per_point == 0).astype(np.int)
+        intra_point_offsets = np.zeros_like(ds)
+        intra_point_offsets[segment_idx_per_point == 0] = self._segments_s_start[0] % self._segments_ds[0]
         # The approximate longitudinal progress is the longitudinal offset of the segment plus the in-segment-index
         # times the segment ds.
-        s_approx = self._segments_s_offsets[segment_idx_per_point] + \
-                   (((O_idx - self._segments_point_offset[segment_idx_per_point]) + delta_s) * ds) - intra_point_offsets
+        s_approx = self._segments_s_offsets[segment_idx_per_point] - intra_point_offsets + \
+                   (O_idx + delta_s - self._segments_point_offset[segment_idx_per_point]) * ds
 
         return s_approx
 
@@ -325,10 +325,10 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         # get the points offset of the segment that each longitudinal value resides in.
         segment_points_offset = self._segments_point_offset[segment_idxs]
 
-        # calculate the offset of the first segment starting relative to the first GFF point
-        # add this offset to delta_s for the points on the first segment (in other segments this offset is 0)
-        initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
-        intra_point_offsets = initial_intra_point_offset * (segment_idxs == 0).astype(np.int)
+        # generally, the first GFF point lays outside the GFF, since GFF's origin does not coincide with any map point
+        # for all points on the first segment get offset of the GFF origin from the first GFF point
+        intra_point_offsets = np.zeros_like(s)
+        intra_point_offsets[segment_idxs == 0] = self._segments_s_start[0] % self._segments_ds[0]
 
         # get the progress in index units (progress_in_points is a "floating-point index")
         progress_in_points = np.divide(s_in_segment + intra_point_offsets, ds) + segment_points_offset

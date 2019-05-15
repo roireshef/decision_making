@@ -339,8 +339,12 @@ class MapUtils:
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
 
             if len(downstream_lanes_ids) == 0:
+                lane_type = MapUtils.get_lane(current_lane_id).e_e_lane_type
+                lanes_from_left = MapUtils.get_lane(current_lane_id).e_Cnt_left_adjacent_lane_count
+                lanes_from_right = MapUtils.get_lane(current_lane_id).e_Cnt_right_adjacent_lane_count
                 raise DownstreamLaneNotFound(
-                    "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
+                    "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d type=%s lanes_from_left=%d "
+                    "lanes_from_right=%d" % (current_lane_id, lane_type, lanes_from_left, lanes_from_right))
 
             downstream_lanes_ids_on_plan = [lid for lid in downstream_lanes_ids
                                             if MapUtils.get_road_segment_id_from_lane_id(

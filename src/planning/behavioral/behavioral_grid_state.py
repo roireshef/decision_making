@@ -73,7 +73,7 @@ class BehavioralGridState:
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan)
+        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan, logger)
 
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
@@ -169,7 +169,7 @@ class BehavioralGridState:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg) -> \
+    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg, logger) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
@@ -199,7 +199,8 @@ class BehavioralGridState:
                 extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, navigation_plan=nav_plan)
-            except MappingException:
+            except MappingException as e:
+                logger.warning(e)
                 continue
 
         return extended_lane_frames

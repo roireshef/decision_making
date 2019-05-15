@@ -129,10 +129,6 @@ def test_filter_closeToTrackingMode_allActionsAreValid(
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
 ]))
-
-
-
-
 def test_filter_trackingMode_allActionsAreValid(
         behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
