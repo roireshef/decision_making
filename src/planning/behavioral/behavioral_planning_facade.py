@@ -3,15 +3,13 @@ import traceback
 from logging import Logger
 import numpy as np
 
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_NAVIGATION_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
+from common_data.interface.Rte_Types.python.uc_system.uc_system_state import UC_SYSTEM_STATE
+from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_static import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system.uc_system_trajectory_params import UC_SYSTEM_TRAJECTORY_PARAMS
+from common_data.interface.Rte_Types.python.uc_system.uc_system_visualization import UC_SYSTEM_VISUALIZATION
+from common_data.interface.Rte_Types.python.uc_system.uc_system_route_plan import UC_SYSTEM_ROUTE_PLAN
+from common_data.interface.Rte_Types.python.uc_system.uc_system_takeover import UC_SYSTEM_TAKEOVER
 
-from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet,\
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises
@@ -32,13 +30,12 @@ from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-import rte.python.profiler as prof
 from decision_making.src.state.state import State, EgoState
 
 
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
-from logging import Logger
+
 
 class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
@@ -58,7 +55,6 @@ class BehavioralPlanningFacade(DmModule):
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_STATE)
-        self.pubsub.subscribe(UC_SYSTEM_NAVIGATION_PLAN)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
 

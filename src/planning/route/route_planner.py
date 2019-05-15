@@ -10,7 +10,7 @@ from decision_making.src.exceptions import MissingInputInformation, RepeatedRoad
 
 RoadSegmentDict = Dict[int, SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int, SceneLaneSegmentBase]
-RouteLaneSegmentOrderedDict = Dict[int, np.ndarray]     # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
+RouteLaneSegmentOrderedDict = Dict[int, np.ndarray]   # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
 
 
 class RoutePlannerInputData():

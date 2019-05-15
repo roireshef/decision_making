@@ -1,4 +1,3 @@
-from decision_making.paths import Paths
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
@@ -18,7 +17,6 @@ from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_
     SingleLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
-from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -26,22 +24,11 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
-from mapping.src.service.map_service import MapService
 from os import getpid
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
 
-# TODO: move this into config?
-#NAVIGATION_PLAN = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
-#                                              51360, 228028, 87622, 228007, 87660, 87744, 9893,
-#                                              9894, 87740, 77398, 87741, 25969, 10068, 87211, 10320,
-#                                              10322, 228029, 87739, 40953, 10073, 10066, 87732, 43516,
-#                                              87770, 228034, 87996, 228037, 10536, 88088, 228039, 88192,
-#                                              10519, 10432, 3537]))
-#
-#NAVIGATION_PLAN_PG = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
-DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
 class DmInitialization:
     """
