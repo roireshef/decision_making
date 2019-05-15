@@ -3,7 +3,7 @@ from typing import List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    SAFETY_HEADWAY, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    SAFETY_HEADWAY, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BIG_EPS
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -59,7 +59,9 @@ class FilterForKinematics(ActionSpecFilter):
             if spec.in_track_mode:
                 are_valid.append(True)
                 continue
-
+            if spec.v > BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED:
+                are_valid.append(False)
+                continue
             # extract the relevant (cached) frenet frame per action according to the destination lane
             frenet_frame = behavioral_state.extended_lane_frames[lane]
 
@@ -82,19 +84,13 @@ class FilterForKinematics(ActionSpecFilter):
             cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
 
             # validate cartesian points against cartesian limits
-            is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                              np.array([0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]), LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
-            #if not is_valid_in_cartesian and spec.v <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED:
-            #    print("{}. invalid-car action: {}, {}, {}, {}, current velocity: {}".format(
-            #        behavioral_state.ego_state.timestamp_in_sec, spec.recipe.action_type, spec.recipe.aggressiveness,
-            #        spec.t, spec.v, iv))
-            #    is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
-            #                                                        LON_ACC_LIMITS, np.array(
-            #            [0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]), frenet_frame.s_limits)[0]
-            #    is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-            #                                                                      np.array([0,
-            #                                                                                BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]),
-            #                                                                      LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+            is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
+                cartesian_points[np.newaxis, ...], np.array([0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + BIG_EPS]),
+                LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+            if not is_valid_in_cartesian and spec.v <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + BIG_EPS:
+                print("{}. invalid-car action: {}, {}, {}, {}, current velocity: {}".format(
+                    behavioral_state.ego_state.timestamp_in_sec, spec.recipe.action_type, spec.recipe.aggressiveness,
+                    spec.t, spec.v, iv))
             are_valid.append(is_valid_in_cartesian)
 
         # TODO: remove - for debug only
@@ -131,11 +127,10 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
 
         are_valid = []
-        for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
+        for poly_s, t, cell, target, spec in zip(poly_coefs_s, T, relative_cells, target_vehicles, action_specs):
             if target is None:
                 are_valid.append(True)
                 continue
-
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
             target_poly_s = np.array([0, 0, 0, 0, target_fstate[FS_SV], target_fstate[FS_SX]])
@@ -146,9 +141,9 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
-
             are_valid.append(is_safe)
-
+        if not np.any(np.array(are_valid)):
+            print("{} nothing is safe".format(behavioral_state.ego_state.timestamp_in_sec,))
         # TODO: remove - for debug only
         had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
         valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
