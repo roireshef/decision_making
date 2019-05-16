@@ -13,6 +13,13 @@ from decision_making.src.planning.behavioral.filtering.recipe_filtering import R
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
 
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
+    behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode, \
+    state_with_objects_for_filtering_exact_tracking_mode, \
+    behavioral_grid_state_with_objects_for_filtering_too_aggressive, \
+    state_with_objects_for_filtering_almost_tracking_mode, \
+    behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode, \
+    state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, route_plan_20_30
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)

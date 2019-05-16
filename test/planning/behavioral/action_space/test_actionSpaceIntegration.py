@@ -10,6 +10,9 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, State, EgoState, DynamicObject
 
+from decision_making.test.messages.scene_static_fixture import scene_static_no_split
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20
+
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
 
@@ -41,7 +44,7 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_no_split, ro
     obj_cstate = frenet.fstate_to_cstate(np.array([obj_lon, obj_vel, 0, lane_lat, 0, 0]))
     obj = DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=obj_cstate, size=size, confidence=0)
 
-    state = State(None, [obj], ego)
+    state = State(False, None, [obj], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20, logger)
 
     action_recipes = action_space.recipes

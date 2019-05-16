@@ -9,6 +9,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 
 MAP_SPLIT = "PG_split.bin"
@@ -201,7 +202,7 @@ def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static
     # test the case when the map is too short; validate the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=lookadhead_dist,
-                                  route_plan=create_route_plan_msg(np.array(road_segment_ids + [wrong_road_id])))
+                                  route_plan_road_ids=create_route_plan_msg(np.array(road_segment_ids + [wrong_road_id])))
         assert False
     except DownstreamLaneNotFound:
         assert True

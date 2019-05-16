@@ -10,6 +10,9 @@ from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.state.state_module import StateModule, DynamicObjectsData
 from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
+    dynamic_objects_negative_velocity
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_testable
 
 
 # @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)

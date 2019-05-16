@@ -13,10 +13,12 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.utils.map_utils import MapUtils
 from rte.python.logger.AV_logger import AV_Logger
 
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
+    follow_vehicle_recipes_towards_front_cells, state_with_sorrounding_objects, route_plan_20_30
 
 # Specifies follow actions for front vehicles in 3 lanes. longitudinal and lateral coordinates
 # of terminal states in action specification should be as expected.
-# Multi-segment map is used, such that the targets have different road segment than ego.\
+# Multi-segment map is used, such that the targets have different road segment than ego.
 def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCellsWell(
         behavioral_grid_state: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):

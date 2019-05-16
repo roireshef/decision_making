@@ -103,7 +103,7 @@ def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
         parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
-        next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, route_plan=route_plan_20_30)
+        next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, route_plan_road_ids=route_plan_20_30)
         obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].s_end]
         obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].segment_id]
 
@@ -123,7 +123,7 @@ def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_tracking_mode(route_plan_20_30: RoutePlan):
+def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -143,7 +143,7 @@ def state_with_objects_for_filtering_tracking_mode(route_plan_20_30: RoutePlan):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20, route_plan=route_plan_20_30)
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20, route_plan_road_ids=route_plan_20_30)
     obj_lane_lon = next_sub_segments[-1].s_end
     obj_lane_id = next_sub_segments[-1].segment_id
     obj_vel = 10.2
@@ -279,9 +279,16 @@ def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_3
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_objects_for_filtering_tracking_mode(
-        state_with_objects_for_filtering_tracking_mode: State, route_plan_20_30: RoutePlan):
-    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_tracking_mode,
+def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
+        state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan):
+    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
+                                                route_plan_20_30, None)
+
+
+@pytest.fixture(scope='function')
+def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
+        state_with_objects_for_filtering_exact_tracking_mode):
+    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_exact_tracking_mode,
                                                 route_plan_20_30, None)
 
 

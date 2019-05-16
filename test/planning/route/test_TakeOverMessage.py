@@ -6,15 +6,18 @@ from decision_making.test.planning.behavioral.mock_behavioral_facade import Beha
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.state.state import EgoState
 from decision_making.test.planning.route.scene_fixtures import TakeOverTestData, \
-     default_route_plan
+     default_route_plan, construction_scene_for_takeover_test
+from decision_making.test.messages.scene_static_fixture import scene_static
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
+    ego_state_for_takover_message_default_scene
 
 
 def test_setTakeoverMessage_defaultScene_noTakeoverFlag(scene_static: SceneStatic, ego_state_for_takover_message_default_scene: EgoState):
-    
+
     # Route Plan Data
     route_plan_data = default_route_plan()
 
-    behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING), 
+    behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING),
                                                 trajectory_params=None,
                                                 visualization_msg=None, trigger_pos=None)
 
@@ -32,7 +35,7 @@ def test_setTakeoverMessage_blockedScene_takeoverFlag(construction_scene_for_tak
     expected_takeover = construction_scene_for_takeover_test.expected_takeover
 
 
-    behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING), 
+    behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING),
                                                 trajectory_params=None,
                                                 visualization_msg=None, trigger_pos=None)
 

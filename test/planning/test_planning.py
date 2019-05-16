@@ -28,7 +28,8 @@ from decision_making.src.state.state_module import StateModule
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
 
-from decision_making.test.messages.scene_static_fixture import create_scene_static_from_map_api
+from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
+    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2
 
 
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
@@ -77,10 +78,9 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
 def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module:StateModule,
                                                                   route_planner_facade: RoutePlanningFacade,
-                                                                  short_testable_map_api):
+                                                                  scene_static_short_testable):
 
-    scene_static = create_scene_static_from_map_api(short_testable_map_api)
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
 
     bp_logger = MagicMock()
     predictor_logger = MagicMock()

@@ -1,3 +1,4 @@
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20_30
 from logging import Logger
 
 import numpy as np
@@ -14,7 +15,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 
 # test Specify, when ego starts with velocity very close to the target velocity
 # scene_static is a multi-segment map
-def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static, route_plan_20_30):
+def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split, route_plan_20_30):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
@@ -33,7 +34,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static, route_p
 
     ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=cstate, size=size, confidence=0)
 
-    state = State(None, [], ego)
+    state = State(False, None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20_30, logger)
     # ego is located on the rightest lane, so filter recipes to the right
     filtered_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane != RelativeLane.RIGHT_LANE]
