@@ -66,6 +66,7 @@ class DmInitialization:
         route_subscriber_module = RoutePlanSubscriber(pubsub=pubsub, logger=logger)
         return route_subscriber_module
 
+
 def main():
     # register termination signal handler
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
@@ -76,15 +77,15 @@ def main():
         [
             DmProcess(lambda:DmInitialization.create_scene_static_publisher(DEFAULT_MAP_FILE),
                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                     trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD}),
+                     trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD}, name='SP'),
 
             DmProcess(lambda: DmInitialization.create_route_planner(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD}),
+                      trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD}, name='RP'),
 
             DmProcess(lambda:DmInitialization.create_route_subscriber(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD})
+                      trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD}, name='RS')
         ]
 
     manager = DmManager(logger, modules_list)

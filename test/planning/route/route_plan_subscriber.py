@@ -36,7 +36,7 @@ def generate_mock_state(ego_lane_id:int, ego_lane_station:float) -> State :
 
     dynamic_objects: List[DynamicObject] = list()
  
-    return State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+    return State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
 class RoutePlanSubscriber(DmModule):
