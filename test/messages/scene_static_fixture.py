@@ -20,9 +20,9 @@ from decision_making.src.messages.scene_static_enums import (
     MapLaneDirection,
     RoutePlanLaneSegmentAttr)
 
-from mapping.src.exceptions import NextRoadNotFound
-from mapping.src.model.map_api import MapAPI
-from mapping.src.service.map_service import MapService
+from decision_making.test.mapping.exceptions import NextRoadNotFound
+from decision_making.test.mapping.model.map_api import MapAPI
+from decision_making.test.mapping.service.map_service import MapService
 
 
 NUM_LANES = 3
