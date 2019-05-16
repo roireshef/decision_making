@@ -114,7 +114,7 @@ class FilterForKinematics(ActionSpecFilter):
             init_idx = frenet.get_index_on_frame_from_s(ego_fstate[:1])[0][0]
             print('ERROR in BP %.3f: ego_fstate=%s; nominal_k=%s' %
                   (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(ego_fstate),
-                   frenet.k[init_idx:init_idx + 100, 0]))
+                   frenet.k[init_idx:init_idx + 50, 0]))
 
         return are_valid
 
