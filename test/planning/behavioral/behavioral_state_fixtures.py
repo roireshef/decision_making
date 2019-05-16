@@ -289,7 +289,7 @@ def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
-        state_with_objects_for_filtering_exact_tracking_mode):
+        state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_exact_tracking_mode,
                                                 route_plan_20_30, None)
 
