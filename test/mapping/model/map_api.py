@@ -10,8 +10,8 @@ import six
 from decision_making.src.planning.types import FP_SX, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.mapping.exceptions import raises, RoadNotFound, MapCellNotFound, LongitudeOutOfRoad, \
-    OutOfSegmentBack, OutOfSegmentFront, NextRoadNotFound, LaneNotFound
-from decision_making.test.mapping.model.constants import DEFAULT_MAP_LAYER, MAX_STEPS_FOR_ROAD_BASED_NAVIGATION_PLAN
+    OutOfSegmentBack, OutOfSegmentFront, LaneNotFound
+from decision_making.test.mapping.model.constants import DEFAULT_MAP_LAYER
 from decision_making.test.mapping.model.localization import RoadCoordinatesDifference, RoadLocalization
 from decision_making.test.mapping.model.map_model import MapModel, RoadDetails
 from decision_making.test.mapping.transformations.geometry_utils import CartesianFrame, Euclidean
@@ -70,8 +70,8 @@ class MapAPI:
     '''####################'''
 
     # TODO: document layer argument
-    def convert_geo_to_map_coordinates(self, lat, lon, layer=0):
-        # type: (float, float, int) -> [float, float, Tuple(int, char)]
+    def convert_geo_to_map_coordinates(self, lat, lon):
+        # type: (float, float, int) -> [float, float]
         """
         Converts the Geo lat/lon coordinates into map coordinates (meters from the frame origin)
         :param lat: The latitude in degrees
@@ -480,25 +480,6 @@ class MapAPI:
         norms = np.linalg.norm(mat, axis=1)[np.newaxis].T
         norms[np.where(norms == 0.0)] = 1.0
         return np.divide(mat, norms)
-
-    def get_road_based_navigation_plan(self, current_road_id, max_steps=MAX_STEPS_FOR_ROAD_BASED_NAVIGATION_PLAN):
-        # type: (int, int) -> NavigationPlanMsg
-        """
-        Get a navigation plan from the current road with max_steps lookahead roads
-        :param current_road_id: the road id of the current road
-        :param max_steps: the number of road ids to lookahead in the navigation plan
-        :return: a new navigation plan containing max_steps road ids after the current road id
-        """
-        steps = 0
-        road_id_list = [current_road_id]
-        try:
-            while steps < max_steps and current_road_id in self._cached_map_model.get_road_ids():
-                road_id_list.append(self._cached_map_model.get_next_road(current_road_id))
-                current_road_id = road_id_list[-1]
-                steps += 1
-        except NextRoadNotFound:
-            pass  # do nothing, it's just the end of the map
-        return NavigationPlanMsg(np.array(road_id_list))
 
     def get_road_center_frenet_frame(self, road_segment_id: int) -> FrenetSerret2DFrame:
         """
