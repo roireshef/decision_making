@@ -80,7 +80,7 @@ class TrajectoryPlannerCosts:
             # find all valid predictions: predicted states of objects outside the reference_route limits
             valid_predictions = NumpyUtils.is_in_limits(objects_predicted_ftrajectories[:, :, FS_SX], reference_route.s_limits)
             # move all invalid predictions to be far enough from ego, but inside the reference_route limits
-            objects_predicted_ftrajectories[np.logical_not(valid_predictions, FS_SX)] = reference_route.s_limits - EPS
+            objects_predicted_ftrajectories[np.logical_not(valid_predictions), FS_SX] = reference_route.s_max - EPS
 
             # convert the predictions from Frenet to cartesian trajectories
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
