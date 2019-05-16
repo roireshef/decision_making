@@ -8,7 +8,7 @@ from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
-from mapping.src.service.map_service import MapService
+from decision_making.test.mapping.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from decision_making.test.planning.route.route_plan_subscriber import RoutePlanSubscriber
