@@ -242,7 +242,7 @@ class BehavioralPlanningFacade(DmModule):
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
         scene_static = SceneStatic.deserialize(serialized_scene_static)
-        if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
+        if scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_road_segments == 0:
             raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
