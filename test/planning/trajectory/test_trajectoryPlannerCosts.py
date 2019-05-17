@@ -1,5 +1,5 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static
 from logging import Logger
 
 import numpy as np
@@ -19,7 +19,7 @@ from decision_making.src.state.state import ObjectSize, DynamicObject, State, Eg
 from decision_making.src.utils.map_utils import MapUtils
 
 
-def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_pg_split):
+def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static):
     """
     Test TP obstacle cost.
     Ego has 3 lane-change trajectories (from right to left) with same init/end constraints but different T_d: [4, 6, 8].
@@ -29,7 +29,7 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_pg
     The second trajectory is too close to the object.
     The third trajectory collides with the object.
     """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     logger = Logger("test_computeCost_threeSRoutesOneObstacle_validScore")
     road_id = 20

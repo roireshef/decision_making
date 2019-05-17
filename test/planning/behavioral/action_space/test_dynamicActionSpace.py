@@ -15,6 +15,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
     follow_vehicle_recipes_towards_front_cells, state_with_sorrounding_objects, route_plan_20_30
+from decision_making.test.messages.scene_static_fixture import scene_static
 
 # Specifies follow actions for front vehicles in 3 lanes. longitudinal and lateral coordinates
 # of terminal states in action specification should be as expected.

@@ -14,7 +14,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 
@@ -76,9 +76,9 @@ def ego_state_for_takover_message_default_scene():
     yield ego_state
 
 @pytest.fixture(scope='function')
-def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
+def state_with_sorrounding_objects(scene_static, route_plan_20_30: RoutePlan):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     road_segment_id = 20
 
@@ -124,9 +124,9 @@ def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: RoutePlan):
+def state_with_objects_for_filtering_almost_tracking_mode(scene_static, route_plan_20_30: RoutePlan):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     road_id = 20
 
@@ -163,9 +163,9 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_exact_tracking_mode():
+def state_with_objects_for_filtering_exact_tracking_mode(scene_static):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     road_id = 20
 
@@ -199,9 +199,9 @@ def state_with_objects_for_filtering_exact_tracking_mode():
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
+def state_with_objects_for_filtering_negative_sT(scene_static, route_plan_20_30: RoutePlan):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     road_id = 20
 
@@ -237,9 +237,9 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan):
+def state_with_objects_for_filtering_too_aggressive(scene_static, route_plan_20_30: RoutePlan):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     road_id = 20
 

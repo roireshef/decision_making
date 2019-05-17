@@ -29,6 +29,8 @@ from decision_making.test.planning.trajectory.mock_trajectory_planning_facade im
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.state_module_mock import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.messages.scene_static_fixture import scene_static
+from decision_making.src.messages.scene_static_message import SceneStatic
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
 OLD_TIMESTAMP_PARAM = 'old_timestamp'
@@ -172,8 +174,8 @@ def state_with_old_object(request) -> State:
 
 
 @pytest.fixture(scope='function')
-def scene_dynamic_fix(scene_static_pg_split):
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+def scene_dynamic_fix(scene_static: SceneStatic):
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     lane_id = 200
     cstate = np.array([1100, 7, 0, 1.0, 0.0, 0])
