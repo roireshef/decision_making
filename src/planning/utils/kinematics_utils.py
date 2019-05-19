@@ -54,31 +54,47 @@ class KinematicUtils:
         valid_lon_velocities = []
         for v, a in zip(lon_velocity, lon_acceleration):
             if v[-1] > velocity_limits[1] + BIG_EPS or np.any(v < velocity_limits[0]):
-                np.append(valid_lon_velocities, [False]*len(v))
+                valid_lon_velocities.append(np.array([False]*len(v)))
                 continue
-            accel_reduce_th = np.argmax(np.logical_and(v > velocity_limits[1] + BIG_EPS, a <= 0))
-            velocity_reduce_th = np.argmax(v[accel_reduce_th:] <= velocity_limits[1] + BIG_EPS) + accel_reduce_th
+            invalid_desired_velocity = np.argmax(
+                np.append([False], np.logical_and(v[1:] > velocity_limits[1] + BIG_EPS, v[1:] > v[:-1])))
             v, a = np.array(v), np.array(a)
-            valid_lon_velocities.append(np.concatenate(
-                [a[:accel_reduce_th] > a[1:accel_reduce_th+1],
-                 a[accel_reduce_th: velocity_reduce_th] <= 0,
-                 v[velocity_reduce_th:] <= velocity_limits[1] + BIG_EPS]))
+            valid_lon_velocities.append(
+                np.concatenate([a[:invalid_desired_velocity] > a[1: invalid_desired_velocity + 1],
+                                [True]*(len(a)-invalid_desired_velocity)]))
 
-            if not np.all(np.concatenate(
-                [a[:accel_reduce_th] > a[1:accel_reduce_th+1],
-                 a[accel_reduce_th: velocity_reduce_th] <= 0,
-                 v[velocity_reduce_th:] <= velocity_limits[1] + BIG_EPS])):
-
-                print("filtered: j_th: {}, a_th: {}".format(accel_reduce_th, velocity_reduce_th))
-            if not np.all(a[:accel_reduce_th] > a[1:accel_reduce_th+1]):
-                err_idx = np.argmin(a[:accel_reduce_th] > a[1:accel_reduce_th+1])
+            # debug
+            if not np.all(a[:invalid_desired_velocity] > a[1: invalid_desired_velocity + 1]):
+                err_idx = np.argmin(a[:invalid_desired_velocity] <= a[1:invalid_desired_velocity + 1])
                 print("positive jerk: idx: {}, jerk: {}, {}".format(err_idx, a[err_idx], a[err_idx + 1]))
-            if not np.all(a[accel_reduce_th: velocity_reduce_th] <= 0):
-                err_idx = np.argmin(a[accel_reduce_th: velocity_reduce_th] > 0)
-                print("positive acceleration: idx: {}, acc: {}".format(err_idx, a[err_idx]))
-            if not np.all(v[velocity_reduce_th:] <= velocity_limits[1] + BIG_EPS):
-                err_idx = np.argmin(v[velocity_reduce_th:] > velocity_limits[1] + BIG_EPS)
-                print("positive velocity: idx: {}, vel: {}".format(err_idx, v[err_idx]))
+
+
+
+
+            # accel_reduce_th = np.argmax(np.logical_and(v > velocity_limits[1] + BIG_EPS, a <= 0))
+            # velocity_reduce_th = np.argmax(v[accel_reduce_th:] <= velocity_limits[1] + BIG_EPS) + accel_reduce_th
+            # v, a = np.array(v), np.array(a)
+            # valid_lon_velocities.append(np.concatenate(
+            #     [a[:accel_reduce_th] > a[1:accel_reduce_th+1],
+            #      a[accel_reduce_th: velocity_reduce_th] <= 0,
+            #      v[velocity_reduce_th:] <= velocity_limits[1] + BIG_EPS]))
+
+            # if not np.all(np.concatenate(
+            #     [a[:accel_reduce_th] > a[1:accel_reduce_th+1],
+            #      a[accel_reduce_th: velocity_reduce_th] <= 0,
+            #      v[velocity_reduce_th:] <= velocity_limits[1] + BIG_EPS])):
+            #     print("filtered: j_th: {}, a_th: {}".format(accel_reduce_th, velocity_reduce_th))
+            # if not np.all(a[:accel_reduce_th] > a[1:accel_reduce_th+1]):
+            #     err_idx = np.argmin(a[:accel_reduce_th] > a[1:accel_reduce_th+1])
+            #     print("positive jerk: idx: {}, jerk: {}, {}".format(err_idx, a[err_idx], a[err_idx + 1]))
+            # if not np.all(a[accel_reduce_th: velocity_reduce_th] <= 0):
+            #     err_idx = np.argmin(a[accel_reduce_th: velocity_reduce_th] > 0)
+            #     print("positive acceleration: idx: {}, acc: {}".format(err_idx, a[err_idx]))
+            # if not np.all(v[velocity_reduce_th:] <= velocity_limits[1] + BIG_EPS):
+            #     err_idx = np.argmin(v[velocity_reduce_th:] > velocity_limits[1] + BIG_EPS)
+            #     print("positive velocity: idx: {}, vel: {}".format(err_idx, v[err_idx]))
+
+        #print("accel: {}, vel: {}".format(lon_acceleration.shape, np.array(valid_lon_velocities).shape))
         conforms = np.all(
             np.array(valid_lon_velocities) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
