@@ -108,6 +108,10 @@ class LaneNotFound(MappingException):
     pass
 
 
+class NoActionsLeftForBPError(Exception):
+    pass
+
+
 class OutOfSegmentBack(Exception):
     pass
 

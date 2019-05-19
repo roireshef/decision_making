@@ -1,3 +1,4 @@
+from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
 
@@ -40,17 +41,21 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs
 
-        # if a dynamic action not found, calculate maximal valid existing velocity for same-lane static actions
-        terminal_velocities = np.unique([recipe.velocity for i, recipe in enumerate(action_recipes)
-                                         if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                                         and recipe.relative_lane == RelativeLane.SAME_LANE])
-        maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
+        aggr_levels = np.unique([recipe.aggressiveness.value for i, recipe in enumerate(action_recipes)
+                                 if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                                 and recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+                                 and recipe.relative_lane == RelativeLane.SAME_LANE])
+        if len(aggr_levels) == 0:
+            raise NoActionsLeftForBPError()
 
-        # find the most calm same-lane static action with the maximal existing velocity
+        min_aggr_level = np.min(aggr_levels)
+
+        # find the most fast same-lane static action with the minimal aggressiveness level
         follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
                                          if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                                         and recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                                          and recipe.relative_lane == RelativeLane.SAME_LANE
-                                         and recipe.velocity == maximal_allowed_velocity]
+                                         and recipe.aggressiveness.value == min_aggr_level]
 
-        costs[follow_lane_valid_action_idxs[0]] = 0  # choose the found static action
+        costs[follow_lane_valid_action_idxs[-1]] = 0  # choose the found static action
         return costs
