@@ -152,7 +152,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                           "min/max lat_acc [%s, %s] (limits: %s); passed limits: %s/%s\n"
                                           "ego_frenet = %s\ngoal_frenet = %s\n"
                                           "distance from ego to goal = %f, time*approx_velocity = %f\n"
-                                          "worst_lat_acc: t=%.1f v=%.3f k=%.3f\n"
+                                          "worst_lat_acc: t=%.1f v=%.3f k=%f\n"
                                           "nominal_points.k=%s" %
                                           (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),

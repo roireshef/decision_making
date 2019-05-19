@@ -402,7 +402,7 @@ class BreakingDistances:
     # TODO: make it singleton, since a few filters use the braking distances
 
     @staticmethod
-    def create_braking_distances(aggresiveness_level=AggressivenessLevel.CALM.value) -> np.array:
+    def create_braking_distances(aggresiveness_level=AggressivenessLevel.STANDARD.value) -> np.array:
         """
         Creates distances of all follow_lane CALM braking actions with a0 = 0
         :return: the actions' distances
