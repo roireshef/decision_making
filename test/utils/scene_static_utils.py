@@ -58,8 +58,8 @@ class SceneStaticUtils:
                 downstream_id = lane_ids[road_idx + 1][lane_ordinal] if road_idx < len(road_segment_ids) - 1 else None
                 upstream_id = lane_ids[road_idx - 1][lane_ordinal] if road_idx > 0 else None
 
-                lane_points = SceneStaticUtils._shift_road_points(points_of_roads[road_idx],
-                                                                  (lane_ordinal - num_lanes/2 + 0.5) * lane_width)
+                lane_points = SceneStaticUtils._shift_road_points_laterally(points_of_roads[road_idx],
+                                                                            (lane_ordinal - num_lanes/2 + 0.5) * lane_width)
                 lane_frenet = FrenetSerret2DFrame.fit(lane_points)
                 nominal_points = []
                 half_lane_width = lane_width / 2
@@ -143,7 +143,7 @@ class SceneStaticUtils:
         return scene
 
     @staticmethod
-    def _shift_road_points(points: np.array, lateral_shift: float) -> np.array:
+    def _shift_road_points_laterally(points: np.array, lateral_shift: float) -> np.array:
         """
         Given points list along a road, shift them laterally by lat_shift [m]
         :param points (Nx2): points list along a given road
@@ -160,10 +160,10 @@ class SceneStaticUtils:
         return shifted_points
 
 
-def test_shiftRoadVectorInLatitude_simpleRoadShift1MRight_accurateShift():
+def test_shiftRoadPointsLaterally_simpleRoadShift1MRight_accurateShift():
     points = np.array([[0, 0], [1, -1], [1, -2]])
     shift = -1
-    shifted_points = SceneStaticUtils._shift_road_points(points, shift)
+    shifted_points = SceneStaticUtils._shift_road_points_laterally(points, shift)
     expected_shifted_points = np.array([[-1 / np.sqrt(2), -1 / np.sqrt(2)], [0, -1], [0, -2]])
 
     np.testing.assert_array_almost_equal(shifted_points, expected_shifted_points)
