@@ -158,3 +158,12 @@ class SceneStaticUtils:
         normal_unit_vec = np.concatenate((normal_unit_vec, normal_unit_vec[-1, np.newaxis]))
         shifted_points = points + normal_unit_vec * lateral_shift
         return shifted_points
+
+
+def test_shiftRoadVectorInLatitude_simpleRoadShift1MRight_accurateShift():
+    points = np.array([[0, 0], [1, -1], [1, -2]])
+    shift = -1
+    shifted_points = SceneStaticUtils._shift_road_points(points, shift)
+    expected_shifted_points = np.array([[-1 / np.sqrt(2), -1 / np.sqrt(2)], [0, -1], [0, -2]])
+
+    np.testing.assert_array_almost_equal(shifted_points, expected_shifted_points)
