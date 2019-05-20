@@ -12,8 +12,7 @@ from decision_making.src.state.state_module import StateModule, DynamicObjectsDa
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
     dynamic_objects_negative_velocity
-from decision_making.test.messages.scene_static_fixture import scene_static, scene_static_testable
-from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_testable
 
 
 # @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
@@ -42,14 +41,14 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
 def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: PubSub,
                                                                       dynamic_objects_negative_velocity: DynamicObjectsData,
                                                                       scene_dynamic_fix: SceneDynamic,
-                                                                      scene_static: SceneStatic):
+                                                                      scene_static_pg_split):
     """
     :param pubsub: Inter-process communication interface.
     :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
@@ -67,14 +66,14 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
 def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
                                                                        scene_dynamic_fix: SceneDynamic,
-                                                                       scene_static: SceneStatic):
+                                                                       scene_static_pg_split):
     """
     :param pubsub: Inter-process communication interface.
     :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 

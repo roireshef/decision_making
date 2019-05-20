@@ -8,7 +8,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from decision_making.src.utils.geometry_utils import CartesianFrame
-from decision_making.test.messages.scene_static_fixture import scene_static_no_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_no_split
 
 
 def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
@@ -163,13 +163,13 @@ def test_projectCartesianPoint_fivePointsProjection_accurate():
     np.testing.assert_array_less(s_error, ACCURACY_TH, 'FrenetSerret2DFrame._project_cartesian_points is not accurate')
 
 
-def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough(scene_static_no_split):
+def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough(scene_static_pg_no_split):
 
     POSITION_ACCURACY_TH = 1e-1  # up to 10 [cm] error in euclidean distance
 
     upsampling_factor_for_test = 4
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
     road_segment_id = MapUtils.get_road_segment_ids()[0]
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
     route_points = MapUtils.get_lane_frenet_frame(lane_id).points

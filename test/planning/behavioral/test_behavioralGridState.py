@@ -6,7 +6,6 @@ from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
     state_with_sorrounding_objects, route_plan_20_30
-from decision_making.test.messages.scene_static_fixture import scene_static
 
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects, route_plan_20_30):
     """
