@@ -57,7 +57,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         pubsub_msg.s_N = SerializationUtils.serialize_non_typed_array(self.N)
         pubsub_msg.s_K = SerializationUtils.serialize_non_typed_array(self.k)
         pubsub_msg.s_KTag = SerializationUtils.serialize_non_typed_array(self.k_tag)
-        pubsub_msg.s_SegmentsID = SerializationUtils.serialize_non_typed_int_array(self._segments_id)
+        pubsub_msg.s_SegmentsID = SerializationUtils.serialize_non_typed_int_array(self._segment_ids)
         pubsub_msg.s_SegmentsSStart = SerializationUtils.serialize_non_typed_array(self._segments_s_start)
         pubsub_msg.s_SegmentsSOffsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         pubsub_msg.s_SegmentsDS = SerializationUtils.serialize_non_typed_array(self._segments_ds)
@@ -328,30 +328,30 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
         return O_idx, delta_s
 
-    def serialize(self) -> LcmGeneralizedFrenetSerretFrame:
-        lcm_msg = LcmGeneralizedFrenetSerretFrame()
-        lcm_msg.points = SerializationUtils.serialize_non_typed_array(self.O)
-        lcm_msg.T = SerializationUtils.serialize_non_typed_array(self.T)
-        lcm_msg.N = SerializationUtils.serialize_non_typed_array(self.N)
-        lcm_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
-        lcm_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
-        lcm_msg.segments_id = SerializationUtils.serialize_non_typed_int_array(self._segment_ids)
-        lcm_msg.segments_s_start = SerializationUtils.serialize_non_typed_array(self._segments_s_start)
-        lcm_msg.segments_s_offsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
-        lcm_msg.segments_ds = SerializationUtils.serialize_non_typed_array(self._segments_ds)
-        lcm_msg.segments_point_offset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
-
-        return lcm_msg
-
-    @classmethod
-    def deserialize(cls, lcmMsg: LcmGeneralizedFrenetSerretFrame):
-        return cls(SerializationUtils.deserialize_any_array(lcmMsg.points),
-                   SerializationUtils.deserialize_any_array(lcmMsg.T),
-                   SerializationUtils.deserialize_any_array(lcmMsg.N),
-                   SerializationUtils.deserialize_any_array(lcmMsg.k),
-                   SerializationUtils.deserialize_any_array(lcmMsg.k_tag),
-                   SerializationUtils.deserialize_any_array(lcmMsg.segments_id),
-                   SerializationUtils.deserialize_any_array(lcmMsg.segments_s_start),
-                   SerializationUtils.deserialize_any_array(lcmMsg.segments_s_offsets),
-                   SerializationUtils.deserialize_any_array(lcmMsg.segments_ds),
-                   SerializationUtils.deserialize_any_array(lcmMsg.segments_point_offset))
+#    def serialize(self) -> LcmGeneralizedFrenetSerretFrame:
+#        lcm_msg = LcmGeneralizedFrenetSerretFrame()
+#        lcm_msg.points = SerializationUtils.serialize_non_typed_array(self.O)
+#        lcm_msg.T = SerializationUtils.serialize_non_typed_array(self.T)
+#        lcm_msg.N = SerializationUtils.serialize_non_typed_array(self.N)
+#        lcm_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
+#        lcm_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
+#        lcm_msg.segments_id = SerializationUtils.serialize_non_typed_int_array(self._segment_ids)
+#        lcm_msg.segments_s_start = SerializationUtils.serialize_non_typed_array(self._segments_s_start)
+#        lcm_msg.segments_s_offsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
+#        lcm_msg.segments_ds = SerializationUtils.serialize_non_typed_array(self._segments_ds)
+#        lcm_msg.segments_point_offset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
+#
+#        return lcm_msg
+#
+#    @classmethod
+#    def deserialize(cls, lcmMsg: LcmGeneralizedFrenetSerretFrame):
+#        return cls(SerializationUtils.deserialize_any_array(lcmMsg.points),
+#                   SerializationUtils.deserialize_any_array(lcmMsg.T),
+#                   SerializationUtils.deserialize_any_array(lcmMsg.N),
+#                   SerializationUtils.deserialize_any_array(lcmMsg.k),
+#                   SerializationUtils.deserialize_any_array(lcmMsg.k_tag),
+#                   SerializationUtils.deserialize_any_array(lcmMsg.segments_id),
+#                   SerializationUtils.deserialize_any_array(lcmMsg.segments_s_start),
+#                   SerializationUtils.deserialize_any_array(lcmMsg.segments_s_offsets),
+#                  SerializationUtils.deserialize_any_array(lcmMsg.segments_ds),
+#                  SerializationUtils.deserialize_any_array(lcmMsg.segments_point_offset))

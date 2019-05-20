@@ -436,7 +436,8 @@ class BreakingDistances:
 
         # check acceleration limits
         poly_coefs = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T, T)
-        in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)[:, 0]
+        #in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)[:, 0]
+        in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
 
         # calculate actions' distances, assuming a_0 = 0
         distances = T * (v_0 + v_T) / 2

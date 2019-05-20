@@ -153,8 +153,7 @@ class BehavioralPlanningFacade(DmModule):
         return state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        with prof.time_range('_get_current_navigation_plan.get_latest_sample'):
-            is_success, serialized_nav_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_NAVIGATION_PLAN_LCM, timeout=1)
+        is_success, serialized_nav_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_NAVIGATION_PLAN, timeout=1)
         if serialized_nav_plan is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_NAVIGATION_PLAN)
@@ -172,8 +171,7 @@ class BehavioralPlanningFacade(DmModule):
         scene_static = SceneStatic.deserialize(serialized_scene_static)
         if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
             raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
-        self.logger.debug(
-            "%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
+        self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
 
     def _get_state_with_expected_ego(self, state: State) -> State:
@@ -187,8 +185,7 @@ class BehavioralPlanningFacade(DmModule):
         """
         current_time = state.ego_state.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec,
-                                                                        state.ego_state.timestamp_in_sec)
+        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
         # mark this state as a state which has been sampled from a trajectory and wasn't received from state module

@@ -21,7 +21,8 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
 
-def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static: SceneStatic, behavioral_grid_state_with_objects_for_filtering_too_aggressive):
+def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split: SceneStatic,
+                                                          behavioral_grid_state_with_objects_for_filtering_too_aggressive):
 
     gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
 
@@ -30,7 +31,7 @@ def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static: SceneSta
     lane_id, segment_states = gff.convert_to_segment_states(gff_state)
     segment_s = segment_states[0][0]
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
                                          e_Pct_confidence=1.0)
     MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)

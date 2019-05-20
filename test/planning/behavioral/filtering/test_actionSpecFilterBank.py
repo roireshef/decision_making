@@ -3,6 +3,7 @@ from decision_making.src.messages.scene_static_message import StaticTrafficFlowC
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 from typing import List
 from unittest.mock import patch
 
@@ -18,7 +19,6 @@ from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.test.messages.static_scene_fixture import scene_static
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode, \
@@ -30,7 +30,8 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_traffic_control, state_with_traffic_control
 
 
-def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control, scene_static):
+def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control,
+                                                                           scene_static_pg_split):
     ego_location = behavioral_grid_state_with_traffic_control.ego_state.map_state.lane_fstate[FS_SX]
 
     gff = behavioral_grid_state_with_traffic_control.extended_lane_frames[RelativeLane.SAME_LANE]
@@ -38,7 +39,7 @@ def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behav
     lane_id, segment_states = gff.convert_to_segment_states(gff_state)
     segment_s = segment_states[0][0]
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
                                          e_Pct_confidence=1.0)
     MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
@@ -52,7 +53,8 @@ def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behav
     assert actual == expected
 
 
-def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control, scene_static):
+def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control,
+                                                                                     scene_static_pg_split):
 
     ego_location = behavioral_grid_state_with_traffic_control.ego_state.map_state.lane_fstate[FS_SX]
     gff = behavioral_grid_state_with_traffic_control.extended_lane_frames[RelativeLane.SAME_LANE]
@@ -63,7 +65,7 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
     lane_id, segment_states = gff.convert_to_segment_states(gff_state)
     segment_s = segment_states[0][0]
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
                                          e_Pct_confidence=1.0)
     MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
