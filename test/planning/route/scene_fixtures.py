@@ -1,8 +1,10 @@
 import numpy as np
+import pickle
 import pytest
+from typing import List, Dict, Tuple
 
-from typing import List
-
+from decision_making.paths import Paths
+from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME
 from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_enums import LaneConstructionType,\
     RoutePlanLaneSegmentAttr, LaneMappingStatusType, GMAuthorityType, MapLaneDirection,\
@@ -10,9 +12,7 @@ from decision_making.src.messages.scene_static_enums import LaneConstructionType
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import EgoState, ObjectSize
-from decision_making.test.messages.scene_static_fixture import create_scene_static_from_map_api
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
-from decision_making.test.mapping.service.map_service import MapService
 
 
 class RoutePlanTestData:
@@ -20,12 +20,14 @@ class RoutePlanTestData:
         self.scene_static = scene_static
         self.expected_output = expected_output
 
+
 class TakeOverTestData:
     def __init__(self, scene_static: SceneStatic, route_plan_data: DataRoutePlan, ego_state: EgoState, expected_takeover: bool ):
         self.scene_static = scene_static
         self.route_plan_data = route_plan_data
         self.ego_state = ego_state
         self.expected_takeover = expected_takeover
+
 
 def default_route_plan() -> DataRoutePlan:
     return DataRoutePlan(e_b_is_valid=True,
@@ -36,6 +38,50 @@ def default_route_plan() -> DataRoutePlan:
                                                                               e_cst_lane_occupancy_cost=0.0,
                                                                               e_cst_lane_end_cost=0.0) for lane_number in [0, 1, 2]]
                                                         for lane_segment_id_base in np.arange(200, 300, 10)])
+
+
+LaneSegmentID = int
+IsLaneAttributeActive = bool
+LaneAttribute = int  # actually, LaneMappingStatusType, MapLaneDirection, GMAuthorityType, or LaneConstructionType
+LaneAttributeConfidence = float
+LaneAttributeModification = Tuple[IsLaneAttributeActive, RoutePlanLaneSegmentAttr, LaneAttribute, LaneAttributeConfidence]
+LaneAttributeModifications = Dict[LaneSegmentID, List[LaneAttributeModification]]
+
+
+def modify_default_lane_attributes(lane_attribute_modifications: LaneAttributeModifications = None) -> SceneStatic:
+    if lane_attribute_modifications is None:
+        lane_attribute_modifications = {}
+
+    # Load saved scene static message
+    scene_static = pickle.load(open(Paths.get_map_absolute_path_filename(PG_SPLIT_PICKLE_FILE_NAME), 'rb'))
+
+    for lane_segment in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        # Check for lane attribute modifications
+        if lane_segment.e_i_lane_segment_id in lane_attribute_modifications:
+            # Default lane attribute values
+            num_active_lane_attributes = 4
+            active_lane_attribute_indices = np.array([0, 1, 2, 3])
+            lane_attributes = np.array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                                        GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
+                                        LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
+                                        MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value])
+            lane_attribute_confidences = np.ones(4)
+
+            for lane_attribute_modification in lane_attribute_modifications[lane_segment.e_i_lane_segment_id]:
+                if lane_attribute_modification[0] is True:
+                    lane_attributes[lane_attribute_modification[1]] = lane_attribute_modification[2]
+                    lane_attribute_confidences[lane_attribute_modification[1]] = lane_attribute_modification[3]
+                else:
+                    active_lane_attribute_indices = np.delete(active_lane_attribute_indices, lane_attribute_modification[1])
+                    num_active_lane_attributes -= 1
+
+            lane_segment.e_Cnt_num_active_lane_attributes = num_active_lane_attributes
+            lane_segment.a_i_active_lane_attribute_indices = active_lane_attribute_indices
+            lane_segment.a_cmp_lane_attributes = lane_attributes
+            lane_segment.a_cmp_lane_attribute_confidences = lane_attribute_confidences
+
+    return scene_static
+
 
 @pytest.fixture(scope='function', params=["scene_one",
                                           "scene_two",
@@ -54,7 +100,7 @@ def construction_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
                                      1.0)]}
-        
+
         # Road Segment 20
         expected_output.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
@@ -75,7 +121,7 @@ def construction_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
                                      1.0)]}
-        
+
         # Road Segment 28
         expected_output.as_route_plan_lane_segments[8][1].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
@@ -96,7 +142,7 @@ def construction_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
                                      1.0)]}
-        
+
         # Road Segment 24
         expected_output.as_route_plan_lane_segments[4][1].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
@@ -106,22 +152,19 @@ def construction_scene_and_expected_output(request):
         expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_occupancy_cost = 1.0
 
         expected_output.as_route_plan_lane_segments[5][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0        
+        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
     else:
         lane_modifications = {}
-    
+
     # for road_segment in expected_output.as_route_plan_lane_segments:
     #     for lane_segment in road_segment:
     #         print("lane_segment_id     = ", lane_segment.e_i_lane_segment_id)
     #         print("lane_occupancy_cost = ", lane_segment.e_cst_lane_occupancy_cost)
     #         print("lane_end_cost       = ", lane_segment.e_cst_lane_end_cost, "\n")
-        
+
     #     print("==========================\n")
-        
-    # Initialize Map
-    MapService.initialize('PG_split.bin')
-    
-    return RoutePlanTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
+
+    return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
 @pytest.fixture(scope='function', params=["scene_one",
@@ -136,7 +179,7 @@ def map_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
                                      LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
@@ -154,7 +197,7 @@ def map_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
                                      LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
                                      1.0)]}
-        
+
         # Road Segment 28
         expected_output.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[8][1].e_cst_lane_end_cost = 1.0
@@ -171,11 +214,8 @@ def map_scene_and_expected_output(request):
 
     else:
         lane_modifications = {}
-        
-    # Initialize Map
-    MapService.initialize('PG_split.bin')
-    
-    return RoutePlanTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
+
+    return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
 @pytest.fixture(scope='function', params=["scene_one",
@@ -198,7 +238,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
@@ -207,7 +247,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_BadRoadCondition.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
@@ -216,7 +256,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_ComplexRoad.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_end_cost = 1.0
@@ -225,7 +265,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_MovableBarriers.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
@@ -234,7 +274,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_BidirectionalFreew.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
@@ -243,7 +283,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighCrossTrackSlope.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_end_cost = 1.0
@@ -252,7 +292,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighAlongTrackSlope.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_end_cost = 1.0
@@ -261,7 +301,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighVerticalCurvature.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
@@ -270,7 +310,7 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighHorizontalCurvat.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
@@ -279,17 +319,14 @@ def gmfa_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_Unknown.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
     else:
         lane_modifications = {}
-        
-    # Initialize Map
-    MapService.initialize('PG_split.bin')
-    
-    return RoutePlanTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
+
+    return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
 @pytest.fixture(scope='function', params=["scene_one"])
@@ -303,18 +340,15 @@ def lane_direction_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction.value,
                                      MapLaneDirection.CeSYS_e_MapLaneDirection_OppositeTo_HostVehicle.value,
                                      1.0)]}
-        
+
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
         expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
 
     else:
         lane_modifications = {}
-        
-    # Initialize Map
-    MapService.initialize('PG_split.bin')
-    
-    return RoutePlanTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
+
+    return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
 @pytest.fixture(scope='function', params=["scene_one",
@@ -345,7 +379,7 @@ def combined_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
                                      1.0)]}
-        
+
         # Road Segment 20
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
 
@@ -434,16 +468,13 @@ def combined_scene_and_expected_output(request):
 
         # Road Segment 4
         expected_output.as_route_plan_lane_segments[2][0].e_cst_lane_end_cost = 1.0
-        
+
         return RoutePlanTestData(scene_static=scene_static_publisher.generate_data(),
                                  expected_output=expected_output)
     else:
         lane_modifications = {}
-        
-    # Initialize Map
-    MapService.initialize('PG_split.bin')
-    
-    return RoutePlanTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
+
+    return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
 
@@ -474,7 +505,7 @@ def construction_scene_for_takeover_test(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
                                      1.0)]}
-        
+
         # Road Segment 20
         route_plan_data.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost = 1.0
         route_plan_data.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
@@ -502,7 +533,7 @@ def construction_scene_for_takeover_test(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
                                      1.0)]}
-        
+
         # Road Segment 28
         route_plan_data.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
         route_plan_data.as_route_plan_lane_segments[8][1].e_cst_lane_end_cost = 1.0
@@ -528,7 +559,7 @@ def construction_scene_for_takeover_test(request):
                               220: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
-                                     1.0)], 
+                                     1.0)],
                               221: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
@@ -545,7 +576,7 @@ def construction_scene_for_takeover_test(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
                                      1.0)]}
-        
+
         # Road Segment 20
         route_plan_data.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
 
@@ -583,10 +614,6 @@ def construction_scene_for_takeover_test(request):
 
     else:
         lane_modifications = {}
-    
-    
-    # Initialize Map
-    MapService.initialize('PG_split.bin')
-    
-    return TakeOverTestData(scene_static=create_scene_static_from_map_api(MapService.get_instance(), lane_modifications),
+
+    return TakeOverTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takover)

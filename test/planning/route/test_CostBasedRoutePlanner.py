@@ -8,13 +8,13 @@ from decision_making.test.planning.route.scene_fixtures import RoutePlanTestData
     construction_scene_and_expected_output, map_scene_and_expected_output, \
     gmfa_scene_and_expected_output, lane_direction_scene_and_expected_output, \
     combined_scene_and_expected_output
-from decision_making.test.messages.scene_static_fixture import scene_static
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 
-def test_plan_normalScene_accurateRoutePlanOutput(scene_static: SceneStatic):
+def test_plan_normalScene_accurateRoutePlanOutput(scene_static_pg_split: SceneStatic):
     # Test Data
-    scene_static_base = scene_static.s_Data.s_SceneStaticBase
-    navigation_plan = scene_static.s_Data.s_NavigationPlan
+    scene_static_base = scene_static_pg_split.s_Data.s_SceneStaticBase
+    navigation_plan = scene_static_pg_split.s_Data.s_NavigationPlan
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
