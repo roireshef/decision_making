@@ -1,3 +1,4 @@
+import pickle
 import time
 import traceback
 from logging import Logger
@@ -81,6 +82,14 @@ class BehavioralPlanningFacade(DmModule):
                                   "according to previous plan")
             else:
                 updated_state = state
+
+            # if 22 < updated_state.ego_state.timestamp_in_sec < 23:
+            #     pickle_out = open("/home/yzb8h0/projects/uc_workspace/accel_dyn_state.pkl", "wb")
+            #     pickle.dump(updated_state, pickle_out)
+            #     pickle_out.close()
+            #     pickle_out = open("/home/yzb8h0/projects/uc_workspace/accel_static_state.pkl", "wb")
+            #     pickle.dump(scene_static, pickle_out)
+            #     pickle_out.close()
 
             navigation_plan = self._get_current_navigation_plan()
 

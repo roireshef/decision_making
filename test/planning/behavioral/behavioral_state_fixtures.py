@@ -1,9 +1,13 @@
+import pickle
+from decision_making.paths import Paths
+
 from typing import List
 
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY
+from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY, \
+    ACCEL_TOWARDS_VEHICLE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_DYNAMIC_PICKLE_FILE_NAME
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
@@ -13,7 +17,8 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
+    scene_accel_towards_vehicle_static, scene_accel_towards_vehicle_dynamic
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
@@ -64,6 +69,13 @@ def state_with_sorrounding_objects():
             obj_id += 1
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+@pytest.fixture(scope='function')
+def state_with_objects_for_acceleration_towards_vehicle():
+    SceneStaticModel.get_instance().set_scene_static(scene_accel_towards_vehicle_static())
+    state_dynamic = scene_accel_towards_vehicle_dynamic()
+    yield state_dynamic
+
 
 
 @pytest.fixture(scope='function')
@@ -221,6 +233,11 @@ def behavioral_grid_state(state_with_sorrounding_objects: State):
     yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
                                                 NAVIGATION_PLAN, None)
 
+@pytest.fixture(scope='function')
+def behavioral_grid_state_with_objects_for_acceleration_towards_vehicle(
+        state_with_objects_for_acceleration_towards_vehicle):
+    yield BehavioralGridState.create_from_state(state_with_objects_for_acceleration_towards_vehicle,
+                                                NAVIGATION_PLAN, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
