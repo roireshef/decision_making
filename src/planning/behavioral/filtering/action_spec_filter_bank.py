@@ -85,6 +85,7 @@ class FilterForKinematics(ActionSpecFilter):
                 are_valid.append(False)
                 continue
 
+
             total_time = max(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, t)
             time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
 
