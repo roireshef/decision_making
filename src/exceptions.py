@@ -40,11 +40,11 @@ class TrajectoryPlanningException(Exception):
     pass
 
 
-class NoValidTrajectoriesFound(TrajectoryPlanningException):
+class CartesianLimitsViolated(TrajectoryPlanningException):
     pass
 
 
-class CouldNotGenerateTrajectories(TrajectoryPlanningException):
+class FrenetLimitsViolated(TrajectoryPlanningException):
     pass
 
 
@@ -105,6 +105,14 @@ class RoadNotFound(MappingException):
 
 
 class LaneNotFound(MappingException):
+    pass
+
+
+class OutOfSegmentBack(Exception):
+    pass
+
+
+class OutOfSegmentFront(Exception):
     pass
 
 

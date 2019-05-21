@@ -10,16 +10,16 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_STATI
 from decision_making.src.state.state import ObjectSize, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 
 
 # test Specify, when ego starts with velocity very close to the target velocity
 # scene_static is a multi-segment map
-def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static):
+def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     logger = Logger("test_specifyStaticAction")
     road_segment_id = 21
@@ -36,7 +36,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static):
 
     ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=cstate, size=size, confidence=0)
 
-    state = State(None, [], ego)
+    state = State(False, None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, NAVIGATION_PLAN, logger)
     # ego is located on the rightest lane, so filter recipes to the right
     filtered_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane != RelativeLane.RIGHT_LANE]
