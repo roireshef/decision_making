@@ -43,20 +43,20 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs
 
-        aggr_levels = np.unique([recipe.aggressiveness.value for i, recipe in enumerate(action_recipes)
-                                 if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                                 and recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-                                 and recipe.relative_lane == RelativeLane.SAME_LANE])
-        if len(aggr_levels) == 0:
+        # find all same-lane static actions with velocity below the desired
+        filtered_indices = [i for i, recipe in enumerate(action_recipes)
+                            if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                            and recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+                            and recipe.relative_lane == RelativeLane.SAME_LANE]
+        if len(filtered_indices) == 0:
             raise NoActionsLeftForBPError()
-        min_aggr_level = np.min(aggr_levels)
 
-        # find the most fast same-lane static action with the minimal aggressiveness level
-        follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
-                                         if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                                         and recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-                                         and recipe.relative_lane == RelativeLane.SAME_LANE
-                                         and recipe.aggressiveness.value == min_aggr_level]
+        # find the minimal aggressiveness level among valid static recipes
+        min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_indices])
+
+        # find the most fast action with the minimal aggressiveness level
+        follow_lane_valid_action_idxs = [idx for idx in filtered_indices
+                                         if action_recipes[idx].aggressiveness.value == min_aggr_level]
 
         # TODO: remove it
         ego = behavioral_state.ego_state
@@ -68,5 +68,5 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         print('BP time %.3f, goal_time=%.3f: spec.v=%.3f, ego_fstate = %s' %
               (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, spec.v, NumpyUtils.str_log(ego_fstate)))
 
-        costs[follow_lane_valid_action_idxs[-1]] = 0  # choose the found static action
+        costs[follow_lane_valid_action_idxs[-1]] = 0  # choose the most fast action among the calmest actions
         return costs
