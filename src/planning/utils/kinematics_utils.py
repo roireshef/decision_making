@@ -120,7 +120,7 @@ class KinematicUtils:
     @staticmethod
     def create_ego_by_goal_state(goal_frenet_state: FrenetState2D, ego_to_goal_time: float) -> FrenetState2D:
         """
-        calculate Frenet state in ego time, such that its prediction in goal time is goal_frenet_state
+        calculate Frenet state in ego time, such that its constant-velocity prediction in goal time is goal_frenet_state
         :param goal_frenet_state: goal Frenet state
         :param ego_to_goal_time: the difference between the goal time and ego time
         :return: ego by goal frenet state
