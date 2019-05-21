@@ -99,7 +99,7 @@ class TrajectoryPlannerCosts:
 
             # multiply dimensional flipped-logistic costs, so that big values are where the two dimensions have
             # negative distance, i.e. collision
-            per_point_cost = per_dimension_cost.prod(axis=-1)
+            per_point_cost = per_dimension_cost.prod(axis=-1) * valid_predictions.astype(float)
 
             per_trajectory_point_cost = params.obstacle_cost_x.w * np.sum(per_point_cost, axis=1)
 
