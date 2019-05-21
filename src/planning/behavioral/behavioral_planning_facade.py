@@ -31,19 +31,6 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 
 
-def patch_scene_static(lane_id=58369795, s=75 - EGO_LENGTH / 2):
-    """
-    TODO: Remove when SP is able to provide messages with stop signs
-    Patches the scene_static message with a stop sign
-    :param lane_id:
-    :param s:
-    :return:
-    """
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=s,
-                                         e_Pct_confidence=1.0)
-    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
-
-
 class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
                  last_trajectory: SamplableTrajectory = None) -> None:
@@ -83,8 +70,6 @@ class BehavioralPlanningFacade(DmModule):
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
-            # TODO: remove call when SceneProvider has stop bars
-            #patch_scene_static(lane_id=58369795, s=75 - EGO_LENGTH / 2)
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with

@@ -1,10 +1,13 @@
 import numpy as np
+from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
+    LON_ACC_LIMITS
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 
 
 class KinematicUtils:
@@ -116,3 +119,77 @@ class KinematicUtils:
         # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
         poly_d = np.zeros(QuinticPoly1D.num_coefs())
         return poly_s, poly_d
+
+
+class BrakingDistances:
+    """
+    Calculates braking distances
+    """
+    @staticmethod
+    def create_braking_distances(aggresiveness_level=AggressivenessLevel.CALM.value) -> np.array:
+        """
+        Creates distances of all follow_lane CALM braking actions with a0 = 0
+        :return: the actions' distances
+        """
+        # create v0 & vT arrays for all braking actions
+        v0, vT = np.meshgrid(FILTER_V_0_GRID.array, FILTER_V_T_GRID.array, indexing='ij')
+        v0, vT = np.ravel(v0), np.ravel(vT)
+        # calculate distances for braking actions
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggresiveness_level]
+        distances = np.zeros_like(v0)
+        distances[v0 > vT] = BrakingDistances._calc_actions_distances_for_given_weights(w_T, w_J, v0[v0 > vT],
+                                                                                        vT[v0 > vT])
+        return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
+
+    @staticmethod
+    def _calc_actions_distances_for_given_weights(w_T, w_J, v_0: np.array, v_T: np.array) -> np.array:
+        """
+        Calculate the distances for the given actions' weights and scenario params
+        :param w_T: weight of Time component in time-jerk cost function
+        :param w_J: weight of longitudinal jerk component in time-jerk cost function
+        :param v_0: array of initial velocities [m/s]
+        :param v_T: array of desired final velocities [m/s]
+        :return: actions' distances; actions not meeting acceleration limits have infinite distance
+        """
+        # calculate actions' planning time
+        a_0 = np.zeros_like(v_0)
+        T = BrakingDistances.calc_T_s(w_T, w_J, v_0, a_0, v_T)
+
+        # check acceleration limits
+        poly_coefs = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T, T)
+        in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+
+        # calculate actions' distances, assuming a_0 = 0
+        distances = T * (v_0 + v_T) / 2
+        distances[np.logical_not(in_limits)] = np.inf
+        return distances
+
+    @staticmethod
+    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
+        """
+        given initial & end constraints and time-jerk weights, calculate longitudinal planning time
+        :param w_T: weight of Time component in time-jerk cost function
+        :param w_J: weight of longitudinal jerk component in time-jerk cost function
+        :param v_0: array of initial velocities [m/s]
+        :param a_0: array of initial accelerations [m/s^2]
+        :param v_T: array of final velocities [m/s]
+        :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
+        """
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically.
+        non_zero_actions = np.logical_not(np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
+                                                         np.isclose(a_0, 0.0, atol=1e-3, rtol=0)))
+        w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
+        w_J_array = np.full(v_0[non_zero_actions].shape, w_J)
+
+        # Get polynomial coefficients of time-jerk cost function derivative for our settings
+        time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
+            w_T_array, w_J_array, a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions])
+
+        # Find roots of the polynomial in order to get extremum points
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
+
+        # return T as the minimal real root
+        T = np.zeros_like(v_0)
+        T[non_zero_actions] = np.fmin.reduce(cost_real_roots, axis=-1)
+        return T

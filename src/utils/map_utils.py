@@ -433,7 +433,7 @@ class MapUtils:
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
                 stations_s_coordinates.append(static_traffic_flow_control.e_l_station)
-        return lane_frenet.convert_s_from_segments(stations_s_coordinates, lane_ids)
+        return lane_frenet.convert_s_from_segments(sorted(stations_s_coordinates), lane_ids)
 
 
 
