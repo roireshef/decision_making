@@ -141,8 +141,10 @@ class WerlingPlanner(TrajectoryPlanner):
             lat_acc_v = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_V]
             lat_acc_k = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_K]
             s = ftrajectories[lat_acc_traj_idx, :, FS_SX]
-            init_idx = reference_route.get_index_on_frame_from_s(np.array([s[0]]))[0][0]
-            final_idx = reference_route.get_index_on_frame_from_s(np.array([s[-1]]))[0][0]
+            init_idx = final_idx = 0
+            if not NumpyUtils.is_in_limits(lat_acc, cost_params.lat_acceleration_limits).all(axis=1).any():
+                init_idx = reference_route.get_index_on_frame_from_s(np.array([s[0]]))[0][0]
+                final_idx = reference_route.get_index_on_frame_from_s(np.array([s[-1]]))[0][0]
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
                                           "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
@@ -151,8 +153,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                           "min/max lat_acc [%s, %s] (limits: %s); passed limits: %s/%s\n"
                                           "ego_frenet = %s\ngoal_frenet = %s\n"
                                           "distance from ego to goal = %f, time*approx_velocity = %f\n"
-                                          "worst_lat_acc: t=%.1f v=%.3f k=%f\n"
-                                          "nominal_points.k=%s" %
+                                          "worst_lat_acc: t=%.1f v=%.3f k=%f; nominal_points.k=%s" %
                                           (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                            np.max(np.min(ctrajectories[:, :, C_V], axis=1)),

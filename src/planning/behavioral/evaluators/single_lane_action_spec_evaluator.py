@@ -42,16 +42,17 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         if len(follow_vehicle_valid_action_idxs) > 0:
 
             # TODO: remove it
-            ego = behavioral_state.ego_state
-            ego_fstate = ego.map_state.lane_fstate
             spec = action_specs[follow_vehicle_valid_action_idxs[0]]
+            ref_route = behavioral_state.extended_lane_frames[spec.recipe.relative_lane]
+            ego = behavioral_state.ego_state
+            ego_fstate = ref_route.cstate_to_fstate(ego.cartesian_state)
             obj = behavioral_state.road_occupancy_grid[(spec.recipe.relative_lane, spec.recipe.relative_lon)][0].dynamic_object
-            obj_fstate = obj.map_state.lane_fstate
-            s_T = np.linalg.norm(obj.cartesian_state[:2] - ego.cartesian_state[:2]) - (
-                        ego.size.length + obj.size.length) / 2 - 5  # LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            obj_fstate = ref_route.cstate_to_fstate(obj.cartesian_state)
+            s_T = (obj_fstate[0] - ego_fstate[0]) - (ego.size.length + obj.size.length) / 2 - 5  # LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
             headway = s_T / ego.cartesian_state[3] if ego.cartesian_state[3] > 0 else np.inf
-            print('BP time %.3f: DYNAMIC_ACTION: sva=%s dvel=%.2f s_T=%.2f headway=%.2f; spec=%s' %
-                  (ego.timestamp_in_sec, ego_fstate[:3], ego_fstate[1] - obj_fstate[1], s_T, headway, spec))
+            print('BP time %.3f: DYNAMIC_ACTION goal_time=%.3f: sva=%s dvel=%.2f s_T=%.2f headway=%.2f; spec=%s' %
+                  (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, ego_fstate[:3], ego_fstate[1] - obj_fstate[1],
+                   s_T, headway, spec))
 
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs

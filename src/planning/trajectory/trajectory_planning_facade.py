@@ -106,12 +106,10 @@ class TrajectoryPlanningFacade(DmModule):
                 time_to_goal = params.target_time - ego_time
                 sampled_fstate = params.reference_route.cstate_to_fstate(sampled_cartesian)
                 np.set_printoptions(suppress=True)
-                print('TP if: time %.3f, goal_time=%.3f, max_sample_time=%.3f; orig-fstate: '
-                      '%s -> %s; cpoint: (%.2f, %.2f); to_goal: t=%.3f s=%.3f s/t=%.3f' %
-                      (ego_time, params.target_time, params.trajectory_end_time,
-                       NumpyUtils.str_log(ego_fstate), NumpyUtils.str_log(sampled_fstate),
-                       sampled_cartesian[0], sampled_cartesian[C_Y], time_to_goal, dist_to_goal,
-                       dist_to_goal / time_to_goal))
+                print('TP if: time %.3f, goal_time=%.3f; orig-fstate: %s -> %s; '
+                      'to_goal: t=%.3f s=%.3f s/t=%.3f; cpoint: %s' %
+                      (ego_time, params.target_time, NumpyUtils.str_log(ego_fstate), NumpyUtils.str_log(sampled_fstate),
+                       time_to_goal, dist_to_goal, dist_to_goal / time_to_goal, sampled_cartesian[:2]))
 
                 updated_state = sampled_state
             else:
