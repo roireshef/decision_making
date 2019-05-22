@@ -120,6 +120,18 @@ class KinematicUtils:
         poly_d = np.zeros(QuinticPoly1D.num_coefs())
         return poly_s, poly_d
 
+    @staticmethod
+    def create_ego_by_goal_state(goal_frenet_state: FrenetState2D, ego_to_goal_time: float) -> FrenetState2D:
+        """
+        calculate Frenet state in ego time, such that its constant-velocity prediction in goal time is goal_frenet_state
+        :param goal_frenet_state: goal Frenet state
+        :param ego_to_goal_time: the difference between the goal time and ego time
+        :return: ego by goal frenet state
+        """
+        return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV],
+                         goal_frenet_state[FS_SV], 0, 0, 0, 0])
+
+
 
 class BrakingDistances:
     """
@@ -193,3 +205,4 @@ class BrakingDistances:
         T = np.zeros_like(v_0)
         T[non_zero_actions] = np.fmin.reduce(cost_real_roots, axis=-1)
         return T
+
