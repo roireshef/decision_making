@@ -4,7 +4,6 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe
@@ -43,7 +42,6 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         filtered_indices = [i for i, recipe in enumerate(action_recipes)
                             if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                            and recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                             and recipe.relative_lane == RelativeLane.SAME_LANE]
         if len(filtered_indices) == 0:
             raise NoActionsLeftForBPError()
@@ -55,5 +53,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         follow_lane_valid_action_idxs = [idx for idx in filtered_indices
                                          if action_recipes[idx].aggressiveness.value == min_aggr_level]
 
-        costs[follow_lane_valid_action_idxs[-1]] = 0  # choose the most fast action among the calmest actions
+        # choose the most fast action among the calmest actions;
+        # it's last in the recipes list since the recipes are sorted in the increasing order of velocities
+        costs[follow_lane_valid_action_idxs[-1]] = 0
         return costs
