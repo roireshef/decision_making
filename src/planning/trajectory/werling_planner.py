@@ -7,7 +7,8 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS
+    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -82,6 +83,10 @@ class WerlingPlanner(TrajectoryPlanner):
 
         is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
+        # calculate frenet state in ego time, such that its prediction in goal time is goal_frenet_state
+        # it is used only when not is_target_ahead
+        ego_by_goal_state = KinematicUtils.create_ego_by_goal_state(goal_frenet_state, T_target_horizon)
+
         # solve the optimization problem in frenet-frame from t=0 to t=T
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
@@ -109,7 +114,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
         else:
             # only pad
-            ftrajectories = self.predictor.predict_2d_frenet_states(ego_frenet_state[np.newaxis, :],
+            ftrajectories = self.predictor.predict_2d_frenet_states(ego_by_goal_state[np.newaxis, :],
                                                                     np.arange(0, planning_horizon + EPS, self.dt))
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories)
 
@@ -178,8 +183,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            poly_s, poly_d = WerlingPlanner._create_linear_profile_polynomials(
-                ftrajectories[cartesian_filtered_indices[sorted_filtered_idxs[0]], 0, :])
+            poly_s, poly_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
                                                               planning_horizon, planning_horizon, planning_horizon,
                                                               reference_route, poly_s, poly_d)
@@ -188,32 +192,18 @@ class WerlingPlanner(TrajectoryPlanner):
            filtered_trajectory_costs[sorted_filtered_idxs]
 
     @staticmethod
-    def _create_linear_profile_polynomials(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
+    def _correct_velocity_values(ftrajectories: FrenetTrajectories2D) -> FrenetTrajectories2D:
         """
-        Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
-        velocity). Those polynomials are degenerate to s(t)=v*t+x form
-        :param frenet_state: the current frenet state to pull positions and velocities from
-        :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
-        """
-        poly_s = np.array([0, 0, 0, 0, frenet_state[FS_SV], frenet_state[FS_SX]])
-        poly_d = np.array([0, 0, 0, 0, frenet_state[FS_DV], frenet_state[FS_DX]])
-        return poly_s, poly_d
-
-    @staticmethod
-    def _correct_velocity_values(ftrajectories: FrenetTrajectories2D) -> \
-            FrenetTrajectories2D:
-        """
-        Velocity values of werling trajectories can be received with minor numerical deviations.
+        Velocity values of Werling trajectories can be received with minor numerical deviations.
         This method verifies that if such deviations exist, they are indeed minor, and corrects them
         to the right accurate values.
         :param ftrajectories: trajectories in frenet frame
         :return:Corrected trajectories in frenet frame
         """
         traj_velocities = ftrajectories[:, :, FS_SV]
-        # TODO: extract constants to global constants
-        is_velocities_close_to_zero = np.logical_and(traj_velocities > -0.1, traj_velocities < 0)
+        is_velocities_close_to_zero = np.logical_and(traj_velocities > CLOSE_TO_ZERO_NEGATIVE_VELOCITY,
+                                                     traj_velocities < 0)
         ftrajectories[is_velocities_close_to_zero, FS_SV] = 0.0
-
         return ftrajectories
 
     @staticmethod
