@@ -37,7 +37,7 @@ class MapUtils:
         """
         lane = MapUtils.get_lane(lane_id)
         if lane is None:
-            raise LaneNotFound('lane {0} cannot be found'.format(lane_id))
+            raise LaneNotFound('lane %d cannot be found' % lane_id)
         return lane.e_i_road_segment_id
 
     @staticmethod
@@ -346,16 +346,20 @@ class MapUtils:
                     "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d type=%s lanes_from_left=%d "
                     "lanes_from_right=%d" % (current_lane_id, lane_type, lanes_from_left, lanes_from_right))
 
-            downstream_lanes_ids_on_plan = [lid for lid in downstream_lanes_ids
-                                            if MapUtils.get_road_segment_id_from_lane_id(
-                    lid) == next_road_segment_id_on_plan]
+            # collect downstream lanes, whose road_segment_id is next_road_segment_id_on_plan
+            downstream_lanes_ids_on_plan = \
+                [lid for lid in downstream_lanes_ids
+                 if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
 
+            # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
             if len(downstream_lanes_ids_on_plan) == 0:
-                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan %s",
-                                                  (navigation_plan))
+                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
+                                                  "downstream_lanes %s, next_road_segment_id_on_plan %d" %
+                                                  (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
             if len(downstream_lanes_ids_on_plan) > 1:
-                raise AmbiguousNavigationPlan("More than 1 downstream lanes according to the nav. plan %s",
-                                              (navigation_plan))
+                raise AmbiguousNavigationPlan("More than 1 downstream lanes according to the nav. plan %s,"
+                                              "downstream_lanes_ids_on_plan %s" %
+                                              (navigation_plan, downstream_lanes_ids_on_plan))
 
             current_lane_id = downstream_lanes_ids_on_plan[0]
             current_segment_start_s = 0
@@ -400,7 +404,7 @@ class MapUtils:
         lanes = [lane for lane in scene_static.s_Data.as_scene_lane_segment if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
-            raise LaneNotFound('lane {0} not found'.format(lane_id))
+            raise LaneNotFound('lane %d not found' % lane_id)
         assert len(lanes) == 1
         return lanes[0]
 
@@ -416,7 +420,7 @@ class MapUtils:
         road_segments = [road_segment for road_segment in scene_static.s_Data.as_scene_road_segment if
                          road_segment.e_i_road_segment_id == road_id]
         if len(road_segments) == 0:
-            raise RoadNotFound('road {0} not found '.format(road_id))
+            raise RoadNotFound('road %d not found' % road_id)
         assert len(road_segments) == 1
         return road_segments[0]
 

@@ -169,13 +169,14 @@ class BehavioralGridState:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg, logger) -> \
+    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg, logger: Logger) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
         contain multiple original lane segments.
         :param state:
         :param nav_plan:
+        :param logger:
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
