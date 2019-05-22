@@ -91,7 +91,7 @@ class KinematicUtils:
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
         conforms = np.all(
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) &
-            #QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) &
+            QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) &
             QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits), axis=-1)
 
         return conforms
