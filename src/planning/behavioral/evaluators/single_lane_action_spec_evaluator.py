@@ -40,6 +40,19 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                             and recipe.action_type == ActionType.FOLLOW_VEHICLE]
 
         if len(follow_vehicle_valid_action_idxs) > 0:
+
+            # TODO: remove it
+            ego = behavioral_state.ego_state
+            ego_fstate = ego.map_state.lane_fstate
+            spec = action_specs[follow_vehicle_valid_action_idxs[0]]
+            obj = behavioral_state.road_occupancy_grid[(spec.recipe.relative_lane, spec.recipe.relative_lon)][0].dynamic_object
+            obj_fstate = obj.map_state.lane_fstate
+            s_T = np.linalg.norm(obj.cartesian_state[:2] - ego.cartesian_state[:2]) - (
+                        ego.size.length + obj.size.length) / 2 - 5  # LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            headway = s_T / ego.cartesian_state[3] if ego.cartesian_state[3] > 0 else np.inf
+            print('BP time %.3f: DYNAMIC_ACTION: sva=%s dvel=%.2f s_T=%.2f headway=%.2f; spec=%s' %
+                  (ego.timestamp_in_sec, ego_fstate[:3], ego_fstate[1] - obj_fstate[1], s_T, headway, spec))
+
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs
 
@@ -60,12 +73,12 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         # TODO: remove it
         ego = behavioral_state.ego_state
-        spec = action_specs[follow_lane_valid_action_idxs[0]]
+        spec = action_specs[follow_lane_valid_action_idxs[-1]]
         frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
         ego_fstate = frenet.cstate_to_fstate(ego.cartesian_state)
 
         np.set_printoptions(suppress=True)
-        print('BP time %.3f, goal_time=%.3f: spec.v=%.3f, ego_fstate = %s' %
+        print('BP time %.3f: STATIC ACTION: goal_time=%.3f: spec.v=%.3f, ego_fstate = %s' %
               (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, spec.v, NumpyUtils.str_log(ego_fstate)))
 
         costs[follow_lane_valid_action_idxs[-1]] = 0  # choose the most fast action among the calmest actions
