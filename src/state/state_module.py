@@ -13,7 +13,7 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
-from decision_making.src.planning.types import C_V
+from decision_making.src.planning.types import C_V, FS_SV
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
