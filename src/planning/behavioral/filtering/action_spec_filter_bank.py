@@ -2,8 +2,7 @@ import numpy as np
 from typing import List
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    SAFETY_HEADWAY, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BIG_EPS
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
@@ -60,9 +59,7 @@ class FilterForKinematics(ActionSpecFilter):
 
         are_valid = []
 
-        # debug
-        velocities = initial_fstates[:, FS_SV]
-        for poly_s, poly_d, t, lane, spec, iv in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs, velocities):
+        for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
             # TODO: in the future, consider leaving only a single action (for better "learnability")
             if spec.only_padding_mode:
                 are_valid.append(True)
@@ -78,14 +75,13 @@ class FilterForKinematics(ActionSpecFilter):
             # TODO: This handling of polynomial coefficients being 5th or 4th order should happen in an inner context and get abstracted from this method
             first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
             is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
-                                                                                     LON_ACC_LIMITS, np.array([0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]), frenet_frame.s_limits)
+                                                                                     LON_ACC_LIMITS, VELOCITY_LIMITS,
+                                                                                     frenet_frame.s_limits)
             # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
             # we can save time by not checking cartesian limits
             if not is_valid_in_frenet:
                 are_valid.append(False)
                 continue
-
-
             total_time = max(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, t)
             time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
 
@@ -95,12 +91,9 @@ class FilterForKinematics(ActionSpecFilter):
 
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
-                cartesian_points[np.newaxis, ...], np.array([0, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + BIG_EPS]),
-                LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
-            if not is_valid_in_cartesian and spec.v <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + BIG_EPS:
-                print("{}. invalid-car action: {}, {}, {}, {}, current velocity: {}".format(
-                    behavioral_state.ego_state.timestamp_in_sec, spec.recipe.action_type, spec.recipe.aggressiveness,
-                    spec.t, spec.v, iv))
+                cartesian_points[np.newaxis, ...], VELOCITY_LIMITS,
+                LON_ACC_LIMITS, LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
+
             are_valid.append(is_valid_in_cartesian)
 
         return are_valid

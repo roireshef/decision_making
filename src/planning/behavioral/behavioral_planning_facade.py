@@ -83,15 +83,6 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 updated_state = state
 
-            # if 19.5 < updated_state.ego_state.timestamp_in_sec < 20:
-            #     pickle_out = open("/home/yzb8h0/projects/uc_workspace/accel_dyn_state.pkl", "wb")
-            #     pickle.dump(updated_state, pickle_out)
-            #     pickle_out.close()
-            #     pickle_out = open("/home/yzb8h0/projects/uc_workspace/accel_static_state.pkl", "wb")
-            #     pickle.dump(scene_static, pickle_out)
-            #     pickle_out.close()
-            #     print("saved time stamp: {}".format(updated_state.ego_state.timestamp_in_sec))
-
             navigation_plan = self._get_current_navigation_plan()
 
             trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan)

@@ -6,7 +6,7 @@ import numpy as np
 import pickle
 
 from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -96,7 +96,8 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_pg
                                        right_shoulder_cost=None, left_road_cost=None, right_road_cost=None,
                                        dist_from_goal_cost=None, dist_from_goal_lat_factor=None, lon_jerk_cost_weight=None,
                                        lat_jerk_cost_weight=None, velocity_limits=None, lon_acceleration_limits=None,
-                                       lat_acceleration_limits=None)
+                                       lat_acceleration_limits=None,
+                                       desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
     pointwise_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, cost_params, time_points,
                                                                     predictor, reference_route)
     total_costs = np.sum(pointwise_costs, axis=1)  # costs per trajectory

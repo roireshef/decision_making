@@ -1,4 +1,4 @@
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BIG_EPS
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from typing import List
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -74,7 +74,7 @@ class FilterLaneChanging(RecipeFilter):
 
 class FilterSpeedingOverDesiredVelocityStatic(RecipeFilter):
     def filter(self, recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + BIG_EPS
+        return [recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                 if recipe is not None else False for recipe in recipes]
 
 
@@ -82,6 +82,6 @@ class FilterSpeedingOverDesiredVelocityDynamic(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [behavioral_state.road_occupancy_grid
                 [(recipe.relative_lane, recipe.relative_lon)][0].dynamic_object.velocity
-                <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + BIG_EPS
+                <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                 if recipe is not None else False for recipe in recipes]
 

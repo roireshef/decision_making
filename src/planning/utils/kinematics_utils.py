@@ -1,6 +1,5 @@
 import numpy as np
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BIG_EPS, EPS, \
-    VELOCITY_LIMITS
+from decision_making.src.global_constants import DESIRED_SPEED_MARGIN
 
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
@@ -39,7 +38,8 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
-                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits) -> np.ndarray:
+                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
+                                   desired_velocity: float) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -47,34 +47,24 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
+        :param desired_velocity: desired longitudinal speed [m/sec]
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
+
+        # validates the following behavior for each trajectory:
+        # (1) applies negative jerk to reduce initial positive acceleration, if necessary
+        # (2) applies negative acceleration to reduce velocity, until it reaches the desired velocity, if necessary
+        # (3) keeps the velocity under the desired velocity limit.
         desired_limit_conforms = np.logical_or(
-            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= velocity_limits[1] + BIG_EPS), axis=1),
+            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity + DESIRED_SPEED_MARGIN), axis=1),
             (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
-
-        # for v, a in zip(lon_velocity, lon_acceleration):
-        #     if v[-1] > velocity_limits[1] + BIG_EPS or np.any(v < velocity_limits[0]):
-        #         valid_lon_velocities.append(np.array([False]*len(v)))
-        #         continue
-        #     invalid_desired_velocity = np.argmax(
-        #         np.append([False], np.logical_and(v[1:] > velocity_limits[1] + BIG_EPS, v[1:] > v[:-1])))
-        #     v, a = np.array(v), np.array(a)
-        #     valid_lon_velocities.append(
-        #         np.concatenate([a[:invalid_desired_velocity] > a[1: invalid_desired_velocity + 1],
-        #                         [True]*(len(a)-invalid_desired_velocity)]))
-        #
-        #     # debug
-        #     if not np.all(a[:invalid_desired_velocity] > a[1: invalid_desired_velocity + 1]):
-        #         err_idx = np.argmin(a[:invalid_desired_velocity] <= a[1:invalid_desired_velocity + 1])
-        #         print("positive jerk: idx: {}, jerk: {}, {}".format(err_idx, a[err_idx], a[err_idx + 1]))
-
+        # check velocity and acceleration limits
         conforms = np.logical_and(np.all(
-            NumpyUtils.is_in_limits(lon_velocity, VELOCITY_LIMITS) &
+            NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1),
             desired_limit_conforms)

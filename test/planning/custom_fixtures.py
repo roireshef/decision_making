@@ -7,7 +7,8 @@ import os
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
@@ -189,8 +190,8 @@ def scene_dynamic_fix(scene_static_pg_split):
     yield scene_dynamic
 
 @pytest.fixture(scope='function')
-def scene_dynamic_fix(scene_oval_track_segment):
-    SceneStaticModel.get_instance().set_scene_static(scene_oval_track_segment)
+def scene_dynamic_fix(scene_static_pg_split):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     lane_id = 200
     cstate = np.array([1100, 7, 0, 1.0, 0.0, 0])
@@ -242,7 +243,8 @@ def trajectory_params():
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, 3.0, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT,
-                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
+                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
+                                                  BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, target_time=16, trajectory_end_time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY,
