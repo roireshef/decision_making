@@ -103,25 +103,25 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
          maintaining the required safety-headway + constant safety-margin"""
 
         # to prevent inverse of singular matrices (T=0) check safety only for non-tracking actions
-        # tracking actions are safe
-        non_tracking_specs = [spec for spec in action_specs if not spec.in_tracking_mode]
+        # padding actions are safe
+        non_padding_specs = [spec for spec in action_specs if not spec.only_padding_mode]
 
         # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
         # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
         relative_cells = [(spec.recipe.relative_lane,
                            spec.recipe.relative_lon if isinstance(spec.recipe, DynamicActionRecipe) else RelativeLongitudinalPosition.FRONT)
-                          for spec in non_tracking_specs]
+                          for spec in non_padding_specs]
         target_vehicles = [behavioral_state.road_occupancy_grid[cell][0]
                            if len(behavioral_state.road_occupancy_grid[cell]) > 0 else None
                            for cell in relative_cells]
 
         # represent initial and terminal boundary conditions (for s axis)
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
-        terminal_fstates = np.array([spec.as_fstate() for spec in non_tracking_specs])
+        terminal_fstates = np.array([spec.as_fstate() for spec in non_padding_specs])
         constraints_s = np.concatenate((initial_fstates[:, :(FS_SA+1)], terminal_fstates[:, :(FS_SA+1)]), axis=1)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        T = np.array([spec.t for spec in non_tracking_specs])
+        T = np.array([spec.t for spec in non_padding_specs])
         A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T)
 
         # solve for s(t)
@@ -142,11 +142,10 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                      behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # validate distance keeping (on frenet longitudinal axis)
-            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
-
+            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                                                             np.array([0, t]))
             are_valid.append(is_safe)
-                                                                      np.array([0, t]))
 
-        # return boolean list for all actions, including in_track_mode; tracking actions are always valid
+        # return boolean list for all actions, including only_padding_mode (always valid)
         it = iter(are_valid)
-        return [True if spec.in_tracking_mode else next(it) for spec in action_specs]
+        return [True if spec.only_padding_mode else next(it) for spec in action_specs]
