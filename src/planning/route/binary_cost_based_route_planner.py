@@ -1,4 +1,5 @@
 import numpy as np
+import rte.python.profiler as prof
 from typing import List, Optional
 from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
     DownstreamLaneDataNotFound
@@ -285,6 +286,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         return route_lane_segments
 
+    @prof.ProfileFunction()
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """
         Calculates lane end and occupancy costs for all the lanes in the NAV plan

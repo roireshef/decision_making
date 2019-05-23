@@ -1,6 +1,7 @@
 from logging import Logger
 import time
 import traceback
+import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.uc_system.uc_system_route_plan import UC_SYSTEM_ROUTE_PLAN
 from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_static import UC_SYSTEM_SCENE_STATIC
 from decision_making.src.exceptions import MsgDeserializationError, RoutePlanningException
@@ -72,6 +73,7 @@ class RoutePlanningFacade(DmModule):
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
                                  e, traceback.format_exc())
 
+    @prof.ProfileFunction()
     def _get_current_scene_static(self) -> (SceneStaticBase, NavigationPlan):
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
 
@@ -83,6 +85,7 @@ class RoutePlanningFacade(DmModule):
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static.s_Data.s_SceneStaticBase, scene_static.s_Data.s_NavigationPlan
 
+    @prof.ProfileFunction()
     def _publish_results(self, s_Data: DataRoutePlan) -> None:
 
         final_route_plan = RoutePlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=self.timestamp, e_Cnt_version=0), s_Data = s_Data)

@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import List, Dict, Optional
+import rte.python.profiler as prof
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
     SceneRoadSegment, SceneLaneSegmentBase
@@ -144,6 +145,7 @@ class RoutePlannerInputData():
         self._next_road_segment_id[last_road_segment_id] = None
         self._prev_road_segment_id[last_road_segment_id] = prev_road_segment_id
 
+    @prof.ProfileFunction()
     def reformat_input_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
         """
         This method updates route_lane_segments_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
