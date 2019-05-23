@@ -5,11 +5,10 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.exceptions import ConstraintFilterHaltWithValue
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+    LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, StaticActionRecipe, AggressivenessLevel
+    RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -17,8 +16,7 @@ from decision_making.src.planning.types import FS_SA, FS_DX, FS_SX
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
-from decision_making.src.planning.utils.math_utils import Math
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List, Any
 
@@ -169,9 +167,13 @@ class ConstraintSpecFilter(ActionSpecFilter):
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
         """
-        selects relevant points from the action_spec (e.g., slow points)
-        :param action_spec:
-        :return:
+         selects relevant points (or other information) based on the action_spec (e.g., select all points in the
+          trajectory defined by action_spec that require slowing down due to curvature).
+         This method is not restricted to returns a specific type, and can be used to pass any relevant information to
+         the target and constraint functions.
+        :param behavioral_state:  The behavioral_state as the context of this filtering
+        :param action_spec:  The action spec in question
+        :return: Any type that should be used by the _target_function and _constraint_function
         """
         pass
 
@@ -192,7 +194,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
         """
         Defines the constraint function over points.
 
-        :param behavioral_state:  A behavioral grid state
+        :param behavioral_state:  A behavioral grid state at the context of filtering
         :param action_spec: the action spec which to filter
         :return: the result of the constraint function as an np.ndarray
         """
@@ -204,14 +206,14 @@ class ConstraintSpecFilter(ActionSpecFilter):
         The test condition to apply on the results of target and constraint values
         :param target_values: the (externally calculated) target function
         :param constraints_values: the (externally calculated) constraint values
-        :return:
+        :return: a single boolean indicating whether this action_spec should be filtered or not
         """
         pass
 
     def _raise_false(self):
         """
         Terminates the execution of the filter with a False value.
-        No need to implement this method in your subtype
+        No need to implement this method in your subclass
         :return: None
         """
         raise ConstraintFilterHaltWithValue(False)
@@ -219,7 +221,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
     def _raise_true(self):
         """
         Terminates the execution of the filter with a True value.
-        No need to implement this method in your subtype
+        No need to implement this method in your subclass
         :return:
         """
         raise ConstraintFilterHaltWithValue(True)
@@ -227,7 +229,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
     def _check_condition(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> bool:
         """
         Tests the condition defined by this filter
-        No need to implement this method in your subtype
+        No need to implement this method in your subclass
 
         :param behavioral_state:
         :param action_spec:
@@ -240,7 +242,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
         The filter function
-        No need to implement this method in your subtype
+        No need to implement this method in your subclass
         :param action_specs:
         :param behavioral_state:
         :return:
