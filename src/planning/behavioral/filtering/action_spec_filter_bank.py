@@ -5,7 +5,8 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.exceptions import ConstraintFilterHaltWithValue
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+    LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, BEYOND_SPEC_INDEX_STEP
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, StaticActionRecipe
@@ -313,7 +314,9 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
             self._raise_false()
         # get the Frenet point index near the goal action_spec.s
         spec_s_point_idx = target_lane_frenet.get_index_on_frame_from_s(np.array([action_spec.s]))[0][0]
-        beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), 4))
+        # gets a list of indices representing the relevant "beyond spec" part - from where the spec ends and until the
+        # end of the Frenet frame
+        beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), BEYOND_SPEC_INDEX_STEP))
         return beyond_spec_frenet_idxs
 
 
@@ -399,11 +402,11 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                              points: np.ndarray) -> np.ndarray:
         """
-        The distance from first stop sign to current location
-        :param behavioral_state:
-        :param action_spec:
-        :param points:
-        :return: The distance from the goal to the
+        Returns the distance from the action_spec goal to the closest stop sign
+        :param behavioral_state: The context  behavioral grid
+        :param action_spec: ActionSpec to filter
+        :param points: Current goal s
+        :return: An array with a single point containing the distance from the action_spec goal to the closest stop sign
         """
         dist_to_points = points[0] - action_spec.s
         assert dist_to_points >= 0, 'Stop Sign must be ahead'
