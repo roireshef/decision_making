@@ -189,7 +189,14 @@ class BrakingDistances:
         """
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
-        non_zero_actions = QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)
+
+        non_zero_actions = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
+
+
+#        non_zero_actions = np.logical_not(np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
+#                                                         np.isclose(a_0, 0.0, atol=1e-3, rtol=0)))
+
+
 
         w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
         w_J_array = np.full(v_0[non_zero_actions].shape, w_J)

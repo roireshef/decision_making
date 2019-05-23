@@ -357,7 +357,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
         """
         # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
         brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
-        return brake_dist
+        return np.array([brake_dist])
 
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                              points: np.array) -> float:
