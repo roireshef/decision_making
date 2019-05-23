@@ -13,7 +13,7 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
-from decision_making.src.planning.types import C_V, FS_SV
+from decision_making.src.planning.types import C_V, FS_SV, C_A, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
@@ -86,6 +86,10 @@ class StateModule(DmModule):
             state.ego_state.cartesian_state[C_V] = 0
             state.ego_state.map_state.lane_fstate[FS_SV] = 0
             self.logger.warning('Ego was received with negative velocity %f' % state.ego_state.cartesian_state[C_V])
+        elif state.ego_state.cartesian_state[C_V] == 0 and state.ego_state.cartesian_state[C_A] < 0:
+            state.ego_state.cartesian_state[C_A] = 0
+            state.ego_state.map_state.lane_fstate[FS_SA] = 0
+            self.logger.warning('Ego was received with zero velocity and negative acceleration %f' % state.ego_state.cartesian_state[C_A])
 
         for i in range(len(state.dynamic_objects)):
             if state.dynamic_objects[i].cartesian_state[C_V] < 0:
