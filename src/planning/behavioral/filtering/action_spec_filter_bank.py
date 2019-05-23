@@ -165,6 +165,9 @@ class ConstraintSpecFilter(ActionSpecFilter):
         To terminate the filter calculation use _raise_true/_raise_false  at any stage.
     """
 
+    def __init__(self, extend_short_action_specs=True):
+        self._extend_short_action_specs = extend_short_action_specs
+
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
         """
@@ -240,45 +243,9 @@ class ConstraintSpecFilter(ActionSpecFilter):
         return self._condition(self._target_function(behavioral_state, action_spec, points_under_test),
                                self._constraint_function(behavioral_state, action_spec, points_under_test))
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        """
-        The filter function
-        No need to implement this method in your subclass
-        :param action_specs:
-        :param behavioral_state:
-        :return:
-        """
-        mask = []
-        for action_spec in action_specs:
-            try:
-                mask_value = self._check_condition(behavioral_state, action_spec)
-            except ConstraintFilterHaltWithValue as e:
-                mask_value = e.value
-            mask.append(mask_value)
-        return mask
-
-
-@six.add_metaclass(ABCMeta)
-class BeyondSpecConstraintFilter(ConstraintSpecFilter):
-    """
-    A ConstraintSpecFilter class with additional access to beyond spec indices.
-    Also this adds an action_spec 'extension' for short action specs.
-    """
-
     @staticmethod
-    def extend_spec(spec: ActionSpec, min_action_time: float = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) -> ActionSpec:
-        """
-        Extend Short action specs.
-        :param spec: the original ActionSpec
-        :param min_action_time: the minimal action time to which spec should be extended
-        :return: An extended copy of the action_spec assuming a constant velocity
-        """
-        extended_spec = copy.copy(spec)
-        extended_spec.s += (min_action_time - spec.t) * spec.v
-        return extended_spec
-
-    @staticmethod
-    def extend_action_specs(action_specs: List[ActionSpec]) -> List[ActionSpec]:
+    def extend_action_specs(action_specs: List[ActionSpec],
+                            min_action_time: float = MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON ) -> List[ActionSpec]:
         """
         Compensate for delays in super short action specs to increase filter efficiency.
         If we move with constant velocity by using very short actions, at some point we reveal that there is no ability
@@ -288,36 +255,28 @@ class BeyondSpecConstraintFilter(ConstraintSpecFilter):
         :param action_specs:
         :return: A list of action specs with potentially extended copies of short ones
         """
-        return [spec if spec.t >= MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-                else BeyondSpecConstraintFilter.extend_spec(spec) for spec in action_specs]
+        return [spec if spec.t >= MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON else
+                ActionSpec(spec.t, spec.v,  spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
+                for spec in action_specs]
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
-        Overridden  filter function
+        The filter function
+        No need to implement this method in your subclass
         :param action_specs:
         :param behavioral_state:
         :return:
         """
-        return super(BeyondSpecConstraintFilter, self).filter(
-            BeyondSpecConstraintFilter.extend_action_specs(action_specs),
-            behavioral_state)
-
-    def _get_beyond_spec_frenet_idxs(self, action_spec, behavioral_state) -> np.array:
-        """
-        Returns the indices beyond the action_spec goal
-        :param action_spec:
-        :param behavioral_state:
-        :return: the indices beyond the action_spec goal
-        """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        if action_spec.s >= target_lane_frenet.s_max:
-            self._raise_false()
-        # get the Frenet point index near the goal action_spec.s
-        spec_s_point_idx = target_lane_frenet.get_index_on_frame_from_s(np.array([action_spec.s]))[0][0]
-        # gets a list of indices representing the relevant "beyond spec" part - from where the spec ends and until the
-        # end of the Frenet frame
-        beyond_spec_frenet_idxs = np.array(range(spec_s_point_idx + 1, len(target_lane_frenet.k), BEYOND_SPEC_INDEX_STEP))
-        return beyond_spec_frenet_idxs
+        mask = []
+        if self._extend_short_action_specs:
+            action_specs = self.extend_action_specs(action_specs)
+        for action_spec in action_specs:
+            try:
+                mask_value = self._check_condition(behavioral_state, action_spec)
+            except ConstraintFilterHaltWithValue as e:
+                mask_value = e.value
+            mask.append(mask_value)
+        return mask
 
 
 class StaticTrafficFlowControlFilter(ActionSpecFilter):
@@ -347,7 +306,7 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
                 for action_spec in action_specs]
 
 
-class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
+class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
     """
     Filter for "BeyondSpec" stop sign - If there are any stop signs beyond the spec target (s > spec.s)
     this filter filters out action specs that cannot guarantee braking to velocity 0 before reaching the closest
@@ -356,8 +315,8 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
     """
 
     def __init__(self):
+        super(BeyondSpecStaticTrafficFlowControlFilter, self).__init__(extend_short_action_specs=True)
         self.distances = BrakingDistances.create_braking_distances()
-
 
     def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> int:
         """
