@@ -1,4 +1,3 @@
-import copy
 import numpy as np
 import rte.python.profiler as prof
 import six
@@ -6,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 from decision_making.src.exceptions import ConstraintFilterHaltWithValue
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, BEYOND_SPEC_INDEX_STEP
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, StaticActionRecipe
@@ -166,6 +165,9 @@ class ConstraintSpecFilter(ActionSpecFilter):
     """
 
     def __init__(self, extend_short_action_specs=True):
+        """
+        :param extend_short_action_specs:  Determines whether very short action should be extended (assuming constant velocity)
+        """
         self._extend_short_action_specs = extend_short_action_specs
 
     @abstractmethod
@@ -183,7 +185,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
 
     @abstractmethod
     def _target_function(self, behavioral_state: BehavioralGridState,
-                         action_spec: ActionSpec, points: Any) -> np.ndarray:
+                         action_spec: ActionSpec, points: Any) -> np.array:
         """
         The definition of the function to be tested.
         :param behavioral_state:  A behavioral grid state
@@ -194,7 +196,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
 
     @abstractmethod
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) \
-            -> np.ndarray:
+            -> np.array:
         """
         Defines the constraint function over points.
 
@@ -287,14 +289,13 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
     """
 
     @staticmethod
-    def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState):
+    def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
         """
         Checks if there is a stop_bar between current ego location and the action_spec goal
-        :param action_spec:
-        :param behavioral_state:
-        :return:
+        :param action_spec: the action_spec to be considered
+        :param behavioral_state: BehavioralGridState in context
+        :return: if there is a stop_bar between current ego location and the action_spec goal
         """
-
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         stop_bar_locations = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
@@ -329,9 +330,9 @@ class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
         traffic_control_s = traffic_control_s[traffic_control_s >= action_spec_s]
         return -1 if len(traffic_control_s) == 0 else traffic_control_s[0]
 
-    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.ndarray:
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.array:
         """
-        Basically just checks if there are stop signs. Returns the `s` of the first stop-sign
+        Checks if there are stop signs. Returns the `s` of the first (closest) stop-sign
         :param behavioral_state:
         :param action_spec:
         :return: The index of the end point
@@ -359,7 +360,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
         return brake_dist
 
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
-                             points: np.ndarray) -> np.ndarray:
+                             points: np.array) -> float:
         """
         Returns the distance from the action_spec goal to the closest stop sign
         :param behavioral_state: The context  behavioral grid
@@ -367,11 +368,16 @@ class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
         :param points: Current goal s
         :return: An array with a single point containing the distance from the action_spec goal to the closest stop sign
         """
-        dist_to_points = points[0] - action_spec.s
-        assert dist_to_points >= 0, 'Stop Sign must be ahead'
+        dist_to_points = points - action_spec.s
+        assert dist_to_points[0] >= 0, 'Stop Sign must be ahead'
         return dist_to_points
 
-    def _condition(self, target_values, constraints_values) -> bool:
-        return target_values < constraints_values
-
+    def _condition(self, target_values: np.array, constraints_values: np.array) -> bool:
+        """
+        Checks if braking distance from action_spec.v to 0 is smaller than the distance to stop sign
+        :param target_values: braking distance from action_spec.v to 0
+        :param constraints_values: the distance to stop sign
+        :return: a single boolean
+        """
+        return target_values[0] < constraints_values[0]
 

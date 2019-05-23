@@ -138,9 +138,9 @@ class BrakingDistances:
     Calculates braking distances
     """
     @staticmethod
-    def create_braking_distances(aggresiveness_level=AggressivenessLevel.CALM.value) -> np.array:
+    def create_braking_distances(aggresiveness_level: AggressivenessLevel=AggressivenessLevel.CALM.value) -> np.array:
         """
-        Creates distances of all follow_lane CALM braking actions with a0 = 0
+        Creates distances of all follow_lane with the given aggressiveness_level, braking actions with a0 = 0
         :return: the actions' distances
         """
         # create v0 & vT arrays for all braking actions
@@ -154,7 +154,7 @@ class BrakingDistances:
         return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
 
     @staticmethod
-    def _calc_actions_distances_for_given_weights(w_T, w_J, v_0: np.array, v_T: np.array) -> np.array:
+    def _calc_actions_distances_for_given_weights(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array) -> np.array:
         """
         Calculate the distances for the given actions' weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -189,8 +189,8 @@ class BrakingDistances:
         """
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
-        non_zero_actions = np.logical_not(np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
-                                                         np.isclose(a_0, 0.0, atol=1e-3, rtol=0)))
+        non_zero_actions = QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)
+
         w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
         w_J_array = np.full(v_0[non_zero_actions].shape, w_J)
 
