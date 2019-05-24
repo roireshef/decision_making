@@ -15,7 +15,7 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
     RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
-    DISTANCE_TO_SET_TAKEOVER_FLAG
+    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -27,7 +27,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
-from decision_making.src.planning.types import FS_SX
+from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
@@ -198,7 +198,7 @@ class BehavioralPlanningFacade(DmModule):
         dist_to_end = 0
         takeover_flag = False
 
-        # iterate through all road segments within DISTANCE_TO_SET_TAKEOVER_FLAG
+        # iterate through all road segments within MIN_DISTANCE_TO_SET_TAKEOVER_FLAG
         for route_row_idx in range(ego_row_idx, route_plan_data.e_Cnt_num_road_segments):
 
             # raise exception if ego lane occupancy cost is 1
@@ -224,7 +224,8 @@ class BehavioralPlanningFacade(DmModule):
 
             takeover_flag = np.all(lane_end_costs == 1)
 
-            if takeover_flag or dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG:
+            if takeover_flag or dist_to_end >= max(MIN_DISTANCE_TO_SET_TAKEOVER_FLAG,
+                                                   ego_state.map_state.lane_fstate[FS_SV]*TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG):
                 break
 
         takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,

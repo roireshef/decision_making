@@ -98,8 +98,11 @@ FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use V
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
-# Distance ahead to raise takeover flag
-DISTANCE_TO_SET_TAKEOVER_FLAG = 150
+# Min distance threshold ahead to raise takeover flag
+MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
+# Time threshold to raise takeover flag
+TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
+
 
 # Trajectory Planner #
 
