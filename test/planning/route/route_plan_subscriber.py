@@ -5,9 +5,9 @@ from logging import Logger
 from typing import List
 from rte.python.logger.AV_logger import AV_Logger
 
-from common_data.interface.Rte_Types.python.uc_system.uc_system_route_plan import UC_SYSTEM_ROUTE_PLAN
-from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_static import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system.uc_system_takeover import UC_SYSTEM_TAKEOVER
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 
 from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.infra.pubsub import PubSub
@@ -23,19 +23,19 @@ from decision_making.src.state.map_state import MapState
 
 
 def generate_mock_state(ego_lane_id:int, ego_lane_station:float) -> State :
-    
+
     # Ego state
     ego_vel = 10
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
     map_state = MapState(np.array([ego_lane_station, ego_vel, 0, 0, 0, 0]), ego_lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
-    
+
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
 
     dynamic_objects: List[DynamicObject] = list()
- 
+
     return State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
@@ -70,12 +70,12 @@ class RoutePlanSubscriber(DmModule):
 
             # get the scene static data for MapUtils setup
             scene_static_data = self._get_current_scene_static()
-            
-            # get current route plan 
+
+            # get current route plan
             route_plan = self._get_current_route_plan()
 
             # calculate the takeover message
-            behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING), 
+            behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING),
                                                 trajectory_params=None,
                                                 visualization_msg=None, trigger_pos=None)
 
@@ -108,7 +108,7 @@ class RoutePlanSubscriber(DmModule):
         Returns the last received route plan data
         We assume that if no updates have been received since the last call,
         then we will output the last received state.
-        :return: deserialized RoutePlan 
+        :return: deserialized RoutePlan
         """
         is_success, input_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN, timeout=1)
         if input_route_plan is None:
@@ -122,7 +122,7 @@ class RoutePlanSubscriber(DmModule):
         self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_msg.serialize())
 
     def _print_results(self, route_plan:RoutePlan, takeover_msg:Takeover) :
-        
+
         print("------------   ROUTE MESSAGE BEGIN  ---------------------")
         for i in range(route_plan.s_Data.e_Cnt_num_road_segments):
             print("ROAD SEGMENT: " , route_plan.s_Data.a_i_road_segment_ids[i], "\n")
