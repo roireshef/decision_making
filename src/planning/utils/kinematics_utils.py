@@ -56,6 +56,7 @@ class KinematicUtils:
 
         # validates the following behavior for each trajectory:
         # (1) applies negative jerk to reduce initial positive acceleration, if necessary
+        #     (initial jerk is calculated by subtracting the two first acceleration samples)
         # (2) applies negative acceleration to reduce velocity, until it reaches the desired velocity, if necessary
         # (3) keeps the velocity under the desired velocity limit.
         desired_limit_conforms = np.logical_or(
@@ -89,10 +90,10 @@ class KinematicUtils:
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
-        conforms = np.all(
-            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) &
-            QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) &
-            QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits), axis=-1)
+        conforms = \
+            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) & \
+            QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) & \
+            QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits)
 
         return conforms
 

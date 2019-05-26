@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pickle
 from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, PG_PICKLE_FILE_NAME, \
-    ACCEL_TOWARDS_VEHICLE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_DYNAMIC_PICKLE_FILE_NAME
+    ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME
 from decision_making.paths import Paths
 
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
@@ -24,14 +24,16 @@ def scene_static_pg_split():
     return pickle.load(open(Paths.get_map_absolute_path_filename(PG_SPLIT_PICKLE_FILE_NAME), 'rb'))
 
 @pytest.fixture
-def scene_accel_towards_vehicle_static():
+def scene_static_accel_towards_vehicle():
     return pickle.load(
-        open(Paths.get_acceleration_states_absolute_path_filename(ACCEL_TOWARDS_VEHICLE_STATIC_PICKLE_FILE_NAME), 'rb'))
+        open(Paths.get_map_absolute_path_filename(
+            ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME), 'rb'))
 
 @pytest.fixture
-def scene_accel_towards_vehicle_dynamic():
+def scene_dynamic_accel_towards_vehicle():
     return pickle.load(
-        open(Paths.get_acceleration_states_absolute_path_filename(ACCEL_TOWARDS_VEHICLE_DYNAMIC_PICKLE_FILE_NAME), 'rb'))
+        open(Paths.get_scene_dynamic_absolute_path_filename(
+            ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME), 'rb'))
 
 @pytest.fixture()
 def scene_static_testable():

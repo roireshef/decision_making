@@ -15,8 +15,6 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_SA, FS_DX
 from decision_making.src.planning.types import LAT_CELL
-from decision_making.src.planning.types import FS_SA, FS_DX, LIMIT_MIN, C_V
-from decision_making.src.planning.types import FS_SX, FS_SV, LAT_CELL
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
@@ -126,7 +124,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
 
         are_valid = []
-        for poly_s, t, cell, target, spec in zip(poly_coefs_s, T, relative_cells, target_vehicles, action_specs):
+        for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
             if target is None:
                 are_valid.append(True)
                 continue
@@ -141,10 +139,5 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
             are_valid.append(is_safe)
-        if not np.any(np.array(are_valid)):
-            print("{} nothing is safe".format(behavioral_state.ego_state.timestamp_in_sec,))
-        # TODO: remove - for debug only
-        had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
-        valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
-
         return are_valid
+

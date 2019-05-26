@@ -7,8 +7,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY, \
-    ACCEL_TOWARDS_VEHICLE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_DYNAMIC_PICKLE_FILE_NAME
+from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
@@ -19,7 +18,7 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
-    scene_accel_towards_vehicle_static, scene_accel_towards_vehicle_dynamic
+    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 NAVIGATION_PLAN_DM = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030, 51360,
@@ -78,8 +77,8 @@ def state_with_sorrounding_objects():
 
 @pytest.fixture(scope='function')
 def state_with_objects_for_acceleration_towards_vehicle():
-    SceneStaticModel.get_instance().set_scene_static(scene_accel_towards_vehicle_static())
-    state_dynamic = scene_accel_towards_vehicle_dynamic()
+    SceneStaticModel.get_instance().set_scene_static(scene_static_accel_towards_vehicle())
+    state_dynamic = scene_dynamic_accel_towards_vehicle()
     state_dynamic.ego_state.cartesian_state[C_A] = 1
     yield state_dynamic
 
