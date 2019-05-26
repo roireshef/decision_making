@@ -197,7 +197,6 @@ class BrakingDistances:
 #                                                         np.isclose(a_0, 0.0, atol=1e-3, rtol=0)))
 
 
-
         w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
         w_J_array = np.full(v_0[non_zero_actions].shape, w_J)
 

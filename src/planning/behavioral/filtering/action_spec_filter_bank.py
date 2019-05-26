@@ -350,6 +350,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
                          points: np.ndarray) -> np.ndarray:
         """
         Braking distance from current velocity to 0
+        The return value is a single scalar in a np.array (for consistency)
         :param behavioral_state:
         :param action_spec:
         :param points:
@@ -362,7 +363,8 @@ class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                              points: np.array) -> float:
         """
-        Returns the distance from the action_spec goal to the closest stop sign
+        Returns the distance from the action_spec goal to the closest stop sign.
+        The return value is a single scalar in a np.array (for consistency)
         :param behavioral_state: The context  behavioral grid
         :param action_spec: ActionSpec to filter
         :param points: Current goal s
