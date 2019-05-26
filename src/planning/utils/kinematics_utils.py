@@ -7,7 +7,7 @@ from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetStat
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
 
 
 class KinematicUtils:
@@ -154,13 +154,16 @@ class BrakingDistances:
         return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
 
     @staticmethod
-    def _calc_actions_distances_for_given_weights(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array) -> np.array:
+    def _calc_actions_distances_for_given_weights(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
+                                                  poly: Poly1D = QuarticPoly1D) -> np.array:
         """
         Calculate the distances for the given actions' weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
         :param w_J: weight of longitudinal jerk component in time-jerk cost function
         :param v_0: array of initial velocities [m/s]
         :param v_T: array of desired final velocities [m/s]
+        :param poly: The Poly1D (Quintic or Quartic) to use when checking the acceleration limits.
+         Currently supporting only QuarticPoly1D
         :return: actions' distances; actions not meeting acceleration limits have infinite distance
         """
         # calculate actions' planning time
@@ -168,8 +171,11 @@ class BrakingDistances:
         T = BrakingDistances.calc_T_s(w_T, w_J, v_0, a_0, v_T)
 
         # check acceleration limits
-        poly_coefs = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T, T)
-        in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+        if poly is not QuarticPoly1D:
+            raise NotImplementedError('Currently function expects only QuarticPoly1D')
+        # TODO: Once Quintic might be used, pull `s_profile_coefficients` method up
+        poly_coefs = poly.s_profile_coefficients(a_0, v_0, v_T, T)
+        in_limits = poly.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
 
         # calculate actions' distances, assuming a_0 = 0
         distances = T * (v_0 + v_T) / 2
@@ -177,7 +183,7 @@ class BrakingDistances:
         return distances
 
     @staticmethod
-    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
+    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, poly: Poly1D = QuarticPoly1D):
         """
         given initial & end constraints and time-jerk weights, calculate longitudinal planning time
         :param w_T: weight of Time component in time-jerk cost function
@@ -185,23 +191,22 @@ class BrakingDistances:
         :param v_0: array of initial velocities [m/s]
         :param a_0: array of initial accelerations [m/s^2]
         :param v_T: array of final velocities [m/s]
+        :param poly: The Poly1D (Quintic or Quartic) to use when checking the acceleration limits.
+         Currently supporting only QuarticPoly1D
         :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
         """
+        if poly is not QuarticPoly1D:
+            raise NotImplementedError('Currently function expects only QuarticPoly1D')
+
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
-
-        non_zero_actions = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
-
-
-#        non_zero_actions = np.logical_not(np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
-#                                                         np.isclose(a_0, 0.0, atol=1e-3, rtol=0)))
-
+        non_zero_actions = np.logical_not(poly.is_tracking_mode(v_0, v_T, a_0))
 
         w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
         w_J_array = np.full(v_0[non_zero_actions].shape, w_J)
 
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
-        time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
+        time_cost_derivative_poly_coefs = poly.time_cost_function_derivative_coefs(
             w_T_array, w_J_array, a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions])
 
         # Find roots of the polynomial in order to get extremum points
