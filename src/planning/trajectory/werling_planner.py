@@ -101,20 +101,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
             # solve problem in frenet-frame
             ftrajectories_optimization, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(
-                fconstraints_t0, fconstraints_tT, T_s_grid, T_d_grid, self.dt)
+                fconstraints_t0, fconstraints_tT, T_s_grid, T_d_grid, self.dt, T_trajectory_end_horizon)
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories_optimization)
-
-            # trajectory was planned up to a certain time, the rest should be padded with constant
-            # velocity prediction
-            # if T_trajectory_end_horizon > T_target_horizon:        # add padding
-            #     terminal_d = np.repeat(fconstraints_tT.get_grid_d(), len(T_d_grid), axis=0)
-            #     terminal_s = self.predictor.predict_1d_frenet_states(fconstraints_tT.get_grid_s(), T_s_grid - T_target_horizon).reshape(-1, 3)
-            #     terminal_states = NumpyUtils.cartesian_product_matrix_rows(terminal_s, terminal_d)
-            #
-            #     time_samples = np.arange(Math.ceil_to_step(T_target_horizon, self.dt) - T_target_horizon,
-            #                              T_trajectory_end_horizon - T_target_horizon + EPS, self.dt)
-            #     extrapolated_fstates = self.predictor.predict_2d_frenet_states(terminal_states, time_samples)
-            #     ftrajectories = np.hstack((ftrajectories, extrapolated_fstates))
         else:
             # only pad
             ftrajectories = self.predictor.predict_2d_frenet_states(ego_by_goal_state[np.newaxis, :],
@@ -299,7 +287,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints,
-                            T_s_grid: np.array, T_d_vals: np.array, dt: float) -> \
+                            T_s_grid: np.array, T_d_vals: np.array, dt: float, T_trajectory_end_horizon) -> \
             Tuple[FrenetTrajectories2D, np.ndarray, np.ndarray]:
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
@@ -338,14 +326,22 @@ class WerlingPlanner(TrajectoryPlanner):
 
             # generate trajectories for the polynomials of dimension s
             partial_solutions_s = QuinticPoly1D.polyval_with_derivatives(partial_poly_s, time_samples_s)
+
+            # trajectory was planned up to a certain time, the rest should be padded with constant
+            # velocity prediction starting from the end constraint of s, rather than from the last trajectory point
+            if T_s < T_trajectory_end_horizon:  # add padding
+                time_samples = np.arange(Math.ceil_to_step(T_s, dt) - T_s, T_trajectory_end_horizon - T_s + EPS, dt)
+                extrapolated_fstates_s = predictor.predict_1d_frenet_states(fconst_t.get_grid_s(), time_samples)
+                partial_solutions_s = np.concatenate((partial_solutions_s, extrapolated_fstates_s), axis=1)
+
             # Extrapolate longitudinal solutions (dimension s) to the size of the maximal T_s_grid
-            time_samples = np.arange(dt, T_s_grid[-1] - T_s + EPS, dt)
+            time_samples = np.arange(1, max_time_samples_s - partial_solutions_s.shape[1] + EPS) * dt
             solutions_extrapolation_s = predictor.predict_1d_frenet_states(partial_solutions_s[:, -1, :], time_samples)
-            partial_solutions_s = np.concatenate((partial_solutions_s, solutions_extrapolation_s), axis=-2)
+            partial_solutions_s = np.concatenate((partial_solutions_s, solutions_extrapolation_s), axis=1)
 
             # append polynomials, trajectories and time-horizons to the dimensions s buffers
             poly_s = np.vstack((poly_s, partial_poly_s))
-            solutions_s = np.vstack((solutions_s, partial_solutions_s))
+            solutions_s = np.concatenate((solutions_s, partial_solutions_s), axis=0)
             horizons_s = np.append(horizons_s, np.repeat(T_s, len(constraints_s)))
 
         # Iterate over different time-horizons for dimension d
@@ -366,7 +362,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 override_values=np.zeros(3),
                 override_mask=np.array([0, 1, 1])
             )
-            full_horizon_solutions_d = np.concatenate((partial_solutions_d, solutions_extrapolation_d), axis=-2)
+            full_horizon_solutions_d = np.concatenate((partial_solutions_d, solutions_extrapolation_d), axis=1)
 
             # append polynomials, trajectories and time-horizons to the dimensions d buffers
             poly_d = np.vstack((poly_d, partial_poly_d))
