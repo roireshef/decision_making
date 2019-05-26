@@ -424,7 +424,7 @@ class MapUtils:
 
 
     @staticmethod
-    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame):
+    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> np.array:
         """
         Returns the adjusted ids of the Static_Traffic_flow_controls on the GFF
         :return:
