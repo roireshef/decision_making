@@ -53,7 +53,7 @@ LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
-DESIRED_SPEED_MARGIN = 0.001
+
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 VELOCITY_LIMITS = np.array([0.0, 100/3.6])
 VELOCITY_STEP = 10/3.6
@@ -249,5 +249,5 @@ TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
 
 PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
 PG_PICKLE_FILE_NAME = 'PG.pkl'
-ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME = 'accel_static_state.pkl'
-ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME = 'accel_dyn_state.pkl'
+ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME = 'accel_scene_static.pkl'
+ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME = 'accel_scene_dynamic.pkl'

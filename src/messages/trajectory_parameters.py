@@ -91,7 +91,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
-        :param desired velocity : Desired longitudinal velocity[m/sec]
+        :param desired_velocity : The longitudinal velocity the vehicle should aim for [m/sec]
         """
         self.obstacle_cost_x = obstacle_cost_x
         self.obstacle_cost_y = obstacle_cost_y

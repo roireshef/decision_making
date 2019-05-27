@@ -21,11 +21,11 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
     scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
-NAVIGATION_PLAN_DM = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030, 51360,
-                                                 228028, 87622, 228007, 87660, 87744, 9893, 9894, 87740, 77398, 87741,
-                                                 25969, 10068, 87211, 10320, 10322, 228029, 87739, 40953, 10073, 10066,
-                                                 87732, 43516, 87770, 228034, 87996, 228037, 10536, 88088, 228039, 88192,
-                                                 10519, 10432, 3537]))
+NAVIGATION_PLAN_OVAL_TRACK = NavigationPlanMsg(np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
+                                                         51360, 228028, 87622, 228007, 87660, 87744, 9893, 9894, 87740,
+                                                         77398, 87741, 25969, 10068, 87211, 10320, 10322, 228029, 87739,
+                                                         40953, 10073, 10066, 87732, 43516, 87770, 228034, 87996,
+                                                         228037, 10536, 88088, 228039, 88192, 10519, 10432, 3537]))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 
 
@@ -77,10 +77,12 @@ def state_with_sorrounding_objects():
 
 @pytest.fixture(scope='function')
 def state_with_objects_for_acceleration_towards_vehicle():
+    # loads a scene dynamic where the vehicle is driving in its desired velocity towards another vehicle
     SceneStaticModel.get_instance().set_scene_static(scene_static_accel_towards_vehicle())
-    state_dynamic = scene_dynamic_accel_towards_vehicle()
-    state_dynamic.ego_state.cartesian_state[C_A] = 1
-    yield state_dynamic
+    scene_dynamic = scene_dynamic_accel_towards_vehicle()
+    # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
+    scene_dynamic.ego_state.cartesian_state[C_A] = 1
+    yield scene_dynamic
 
 
 
@@ -243,7 +245,7 @@ def behavioral_grid_state(state_with_sorrounding_objects: State):
 def behavioral_grid_state_with_objects_for_acceleration_towards_vehicle(
         state_with_objects_for_acceleration_towards_vehicle):
     yield BehavioralGridState.create_from_state(state_with_objects_for_acceleration_towards_vehicle,
-                                                NAVIGATION_PLAN_DM, None)
+                                                NAVIGATION_PLAN_OVAL_TRACK, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(

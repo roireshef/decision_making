@@ -62,9 +62,6 @@ class FilterForKinematics(ActionSpecFilter):
             if spec.only_padding_mode:
                 are_valid.append(True)
                 continue
-            if spec.v > BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED:
-                are_valid.append(False)
-                continue
             # extract the relevant (cached) frenet frame per action according to the destination lane
             frenet_frame = behavioral_state.extended_lane_frames[lane]
 

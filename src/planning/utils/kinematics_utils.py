@@ -1,5 +1,4 @@
 import numpy as np
-from decision_making.src.global_constants import DESIRED_SPEED_MARGIN
 
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
@@ -56,14 +55,16 @@ class KinematicUtils:
 
         # validates the following behavior for each trajectory:
         # (1) applies negative jerk to reduce initial positive acceleration, if necessary
-        #     (initial jerk is calculated by subtracting the two first acceleration samples)
-        # (2) applies negative acceleration to reduce velocity, until it reaches the desired velocity, if necessary
+        #     (initial jerk is calculated by subtracting the first two acceleration samples)
+        # (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
         # (3) keeps the velocity under the desired velocity limit.
         desired_limit_conforms = np.logical_or(
-            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity + DESIRED_SPEED_MARGIN), axis=1),
+            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity), axis=1),
             (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
         # check velocity and acceleration limits
+        # note: while we filter any trajectory that exceeds the velocity limit, we allow trajectories to break the
+        #       desired velocity limit, as long as they slowdown towards the desired velocity.
         conforms = np.logical_and(np.all(
             NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
