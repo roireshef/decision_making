@@ -75,6 +75,8 @@ class FilterForKinematics(ActionSpecFilter):
             # we can save time by not checking cartesian limits
             if not is_valid_in_frenet:
                 are_valid.append(False)
+                if isinstance(spec.recipe, DynamicActionRecipe):
+                    print('filtered: Kinematic Frenet at time %.3f: %s' % (behavioral_state.ego_state.timestamp_in_sec, spec.recipe.aggressiveness))
                 continue
 
             total_time = max(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, t)
@@ -86,7 +88,12 @@ class FilterForKinematics(ActionSpecFilter):
 
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+                                            np.array([-EPS, VELOCITY_LIMITS[1]]), LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+
+            if not is_valid_in_cartesian and isinstance(spec.recipe, DynamicActionRecipe):
+                print('filtered: Kinematic Cartesian at time %.3f: %s ego_va=%s\nvel=%s\nacc=%s' %
+                      (behavioral_state.ego_state.timestamp_in_sec, spec.recipe.aggressiveness,
+                       behavioral_state.ego_state.cartesian_state[3:5], cartesian_points[:, 3], cartesian_points[:, 4]))
 
             are_valid.append(is_valid_in_cartesian)
 
@@ -107,6 +114,9 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                            if len(behavioral_state.road_occupancy_grid[cell]) > 0 else None
                            for cell in relative_cells]
 
+        dynamic = [isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]
+        aggressiveness = [spec.recipe.aggressiveness for spec in action_specs]
+
         # represent initial and terminal boundary conditions (for s axis)
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
@@ -120,7 +130,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
 
         are_valid = []
-        for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
+        for poly_s, t, cell, target, dyn, aggr in zip(poly_coefs_s, T, relative_cells, target_vehicles, dynamic, aggressiveness):
             if target is None:
                 are_valid.append(True)
                 continue
@@ -135,6 +145,9 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
+
+            if not is_safe and dyn:
+                print('filtered: Safety at time %.3f: %s' % (behavioral_state.ego_state.timestamp_in_sec, aggr))
 
             are_valid.append(is_safe)
 
