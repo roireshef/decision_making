@@ -128,10 +128,10 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         # solve for s(t)
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
 
-        are_valid = []
+        non_padding_are_valid = []
         for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
             if target is None:
-                are_valid.append(True)
+                non_padding_are_valid.append(True)
                 continue
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
@@ -145,9 +145,9 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
                                                              np.array([0, t]))
-            are_valid.append(is_safe)
+            non_padding_are_valid.append(is_safe)
 
         # return boolean list for all actions, including only_padding_mode (always valid)
-        full_are_valid = np.full(len(action_specs), True)
-        full_are_valid[non_padding_specs_idx] = are_valid
-        return list(full_are_valid)
+        are_valid = np.full(len(action_specs), True)
+        are_valid[non_padding_specs_idx] = non_padding_are_valid
+        return list(are_valid)
