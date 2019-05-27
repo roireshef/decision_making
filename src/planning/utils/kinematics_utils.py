@@ -172,14 +172,15 @@ class BrakingDistances:
 
         # check acceleration limits
         if poly is not QuarticPoly1D:
-            raise NotImplementedError('Currently function expects only QuarticPoly1D')
+            raise NotImplementedError('Currently function expects only QuarticPoly1Dsdf')
         # TODO: Once Quintic might be used, pull `s_profile_coefficients` method up
         poly_coefs = poly.s_profile_coefficients(a_0, v_0, v_T, T)
         in_limits = poly.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
 
         # Calculate actions' distances, assuming a_0 = a_T = 0, and an average speed between v_0 an v_T.
-        # Since the velocity profile is symmetric around the midpoint then the average velocity is (v_0 + v_T)/2
-        # Distances for accelerations which are not in limits are defined as infinity.
+        # Since the velocity profile is symmetric around the midpoint then the average velocity is (v_0 + v_T)/2 - this holds for Quartic.
+        # Distances for accelerations which are not in limits are defined as infinity. This implied that braking on
+        # invalid accelerations would take infinite distance, which in turn filters out these (invalid) action specs.
         distances = T * (v_0 + v_T) / 2
         distances[np.logical_not(in_limits)] = np.inf
         return distances

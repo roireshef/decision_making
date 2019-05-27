@@ -181,18 +181,6 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
         return np.isin(segment_ids, self._segment_ids)
 
-#   def convert_s_from_segments(self, frenet_s: np.array, segment_ids: NumpyIndicesArray) -> np.array:
-#        """
-#        Translate into GFF longitudinal frenet
-#        :param frenet_s: A numpy array of s coordinates
-#        :param segment_ids: segment ids corresponding to the frenet_s coordinates
-#        :return: the s (in gff) corresponding to inputs
-#        """
-#        segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
-#        s_offset = self._segments_s_offsets[segment_idxs]
-#        s_start = self._segments_s_start[segment_idxs]
-#        gff_s = frenet_s + s_offset - s_start
-#        return gff_s
 
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
         """
