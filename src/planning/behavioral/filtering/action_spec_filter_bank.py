@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_SA, FS_DX
+from decision_making.src.planning.types import FS_SA, FS_DX, FS_SV, FS_SX
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -43,22 +43,22 @@ class FilterForKinematics(ActionSpecFilter):
         T = np.array([spec.t for spec in action_specs])
 
         # create boolean arrays indicating whether the specs are in tracking mode
-        in_track_mode = np.array([spec.in_tracking_mode for spec in action_specs])
-        no_track_mode = np.logical_not(in_track_mode)
+        padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
+        not_padding_mode = np.logical_not(padding_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[no_track_mode])
+        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[not_padding_mode])
 
         # represent initial and terminal boundary conditions (for two Frenet axes s,d) for non-tracking specs
-        constraints_s = np.concatenate((initial_fstates[no_track_mode, :FS_DX], terminal_fstates[no_track_mode, :FS_DX]), axis=1)
-        constraints_d = np.concatenate((initial_fstates[no_track_mode, FS_DX:], terminal_fstates[no_track_mode, FS_DX:]), axis=1)
+        constraints_s = np.concatenate((initial_fstates[not_padding_mode, :FS_DX], terminal_fstates[not_padding_mode, :FS_DX]), axis=1)
+        constraints_d = np.concatenate((initial_fstates[not_padding_mode, FS_DX:], terminal_fstates[not_padding_mode, FS_DX:]), axis=1)
 
         # solve for s(t) and d(t)
         poly_coefs_s, poly_coefs_d = np.zeros((len(action_specs), 6)), np.zeros((len(action_specs), 6))
-        poly_coefs_s[no_track_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d[no_track_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
-        # in tracking mode (constant velocity) the s polynomials have only two non-zero coefficients
-        poly_coefs_s[in_track_mode, 4:] = np.c_[terminal_fstates[in_track_mode, FS_SV], terminal_fstates[in_track_mode, FS_SX]]
+        poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+        # in tracking mode (constant velocity) the s polynomials have "approximately" only two non-zero coefficients
+        poly_coefs_s[padding_mode, 4:] = np.c_[terminal_fstates[padding_mode, FS_SV], terminal_fstates[padding_mode, FS_SX]]
 
         are_valid = []
         for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
