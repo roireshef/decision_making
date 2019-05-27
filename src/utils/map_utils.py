@@ -426,8 +426,10 @@ class MapUtils:
     @staticmethod
     def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> np.array:
         """
-        Returns the adjusted ids of the Static_Traffic_flow_controls on the GFF
-        :return:
+        Returns a the locations (s coordinates) of Static_Traffic_flow_controls on the GFF
+        The list if ordered from closest traffic flow control to farthest.
+        :param lane_frenet: The GFF on which to retrieve the static flow controls.
+        :return: A list of static flow contronls on the the GFF, ordered from closest traffic flow control to farthest.
         """
         lane_ids = []
         # stations are s coordinates

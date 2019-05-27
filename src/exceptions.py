@@ -110,7 +110,8 @@ class LaneNotFound(MappingException):
 
 class ConstraintFilterHaltWithValue(Exception):
     """
-    This is raised internally within ConstraintFilter when halt is needed (with value)
+    This is raised internally within ConstraintFilter when halt (stopping the filter without completing the entire execution)
+     is needed (with value)
     """
     def __init__(self, value: bool):
         self._value = value

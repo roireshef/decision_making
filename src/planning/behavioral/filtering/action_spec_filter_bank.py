@@ -207,7 +207,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
         pass
 
     @abstractmethod
-    def _condition(self, target_values, constraints_values) -> bool:
+    def _condition(self, target_values: np.array, constraints_values: np.array) -> bool:
         """
         The test condition to apply on the results of target and constraint values
         :param target_values: the (externally calculated) target function
