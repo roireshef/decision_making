@@ -67,7 +67,7 @@ class NumpyUtils:
         """
         with np.errstate(divide='ignore', invalid='ignore'):
             c = np.divide(a, b)
-            c[np.abs(b) < np.finfo(np.float32).eps] = 0
+            c[np.isinf(c)] = 0
             c = np.nan_to_num(c)
 
         return c
