@@ -177,7 +177,9 @@ class BrakingDistances:
         poly_coefs = poly.s_profile_coefficients(a_0, v_0, v_T, T)
         in_limits = poly.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
 
-        # calculate actions' distances, assuming a_0 = 0
+        # Calculate actions' distances, assuming a_0 = a_T = 0, and an average speed between v_0 an v_T.
+        # Since the velocity profile is symmetric around the midpoint then the average velocity is (v_0 + v_T)/2
+        # Distances for accelerations which are not in limits are defined as infinity.
         distances = T * (v_0 + v_T) / 2
         distances[np.logical_not(in_limits)] = np.inf
         return distances
