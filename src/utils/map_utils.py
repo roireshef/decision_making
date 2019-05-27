@@ -6,7 +6,7 @@ from decision_making.src.global_constants import EPS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegment, SceneRoadSegment
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -439,7 +439,9 @@ class MapUtils:
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
                 stations_s_coordinates.append(static_traffic_flow_control.e_l_station)
-        return lane_frenet.convert_s_from_segments(sorted(stations_s_coordinates), lane_ids)
+        frenet_states = np.zeros((len(stations_s_coordinates), 6))
+        frenet_states[:, FS_SX] = sorted(stations_s_coordinates)
+        return lane_frenet.convert_from_segment_states(frenet_states, lane_ids)[:, FS_SX]
 
 
 
