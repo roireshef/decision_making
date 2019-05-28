@@ -184,7 +184,6 @@ TINY_CURVATURE = 1e-4
 
 # [1/m] maximal trajectory curvature, based on the minimal turning radius, which is defined in a basic car's spec
 # A typical turning radius = 5 m, then MAX_CURVATURE = 0.2.
-# TODO: consider to decrease it to 0.2, when TP will work again with grid and ego could deviate from lane center in the CityCourse map
 MAX_CURVATURE = 0.25
 
 # [m/sec^2] when acceleration is not specified - TP uses this as goal acceleration
