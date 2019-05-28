@@ -81,13 +81,6 @@ class DynamicActionSpace(ActionSpace):
         T_s = DynamicActionSpace.calc_T_s(weights[:, 2], weights[:, 0], ds, projected_ego_fstates[:, FS_SA],
                                           projected_ego_fstates[:, FS_SV], v_T)
 
-        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
-        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
-        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
-        # intersecting in T=0.
-        # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
-        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, SPECIFICATION_HEADWAY)] = 0
-
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], dx=-projected_ego_fstates[:, FS_DX],
@@ -122,4 +115,12 @@ class DynamicActionSpace(ActionSpace):
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=w_T, w_J=w_J, dx=ds, a_0=a_0, v_0=v_0, v_T=v_T, T_m=T_m)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-        return np.fmin.reduce(roots_s, axis=-1)
+        T_s = np.fmin.reduce(roots_s, axis=-1)
+
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
+        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
+        # intersecting in T=0.
+        # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
+        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, SPECIFICATION_HEADWAY)] = 0
+        return T_s
