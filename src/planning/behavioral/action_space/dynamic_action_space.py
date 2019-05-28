@@ -56,9 +56,6 @@ class DynamicActionSpace(ActionSpace):
         # get desired terminal velocity
         v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in target_map_states])
 
-        v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
-        a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
-
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
