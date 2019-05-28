@@ -71,8 +71,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # approximate cost-to-go per terminal state
         terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
                                                                     action_specs_mask, nav_plan)
-        # TODO: NavigationPlan is now None and should be meaningful when we have one
-        terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask[i] else np.nan
+        terminal_states_values = np.array([self.value_approximator.approximate(state, nav_plan) if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
 
         self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))
@@ -112,12 +111,17 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action_spec = selected_action_spec
 
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
-            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters.reference_route,
+            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
                           action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
                           selected_action_spec, state.ego_state.timestamp_in_sec)
+
+        self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
+                          % (behavioral_state.ego_state.timestamp_in_sec,
+                             action_recipes[selected_action_index],
+                             selected_action_spec.t))
 
         return trajectory_parameters, baseline_trajectory, visualization_message

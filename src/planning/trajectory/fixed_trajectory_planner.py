@@ -10,26 +10,44 @@ from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEG
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
-    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
+    CartesianExtendedState, CartesianTrajectories, CartesianExtendedTrajectory, CartesianPoint2D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 
 
 class FixedSamplableTrajectory(SamplableTrajectory):
 
-    def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0):
-        super().__init__(timestamp_in_sec, T=np.inf)
+    def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0, T:float = np.inf):
+        """
+        This class holds a CartesianExtendedTrajectory object with the 'timestamp_in_sec' member as its initial
+        timestamp and T as the total horizon. It samples from the Trajectory object upon request by returning the
+        closest point in time on the discrete trajectory.
+        :param fixed_trajectory: a CartesianExtendedTrajectory object
+        :param timestamp_in_sec: Initial timestamp [s]
+        :param T: Trajectory time horizon [s] ("length")
+        """
+        super().__init__(timestamp_in_sec, T)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
-        This function takes an array of time stamps and returns aCartesianExtendedTrajectory.
+        This function takes an array of timestamps and returns a CartesianExtendedTrajectory.
         Note: Since the trajectory is not actually samplable - the closest time points on the trajectory are returned.
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory
         """
-        indices_of_closest_time_points = np.round((time_points - self.timestamp_in_sec) / WERLING_TIME_RESOLUTION).astype(int)
+
+        relative_time_points = time_points - self.timestamp_in_sec
+
+        # Make sure no unplanned extrapolation will occur due to overreaching time points
+        # This check is done in relative-to-ego units
+        assert max(relative_time_points) <= self.T, \
+            'In timestamp %f : self.T=%f <= max(relative_time_points)=%f' % \
+            (self.timestamp_in_sec, self.T, max(relative_time_points))
+
+        indices_of_closest_time_points = np.round(relative_time_points / WERLING_TIME_RESOLUTION).astype(int)
 
         return self._fixed_trajectory[indices_of_closest_time_points]
 
@@ -59,15 +77,16 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._sleep_mean = sleep_mean
 
     @raises(NotTriggeredException)
-    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, T_target_horizon: float,
+             T_trajectory_end_horizon: float, cost_params: TrajectoryCostParams) -> \
+            Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
         that advances incrementally on fixed_trajectory by step size. Otherwise raise NotTriggeredException
-        :param time_horizon: the length of the trajectory snippet (seconds)
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored
+        :param T_trajectory_end_horizon: the length of the trajectory snippet (seconds)
         :param cost_params: ignored
         :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)

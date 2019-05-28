@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import EPS
+from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
@@ -22,7 +22,7 @@ EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_segment_id = 20
 
@@ -48,8 +48,8 @@ def state_with_sorrounding_objects():
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
         next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
-        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].s_end]
-        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].segment_id]
+        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].e_i_SEnd]
+        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].e_i_SegmentID]
 
         for i, obj_lane_lon in enumerate(obj_lane_lons):
 
@@ -67,9 +67,9 @@ def state_with_sorrounding_objects():
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_tracking_mode():
+def state_with_objects_for_filtering_almost_tracking_mode():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
@@ -88,8 +88,8 @@ def state_with_objects_for_filtering_tracking_mode():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 10.2
 
     dynamic_objects: List[DynamicObject] = list()
@@ -105,9 +105,45 @@ def state_with_objects_for_filtering_tracking_mode():
 
 
 @pytest.fixture(scope='function')
+def state_with_objects_for_filtering_exact_tracking_mode():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+
+    road_id = 20
+
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    # Ego state
+    ego_lane_lon = 50
+    ego_vel = 5
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+
+    # Generate objects at the following locations:
+    obj_lane_lon = ego_lane_lon + car_size.length + LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT + ego_vel * SPECIFICATION_HEADWAY
+    obj_vel = ego_vel
+
+    dynamic_objects: List[DynamicObject] = list()
+    obj_id = 1
+
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), lane_id)
+    dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
+                                                    size=car_size, confidence=1.)
+
+    dynamic_objects.append(dynamic_object)
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
 def state_with_objects_for_filtering_negative_sT():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
@@ -126,8 +162,8 @@ def state_with_objects_for_filtering_negative_sT():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
 
     dynamic_objects: List[DynamicObject] = list()
@@ -145,7 +181,7 @@ def state_with_objects_for_filtering_negative_sT():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_too_aggressive():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
     road_id = 20
 
@@ -164,8 +200,8 @@ def state_with_objects_for_filtering_too_aggressive():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 30
 
     dynamic_objects: List[DynamicObject] = list()
@@ -187,9 +223,16 @@ def behavioral_grid_state(state_with_sorrounding_objects: State):
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_objects_for_filtering_tracking_mode(
-        state_with_objects_for_filtering_tracking_mode: State):
-    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_tracking_mode,
+def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
+        state_with_objects_for_filtering_almost_tracking_mode):
+    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
+                                                NAVIGATION_PLAN, None)
+
+
+@pytest.fixture(scope='function')
+def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
+        state_with_objects_for_filtering_exact_tracking_mode):
+    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_exact_tracking_mode,
                                                 NAVIGATION_PLAN, None)
 
 

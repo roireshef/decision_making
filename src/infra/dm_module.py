@@ -5,6 +5,7 @@ from decision_making.src.infra.pubsub import PubSub
 import six
 import rte.python.profiler as prof
 
+
 @six.add_metaclass(ABCMeta)
 class DmModule:
     """
