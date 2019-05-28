@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_SA, FS_DX
+from decision_making.src.planning.types import FS_SA, FS_DX, FS_SV, FS_SX
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -38,46 +38,51 @@ class FilterForKinematics(ActionSpecFilter):
         :return: boolean list per action spec: True if a spec passed the filter
         """
         # extract all relevant information for boundary conditions
-        relative_lanes = np.array([spec.relative_lane for spec in action_specs])
-        initial_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
+        initial_fstates = np.array([behavioral_state.projected_ego_fstates[spec.relative_lane] for spec in action_specs])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+        T = np.array([spec.t for spec in action_specs])
 
-        # represent initial and terminal boundary conditions (for two Frenet axes s,d)
-        constraints_s = np.concatenate((initial_fstates[:, :(FS_SA+1)], terminal_fstates[:, :(FS_SA+1)]), axis=1)
-        constraints_d = np.concatenate((initial_fstates[:, FS_DX:], terminal_fstates[:, FS_DX:]), axis=1)
+        # create boolean arrays indicating whether the specs are in tracking mode
+        padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
+        not_padding_mode = np.logical_not(padding_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        T = np.array([spec.t for spec in action_specs])
-        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T))
+        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[not_padding_mode])
+
+        # represent initial and terminal boundary conditions (for two Frenet axes s,d) for non-tracking specs
+        constraints_s = np.concatenate((initial_fstates[not_padding_mode, :FS_DX], terminal_fstates[not_padding_mode, :FS_DX]), axis=1)
+        constraints_d = np.concatenate((initial_fstates[not_padding_mode, FS_DX:], terminal_fstates[not_padding_mode, FS_DX:]), axis=1)
 
         # solve for s(t) and d(t)
-        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+        poly_coefs_s, poly_coefs_d = np.zeros((len(action_specs), 6)), np.zeros((len(action_specs), 6))
+        poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+        # in tracking mode (constant velocity) the s polynomials have "approximately" only two non-zero coefficients
+        poly_coefs_s[padding_mode, 4:] = np.c_[terminal_fstates[padding_mode, FS_SV], terminal_fstates[padding_mode, FS_SX]]
 
         are_valid = []
-        for poly_s, poly_d, t, lane, spec in zip(poly_coefs_s, poly_coefs_d, T, relative_lanes, action_specs):
+        for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
             # TODO: in the future, consider leaving only a single action (for better "learnability")
-            if spec.only_padding_mode:
-                are_valid.append(True)
-                continue
 
             # extract the relevant (cached) frenet frame per action according to the destination lane
-            frenet_frame = behavioral_state.extended_lane_frames[lane]
+            frenet_frame = behavioral_state.extended_lane_frames[spec.relative_lane]
 
-            # if the action is static, there's a chance the 5th order polynomial is actually a degenerate one
-            # (has lower degree), so we clip the first zero coefficients and send a polynomial with lower degree
-            # TODO: This handling of polynomial coefficients being 5th or 4th order should happen in an inner context and get abstracted from this method
-            first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
-            is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_s[np.newaxis, first_non_zero:], np.array([t]),
-                                                                                     LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
+            if not spec.only_padding_mode:
+                # if the action is static, there's a chance the 5th order polynomial is actually a degenerate one
+                # (has lower degree), so we clip the first zero coefficients and send a polynomial with lower degree
+                # TODO: This handling of polynomial coefficients being 5th or 4th order should happen in an inner context and get abstracted from this method
+                first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
+                is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(
+                    poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
 
-            # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
-            # we can save time by not checking cartesian limits
-            if not is_valid_in_frenet:
-                are_valid.append(False)
-                if isinstance(spec.recipe, DynamicActionRecipe):
-                    print('filtered: Kinematic Frenet at time %.3f: %s' % (behavioral_state.ego_state.timestamp_in_sec, spec.recipe.aggressiveness))
-                continue
+                # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
+                # we can save time by not checking cartesian limits
+                if not is_valid_in_frenet:
+                    are_valid.append(False)
+                    if isinstance(spec.recipe, DynamicActionRecipe):
+                        print('filtered: Kinematic Frenet at time %.3f: %s' % (
+                        behavioral_state.ego_state.timestamp_in_sec, spec.recipe.aggressiveness))
+                    continue
 
             total_time = max(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, t)
             time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
@@ -88,8 +93,7 @@ class FilterForKinematics(ActionSpecFilter):
 
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                            np.array([-EPS, VELOCITY_LIMITS[1]]), LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
-
+                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
             if not is_valid_in_cartesian and isinstance(spec.recipe, DynamicActionRecipe):
                 print('filtered: Kinematic Cartesian at time %.3f: %s ego_va=%s\nvel=%s\nacc=%s' %
                       (behavioral_state.ego_state.timestamp_in_sec, spec.recipe.aggressiveness,
@@ -105,11 +109,17 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
          of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
          maintaining the required safety-headway + constant safety-margin"""
+
+        # to prevent inverse of singular matrices (T=0) check safety only for non-tracking actions
+        # padding actions are safe
+        non_padding_specs_idx = np.array([i for i, spec in enumerate(action_specs) if not spec.only_padding_mode], dtype=int)
+        non_padding_specs = np.array(action_specs)[non_padding_specs_idx]
+
         # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
         # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
         relative_cells = [(spec.recipe.relative_lane,
                            spec.recipe.relative_lon if isinstance(spec.recipe, DynamicActionRecipe) else RelativeLongitudinalPosition.FRONT)
-                          for spec in action_specs]
+                          for spec in non_padding_specs]
         target_vehicles = [behavioral_state.road_occupancy_grid[cell][0]
                            if len(behavioral_state.road_occupancy_grid[cell]) > 0 else None
                            for cell in relative_cells]
@@ -119,20 +129,20 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         # represent initial and terminal boundary conditions (for s axis)
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
-        terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+        terminal_fstates = np.array([spec.as_fstate() for spec in non_padding_specs])
         constraints_s = np.concatenate((initial_fstates[:, :(FS_SA+1)], terminal_fstates[:, :(FS_SA+1)]), axis=1)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        T = np.array([spec.t for spec in action_specs])
-        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T))
+        T = np.array([spec.t for spec in non_padding_specs])
+        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T)
 
         # solve for s(t)
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
 
-        are_valid = []
+        non_padding_are_valid = []
         for poly_s, t, cell, target, dyn, aggr in zip(poly_coefs_s, T, relative_cells, target_vehicles, dynamic, aggressiveness):
             if target is None:
-                are_valid.append(True)
+                non_padding_are_valid.append(True)
                 continue
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
@@ -144,15 +154,14 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                      behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # validate distance keeping (on frenet longitudinal axis)
-            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
-
+            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                                                             np.array([0, t]))
             if not is_safe and dyn:
                 print('filtered: Safety at time %.3f: %s' % (behavioral_state.ego_state.timestamp_in_sec, aggr))
 
-            are_valid.append(is_safe)
+            non_padding_are_valid.append(is_safe)
 
-        # TODO: remove - for debug only
-        had_dynmiacs = sum([isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]) > 0
-        valid_dynamics = sum([valid and isinstance(spec.recipe, DynamicActionRecipe) for spec, valid in zip(action_specs, are_valid)])
-
-        return are_valid
+        # return boolean list for all actions, including only_padding_mode (always valid)
+        are_valid = np.full(len(action_specs), True)
+        are_valid[non_padding_specs_idx] = non_padding_are_valid
+        return list(are_valid)
