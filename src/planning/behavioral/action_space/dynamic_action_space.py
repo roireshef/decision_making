@@ -115,12 +115,6 @@ class DynamicActionSpace(ActionSpace):
 
         return action_specs
 
-        cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
-            v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_HEADWAY)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-        T_s = np.fmin.reduce(roots_s, axis=-1)
-
     @staticmethod
     def calc_T_s(w_T: np.array, w_J: np.array, ds: np.array, a_0: np.array, v_0: np.array, v_T: np.array,
                  T_m: float=SPECIFICATION_HEADWAY):
