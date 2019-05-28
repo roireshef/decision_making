@@ -1,20 +1,21 @@
 import numpy as np
+from logging import Logger
+from sklearn.utils.extmath import cartesian
+from typing import Optional, List, Type
+
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY, EPS
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, FS_SA, FS_DA, FS_DV, FS_DX
+from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from logging import Logger
-from sklearn.utils.extmath import cartesian
-from typing import Optional, List, Type
 
 
 class DynamicActionSpace(ActionSpace):
@@ -78,17 +79,11 @@ class DynamicActionSpace(ActionSpace):
 
         T_s = DynamicActionSpace.calc_T_s(w_T=weights[:, 2], w_J=weights[:, 1], v_0=v_0, a_0=a_0, v_T=v_T, s_T=ds)
 
-        # # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
-        # # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
-        # # when setting T
-        # with np.errstate(invalid='ignore'):
-        #    T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
-
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], dx=-projected_ego_fstates[:, FS_DX],
             a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0, T_m=SPECIFICATION_HEADWAY)
-        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
@@ -158,7 +153,7 @@ class DynamicActionSpace(ActionSpace):
         time_cost_derivative_poly_coefs = QuinticPoly1D.time_cost_function_derivative_coefs(w_T, w_J, a_0, v_0, v_T, s_T, T_m)
 
         # Find roots of the polynomial in order to get extremum points
-        cost_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([EPS, BP_ACTION_T_LIMITS[1]]))
+        cost_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, BP_ACTION_T_LIMITS)
         non_nan_actions = np.logical_not(np.isnan(cost_roots).all(axis=-1))
 
         # find cost values for the found roots (including NaNs)

@@ -13,7 +13,6 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -72,8 +71,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # approximate cost-to-go per terminal state
         terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
                                                                     action_specs_mask, nav_plan)
-        # TODO: NavigationPlan is now None and should be meaningful when we have one
-        terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask[i] else np.nan
+        terminal_states_values = np.array([self.value_approximator.approximate(state, nav_plan) if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
 
         self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))

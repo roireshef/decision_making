@@ -1,4 +1,3 @@
-from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from enum import Enum
 from typing import List
 import numpy as np
@@ -103,7 +102,7 @@ class ActionSpec:
         return self.recipe.relative_lane
 
     @property
-    def in_track_mode(self):
+    def only_padding_mode(self):
         """ if planning time is shorter than the TP's time resolution, the result will be only padding in the TP"""
         return self.t < TRAJECTORY_TIME_RESOLUTION
 

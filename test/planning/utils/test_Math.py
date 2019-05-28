@@ -38,3 +38,62 @@ def test_findRealRootsInLimits_compareFoundRootsWithNumpyRoots_rootsShouldBeTheS
         real_roots2_in_limits = roots2[np.logical_not(np.isnan(roots2))]
 
         assert np.isclose(real_roots1_in_limits, real_roots2_in_limits).all()
+
+
+def test_floorToStep_compareFloatSeriesWithExpected_Accurate():
+
+    step = 0.1
+    floats = np.array([-3.01, -3.59, -2.3, -0.15, 0.15, 1.6, 1.52, 1.19])
+    expected_floored_results = np.array([-3.1, -3.6, -2.3, -0.2, 0.1, 1.6, 1.5, 1.1])
+
+    floored_results = Math.floor_to_step(floats, step)
+    np.testing.assert_array_equal(expected_floored_results, floored_results)
+
+
+def test_floorToStep_compareFloatSeriesWithNumpyRoundWithStepOne_Accurate():
+    step = 1
+    floats = np.array([-3.01, -3.59, -2.3, -0.125, 0.125, 1.6, 1.52, 1.19])
+    expected_floored_results = np.floor(floats)
+
+    rounded_results = Math.floor_to_step(floats, step)
+    np.testing.assert_array_equal(expected_floored_results, rounded_results)
+
+
+def test_ceilToStep_compareFloatSeriesWithExpected_Accurate():
+
+    step = 0.1
+    floats = np.array([-3.01, -3.59, -2.3, -0.15, 0.15, 1.6, 1.52, 1.19])
+    expected_ceiled_results = np.array([-3.0, -3.5, -2.3, -0.1, 0.2, 1.6, 1.6, 1.2])
+
+    ceiled_results = Math.ceil_to_step(floats, step)
+    np.testing.assert_array_equal(expected_ceiled_results, ceiled_results)
+
+
+def test_ceilToStep_compareFloatSeriesWithNumpyRoundWithStepOne_Accurate():
+
+    step = 1
+    floats = np.array([-3.01, -3.59, -2.3, -0.125, 0.125, 1.6, 1.52, 1.19])
+    expected_rounded_results = np.ceil(floats)
+
+    rounded_results = Math.ceil_to_step(floats, step)
+    np.testing.assert_array_equal(expected_rounded_results, rounded_results)
+
+
+def test_roundToStep_compareFloatSeriesWithExpected_Accurate():
+
+    step = 0.1
+    floats = np.array([-3.01, -3.59, -2.3, -0.125, 0.125, 1.6, 1.52, 1.19])
+    expected_rounded_results = np.array([-3.0, -3.6, -2.3, -0.1, 0.1, 1.6, 1.5, 1.2])
+
+    rounded_results = Math.round_to_step(floats, step)
+    np.testing.assert_array_equal(expected_rounded_results, rounded_results)
+
+
+def test_roundToStep_compareFloatSeriesWithNumpyRoundWithStepOne_Accurate():
+
+    step = 1
+    floats = np.array([-3.01, -3.59, -2.3, -0.125, 0.125, 1.6, 1.52, 1.19])
+    expected_rounded_results = np.round(floats)
+
+    rounded_results = Math.round_to_step(floats, step)
+    np.testing.assert_array_equal(expected_rounded_results, rounded_results)

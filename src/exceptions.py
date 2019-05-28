@@ -108,6 +108,14 @@ class LaneNotFound(MappingException):
     pass
 
 
+class OutOfSegmentBack(Exception):
+    pass
+
+
+class OutOfSegmentFront(Exception):
+    pass
+
+
 def raises(*e):
     # type: (Exception)
     """

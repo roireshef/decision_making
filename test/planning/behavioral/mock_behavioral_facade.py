@@ -17,7 +17,7 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
     Operate according to to policy with an empty dummy behavioral state
     """
     def __init__(self, pubsub: PubSub, logger: Logger, trigger_pos: Optional[CartesianPoint2D],
-                 trajectory_params: TrajectoryParams, visualization_msg: BehavioralVisualizationMsg):
+                 trajectory_params: Optional[TrajectoryParams], visualization_msg: Optional[BehavioralVisualizationMsg]):
         """
         :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
@@ -50,7 +50,7 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
                 self._triggered = True
 
                 # NOTE THAT TIMESTAMP IS UPDATED HERE !
-                self._trajectory_params.time += state.ego_state.timestamp_in_sec
+                self._trajectory_params.target_time += state.ego_state.timestamp_in_sec
 
             if self._triggered:
                 self._publish_results(self._trajectory_params)
