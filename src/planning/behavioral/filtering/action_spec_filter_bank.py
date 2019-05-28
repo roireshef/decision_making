@@ -268,3 +268,102 @@ class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
         """
         return target_values[0] < constraints_values[0]
 
+
+class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
+    """
+    Checks if the speed limit will be exceeded.
+
+    If the upcoming speed greater or equal than the current speed limit,
+    this filter will raise true.
+    """
+
+    def __init__(self):
+        super(BeyondSpecSpeedLimitFilter, self).__init__(extend_short_action_specs=True)
+        self.distances = BrakingDistances.create_braking_distances()
+
+    def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> (
+    int, float):
+        """
+        Finds speed limits in upcoming points
+        :param behavioral_state
+        :param action_spec:
+        :return: tuple of (Frenet index with lowest speed limit, value of lowest speed limit)
+        """
+
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
+        if action_spec.s >= target_lane_frenet.s_max:
+            self._raise_false()
+
+        # get the worst case braking distance from spec.v to 0
+        max_braking_distance = self.distances[
+            FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
+        max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
+        # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
+        beyond_spec_range = target_lane_frenet._get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0] + 1
+        # get s for all points in the range
+        points_s = target_lane_frenet.get_s_from_index_on_frame(
+            np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
+
+
+        beyond_spec_gff_states = np.array([[idx, 0., 0., 0., 0., 0.] for idx in points_s])
+        # get lane ids of the beyond spec points
+        # lane_ids = target_lane_frenet.segment_ids[beyond_spec_frenet_idxs]
+        lane_ids, segment_states = target_lane_frenet.convert_to_segment_states(beyond_spec_gff_states)
+        # find speed limits of beyond spec points
+        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids]
+        return (np.array(points_s), np.array(speed_limits))
+
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
+        """
+        Find points with speed limit slower than the spec velocity
+        :param behavioral_state:
+        :param action_spec:
+        :return:
+        """
+        if action_spec is None:
+            self._raise_false()
+        if action_spec.v == 0:
+            self._raise_true()
+
+        beyond_spec_frenet_idxs, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
+        # find points that require braking after spec
+        slow_points = np.where(np.array(speed_limits) < action_spec.v)[0]
+        # edge case
+        if len(slow_points) == 0:
+            self._raise_true()
+        return beyond_spec_frenet_idxs[slow_points], speed_limits[slow_points]
+
+    def _target_function(self, behavioral_state: BehavioralGridState,
+                         action_spec: ActionSpec, points: any):
+        """
+        Returns braking distances required by lower speed limits
+        :param behavioral_state:
+        :param action_spec:
+        :param points:
+        :return:
+        """
+        _, speed_limits = points
+        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
+        return brake_dist[FILTER_V_T_GRID.get_indices(speed_limits)]
+
+    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: any):
+        """
+        Returns distances to points that have a slower speed limit
+        :param behavioral_state:
+        :param action_spec:
+        :param points:
+        :return:
+        """
+        slow_points_ids, _ = points
+        frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
+        dist_to_points = frenet.get_s_from_index_on_frame(slow_points_ids, delta_s=0) - action_spec.s
+        return dist_to_points
+
+    def _condition(self, target_values, constraints_values) -> bool:
+        """
+        Checks that there is enough distance to slow down for speed limit
+        :param target_values:
+        :param constraints_values:
+        :return:
+        """
+        return (target_values < constraints_values).all()
