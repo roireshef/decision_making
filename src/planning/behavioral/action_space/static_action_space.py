@@ -121,7 +121,7 @@ class StaticActionSpace(ActionSpace):
         time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(w_T, w_J, a_0, v_0, v_T)
 
         # Find roots of the polynomial in order to get extremum points
-        cost_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([EPS, BP_ACTION_T_LIMITS[1]]))
+        cost_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, BP_ACTION_T_LIMITS)
         non_nan_actions = np.logical_not(np.isnan(cost_roots).all(axis=-1))
 
         # find cost values for the found roots (including NaNs)
