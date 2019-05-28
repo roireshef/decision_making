@@ -6,7 +6,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DF
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, NEGLIGIBLE_VELOCITY
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
@@ -162,6 +162,10 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         d_x = ftrajectories[:, :, FS_DX]
         d_v = ftrajectories[:, :, FS_DV]
         d_a = ftrajectories[:, :, FS_DA]
+
+        # s_v=0 is a singular case which is treated inside NumpyUtils.div(a,b), but in case of s_v close to 0, the
+        # division is not stable
+        s_v[np.isclose(s_v, 0, atol=NEGLIGIBLE_VELOCITY)] = 0
 
         a_r, T_r, N_r, k_r, k_r_tag = self._taylor_interp(s_x)
         theta_r = np.arctan2(T_r[..., C_Y], T_r[..., C_X])
