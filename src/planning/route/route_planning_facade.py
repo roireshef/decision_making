@@ -10,7 +10,7 @@ from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, \
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, NavigationPlan
+from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.utils.metric_logger import MetricLogger
@@ -47,9 +47,10 @@ class RoutePlanningFacade(DmModule):
         try:
             # Read inputs
             start_time = time.time()
-            scene_static_base , scene_static_nav_plan = self._get_current_scene_static()
+            scene_static = self._get_current_scene_static()
             route_planner_input = RoutePlannerInputData()
-            route_planner_input.reformat_input_data(scene=scene_static_base, nav_plan=scene_static_nav_plan)
+            route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
+                                                    nav_plan=scene_static.s_Data.s_NavigationPlan)
 
             # Plan
             route_plan = self.__planner.plan(route_planner_input)
@@ -74,7 +75,7 @@ class RoutePlanningFacade(DmModule):
                                  e, traceback.format_exc())
 
     @prof.ProfileFunction()
-    def _get_current_scene_static(self) -> (SceneStaticBase, NavigationPlan):
+    def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
 
         if serialized_scene_static is None:
@@ -83,7 +84,7 @@ class RoutePlanningFacade(DmModule):
         scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.timestamp = Timestamp.from_seconds(scene_static.s_Header.s_Timestamp.timestamp_in_seconds)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
-        return scene_static.s_Data.s_SceneStaticBase, scene_static.s_Data.s_NavigationPlan
+        return scene_static
 
     @prof.ProfileFunction()
     def _publish_results(self, s_Data: DataRoutePlan) -> None:
