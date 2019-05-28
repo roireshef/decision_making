@@ -7,6 +7,7 @@ from decision_making.src.planning.behavioral.filtering.recipe_filtering import R
 from decision_making.src.utils.map_utils import MapUtils
 
 
+
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [(recipe.relative_lane, recipe.relative_lon) in behavioral_state.road_occupancy_grid

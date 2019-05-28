@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -77,10 +77,10 @@ class KinematicUtils:
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
-        conforms = np.all(
-            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) &
-            QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) &
-            QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits), axis=-1)
+        conforms = \
+            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) & \
+            QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) & \
+            QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits)
 
         return conforms
 
@@ -103,3 +103,27 @@ class KinematicUtils:
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, lat_acceleration_limits)
 
         return frenet_lateral_movement_is_feasible
+
+    @staticmethod
+    def create_linear_profile_polynomials(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
+        """
+        Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
+        velocity). Those polynomials are degenerate to s(t)=v*t+x form
+        :param frenet_state: the current frenet state to pull positions and velocities from
+        :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
+        """
+        poly_s = np.array([0, 0, 0, 0, frenet_state[FS_SV], frenet_state[FS_SX]])
+        # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
+        poly_d = np.zeros(QuinticPoly1D.num_coefs())
+        return poly_s, poly_d
+
+    @staticmethod
+    def create_ego_by_goal_state(goal_frenet_state: FrenetState2D, ego_to_goal_time: float) -> FrenetState2D:
+        """
+        calculate Frenet state in ego time, such that its constant-velocity prediction in goal time is goal_frenet_state
+        :param goal_frenet_state: goal Frenet state
+        :param ego_to_goal_time: the difference between the goal time and ego time
+        :return: ego by goal frenet state
+        """
+        return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV],
+                         goal_frenet_state[FS_SV], 0, 0, 0, 0])

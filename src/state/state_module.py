@@ -7,13 +7,13 @@ import numpy as np
 import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
-from decision_making.src.planning.types import FS_SV, C_V
+from decision_making.src.planning.types import C_V, FS_SV, C_A, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
@@ -70,7 +70,7 @@ class StateModule(DmModule):
 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, postprocessed_state)
 
-                self.pubsub.publish(UC_SYSTEM_STATE_LCM, postprocessed_state.serialize())
+                self.pubsub.publish(UC_SYSTEM_STATE, postprocessed_state.serialize())
 
         except Exception:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
@@ -86,6 +86,10 @@ class StateModule(DmModule):
             state.ego_state.cartesian_state[C_V] = 0
             state.ego_state.map_state.lane_fstate[FS_SV] = 0
             self.logger.warning('Ego was received with negative velocity %f' % state.ego_state.cartesian_state[C_V])
+        elif state.ego_state.cartesian_state[C_V] == 0 and state.ego_state.cartesian_state[C_A] < 0:
+            state.ego_state.cartesian_state[C_A] = 0
+            state.ego_state.map_state.lane_fstate[FS_SA] = 0
+            self.logger.warning('Ego was received with zero velocity and negative acceleration %f' % state.ego_state.cartesian_state[C_A])
 
         for i in range(len(state.dynamic_objects)):
             if state.dynamic_objects[i].cartesian_state[C_V] < 0:
@@ -113,7 +117,6 @@ class StateModule(DmModule):
                              timestamp=timestamp,
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
-                             map_state_on_host_lane=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                              confidence=1.0)
 
@@ -140,8 +143,6 @@ class StateModule(DmModule):
             # TODO: Handle multiple hypotheses
             cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
             map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
-            # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
-            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
                               obj_loc.s_bounding_box.e_l_width,
                               obj_loc.s_bounding_box.e_l_height)
@@ -151,7 +152,6 @@ class StateModule(DmModule):
                                     timestamp=timestamp,
                                     cartesian_state=cartesian_state,
                                     map_state=map_state if map_state.lane_id > 0 else None,
-                                    map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
                                     size=size,
                                     confidence=confidence)
 

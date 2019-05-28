@@ -1,17 +1,12 @@
 import sys
-import numpy as np
-import matplotlib.pyplot as plt
-import re
 
+import matplotlib.pyplot as plt
+import numpy as np
+import re
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
-from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionType
-from decision_making.src.planning.types import C_V
-from decision_making.src.state.state import State
-# from decision_making.test.log_analysis.log_messages import LogMsg
 from decision_making.src.messages.class_serialization import ClassSerializer
+from decision_making.src.state.state import State
 from decision_making.test.log_analysis.parse_log_messages import DmLogParser, \
-    STATE_IDENTIFIER_STRING_BP, STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, \
     STATE_IDENTIFIER_STRING_STATE_MODULE_SIMULATION
 
 # LOG_PATH_FOR_ANALYSIS = '/media/kz430x/New Volume/code/AV_Log_dm_main_old_version.log'
@@ -19,8 +14,10 @@ from decision_making.test.log_analysis.parse_log_messages import DmLogParser, \
 LOG_PATH_FOR_ANALYSIS = '/home/kz430x/BitBucket/spav/logs/AV_Log_rbcar0.log'
 # LOG_PATH_FOR_ANALYSIS = '/home/kz430x/Desktop/logs/cutoff two lanes went bad.log'
 
+
 def rng(x1, y1, x2, y2):
     return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+
 
 def main():
     filename = LOG_PATH_FOR_ANALYSIS if ('log_filename' not in sys.argv) else sys.argv['log_filename']

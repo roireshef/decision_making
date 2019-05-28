@@ -73,17 +73,15 @@ class BehavioralGridState:
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan)
+        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan, logger)
 
-        with prof.time_range('create_from_state.cstate_to_fstate'):
-            projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
-                                     for rel_lane in extended_lane_frames}
+        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
+                                 for rel_lane in extended_lane_frames}
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
-        with prof.time_range('create_from_state._add_road_semantics'):
-            dynamic_objects_with_road_semantics = \
-                sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
-                       key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
+        dynamic_objects_with_road_semantics = \
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
+                   key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
@@ -171,13 +169,14 @@ class BehavioralGridState:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg) -> \
+    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg, logger: Logger) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
         contain multiple original lane segments.
         :param state:
         :param nav_plan:
+        :param logger:
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
@@ -201,7 +200,8 @@ class BehavioralGridState:
                 extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, navigation_plan=nav_plan)
-            except MappingException:
+            except MappingException as e:
+                logger.warning(e)
                 continue
 
         return extended_lane_frames
