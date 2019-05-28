@@ -16,17 +16,17 @@ MAP_RESOLUTION = 1.0
 
 @pytest.fixture
 def scene_static_pg_no_split():
-    return pickle.load(open(Paths.get_map_absolute_path_filename(PG_PICKLE_FILE_NAME), 'rb'))
+    return pickle.load(open(Paths.get_scene_static_absolute_path_filename(PG_PICKLE_FILE_NAME), 'rb'))
 
 
 @pytest.fixture
 def scene_static_pg_split():
-    return pickle.load(open(Paths.get_map_absolute_path_filename(PG_SPLIT_PICKLE_FILE_NAME), 'rb'))
+    return pickle.load(open(Paths.get_scene_static_absolute_path_filename(PG_SPLIT_PICKLE_FILE_NAME), 'rb'))
 
 @pytest.fixture
 def scene_static_accel_towards_vehicle():
     return pickle.load(
-        open(Paths.get_map_absolute_path_filename(
+        open(Paths.get_scene_static_absolute_path_filename(
             ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME), 'rb'))
 
 @pytest.fixture
