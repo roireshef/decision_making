@@ -1,14 +1,12 @@
 import numpy as np
-
-from common_data.interface.Rte_Types.python.sub_structures import LcmTrajectoryParameters
-from common_data.interface.Rte_Types.python.sub_structures.LcmSigmoidFunctionParams import \
-    LcmSigmoidFunctionParams
-from common_data.interface.Rte_Types.python.sub_structures.LcmTrajectoryCostParams import \
-    LcmTrajectoryCostParams
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SigmoidFunctionParams import \
+    TsSYSSigmoidFunctionParams
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryCostParams import \
+    TsSYSTrajectoryCostParams
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryParameters import TsSYSTrajectoryParameters
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 
 
@@ -18,8 +16,7 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
     k = float
     offset = float
 
-    def __init__(self, w, k, offset):
-        # type: (float, float, float)->None
+    def __init__(self, w: float, k: float, offset: float):
         """
         A data class that corresponds to a parametrization of a sigmoid function
         :param w: considering sigmoid is: f(x) = w / (1 + exp(k * (x-offset)))
@@ -30,20 +27,19 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
         self.k = k
         self.offset = offset
 
-    def serialize(self):
-        # type: () -> LcmSigmoidFunctionParams
-        lcm_msg = LcmSigmoidFunctionParams()
+    def serialize(self) -> TsSYSSigmoidFunctionParams:
+        pubsub_msg = TsSYSSigmoidFunctionParams()
 
-        lcm_msg.w = self.w
-        lcm_msg.k = self.k
-        lcm_msg.offset = self.offset
+        pubsub_msg.e_Prm_SigmoidW = self.w
+        pubsub_msg.e_Prm_SigmoidK = self.k
+        pubsub_msg.e_Prm_SigmoidOffset = self.offset
 
-        return lcm_msg
+        return pubsub_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg):
-        # type: (LcmSigmoidFunctionParams)->SigmoidFunctionParams
-        return cls(lcmMsg.w, lcmMsg.k, lcmMsg.offset)
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSSigmoidFunctionParams)->SigmoidFunctionParams
+        return cls(pubsubMsg.e_Prm_SigmoidW, pubsubMsg.e_Prm_SigmoidK, pubsubMsg.e_Prm_SigmoidOffset)
 
 
 class TrajectoryCostParams(PUBSUB_MSG_IMPL):
@@ -58,15 +54,15 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     right_road_cost = SigmoidFunctionParams
     dist_from_goal_cost = SigmoidFunctionParams
     dist_from_goal_lat_factor = float
-    lon_jerk_cost = float
-    lat_jerk_cost = float
+    lon_jerk_cost_weight = float
+    lat_jerk_cost_weight = float
     velocity_limits = Limits
     lon_acceleration_limits = Limits
     lat_acceleration_limits = Limits
 
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
-                 lon_jerk_cost, lat_jerk_cost,
+                 lon_jerk_cost_weight, lat_jerk_cost_weight,
                  velocity_limits, lon_acceleration_limits, lat_acceleration_limits):
         # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits)->None
         """
@@ -90,8 +86,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
         :param dist_from_goal_cost: cost of distance from the target is a sigmoid.
         :param dist_from_goal_lat_factor: Weight of latitude vs. longitude in the dist from goal cost.
-        :param lon_jerk_cost: longitudinal jerk cost
-        :param lat_jerk_cost: lateral jerk cost
+        :param lon_jerk_cost_weight: longitudinal jerk cost
+        :param lat_jerk_cost_weight: lateral jerk cost
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
@@ -106,52 +102,52 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         self.right_road_cost = right_road_cost
         self.dist_from_goal_cost = dist_from_goal_cost
         self.dist_from_goal_lat_factor = dist_from_goal_lat_factor
-        self.lon_jerk_cost = lon_jerk_cost
-        self.lat_jerk_cost = lat_jerk_cost
+        self.lon_jerk_cost_weight = lon_jerk_cost_weight
+        self.lat_jerk_cost_weight = lat_jerk_cost_weight
         self.velocity_limits = velocity_limits
         self.lon_acceleration_limits = lon_acceleration_limits
         self.lat_acceleration_limits = lat_acceleration_limits
 
     def serialize(self):
-        # type: ()-> LcmTrajectoryCostParams
-        lcm_msg = LcmTrajectoryCostParams()
+        # type: ()-> TsSYSTrajectoryCostParams
+        pubsub_msg = TsSYSTrajectoryCostParams()
 
-        lcm_msg.obstacle_cost_x = self.obstacle_cost_x.serialize()
-        lcm_msg.obstacle_cost_y = self.obstacle_cost_y.serialize()
-        lcm_msg.left_lane_cost = self.left_lane_cost.serialize()
-        lcm_msg.right_lane_cost = self.right_lane_cost.serialize()
-        lcm_msg.left_shoulder_cost = self.left_shoulder_cost.serialize()
-        lcm_msg.right_shoulder_cost = self.right_shoulder_cost.serialize()
-        lcm_msg.left_road_cost = self.left_road_cost.serialize()
-        lcm_msg.right_road_cost = self.right_road_cost.serialize()
-        lcm_msg.dist_from_goal_cost = self.dist_from_goal_cost.serialize()
-        lcm_msg.dist_from_goal_lat_factor = self.dist_from_goal_lat_factor
-        lcm_msg.lon_jerk_cost = self.lon_jerk_cost
-        lcm_msg.lat_jerk_cost = self.lat_jerk_cost
-        lcm_msg.velocity_limits = self.velocity_limits
-        lcm_msg.lon_acceleration_limits = self.lon_acceleration_limits
-        lcm_msg.lat_acceleration_limits = self.lat_acceleration_limits
+        pubsub_msg.s_ObstacleCostX = self.obstacle_cost_x.serialize()
+        pubsub_msg.s_ObstacleCostY = self.obstacle_cost_y.serialize()
+        pubsub_msg.s_LeftLaneCost = self.left_lane_cost.serialize()
+        pubsub_msg.s_RightLaneCost = self.right_lane_cost.serialize()
+        pubsub_msg.s_LeftShoulderCost = self.left_shoulder_cost.serialize()
+        pubsub_msg.s_RightShoulderCost = self.right_shoulder_cost.serialize()
+        pubsub_msg.s_LeftRoadCost = self.left_road_cost.serialize()
+        pubsub_msg.s_RightRoadCost = self.right_road_cost.serialize()
+        pubsub_msg.s_DistanceFromGoalCost = self.dist_from_goal_cost.serialize()
+        pubsub_msg.e_l_DistFromGoalLatFactor = self.dist_from_goal_lat_factor
+        pubsub_msg.e_Wt_LonJerkCostWeight = self.lon_jerk_cost_weight
+        pubsub_msg.e_Wt_LatJerkCostWeight = self.lat_jerk_cost_weight
+        pubsub_msg.e_v_VelocityLimits = self.velocity_limits
+        pubsub_msg.e_a_LonAccelerationLimits = self.lon_acceleration_limits
+        pubsub_msg.e_a_LatAccelerationLimits = self.lat_acceleration_limits
 
-        return lcm_msg
+        return pubsub_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg):
-        # type: (LcmTrajectoryCostParams)-> TrajectoryCostParams
-        return cls(SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_x)
-                   , SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_y)
-                   , SigmoidFunctionParams.deserialize(lcmMsg.left_lane_cost)
-                   , SigmoidFunctionParams.deserialize(lcmMsg.right_lane_cost)
-                   , SigmoidFunctionParams.deserialize(lcmMsg.left_shoulder_cost)
-                   , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
-                   , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
-                   , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
-                   , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
-                   , lcmMsg.dist_from_goal_lat_factor
-                   , lcmMsg.lon_jerk_cost
-                   , lcmMsg.lat_jerk_cost
-                   , lcmMsg.velocity_limits
-                   , lcmMsg.lon_acceleration_limits
-                   , lcmMsg.lat_acceleration_limits)
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSTrajectoryCostParams)-> TrajectoryCostParams
+        return cls(SigmoidFunctionParams.deserialize(pubsubMsg.s_ObstacleCostX)
+                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_ObstacleCostY)
+                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_LeftLaneCost)
+                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_RightLaneCost)
+                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_LeftShoulderCost)
+                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_RightShoulderCost)
+                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_LeftRoadCost)
+                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_RightRoadCost)
+                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_DistanceFromGoalCost)
+                   , pubsubMsg.e_l_DistFromGoalLatFactor
+                   , pubsubMsg.e_Wt_LonJerkCostWeight
+                   , pubsubMsg.e_Wt_LatJerkCostWeight
+                   , pubsubMsg.e_v_VelocityLimits
+                   , pubsubMsg.e_a_LonAccelerationLimits
+                   , pubsubMsg.e_a_LatAccelerationLimits)
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
@@ -160,10 +156,10 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     reference_route = GeneralizedFrenetSerretFrame
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
-    time = float
+    target_time = float
     bp_time = int
 
-    def __init__(self, strategy, reference_route, target_state, cost_params, time, minimal_required_time, bp_time):
+    def __init__(self, strategy, reference_route, target_state, cost_params, target_time, trajectory_end_time, bp_time):
         # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float, float, int)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
@@ -171,18 +167,19 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         :param target_state: the vector-representation of the target state to plan ego motion towards
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
-        :param time: trajectory planning time-frame
-        :param minimal_required_time: minimal required trajectory planning time-frame, supposed to be greater than or
-               equal to the 'time' argument, TP will generate a trajectory getting to at least this time-goal and use
-               padding if needed.
+        :param target_time: the absolute timestamp in [sec] that represent the time of arrival to the terminal boundary
+        condition (TP optimization problem will end in this time)
+        :param trajectory_end_time: the timestamp in [sec] in which the actual trajectory will end (including padding
+        done in TP, which is a consequence of Control's requirement to have a long enough trajectory, i.e. according to
+        MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
         :param bp_time: absolute time of the state that BP planned on.
         """
         self.reference_route = reference_route
         self.target_state = target_state
         self.cost_params = cost_params
         self.strategy = strategy
-        self.time = time
-        self.minimal_required_time = minimal_required_time
+        self.target_time = target_time
+        self.trajectory_end_time = trajectory_end_time
         self.bp_time = bp_time
 
     def __str__(self):
@@ -193,29 +190,29 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         return self.target_state[C_V]
 
     def serialize(self):
-        # type: ()->LcmTrajectoryParameters
-        lcm_msg = LcmTrajectoryParameters()
+        # type: ()->TsSYSTrajectoryParameters
+        pubsub_msg = TsSYSTrajectoryParameters()
 
-        lcm_msg.strategy = self.strategy.value
+        pubsub_msg.e_e_Strategy = self.strategy.value
 
-        lcm_msg.reference_route = self.reference_route.serialize()
+        pubsub_msg.s_ReferenceRoute = self.reference_route.serialize()
 
-        lcm_msg.target_state = self.target_state
-        lcm_msg.cost_params = self.cost_params.serialize()
+        pubsub_msg.a_TargetState = self.target_state
+        pubsub_msg.s_CostParams = self.cost_params.serialize()
 
-        lcm_msg.time = self.time
-        lcm_msg.minimal_required_time = self.minimal_required_time
-        lcm_msg.bp_time = self.bp_time
+        pubsub_msg.e_t_TargetTime = self.target_time
+        pubsub_msg.e_t_TrajectoryEndTime = self.trajectory_end_time
+        pubsub_msg.e_Cnt_BPTime = self.bp_time
 
-        return lcm_msg
+        return pubsub_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg):
-        # type: (LcmTrajectoryParameters)->TrajectoryParams
-        return cls(TrajectoryPlanningStrategy(lcmMsg.strategy)
-                   , GeneralizedFrenetSerretFrame.deserialize(lcmMsg.reference_route)
-                   , lcmMsg.target_state
-                   , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
-                   , lcmMsg.time
-                   , lcmMsg.minimal_required_time
-                   , lcmMsg.bp_time)
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSTrajectoryParameters)->TrajectoryParams
+        return cls(TrajectoryPlanningStrategy(pubsubMsg.e_e_Strategy)
+                   , GeneralizedFrenetSerretFrame.deserialize(pubsubMsg.s_ReferenceRoute)
+                   , pubsubMsg.a_TargetState
+                   , TrajectoryCostParams.deserialize(pubsubMsg.s_CostParams)
+                   , pubsubMsg.e_t_TargetTime
+                   , pubsubMsg.e_t_TrajectoryEndTime
+                   , pubsubMsg.e_Cnt_BPTime)

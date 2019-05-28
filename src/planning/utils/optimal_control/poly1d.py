@@ -18,8 +18,18 @@ class Poly1D:
     @abstractmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
         """
-        Given the quartic polynomial setting, this function returns A as a tensor with the first dimension iterating
+        Given polynomial setting, this function returns A as a tensor with the first dimension iterating
         over different values of T (time-horizon) provided in <terminal_times>
+        :param terminal_times: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), self.num_coefs(), self.num_coefs()]
+        """
+        pass
+
+    @staticmethod
+    def inverse_time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+        """
+        Given polynomial setting, this function returns array of inverse matrices of time constraints tensors
+        with the first dimension iterating over different values of T (time-horizon) provided in <terminal_times>
         :param terminal_times: 1D numpy array of different values for T
         :return: 3D numpy array of shape [len(terminal_times), self.num_coefs(), self.num_coefs()]
         """
@@ -115,8 +125,8 @@ class Poly1D:
         poly = Math.polyder2d(poly_coefs, m=degree)
 
         # TODO: implement tests for those cases
-        if poly_der.shape[-1] == 0: # No derivative - polynomial is constant
-            if poly.shape[-1] == 0: # Also polynomial is zero (null)
+        if poly_der.shape[-1] == 0:  # No derivative - polynomial is constant
+            if poly.shape[-1] == 0:  # Also polynomial is zero (null)
                 return NumpyUtils.is_in_limits(np.full((poly.shape[0], 1), 0), limits)
             else:
                 return NumpyUtils.is_in_limits(poly[:, 0], limits)
@@ -135,7 +145,7 @@ class Poly1D:
         is_suspected_value_in_limits = NumpyUtils.is_almost_in_limits(acc_suspected_values, limits)
 
         # for all non-complex extrema points that are inside the time range, verify their values are in [a_min, a_max]
-        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1, keepdims=True)
+        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1)
 
     @classmethod
     def are_accelerations_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:
@@ -227,6 +237,17 @@ class QuarticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
+
+    @staticmethod
+    def inverse_time_constraints_tensor(T: np.ndarray) -> np.ndarray:
+        zeros = np.zeros_like(T)
+        tensor = np.array([
+            [1 + zeros, zeros, zeros, zeros, zeros],
+            [zeros, 1 + zeros, zeros, zeros, zeros],
+            [zeros, zeros, 0.5 + zeros, zeros, zeros],
+            [zeros, -1/T**2, -2/(3*T), 1/T**2, -1/(3*T)],
+            [zeros, 1/(2*T**3), 1/(4*T**2), -1/(2*T**3), 1/(4*T**2)]])
+        return np.transpose(tensor, (2, 0, 1))
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
@@ -383,6 +404,18 @@ class QuinticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
+
+    @staticmethod
+    def inverse_time_constraints_tensor(T: np.ndarray) -> np.ndarray:
+        zeros = np.zeros_like(T)
+        tensor = np.array([
+            [1 + zeros, zeros, zeros, zeros, zeros, zeros],
+            [zeros, 1 + zeros, zeros, zeros, zeros, zeros],
+            [zeros, zeros, 0.5 + zeros, zeros, zeros, zeros],
+            [-10 / T ** 3, -6 / T ** 2, -3 / (2 * T), 10 / T ** 3, -4 / T ** 2, 1 / (2 * T)],
+            [15 / T ** 4, 8 / T ** 3, 3 / (2 * T ** 2), -15 / T ** 4, 7 / T ** 3, -1 / T ** 2],
+            [-6 / T ** 5, -3 / T ** 4, -1 / (2 * T ** 3), 6 / T ** 5, -3 / T ** 4, 1 / (2 * T ** 3)]])
+        return np.transpose(tensor, (2, 0, 1))
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):

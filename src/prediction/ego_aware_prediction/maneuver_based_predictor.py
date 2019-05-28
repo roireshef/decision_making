@@ -1,18 +1,17 @@
+import numpy as np
 from logging import Logger
 from typing import List, Dict, Optional
 
-import copy
-import numpy as np
-
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
+from decision_making.src.planning.types import FrenetStates1D, FrenetTrajectories1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
+from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
+    TrajectoryGenerator
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
-    TrajectoryGenerator
 
 
 class ManeuverBasedPredictor(EgoAwarePredictor):
@@ -121,8 +120,15 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
 
         return predicted_objects_states_dict
 
+    def predict_1d_frenet_states(self, objects_fstates: FrenetStates1D, horizons: np.ndarray) -> FrenetTrajectories1D:
+        """
+        See base class
+        """
+        raise Exception("Not implemented yet")
+
     def predict_2d_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
         """
         See base class
         """
         raise Exception("Not implemented yet")
+
