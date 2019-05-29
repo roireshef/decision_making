@@ -1,7 +1,7 @@
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSTrajectoryPlan
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSDataTrajectoryPlan
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryPlan import TsSYSTrajectoryPlan
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataTrajectoryPlan import TsSYSDataTrajectoryPlan
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TRAJECTORY_WAYPOINT_SIZE
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 
@@ -75,5 +75,3 @@ class TrajectoryPlan(PUBSUB_MSG_IMPL):
         # type: (TsSYSTrajectoryPlan)->TrajectoryPlan
         return cls(Header.deserialize(pubsubMsg.s_Header),
                    DataTrajectoryPlan.deserialize(pubsubMsg.s_Data))
-
-
