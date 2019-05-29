@@ -9,6 +9,7 @@ from logging import Logger
 from typing import List, Optional
 from itertools import compress
 
+
 @six.add_metaclass(ABCMeta)
 class ActionSpecFilter:
     """

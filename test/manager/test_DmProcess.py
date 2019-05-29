@@ -10,7 +10,6 @@ from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.test.planning import custom_fixtures
 
 
 def create_behavioral_planner() -> BehavioralPlanningFacade:

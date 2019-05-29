@@ -3,7 +3,7 @@ from typing import Union, TypeVar
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
-from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
+from decision_making.src.planning.types import Limits
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
 DIVISION_FLOATING_ACCURACY = 10 ** -10
