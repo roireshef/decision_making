@@ -5,7 +5,7 @@ import six
 
 import rte.python.profiler as prof
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.navigation.navigation_goal import NavigationGoal
+from typing import Any
 
 
 @six.add_metaclass(ABCMeta)
@@ -15,5 +15,5 @@ class ValueApproximator:
 
     @abstractmethod
     @prof.ProfileFunction()
-    def approximate(self, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
+    def approximate(self, behavioral_state: BehavioralGridState, goal: Any) -> float:
         pass
