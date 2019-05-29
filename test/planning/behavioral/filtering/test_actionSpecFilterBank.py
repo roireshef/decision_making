@@ -26,7 +26,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     state_with_objects_for_filtering_almost_tracking_mode, \
     behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode, \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
-    behavioral_grid_state_with_traffic_control, state_with_traffic_control
+    behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30
 
 def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control, scene_static):
     ego_location = behavioral_grid_state_with_traffic_control.ego_state.map_state.lane_fstate[FS_SX]

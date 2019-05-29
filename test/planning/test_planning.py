@@ -1,10 +1,11 @@
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
@@ -17,7 +18,6 @@ from decision_making.src.planning.behavioral.evaluators.zero_value_approximator 
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
-from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
@@ -29,7 +29,7 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
     DEFAULT_STATIC_RECIPE_FILTERING
 
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
-    navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
+    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2
 
 
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
@@ -76,10 +76,12 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_publish_mock.assert_called_once()
 
 
-def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module: StateModule,
-                                                                  navigation_facade: NavigationFacade,
+def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module:StateModule,
+                                                                  route_planner_facade: RoutePlanningFacade,
                                                                   scene_static_short_testable):
+
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+
     bp_logger = MagicMock()
     predictor_logger = MagicMock()
 
@@ -98,7 +100,8 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
                                           predictor=predictor, logger=bp_logger)
 
     state_module.periodic_action()
-    navigation_facade.periodic_action()
+    route_planner_facade.periodic_action()
+
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
 
     pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS, behavioral_publish_mock)

@@ -1,15 +1,16 @@
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
-    behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive
+    behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
+    create_route_plan_msg
 from unittest.mock import patch
 
-import pytest
 import numpy as np
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import SceneStatic, NominalPathPoint, StaticTrafficFlowControl, \
     RoadObjectType
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
+ffrom decision_making.src.messages.scene_static_enums import NominalPathPoint
+rom decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
@@ -103,7 +104,8 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
-    gff = MapUtils.get_lookahead_frenet_frame(lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
+    gff = MapUtils.get_lookahead_frenet_frame(lane_id, starting_lon, lookahead_dist,
+                                              create_route_plan_msg(np.array(road_ids)))
 
     # validate the length of the obtained frenet frame
     assert abs(gff.s_max - lookahead_dist) < SMALL_DISTANCE_ERROR
@@ -133,7 +135,8 @@ def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     starting_lon = 20.
     lookahead_dist = 500.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
+    sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
+                                             create_route_plan_msg(np.array(road_ids)).s_Data.a_i_road_segment_ids)
     assert len(sub_segments) == 5
     for seg in sub_segments:
         assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
@@ -160,7 +163,8 @@ def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException(scene_static_pg_sp
     # validate getting the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                  NavigationPlanMsg(np.array(road_segment_ids[:nav_plan_length] + [wrong_road_segment_id])))
+                                  create_route_plan_msg(
+                                      np.array(road_segment_ids[:nav_plan_length] + [wrong_road_segment_id])).s_Data.a_i_road_segment_ids)
         assert False
     except NavigationPlanDoesNotFitMap:
         assert True
@@ -180,7 +184,8 @@ def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static_p
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)))
+    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance,
+                                             create_route_plan_msg(np.array(road_segment_ids)).s_Data.a_i_road_segment_ids)
     assert len(sub_segments) == len(road_segment_ids)
 
 
@@ -201,7 +206,7 @@ def test_advanceOnPlan_navPlanTooShort_validateRelevantException(scene_static_pg
     # test the case when the navigation plan is too short; validate the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                  NavigationPlanMsg(np.array(road_segment_ids[:nav_plan_length])))
+                                  create_route_plan_msg(np.array(road_segment_ids[:nav_plan_length])).s_Data.a_i_road_segment_ids)
         assert False
     except NavigationPlanTooShort:
         assert True
@@ -223,7 +228,8 @@ def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static
     # test the case when the map is too short; validate the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=lookadhead_dist,
-                                  navigation_plan=NavigationPlanMsg(np.array(road_segment_ids + [wrong_road_id])))
+                                  route_plan_road_ids=create_route_plan_msg(
+                                      np.array(road_segment_ids + [wrong_road_id])).s_Data.a_i_road_segment_ids)
         assert False
     except DownstreamLaneNotFound:
         assert True
@@ -370,7 +376,7 @@ def test_getClosestLane_nearLanesSeam_closestPointIsInternal(scene_static_pg_spl
     lane_id2 = MapUtils.get_downstream_lanes(lane_id1)[0]
     x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
     y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
-    seam_point = MapUtils.get_lane(lane_id2).a_nominal_path_points[0]
+    seam_point = MapUtils.get_lane_geometry(lane_id2).a_nominal_path_points[0]
     point_xy = seam_point[[x_index, y_index]]
     yaw = seam_point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
     distance_to_point = 1000
@@ -391,7 +397,7 @@ def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static_pg_split):
     lane_id2 = MapUtils.get_downstream_lanes(lane_id1)[0]
     x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
     y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
-    seam_point = MapUtils.get_lane(lane_id2).a_nominal_path_points[0]
+    seam_point = MapUtils.get_lane_geometry(lane_id2).a_nominal_path_points[0]
     point_xy = seam_point[[x_index, y_index]]
     yaw = seam_point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
     distance_to_point = 0.2
