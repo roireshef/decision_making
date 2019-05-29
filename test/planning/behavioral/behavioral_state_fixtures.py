@@ -18,7 +18,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
-
+NAVIGATION_PLAN = np.array(range(20,30))
 
 @pytest.fixture(scope='function')
 def route_plan_20_30():
@@ -244,7 +244,7 @@ def state_with_traffic_control():
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
-    scene_static_with_traffic.s_Data.as_scene_lane_segment[0].as_static_traffic_flow_control.append(stop_sign)
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_static_traffic_flow_control.append(stop_sign)
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     road_id = 20
@@ -353,15 +353,15 @@ def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State):
+def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
 
     scene_static_with_traffic = scene_static_pg_split()
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
-    scene_static_with_traffic.s_Data.as_scene_lane_segment[0].as_static_traffic_flow_control.append(stop_sign)
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_static_traffic_flow_control.append(stop_sign)
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
-                                                NAVIGATION_PLAN, None)
+                                                route_plan_20_30, None)
 
 
 

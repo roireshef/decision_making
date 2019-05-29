@@ -1,13 +1,13 @@
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import create_route_plan_msg
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
-    behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive
+    behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive,\
+    route_plan_20_30
 from unittest.mock import patch
 
 import numpy as np
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.scene_static_message import SceneStatic, NominalPathPoint, StaticTrafficFlowControl, \
+from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, \
     RoadObjectType
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
