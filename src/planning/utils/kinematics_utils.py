@@ -60,7 +60,7 @@ class KinematicUtils:
         #     (initial jerk is calculated by subtracting the first two acceleration samples)
         # (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
         # (3) keeps the velocity under the desired velocity limit.
-        desired_limit_conforms = np.logical_or(
+        conforms_desired = np.logical_or(
             np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity), axis=1),
             (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
@@ -71,7 +71,8 @@ class KinematicUtils:
                                  NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
                                  NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
                                  NumpyUtils.is_in_limits(curvature, np.array([-MAX_CURVATURE, MAX_CURVATURE])), axis=1)
-        conforms = np.logical_and(conforms_limits, desired_limit_conforms)
+
+        conforms = np.logical_and(conforms_limits, conforms_desired)
         return conforms
 
     @staticmethod
