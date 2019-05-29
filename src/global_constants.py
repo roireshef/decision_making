@@ -5,6 +5,8 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
+TRUE_COST = 1.0
+FALSE_COST = 0.0
 
 # Communication Layer
 
@@ -98,6 +100,12 @@ FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_P
 
 # Step size for indexes in beyond spec filters
 BEYOND_SPEC_INDEX_STEP = 4
+
+# Min distance threshold ahead to raise takeover flag
+MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
+# Time threshold to raise takeover flag
+TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
+
 
 # Trajectory Planner #
 
@@ -200,6 +208,11 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN = 0.15
 FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 
 
+# Route Planner #
+LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
+
+
+
 # State #
 
 # TODO: set real values
@@ -223,14 +236,20 @@ FILTER_OFF_ROAD_OBJECTS = False
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.3
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
+ROUTE_PLANNING_MODULE_PERIOD = 1
+
 
 #### NAMES OF MODULES FOR LOGGING ####
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
 NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
+NAVIGATION_PLANNING_NAME_FOR_METRICS = "NP"
+ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
+ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
+ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 
 #### MetricLogger
@@ -242,6 +261,7 @@ LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
 LOG_MSG_SCENE_STATIC_RECEIVED = "Received SceneStatic message with Timestamp: "
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
+LOG_MSG_ROUTE_PLANNER_OUTPUT = "RoutePlanningFacade output is"
 LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action is"
 LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
@@ -249,6 +269,7 @@ LOG_MSG_RECEIVED_STATE = "Received state"
 LOG_MSG_STATE_MODULE_PUBLISH_STATE = "Publishing State"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
+LOG_MSG_ROUTE_PLANNER_IMPL_TIME = "ROUTE Facade._periodic_action_impl time"
 LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_to_expected_state timestamp to sample is " \
                                        "%f while trajectory time range is [%f, %f]"
 LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from desired location (desired frenet: %s, actual frenet: %s)"

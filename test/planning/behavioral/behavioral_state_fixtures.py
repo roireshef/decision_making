@@ -1,4 +1,6 @@
 from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from typing import List
 
 import numpy as np
@@ -6,7 +8,6 @@ import pytest
 
 from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
@@ -16,12 +17,67 @@ from decision_making.src.state.state import OccupancyState, State, ObjectSize, E
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
-NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 
 
 @pytest.fixture(scope='function')
-def state_with_sorrounding_objects():
+def route_plan_20_30():
+    yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
+                    s_Data=DataRoutePlan(e_b_is_valid=True,
+                                         e_Cnt_num_road_segments=10,
+                                         a_i_road_segment_ids=np.arange(20, 30, 1, dtype=np.int),
+                                         a_Cnt_num_lane_segments=0,
+                                         as_route_plan_lane_segments=[]))
+
+
+@pytest.fixture(scope='function')
+def route_plan_20():
+    yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
+                    s_Data=DataRoutePlan(e_b_is_valid=True,
+                                         e_Cnt_num_road_segments=1,
+                                         a_i_road_segment_ids=np.array([20]),
+                                         a_Cnt_num_lane_segments=0,
+                                         as_route_plan_lane_segments=[]))
+
+
+# TODO: This should be a parametrized_fixture.
+def create_route_plan_msg(road_segment_ids):
+    return RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
+                    s_Data=DataRoutePlan(e_b_is_valid=True,
+                                         e_Cnt_num_road_segments=10,
+                                         a_i_road_segment_ids=road_segment_ids,
+                                         a_Cnt_num_lane_segments=0,
+                                         as_route_plan_lane_segments=[]))
+
+
+@pytest.fixture(scope='function')
+def ego_state_for_takover_message_simple_scene():
+
+    ego_lane_id = 101
+    ego_lane_lon = 0 # station along the lane
+    ego_vel = 10
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+
+    yield ego_state
+
+@pytest.fixture(scope='function')
+def ego_state_for_takover_message_default_scene():
+
+    ego_lane_id = 201
+    ego_lane_lon = 100 # station along the lane
+    ego_vel = 10
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+
+    yield ego_state
+
+@pytest.fixture(scope='function')
+def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -48,7 +104,8 @@ def state_with_sorrounding_objects():
         parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
-        next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
+        next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20,
+                                                      route_plan_road_ids=route_plan_20_30.s_Data.a_i_road_segment_ids)
         obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].e_i_SEnd]
         obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].e_i_SegmentID]
 
@@ -68,7 +125,7 @@ def state_with_sorrounding_objects():
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_almost_tracking_mode():
+def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -88,7 +145,8 @@ def state_with_objects_for_filtering_almost_tracking_mode():
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20,
+                                                  route_plan_road_ids=route_plan_20_30.s_Data.a_i_road_segment_ids)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 10.2
@@ -142,7 +200,7 @@ def state_with_objects_for_filtering_exact_tracking_mode():
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_negative_sT():
+def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -162,7 +220,7 @@ def state_with_objects_for_filtering_negative_sT():
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, route_plan_20_30.s_Data.a_i_road_segment_ids)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
@@ -223,7 +281,7 @@ def state_with_traffic_control():
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_too_aggressive():
+def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -243,7 +301,7 @@ def state_with_objects_for_filtering_too_aggressive():
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, NAVIGATION_PLAN)
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, route_plan_20_30.s_Data.a_i_road_segment_ids)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 30
@@ -261,36 +319,37 @@ def state_with_objects_for_filtering_too_aggressive():
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state(state_with_sorrounding_objects: State):
+def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
-                                                NAVIGATION_PLAN, None)
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
-        state_with_objects_for_filtering_almost_tracking_mode):
+        state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
-                                                NAVIGATION_PLAN, None)
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
-        state_with_objects_for_filtering_exact_tracking_mode):
+        state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_exact_tracking_mode,
-                                                NAVIGATION_PLAN, None)
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_objects_for_filtering_negative_sT: State):
+def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_objects_for_filtering_negative_sT: State,
+                                                                 route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
-                                                NAVIGATION_PLAN, None)
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
-        state_with_objects_for_filtering_too_aggressive: State):
+        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
-                                                NAVIGATION_PLAN, None)
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')

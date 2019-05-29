@@ -3,7 +3,6 @@ from typing import Union
 
 import numpy as np
 
-from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.types import Limits
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
