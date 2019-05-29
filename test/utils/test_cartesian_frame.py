@@ -5,6 +5,7 @@ from decision_making.src.utils.geometry_utils import CartesianFrame
 
 ACCURACY_DECIMAL = np.log10(EPS)
 
+
 def test_convertGlobalToRelativeFrame_vecOnlyTranslation_successful():
     global_pos = np.array([2, 1])
     global_yaw = 1
@@ -17,6 +18,7 @@ def test_convertGlobalToRelativeFrame_vecOnlyTranslation_successful():
     expected_relative_yaw = 1.0
     np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
     np.testing.assert_almost_equal(relative_yaw, expected_relative_yaw, decimal=ACCURACY_DECIMAL)
+
 
 def test_convertGlobalToRelativeFrame_vecWithFortyFiveDegRotation_successful():
     global_pos = np.array([2, 1])

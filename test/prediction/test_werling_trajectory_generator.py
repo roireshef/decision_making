@@ -12,6 +12,7 @@ from decision_making.test.prediction.conftest import original_state_with_sorroun
 
 DEBUG_PLOT = False
 
+
 def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_generator: WerlingTrajectoryGenerator,
                                                            original_state_with_sorrounding_objects: State):
     state = original_state_with_sorrounding_objects

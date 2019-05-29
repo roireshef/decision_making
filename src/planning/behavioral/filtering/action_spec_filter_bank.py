@@ -89,8 +89,8 @@ class FilterForKinematics(ActionSpecFilter):
             cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
 
             # validate cartesian points against cartesian limits
-            is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(cartesian_points[np.newaxis, ...],
-                                                                 VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+            is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
+                cartesian_points[np.newaxis, ...], VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
             are_valid.append(is_valid_in_cartesian)
 
         return are_valid
