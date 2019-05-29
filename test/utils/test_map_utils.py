@@ -1,16 +1,13 @@
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     create_route_plan_msg
-from unittest.mock import patch
 
 import numpy as np
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.scene_static_message import SceneStatic, NominalPathPoint, StaticTrafficFlowControl, \
-    RoadObjectType
-ffrom decision_making.src.messages.scene_static_enums import NominalPathPoint
-rom decision_making.src.planning.behavioral.data_objects import RelativeLane
+from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, RoadObjectType
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
