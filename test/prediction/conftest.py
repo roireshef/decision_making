@@ -21,7 +21,6 @@ from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.w
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 from decision_making.test.planning.trajectory.mock_samplable_trajectory import MockSamplableTrajectory
 from rte.python.logger.AV_logger import AV_Logger
-from unittest.mock import patch
 
 DYNAMIC_OBJECT_ID = 1
 EGO_OBJECT_ID = 0

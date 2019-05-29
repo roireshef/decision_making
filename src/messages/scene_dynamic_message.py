@@ -344,13 +344,11 @@ class SceneDynamic(PUBSUB_MSG_IMPL):
     """
     s_Header = Header
     s_Data = DataSceneDynamic
-    s_MapOrigin = MapOrigin
 
-    def __init__(self, s_Header, s_Data, s_MapOrigin):
-        # type: (Header, DataSceneDynamic, MapOrigin) -> None
+    def __init__(self, s_Header, s_Data):
+        # type: (Header, DataSceneDynamic) -> None
         self.s_Header = s_Header
         self.s_Data = s_Data
-        self.s_MapOrigin = s_MapOrigin
 
     def serialize(self):
         # type: () -> TsSYSSceneDynamic
@@ -358,12 +356,10 @@ class SceneDynamic(PUBSUB_MSG_IMPL):
 
         pubsub_msg.s_Header = self.s_Header.serialize()
         pubsub_msg.s_Data = self.s_Data.serialize()
-        pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSSceneDynamic)->SceneDynamic
-        return cls(Header.deserialize(pubsubMsg.s_Header), DataSceneDynamic.deserialize(pubsubMsg.s_Data),
-                   MapOrigin.deserialize(pubsubMsg.s_MapOrigin))
+        return cls(Header.deserialize(pubsubMsg.s_Header), DataSceneDynamic.deserialize(pubsubMsg.s_Data))

@@ -116,6 +116,45 @@ class OutOfSegmentFront(Exception):
     pass
 
 
+class EgoStationBeyondLaneLength(MappingException):
+    pass
+
+
+# ROUTE PLANNING
+@six.add_metaclass(ABCMeta)
+class RoutePlanningException(Exception):
+    pass
+
+class RepeatedRoadSegments(RoutePlanningException):
+    pass
+
+class EgoRoadSegmentNotFound(RoutePlanningException):
+    pass
+
+class EgoLaneOccupancyCostIncorrect(RoutePlanningException):
+    pass
+
+class RoadSegmentLaneSegmentMismatch(RoutePlanningException):
+    pass
+
+class MissingInputInformation(RoutePlanningException):
+    pass
+
+class NavigationSceneDataMismatch(RoutePlanningException):
+    pass
+
+class LaneSegmentDataNotFound(RoutePlanningException):
+    pass
+
+class RoadSegmentDataNotFound(RoutePlanningException):
+    pass
+
+class LaneAttributeNotFound(RoutePlanningException):
+    pass
+
+class DownstreamLaneDataNotFound(RoutePlanningException):
+    pass
+
 def raises(*e):
     # type: (Exception)
     """

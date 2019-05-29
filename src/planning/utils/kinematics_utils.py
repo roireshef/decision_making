@@ -1,4 +1,5 @@
 import numpy as np
+from decision_making.src.global_constants import MAX_CURVATURE
 
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
@@ -50,11 +51,13 @@ class KinematicUtils:
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
+        curvature = ctrajectories[:, :, C_K]
 
         conforms = np.all(
             NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
-            NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
+            NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
+            NumpyUtils.is_in_limits(curvature, np.array([-MAX_CURVATURE, MAX_CURVATURE])), axis=1)
 
         return conforms
 
