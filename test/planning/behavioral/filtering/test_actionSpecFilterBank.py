@@ -80,7 +80,6 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
     expected = [False]
     assert actual == expected
 
-    state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, route_plan_20_30
 
 def test_BeyondSpecSpeedLimitFilter_SlowLaneAhead(behavioral_grid_state_with_traffic_control, scene_static_pg_split):
     # Get s position on frenet frame
@@ -92,7 +91,7 @@ def test_BeyondSpecSpeedLimitFilter_SlowLaneAhead(behavioral_grid_state_with_tra
 
     # put some slow speed limits into scene_static
     for i in range(1, 23):
-        scene_static_pg_split.s_Data.as_scene_lane_segment[-i].e_v_nominal_speed = 10
+        scene_static_pg_split.s_Data.s_SceneStaticBase.as_scene_lane_segments[-i].e_v_nominal_speed = 10
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
