@@ -1,4 +1,5 @@
 import numpy as np
+from decision_making.src.global_constants import MAX_CURVATURE
 
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
@@ -52,6 +53,7 @@ class KinematicUtils:
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
+        curvature = ctrajectories[:, :, C_K]
 
         # validates the following behavior for each trajectory:
         # (1) applies negative jerk to reduce initial positive acceleration, if necessary
@@ -65,11 +67,11 @@ class KinematicUtils:
         # check velocity and acceleration limits
         # note: while we filter any trajectory that exceeds the velocity limit, we allow trajectories to break the
         #       desired velocity limit, as long as they slowdown towards the desired velocity.
-        conforms = np.logical_and(np.all(
-            NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
-            NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
-            NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1),
-            desired_limit_conforms)
+        conforms_limits = np.all(NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
+                                 NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
+                                 NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
+                                 NumpyUtils.is_in_limits(curvature, np.array([-MAX_CURVATURE, MAX_CURVATURE])), axis=1)
+        conforms = np.logical_and(conforms_limits, desired_limit_conforms)
         return conforms
 
     @staticmethod
