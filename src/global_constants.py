@@ -190,6 +190,10 @@ NEGLIGIBLE_VELOCITY = 1e-4
 # [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)
 TINY_CURVATURE = 1e-4
 
+# [1/m] maximal trajectory curvature, based on the minimal turning radius, which is defined in a basic car's spec
+# A typical turning radius = 5 m, then MAX_CURVATURE = 0.2.
+MAX_CURVATURE = 0.2
+
 # [m/sec^2] when acceleration is not specified - TP uses this as goal acceleration
 DEFAULT_ACCELERATION = 0.0
 
