@@ -1,4 +1,3 @@
-import time
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils

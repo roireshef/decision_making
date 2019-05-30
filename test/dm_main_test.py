@@ -18,10 +18,6 @@ def main():
     """
     modules_list = \
         [
-            DmProcess(DmInitialization.create_navigation_planner,
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
-
             DmProcess(DmInitialization.create_state_module,
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),

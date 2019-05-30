@@ -1,33 +1,46 @@
 import time
+
+import numpy as np
 import traceback
 from logging import Logger
-
 import numpy as np
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_NAVIGATION_PLAN
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 
-from decision_making.src.infra.pubsub import PubSub
-from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet
+from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet,\
+    RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
+    RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
+    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.infra.pubsub import PubSub
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
-    CostBasedBehavioralPlanner
+from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
+from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.state.state import State
-from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-import rte.python.profiler as prof
+from decision_making.src.state.state import State
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.state.state import State, EgoState
+
+
+from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.utils.metric_logger import MetricLogger
+from logging import Logger
 
 
 class BehavioralPlanningFacade(DmModule):
@@ -36,7 +49,7 @@ class BehavioralPlanningFacade(DmModule):
         """
         :param pubsub:
         :param logger:
-        :param behavioral_planner: 
+        :param behavioral_planner:
         :param last_trajectory: last trajectory returned from behavioral planner.
         """
         super().__init__(pubsub=pubsub, logger=logger)
@@ -48,8 +61,8 @@ class BehavioralPlanningFacade(DmModule):
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_STATE)
-        self.pubsub.subscribe(UC_SYSTEM_NAVIGATION_PLAN)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
+        self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
@@ -82,9 +95,15 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 updated_state = state
 
-            navigation_plan = self._get_current_navigation_plan()
+            route_plan = self._get_current_route_plan()
 
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan)
+            # calculate the takeover message
+            takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
+
+            self._publish_takeover(takeover_message)
+
+            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
+                                                                                                           route_plan)
 
             self._last_trajectory = samplable_trajectory
 
@@ -107,6 +126,12 @@ class BehavioralPlanningFacade(DmModule):
             self.logger.debug(str(e))
 
         except BehavioralPlanningException as e:
+            self.logger.warning(e)
+
+        except RoutePlanningException as e:
+            self.logger.warning(e)
+
+        except MappingException as e:
             self.logger.warning(e)
 
         except Exception as e:
@@ -135,14 +160,86 @@ class BehavioralPlanningFacade(DmModule):
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
         return state
 
-    def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        is_success, serialized_nav_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_NAVIGATION_PLAN, timeout=1)
-        if serialized_nav_plan is None:
+
+    def _get_current_route_plan(self) -> RoutePlan:
+        """
+        Returns the last received route plan data
+        We assume that if no updates have been received since the last call,
+        then we will output the last received state.
+        :return: deserialized RoutePlan
+        """
+        is_success, serialized_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN, timeout=1)
+        if serialized_route_plan is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_NAVIGATION_PLAN)
-        nav_plan = NavigationPlanMsg.deserialize(serialized_nav_plan)
-        self.logger.debug("Received navigation plan: %s" % nav_plan)
-        return nav_plan
+                                          UC_SYSTEM_ROUTE_PLAN)
+        route_plan = RoutePlan.deserialize(serialized_route_plan)
+        self.logger.debug("Received route plan: %s" % route_plan)
+        return route_plan
+
+    @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
+    def _set_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState) -> Takeover:
+        """
+        funtion to calculate the takeover message based on the static route plan
+        takeover flag will be set True if all lane segments' end costs for a downstream road segment
+        within a threshold distance are 1, i.e., road is blocked.
+        :param route_plan_data: last route plan data
+        :param ego_state: last state for ego vehicle
+        :return: Takeover data
+        """
+
+        ego_lane_segment_id = ego_state.map_state.lane_id
+
+        ego_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(ego_lane_segment_id)
+
+        # find ego road segment row index in as_route_plan_lane_segments 2-d array which matches the index in a_i_road_segment_ids 1-d array
+        route_plan_start_idx = np.argwhere(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
+
+        if len(route_plan_start_idx[0]) == 0:  # check if ego road segment Id is listed inside route plan data
+            raise EgoRoadSegmentNotFound('Route plan does not include data for ego road segment ID {0}'.format(ego_road_segment_id))
+        if len(route_plan_start_idx[0]) > 1:
+            raise RepeatedRoadSegments('Route Plan has repeated data for road segment ID {0}'.format(ego_road_segment_id))
+
+        ego_row_idx = route_plan_start_idx[0][0]
+
+        dist_to_end = 0
+        takeover_flag = False
+
+        # iterate through all road segments within MIN_DISTANCE_TO_SET_TAKEOVER_FLAG
+        for route_row_idx in range(ego_row_idx, route_plan_data.e_Cnt_num_road_segments):
+
+            # raise exception if ego lane occupancy cost is 1
+            if route_row_idx == ego_row_idx:
+                ego_road_lane_ids = np.array([route_lane.e_i_lane_segment_id for route_lane in route_plan_data.as_route_plan_lane_segments[ego_row_idx]])
+                ego_col_idx = np.argwhere(ego_road_lane_ids == ego_lane_segment_id)[0][0]
+                if route_plan_data.as_route_plan_lane_segments[ego_row_idx][ego_col_idx].e_cst_lane_occupancy_cost == 1:
+                    raise EgoLaneOccupancyCostIncorrect('Occupancy cost is 1 for ego lane segment ID {0}'.format(ego_lane_segment_id))
+
+            # find the length of the road segment, assuming that road segment length is similar
+            # to its first lane segment length
+            road_segment_lane_id = route_plan_data.as_route_plan_lane_segments[route_row_idx][0].e_i_lane_segment_id
+            lane = MapUtils.get_lane(road_segment_lane_id)
+            lane_length = lane.e_l_length
+
+            if route_row_idx == ego_row_idx:
+                dist_to_end = lane_length - ego_state.map_state.lane_fstate[FS_SX]
+            else:
+                dist_to_end += lane_length
+
+            # check the end cost for all lane segments within a road segment
+            lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
+
+            takeover_flag = np.all(lane_end_costs == 1)
+
+            if takeover_flag or dist_to_end >= max(MIN_DISTANCE_TO_SET_TAKEOVER_FLAG,
+                                                   ego_state.map_state.lane_fstate[FS_SV]*TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG):
+                break
+
+        takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,
+                                                    s_Timestamp=Timestamp.from_seconds(ego_state.timestamp_in_sec),
+                                                    e_Cnt_version=0),
+                                    s_Data=DataTakeover(takeover_flag))
+
+        return takeover_message
 
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
@@ -152,7 +249,7 @@ class BehavioralPlanningFacade(DmModule):
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
         scene_static = SceneStatic.deserialize(serialized_scene_static)
-        if scene_static.s_Data.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.e_Cnt_num_road_segments == 0:
+        if scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_road_segments == 0:
             raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
@@ -183,10 +280,9 @@ class BehavioralPlanningFacade(DmModule):
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.pubsub.publish(UC_SYSTEM_VISUALIZATION, visualization_message.serialize())
 
+    def _publish_takeover(self, takeover_message:Takeover) -> None :
+        self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_message.serialize())
+
     @property
     def planner(self):
         return self._planner
-
-    @property
-    def predictor(self):
-        return self._predictor
