@@ -1,8 +1,14 @@
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import create_route_plan_msg
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
+    behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive,\
+    route_plan_20_30
+from unittest.mock import patch
 
 import numpy as np
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, \
+    RoadObjectType
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
@@ -14,6 +20,25 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
+
+def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split: SceneStatic,
+                                                          behavioral_grid_state_with_objects_for_filtering_too_aggressive):
+
+    gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
+
+    # A Frenet-Frame trajectory: a numpy matrix of FrenetState2D [:, [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]]
+    gff_state = np.array([[12.0, 0., 0., 0., 0., 0.]])
+    lane_id, segment_states = gff.convert_to_segment_states(gff_state)
+    segment_s = segment_states[0][0]
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
+                                         e_Pct_confidence=1.0)
+    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+    gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
+    actual = MapUtils.get_static_traffic_flow_controls_s(gff)
+    assert len(actual) == 1
+    assert actual[0] == 12.0
 
 
 def test_getRoadSegmentIdFromLaneId_correct(scene_static_pg_split):
