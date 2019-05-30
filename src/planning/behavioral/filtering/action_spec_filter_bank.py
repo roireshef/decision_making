@@ -299,7 +299,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
             FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
         max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
-        beyond_spec_range = target_lane_frenet._get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0] + 1
+        beyond_spec_range = target_lane_frenet._get_closest_index_on_frame(np.array([action_spec.s + 1, max_relevant_s]))[0]
         # get s for all points in the range
         points_s = target_lane_frenet.get_s_from_index_on_frame(
             np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
@@ -308,8 +308,8 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         # get lane ids of the beyond spec points
         lane_ids, segment_states = target_lane_frenet.convert_to_segment_states(beyond_spec_gff_states)
         # find speed limits of beyond spec points
-        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids]
-        return (np.array(points_s), np.array(speed_limits))
+        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed / 3.6 for lane_id in lane_ids]
+        return (np.array(range(beyond_spec_range[0], beyond_spec_range[1])), np.array(speed_limits))
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
         """
@@ -323,13 +323,13 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         if action_spec.v == 0:
             self._raise_true()
 
-        beyond_spec_frenet_idxs, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
+        beyond_spec_idx, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
         # find points that require braking after spec
         slow_points = np.where(np.array(speed_limits) < action_spec.v)[0]
         # edge case
         if len(slow_points) == 0:
             self._raise_true()
-        return beyond_spec_frenet_idxs[slow_points], speed_limits[slow_points]
+        return beyond_spec_idx[slow_points], speed_limits[slow_points]
 
     def _target_function(self, behavioral_state: BehavioralGridState,
                          action_spec: ActionSpec, points: any):
@@ -352,9 +352,9 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         :param points:
         :return:
         """
-        slow_points_ids, _ = points
+        slow_points_idx, _ = points
         frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
-        dist_to_points = frenet.get_s_from_index_on_frame(slow_points_ids, delta_s=0) - action_spec.s
+        dist_to_points = frenet.get_s_from_index_on_frame(slow_points_idx, delta_s=0) - action_spec.s
         return dist_to_points
 
     def _condition(self, target_values, constraints_values) -> bool:
@@ -364,4 +364,4 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         :param constraints_values:
         :return:
         """
-        return (target_values < constraints_values).all()
+        return np.all(target_values < constraints_values)
