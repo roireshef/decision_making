@@ -7,6 +7,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.test.planning.trajectory.utils import RouteFixture
 
 
+
 def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_accurate():
     ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
 
