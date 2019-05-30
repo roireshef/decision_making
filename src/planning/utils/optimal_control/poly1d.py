@@ -195,7 +195,7 @@ class QuarticPoly1D(Poly1D):
         return 5
 
     @staticmethod
-    def is_tracking_mode(v_0: float, v_T: np.array, a_0: float) -> np.array:
+    def is_tracking_mode(v_0: np.array, v_T: np.array, a_0: np.array) -> np.array:
         """
         Checks if agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         zero.
@@ -205,8 +205,7 @@ class QuarticPoly1D(Poly1D):
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.isclose(v_0, v_T, atol=1e-3, rtol=0) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(
-            v_T.shape, False)
+        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0), np.isclose(a_0, 0.0, atol=1e-3, rtol=0))
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
@@ -339,6 +338,24 @@ class QuarticPoly1D(Poly1D):
         coefs = np.array([6*(T * a_0 + 2 * v_0 - 2 * v_T),
                           - 2*T * (2 * T * a_0 + 3 * v_0 - 3 * v_T)]) / T ** 3
         return coefs
+
+    @staticmethod
+    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
+        """
+        Given a set of quartic actions, i.e. arrays of v_0, v_T, a_0 and T (all arrays of the same size), calculate
+        coefficients for longitudinal polynomial profile for each action.
+        :param a_0: array of initial accelerations
+        :param v_0: array of initial velocities
+        :param v_T: array of target velocities
+        :param T: [sec] array of action times
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        return np.c_[
+            (0.25 * T * a_0 + 0.5 * v_0 - 0.5 * v_T) / T ** 3,
+            (-0.666666666666667 * T * a_0 - 1.0 * v_0 + 1.0 * v_T) / T ** 2,
+            0.5 * a_0,
+            v_0,
+            np.zeros_like(v_0)]
 
 
 class QuinticPoly1D(Poly1D):
