@@ -1,11 +1,8 @@
 import numpy as np
-from typing import List
-
 import rte.python.profiler as prof
-from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS
+    LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, StaticActionRecipe
@@ -14,8 +11,12 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_SA, FS_DX, FS_SV, FS_SX
 from decision_making.src.planning.types import LAT_CELL
-from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.utils.map_utils import MapUtils
+from typing import List
+from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 
 
 class FilterIfNone(ActionSpecFilter):
@@ -151,3 +152,107 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         are_valid = np.full(len(action_specs), True)
         are_valid[non_padding_specs_idx] = non_padding_are_valid
         return list(are_valid)
+
+
+class StaticTrafficFlowControlFilter(ActionSpecFilter):
+    """
+    Checks if there is a StaticTrafficFlowControl between ego and the goal
+    Currently treats every 'StaticTrafficFlowControl' as a stop event.
+
+    """
+
+    @staticmethod
+    def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
+        """
+        Checks if there is a stop_bar between current ego location and the action_spec goal
+        :param action_spec: the action_spec to be considered
+        :param behavioral_state: BehavioralGridState in context
+        :return: if there is a stop_bar between current ego location and the action_spec goal
+        """
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
+        stop_bar_locations = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
+        ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
+
+        return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
+
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
+                for action_spec in action_specs]
+
+
+class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
+    """
+    Filter for "BeyondSpec" stop sign - If there are any stop signs beyond the spec target (s > spec.s)
+    this filter filters out action specs that cannot guarantee braking to velocity 0 before reaching the closest
+    stop bar (beyond the spec target).
+    Assumptions:  Actions where the stop_sign in between location and goal are filtered.
+    """
+
+    def __init__(self):
+        super(BeyondSpecStaticTrafficFlowControlFilter, self).__init__(extend_short_action_specs=True)
+        self.distances = BrakingDistances.create_braking_distances()
+
+    def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> int:
+        """
+        Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
+        :param target_lane_frenet:
+        :param action_spec_s:
+        :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
+        """
+        traffic_control_s = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
+        traffic_control_s = traffic_control_s[traffic_control_s >= action_spec_s]
+        return -1 if len(traffic_control_s) == 0 else traffic_control_s[0]
+
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> np.array:
+        """
+        Checks if there are stop signs. Returns the `s` of the first (closest) stop-sign
+        :param behavioral_state:
+        :param action_spec:
+        :return: The index of the end point
+        """
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
+        stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
+        if stop_bar_s == -1:
+            # no stop bars
+            self._raise_true()
+        if action_spec.s >= target_lane_frenet.s_max:
+            self._raise_false()
+        return np.array([stop_bar_s])
+
+    def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
+                         points: np.ndarray) -> np.ndarray:
+        """
+        Braking distance from current velocity to 0
+        The return value is a single scalar in a np.array (for consistency)
+        :param behavioral_state:
+        :param action_spec:
+        :param points:
+        :return:
+        """
+        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
+        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
+        return np.array([brake_dist])
+
+    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
+                             points: np.array) -> float:
+        """
+        Returns the distance from the action_spec goal to the closest stop sign.
+        The return value is a single scalar in a np.array (for consistency)
+        :param behavioral_state: The context  behavioral grid
+        :param action_spec: ActionSpec to filter
+        :param points: Current goal s
+        :return: An array with a single point containing the distance from the action_spec goal to the closest stop sign
+        """
+        dist_to_points = points - action_spec.s
+        assert dist_to_points[0] >= 0, 'Stop Sign must be ahead'
+        return dist_to_points
+
+    def _condition(self, target_values: np.array, constraints_values: np.array) -> bool:
+        """
+        Checks if braking distance from action_spec.v to 0 is smaller than the distance to stop sign
+        :param target_values: braking distance from action_spec.v to 0
+        :param constraints_values: the distance to stop sign
+        :return: a single boolean
+        """
+        return target_values[0] < constraints_values[0]
+
