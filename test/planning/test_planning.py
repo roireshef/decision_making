@@ -31,7 +31,6 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
     state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2
 
-
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         state_module: StateModule,
