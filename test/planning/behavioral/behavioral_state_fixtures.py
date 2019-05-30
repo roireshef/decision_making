@@ -1,7 +1,6 @@
 from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.messages.scene_static_message import RoadObjectType, StaticTrafficFlowControl
 from typing import List
 
 import numpy as np

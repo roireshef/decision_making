@@ -2,7 +2,6 @@ import time
 
 import numpy as np
 import traceback
-from decision_making.src.utils.map_utils import MapUtils
 from logging import Logger
 import numpy as np
 
@@ -24,7 +23,7 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, RoadObjectType
+from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
@@ -42,20 +41,6 @@ from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
-
-
-def patch_scene_static(lane_id=58369795, s=75):
-    """
-    Patches the scene_static message with a stop sign
-    This is a temporary patch. To be removed when stop signs are available on SceneProvider
-    :param lane_id:
-    :param s:
-    :return:
-    """
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=s,
-                                         e_Pct_confidence=1.0)
-    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
-
 
 
 class BehavioralPlanningFacade(DmModule):
@@ -97,7 +82,6 @@ class BehavioralPlanningFacade(DmModule):
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
-            # patch_scene_static(58369795, 75 - EGO_LENGTH/2)
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
