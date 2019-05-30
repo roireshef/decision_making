@@ -1,3 +1,4 @@
+from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import RoadObjectType, StaticTrafficFlowControl
@@ -18,7 +19,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
-
+NAVIGATION_PLAN = np.array(range(20,30))
 
 @pytest.fixture(scope='function')
 def route_plan_20_30():
@@ -239,19 +240,15 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
 
 @pytest.fixture(scope='function')
 def state_with_traffic_control():
-    """
-    :return:
-    """
-    scene_static_with_traffic = scene_static()
 
+    scene_static_with_traffic = scene_static_pg_split()
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
-    # TODO: move this to where scene_static fixture is
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
-    scene_static_with_traffic.s_Data.as_scene_lane_segment[0].as_static_traffic_flow_control.append(stop_sign)
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_static_traffic_flow_control.append(stop_sign)
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
-    road_segment_id = 20
+    road_id = 20
 
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
@@ -260,35 +257,26 @@ def state_with_traffic_control():
 
     # Ego state
     ego_lane_lon = EGO_LANE_LON
-    obj_vel = ego_vel = 10
-    ego_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[1]
+    ego_vel = 10
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
-    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+
+    # Generate objects at the following locations:
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
+    obj_vel = 11
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
-    # Generate objects at the following locations:
-    for rel_lane in RelativeLane:
-        # calculate objects' lane_ids and longitudes: 20 m behind, parallel and 20 m ahead of ego on the relative lane
-        parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
-            if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
-        prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
-        next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
-        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].s_end]
-        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].segment_id]
 
-        for i, obj_lane_lon in enumerate(obj_lane_lons):
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
+    dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
+                                                    size=car_size, confidence=1.)
 
-            if obj_lane_lon == ego_lane_lon and rel_lane == RelativeLane.SAME_LANE:
-                # Don't create an object where the ego is
-                continue
-
-            map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_ids[i])
-            dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
-                                                            size=car_size, confidence=1.)
-            dynamic_objects.append(dynamic_object)
-            obj_id += 1
+    dynamic_objects.append(dynamic_object)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
@@ -337,7 +325,6 @@ def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_3
                                                 route_plan_20_30, None)
 
 
-
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
         state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan):
@@ -367,15 +354,15 @@ def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State):
+def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
 
-    scene_static_with_traffic = scene_static()
+    scene_static_with_traffic = scene_static_pg_split()
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
-    scene_static_with_traffic.s_Data.as_scene_lane_segment[0].as_static_traffic_flow_control.append(stop_sign)
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_static_traffic_flow_control.append(stop_sign)
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
-                                                NAVIGATION_PLAN, None)
+                                                route_plan_20_30, None)
 
 
 

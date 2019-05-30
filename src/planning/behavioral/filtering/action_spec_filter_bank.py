@@ -8,7 +8,8 @@ from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, FILTER_V_0_GRID, FILTER_V_T_GRID, BP_LAT_ACC_STRICT_COEF, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS
+    LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, StaticActionRecipe, AggressivenessLevel, RelativeLane
@@ -17,9 +18,8 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_SA, FS_DX, FS_SV, FS_SX
 from decision_making.src.planning.types import LAT_CELL
-from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
-from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
@@ -180,6 +180,32 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         return list(are_valid)
 
 
+class StaticTrafficFlowControlFilter(ActionSpecFilter):
+    """
+    Checks if there is a StaticTrafficFlowControl between ego and the goal
+    Currently treats every 'StaticTrafficFlowControl' as a stop event.
+
+    """
+
+    @staticmethod
+    def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
+        """
+        Checks if there is a stop_bar between current ego location and the action_spec goal
+        :param action_spec: the action_spec to be considered
+        :param behavioral_state: BehavioralGridState in context
+        :return: if there is a stop_bar between current ego location and the action_spec goal
+        """
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
+        stop_bar_locations = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
+        ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
+
+        return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
+
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
+                for action_spec in action_specs]
+
+
 @six.add_metaclass(ABCMeta)
 class BeyondSpecConstraintFilter(ActionSpecFilter):
     """
@@ -196,7 +222,7 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         To terminate the filter calculation use _raise_true/_raise_false  at any stage.
     """
     def __init__(self):
-        self.distances = BreakingDistances.create_braking_distances()
+        self.distances = BrakingDistances.create_braking_distances()
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
@@ -300,6 +326,40 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
         return mask
 
 
+class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
+    """
+    Filter for "BeyondSpec" stop sign
+    Assumptions:  Actions where the stop_sign in between location and goal are filtered.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> Union[float, None]:
+        """
+        Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
+        :param target_lane_frenet:
+        :param action_spec_s:
+        :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
+        """
+        traffic_control_s = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
+        traffic_control_s = traffic_control_s[traffic_control_s >= action_spec_s]
+        return traffic_control_s[0] if len(traffic_control_s) > 0 else None
+
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
+        """
+        Basically just checks if there are stop signs. Returns the `s` of the first stop-sign
+        :param behavioral_state:
+        :param action_spec:
+        :return: The index of the end point
+        """
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
+        stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
+        if stop_bar_s is None:  # no stop bars
+            self._raise_true()
+        return np.array([stop_bar_s]), np.array([0])
+
+
 class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
     """
     Checks if it is possible to break to desired lateral acceleration limit from the goal to the end of the frenet frame
@@ -346,137 +406,3 @@ class BeyondSpecLateralAccelerationFilter(BeyondSpecConstraintFilter):
         if len(slow_points) == 0:
             self._raise_true()
         return beyond_spec_s[slow_points], points_velocity_limits[slow_points]
-
-
-class StaticTrafficFlowControlFilter(ActionSpecFilter):
-    """
-    Checks if there is a StaticTrafficFlowControl between ego and the goal
-    Currently treats every 'StaticTrafficFlowControl' as a stop event.
-    """
-
-    @staticmethod
-    def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState):
-        """
-        Checks if there is a stop_bar between current ego location and the goal
-        :param action_spec:
-        :param behavioral_state:
-        :return:
-        """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_locations = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
-        ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
-        return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
-
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
-                for action_spec in action_specs]
-
-
-class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecConstraintFilter):
-    """
-    Filter for "BeyondSpec" stop sign
-    Assumptions:  Actions where the stop_sign in between location and goal are filtered.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> Union[float, None]:
-        """
-        Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
-        :param target_lane_frenet:
-        :param action_spec_s:
-        :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
-        """
-        traffic_control_s = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
-        traffic_control_s = traffic_control_s[traffic_control_s >= action_spec_s]
-        return traffic_control_s[0] if len(traffic_control_s) > 0 else None
-
-    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
-        """
-        Basically just checks if there are stop signs. Returns the `s` of the first stop-sign
-        :param behavioral_state:
-        :param action_spec:
-        :return: The index of the end point
-        """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
-        if stop_bar_s is None:  # no stop bars
-            self._raise_true()
-        return np.array([stop_bar_s]), np.array([0])
-
-
-class BreakingDistances:
-    """
-    Calculates breaking distances
-    """
-    # TODO: make it singleton, since a few filters use the braking distances
-
-    @staticmethod
-    def create_braking_distances(aggresiveness_level=AggressivenessLevel.STANDARD.value) -> np.array:
-        """
-        Creates distances of all follow_lane CALM braking actions with a0 = 0
-        :return: the actions' distances
-        """
-        # create v0 & vT arrays for all braking actions
-        v0, vT = np.meshgrid(FILTER_V_0_GRID.array, FILTER_V_T_GRID.array, indexing='ij')
-        v0, vT = np.ravel(v0), np.ravel(vT)
-        # calculate distances for braking actions
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggresiveness_level]
-        distances = np.zeros_like(v0)
-        distances[v0 > vT] = BreakingDistances._calc_actions_distances_for_given_weights(w_T, w_J, v0[v0 > vT],
-                                                                                         vT[v0 > vT])
-        return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
-
-    @staticmethod
-    def _calc_actions_distances_for_given_weights(w_T, w_J, v_0: np.array, v_T: np.array) -> np.array:
-        """
-        Calculate the distances for the given actions' weights and scenario params
-        :param w_T: weight of Time component in time-jerk cost function
-        :param w_J: weight of longitudinal jerk component in time-jerk cost function
-        :param v_0: array of initial velocities [m/s]
-        :param v_T: array of desired final velocities [m/s]
-        :return: actions' distances; actions not meeting acceleration limits have infinite distance
-        """
-        # calculate actions' planning time
-        a_0 = np.zeros_like(v_0)
-        T = BreakingDistances.calc_T_s(w_T, w_J, v_0, a_0, v_T)
-
-        # check acceleration limits
-        poly_coefs = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T, T)
-        in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
-
-        # calculate actions' distances, assuming a_0 = 0
-        distances = T * (v_0 + v_T) / 2
-        distances[np.logical_not(in_limits)] = np.inf
-        return distances
-
-    @staticmethod
-    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
-        """
-        given initial & end constraints and time-jerk weights, calculate longitudinal planning time
-        :param w_T: weight of Time component in time-jerk cost function
-        :param w_J: weight of longitudinal jerk component in time-jerk cost function
-        :param v_0: array of initial velocities [m/s]
-        :param a_0: array of initial accelerations [m/s^2]
-        :param v_T: array of final velocities [m/s]
-        :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
-        """
-        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
-        # zero. This degenerate action is valid but can't be solved analytically.
-        non_zero_actions = np.logical_not(np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
-                                                         np.isclose(a_0, 0.0, atol=1e-3, rtol=0)))
-        w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
-        w_J_array = np.full(v_0[non_zero_actions].shape, w_J)
-
-        # Get polynomial coefficients of time-jerk cost function derivative for our settings
-        time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
-            w_T_array, w_J_array, a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions])
-
-        # Find roots of the polynomial in order to get extremum points
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
-
-        # return T as the minimal real root
-        T = np.zeros_like(v_0)
-        T[non_zero_actions] = np.fmin.reduce(cost_real_roots, axis=-1)
-        return T

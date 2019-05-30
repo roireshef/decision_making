@@ -7,7 +7,7 @@ from decision_making.src.messages.scene_static_message import SceneLaneSegmentGe
     SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -470,11 +470,16 @@ class MapUtils:
         assert len(road_segments) == 1
         return road_segments[0]
 
+
+
+
     @staticmethod
-    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame):
+    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> np.array:
         """
-        Returns the adjusted ids of the Static_Traffic_flow_controls on the GFF
-        :return: s coordinates of the traffic flow controls on the GFF
+        Returns a the locations (s coordinates) of Static_Traffic_flow_controls on the GFF
+        The list if ordered from closest traffic flow control to farthest.
+        :param lane_frenet: The GFF on which to retrieve the static flow controls.
+        :return: A list of static flow contronls on the the GFF, ordered from closest traffic flow control to farthest.
         """
         lane_ids = []
         # stations are s coordinates
@@ -484,7 +489,9 @@ class MapUtils:
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
                 stations_s_coordinates.append(static_traffic_flow_control.e_l_station)
-        return lane_frenet.convert_s_from_segments(stations_s_coordinates, lane_ids)
+        frenet_states = np.zeros((len(stations_s_coordinates), 6))
+        frenet_states[:, FS_SX] = sorted(stations_s_coordinates)
+        return lane_frenet.convert_from_segment_states(frenet_states, lane_ids)[:, FS_SX]
 
 
 

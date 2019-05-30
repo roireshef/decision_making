@@ -44,7 +44,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
-        self._segments_ids = segment_ids
+        self._segment_ids = segment_ids
         self._segments_s_start = segments_s_start
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
@@ -57,7 +57,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         pubsub_msg.s_N = SerializationUtils.serialize_non_typed_array(self.N)
         pubsub_msg.s_K = SerializationUtils.serialize_non_typed_array(self.k)
         pubsub_msg.s_KTag = SerializationUtils.serialize_non_typed_array(self.k_tag)
-        pubsub_msg.s_SegmentsID = SerializationUtils.serialize_non_typed_int_array(self._segments_ids)
+        pubsub_msg.s_SegmentsID = SerializationUtils.serialize_non_typed_int_array(self._segment_ids)
         pubsub_msg.s_SegmentsSStart = SerializationUtils.serialize_non_typed_array(self._segments_s_start)
         pubsub_msg.s_SegmentsSOffsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         pubsub_msg.s_SegmentsDS = SerializationUtils.serialize_non_typed_array(self._segments_ds)
@@ -83,15 +83,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         :return: List of frenet sub segments with the starting and ending s in the GFF that correspond to that segment
         """
-        # self._segments_s_offsets is of length len(self._segments_id) + 1, the first len(self._segments_id) correspond
+        # self._segments_s_offsets is of length len(self._segment_ids) + 1, the first len(self._segment_ids) correspond
         # to the initial s of every segment and the last len(self._segments_id) correspond to the final s of every
         # segment
         segments_start = self._segments_s_offsets[:-1]
         segments_end = self._segments_s_offsets[1:]
-        return [FrenetSubSegment(segment_id=self._segments_ids[idx],
+        return [FrenetSubSegment(segment_id=self._segment_ids[idx],
                                  s_start=segments_start[idx],
                                  s_end=segments_end[idx])
-                for idx in range(len(self._segments_ids))]
+                for idx in range(len(self._segment_ids))]
 
     @property
     def ds(self):
@@ -167,7 +167,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     @property
     def segment_ids(self):
-        return self._segments_ids
+        return self._segment_ids
 
     def has_segment_ids(self, segment_ids: np.array) -> np.array:
         """
@@ -179,7 +179,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         if len(segment_ids) == 0:
             return np.array([], dtype=bool)
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
-        return np.isin(segment_ids, self._segments_ids)
+        return np.isin(segment_ids, self._segment_ids)
 
     def convert_s_from_segments(self, frenet_s: np.array, segment_ids: NumpyIndicesArray) -> np.array:
         """
@@ -193,8 +193,6 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         s_start = self._segments_s_start[segment_idxs]
         gff_s = frenet_s + s_offset - s_start
         return gff_s
-
-
 
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: NumpyIndicesArray) -> FrenetStates2D:
         """
@@ -242,7 +240,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         new_frenet_states[..., FS_SX] -= s_offset
         # For points that belong to the first subsegment, the frame bias (initial s) have to be added
         new_frenet_states[..., FS_SX] += s_start
-        return self._segments_ids[segment_idxs], new_frenet_states
+        return self._segment_ids[segment_idxs], new_frenet_states
 
     def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
         """
@@ -259,7 +257,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :param segment_ids:
         :return:
         """
-        return npi.indices(self._segments_ids, segment_ids)
+        return npi.indices(self._segment_ids, segment_ids)
 
     def _get_segment_idxs_from_s(self, s_values: np.ndarray):
         """

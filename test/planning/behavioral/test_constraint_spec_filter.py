@@ -6,6 +6,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank i
 
 class DummyConstraintSpecFilter(ConstraintSpecFilter):
     def __init__(self, constraint, points):
+        super(DummyConstraintSpecFilter, self).__init__(False)
         self._constraint = constraint
         self._points = points
 
