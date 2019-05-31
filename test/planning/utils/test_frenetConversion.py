@@ -4,15 +4,16 @@ import numpy as np
 from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.messages.scene_static_message import NominalPathPoint
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.static_scene_fixture import scene_static_no_split
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame as DMFrenetSerret2DFrame 
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_no_split
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame as DMFrenetSerret2DFrame
 
-def test_frenetConversion_errors(scene_static_no_split):
-    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)  
-    
+
+def test_frenetConversion_errors(scene_static_pg_no_split):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
+
     road_ids = MapUtils.get_road_segment_ids()
     print(road_ids)
     for road_id in road_ids:
