@@ -127,7 +127,7 @@ def test_werlingPlanner_toyScenario_noException():
 
 
 # remove this skip if you want to run the test
-@pytest.mark.skip(reason="takes too long.")
+# @pytest.mark.skip(reason="takes too long.")
 def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     """
     The route is set to route_points by calling to RouteFixture.get_route(). Currently it is a straight line.
@@ -148,7 +148,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     v0 = 6  # start velocity
     vT = 10  # end velocity
 
-    for test_idx in range(0, 49):
+    for test_idx in range(0, 1):
 
         reference_route_latitude = 3 * lane_width / 2
         start_ego_lat = lane_width / 2
@@ -185,7 +185,8 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         # run Werling planner
         planner = WerlingPlanner(logger, predictor)
         _, ctrajectories, costs = planner.plan(state=state, reference_route=frenet,
-                                               goal=goal, T_target_horizon=T, cost_params=cost_params)
+                                               goal=goal, T_target_horizon=T, T_trajectory_end_horizon=T,
+                                               cost_params = cost_params)
 
         time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + \
                        state.ego_state.timestamp_in_sec

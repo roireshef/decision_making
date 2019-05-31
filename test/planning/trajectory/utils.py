@@ -89,7 +89,7 @@ class PlottableSigmoidBoxObstacle:
         self.margin = margin
         self.H_inv = np.zeros((len(poses), 3, 3))
         for pose_ind in range(len(poses)):
-            H = CartesianFrame.homo_matrix_2d(poses[pose_ind][C_YAW], poses[pose_ind][:C_YAW])
+            H = CartesianFrame.homo_matrix_2d_rotation_translation(poses[pose_ind][C_YAW], poses[pose_ind][:C_YAW])
             self.H_inv[pose_ind] = np.linalg.inv(H).transpose()
 
     def plot(self, plt):
