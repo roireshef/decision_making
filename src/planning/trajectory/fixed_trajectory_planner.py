@@ -14,7 +14,7 @@ from decision_making.src.planning.types import C_V, \
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 
 
 class FixedSamplableTrajectory(SamplableTrajectory):

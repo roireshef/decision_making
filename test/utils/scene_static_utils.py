@@ -4,7 +4,7 @@ from decision_making.src.messages.scene_static_message import SceneRoadSegment, 
     SceneLaneSegmentBase, SceneLaneSegmentGeometry, LaneSegmentConnectivity, ManeuverType, MapLaneMarkerType, BoundaryPoint
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.types import FP_SX, FP_DX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 from typing import List
 
 import numpy as np
