@@ -147,7 +147,7 @@ TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.0
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.5
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
@@ -164,17 +164,14 @@ SPLINE_POINT_DEVIATION = 0.0001
 # [sec] Time-Resolution for planning
 WERLING_TIME_RESOLUTION = 0.1
 
-# [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = 0, 0
-
-# [m] Range for grid search in werling planner (long. velocity)
-SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
+# [m] Range for grid search in werling planner (long. planning time)
+T_S_OFFSET_MIN, T_S_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
 DX_OFFSET_MIN, DX_OFFSET_MAX = 0, 0
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 1, 1, 1
+T_S_STEPS, DX_STEPS = 3, 1
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 1

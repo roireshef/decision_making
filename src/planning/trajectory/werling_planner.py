@@ -6,19 +6,17 @@ import numpy as np
 import rte.python.profiler as prof
 
 from decision_making.src.exceptions import CartesianLimitsViolated
-from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
-    SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
+from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, T_S_STEPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
-from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
-    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, \
-    FrenetState2D, C_A, C_K
+from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, FS_SA, FS_SX, FS_DX, LIMIT_MAX, \
+    CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -55,26 +53,20 @@ class WerlingPlanner(TrajectoryPlanner):
         # define constraints for the terminal (goal) state
         goal_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(goal)
 
-        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
-                                       (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
-                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], reference_route.s_max)),
-                               SX_STEPS)
+        is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
-        sv_range = np.linspace(
-            np.max((SV_OFFSET_MIN + goal_frenet_state[FS_SV], cost_params.velocity_limits[LIMIT_MIN])),
-            np.min((SV_OFFSET_MAX + goal_frenet_state[FS_SV], cost_params.velocity_limits[LIMIT_MAX])),
-            SV_STEPS)
+        T_s_step = 2  # TODO: calculate T_s_step
+        T_s_grid = T_target_horizon + T_s_step * np.arange(T_S_STEPS if is_target_ahead else 1)
 
+        sx_range = goal_frenet_state[FS_SX] + goal_frenet_state[FS_SV] * (T_s_grid - T_target_horizon)
         dx_range = np.linspace(DX_OFFSET_MIN + goal_frenet_state[FS_DX],
                                DX_OFFSET_MAX + goal_frenet_state[FS_DX],
                                DX_STEPS)
 
-        fconstraints_tT = FrenetConstraints(sx=sx_range, sv=sv_range, sa=goal_frenet_state[FS_SA],
+        fconstraints_tT = FrenetConstraints(sx=sx_range, sv=goal_frenet_state[FS_SV], sa=goal_frenet_state[FS_SA],
                                             dx=dx_range, dv=goal_frenet_state[FS_DV], da=goal_frenet_state[FS_DA])
 
-        is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
-
-        planning_horizon = max(T_trajectory_end_horizon, T_target_horizon + 4 * is_target_ahead)
+        planning_horizon = max(T_trajectory_end_horizon, T_s_grid[-1])
 
         assert planning_horizon >= self.dt + EPS, 'planning_horizon (=%f) is too short and is less than one trajectory' \
                                                   ' timestamp (=%f)' % (planning_horizon, self.dt)
@@ -96,8 +88,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
             # create a grid on T_d (lateral movement time-grid)
             T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_target_horizon, lower_bound_T_d)
-
-            T_s_grid = np.arange(T_target_horizon, planning_horizon + EPS, 2)
 
             # solve problem in frenet-frame
             ftrajectories_optimization, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(
@@ -287,7 +277,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints,
-                            T_s_grid: np.array, T_d_vals: np.array, dt: float, T_trajectory_end_horizon) -> \
+                            T_s_grid: np.array, T_d_vals: np.array, dt: float, T_trajectory_end_horizon: float) -> \
             Tuple[FrenetTrajectories2D, np.ndarray, np.ndarray]:
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
@@ -314,11 +304,12 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty(shape=(0, max_time_samples_s, 3))
         predictor = RoadFollowingPredictor(Logger("Werling"))
 
-        for T_s in T_s_grid:
+        for T_s_idx, T_s in enumerate(T_s_grid):
             time_samples_s = np.arange(0, T_s + EPS, dt)
 
             # Define constraints
-            constraints_s = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
+            end_constraint_s = fconst_t.get_grid_s()[T_s_idx:T_s_idx+1]
+            constraints_s = np.concatenate((fconst_0.get_grid_s(), end_constraint_s), axis=1)
             constraints_d = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
 
             # solve for dimension s
@@ -331,7 +322,7 @@ class WerlingPlanner(TrajectoryPlanner):
             # velocity prediction starting from the end constraint of s, rather than from the last trajectory point
             if T_s < T_trajectory_end_horizon:  # add padding
                 time_samples = np.arange(Math.ceil_to_step(T_s, dt) - T_s, T_trajectory_end_horizon - T_s + EPS, dt)
-                extrapolated_fstates_s = predictor.predict_1d_frenet_states(fconst_t.get_grid_s(), time_samples)
+                extrapolated_fstates_s = predictor.predict_1d_frenet_states(end_constraint_s, time_samples)
                 partial_solutions_s = np.concatenate((partial_solutions_s, extrapolated_fstates_s), axis=1)
 
             # Extrapolate longitudinal solutions (dimension s) to the size of the maximal T_s_grid
