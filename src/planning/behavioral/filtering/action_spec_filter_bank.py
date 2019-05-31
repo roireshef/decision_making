@@ -19,6 +19,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from typing import List
 
 
@@ -279,7 +280,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
 
     def __init__(self):
         super(BeyondSpecSpeedLimitFilter, self).__init__(extend_short_action_specs=True)
-        self.distances = BrakingDistances.create_braking_distances()
+        self.distances = BrakingDistances.create_braking_distances(aggresiveness_level=AggressivenessLevel.STANDARD)
 
     def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> (
     int, float):
@@ -299,7 +300,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
             FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
         max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
-        beyond_spec_range = target_lane_frenet._get_closest_index_on_frame(np.array([action_spec.s + 1, max_relevant_s]))[0]
+        beyond_spec_range = target_lane_frenet._get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0]
         # get s for all points in the range
         points_s = target_lane_frenet.get_s_from_index_on_frame(
             np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)

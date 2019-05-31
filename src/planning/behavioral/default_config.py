@@ -29,5 +29,6 @@ DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone()
                                                              FilterForSafetyTowardsTargetVehicle(),
                                                              StaticTrafficFlowControlFilter(),
                                                              BeyondSpecStaticTrafficFlowControlFilter(),
-                                                             BeyondSpecSpeedLimitFilter()],
+                                                             BeyondSpecSpeedLimitFilter()
+                                                             ],
                                                     logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
