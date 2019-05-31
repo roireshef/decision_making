@@ -1,14 +1,14 @@
-from typing import List
-
 import numpy as np
 import sympy as sp
 from sympy import symbols
 from sympy.matrices import *
+from typing import List
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, VELOCITY_LIMITS, \
     BP_ACTION_T_LIMITS, EPS
 from decision_making.src.planning.behavioral.data_objects import ActionType
+from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
@@ -132,13 +132,19 @@ class QuinticMotionPredicatesCreator:
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints and doesn't get into target vehicle safety zone.
         """
+
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically.
+        # Here we can't find a local minima as the equation is close to a linear line, intersecting in T=0.
+        if QuinticPoly1D.is_tracking_mode(v_0, np.array([v_T]), a_0, np.array([s_T]), T_m)[0]:
+            return True
+
         time_cost_poly_coefs = \
             QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]), np.array([s_T]),
                                                               np.array([T_m]))[0]
-        cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array(
-            [0, BP_ACTION_T_LIMITS[1]]))
+        cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, BP_ACTION_T_LIMITS)
         extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
 
         if len(extremum_T) == 0:
@@ -156,18 +162,32 @@ class QuinticMotionPredicatesCreator:
             v_T, s_T,
             T,
             T_m=T_m)
-        time_res_for_extremum_query = 0.01
+
+        dt = 0.001  # small margin
+
+        velocity_profile_derivative_coefs = QuinticPoly1D.velocity_profile_derivative_coefs(a_0, v_0, v_T, s_T, T, T_m)
+        velocity_roots_reals = Math.find_real_roots_in_limits(velocity_profile_derivative_coefs, np.array(
+            [dt, T-dt]))
+        extremum_vel = v_t_func(velocity_roots_reals[np.isfinite(velocity_roots_reals)])
+
+        acceleration_profile_derivative_coefs = QuinticPoly1D.acceleration_profile_derivative_coefs(a_0, v_0, v_T, s_T, T, T_m)
+        acceleration_roots_reals = Math.find_real_roots_in_limits(acceleration_profile_derivative_coefs, np.array(
+            [dt, T - dt]))
+        extremum_acc = a_t_func(acceleration_roots_reals[np.isfinite(acceleration_roots_reals)])
+
         s_roots_reals = Math.find_real_roots_in_limits(coefs_s_der, np.array(
-            [time_res_for_extremum_query, T - time_res_for_extremum_query]))
+            [dt, T - dt]))
         extremum_delta_s_val = delta_s_t_func(s_roots_reals[np.isfinite(s_roots_reals)])
 
-        t = np.arange(0, T + EPS, time_res_for_extremum_query)
-        min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
-        min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
+        min_v = min(v_0, v_T, min(extremum_vel) if len(extremum_vel) > 0 else VELOCITY_LIMITS[LIMIT_MAX])
+        max_v = max(v_0, v_T, max(extremum_vel) if len(extremum_vel) > 0 else VELOCITY_LIMITS[LIMIT_MIN])
+        min_a = min(a_0, 0, min(extremum_acc) if len(extremum_acc) > 0 else LON_ACC_LIMITS[LIMIT_MAX])
+        max_a = max(a_0, 0, max(extremum_acc) if len(extremum_acc) > 0 else LON_ACC_LIMITS[LIMIT_MIN])
 
-        is_T_in_range = (T <= BP_ACTION_T_LIMITS[1] + EPS)
-        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
-        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
+        is_T_in_range = (T <= BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS)
+        is_vel_in_range = (min_v >= VELOCITY_LIMITS[LIMIT_MIN]) and (max_v <= VELOCITY_LIMITS[LIMIT_MAX])
+        is_acc_in_range = (min_a >= LON_ACC_LIMITS[LIMIT_MIN]) and (max_a <= LON_ACC_LIMITS[LIMIT_MAX])
+
         if action_type == ActionType.FOLLOW_VEHICLE:
             is_dist_safe = np.all(extremum_delta_s_val >= T_safety * v_T)
         elif action_type == ActionType.OVERTAKE_VEHICLE:

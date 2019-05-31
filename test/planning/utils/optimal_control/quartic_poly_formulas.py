@@ -7,6 +7,7 @@ from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, VELOCITY_LIMITS, \
     BP_ACTION_T_LIMITS, EPS
 from decision_making.src.planning.behavioral.data_objects import ActionType
+from decision_making.src.planning.types import LIMIT_MIN
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
@@ -108,12 +109,19 @@ class QuarticMotionPredicatesCreator:
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints.
         """
+
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically.
+        # Here we can't find a local minima as the equation is close to a linear line, intersecting in T=0.
+
+        if QuarticPoly1D.is_tracking_mode(v_0, np.array([v_T]), a_0)[0]:
+            return True
+
         time_cost_poly_coefs = \
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]))[0]
-        cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs,
-                                                          np.array([0, BP_ACTION_T_LIMITS[1]]))
+        cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, BP_ACTION_T_LIMITS)
         extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
 
         if len(extremum_T) == 0:

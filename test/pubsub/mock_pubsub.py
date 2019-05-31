@@ -1,8 +1,8 @@
 from collections import defaultdict
 from logging import Logger
-from typing import Dict, List
 
 from decision_making.src.infra.pubsub import PubSub
+
 
 class PubSubMock(PubSub):
     def __init__(self, logger):
@@ -17,7 +17,7 @@ class PubSubMock(PubSub):
     def __del__(self):
         pass
 
-    def subscribe(self, topic, callback, message_type = None, max_data_samples = 10) -> None:
+    def subscribe(self, topic, callback = None, message_type = None, max_data_samples = 10) -> None:
         """Set a callback on a topic"""
         if callback is not None:
             self.topic_callback_mapping[topic].append(callback)
@@ -45,6 +45,3 @@ class PubSubMock(PubSub):
             return True, self.topic_msg_mapping[topic]
         else:
             return False, None
-
-    def get_latest_samples_list(self, topic, timeout, max_list_length):
-        raise NotImplementedError("Mock does not implement get_latest_samples_list method")

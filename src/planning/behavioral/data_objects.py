@@ -2,6 +2,7 @@ from enum import Enum
 from typing import List
 import numpy as np
 
+from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.types import FrenetState2D
 
 
@@ -61,8 +62,7 @@ class StaticActionRecipe(ActionRecipe):
         self.velocity = velocity
 
     def __str__(self):
-        return 'StaticActionRecipe(type: %s, lane: %s, velocity: %.2f [KM/h], agg: %s)' % \
-               (self.action_type.name, self.relative_lane.name, self.velocity * 3.6, self.aggressiveness.name)
+        return 'StaticActionRecipe: %s' % self.__dict__
 
 
 class DynamicActionRecipe(ActionRecipe):
@@ -75,28 +75,36 @@ class DynamicActionRecipe(ActionRecipe):
         self.relative_lon = relative_lon
 
     def __str__(self):
-        return 'DynamicActionRecipe(type: %s, towards: (%s, %s), agg: %s)' % \
-               (self.action_type.name, self.relative_lane.name, self.relative_lon.name, self.aggressiveness.name)
+        return 'DynamicActionRecipe: %s' % self.__dict__
 
 
 class ActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
-    def __init__(self, t: float, v: float, s: float, d: float, relative_lane: RelativeLane):
+    def __init__(self, t: float, v: float, s: float, d: float, recipe: ActionRecipe):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
         :param v: velocity [m/s]
         :param s: global longitudinal position in Frenet frame [m]
         :param d: global lateral position in Frenet frame [m]
-        :param relative_lane: relative target lane
+        :param recipe: the original recipe that the action space originated from (redundant but stored for efficiency)
         """
         self.t = t
         self.v = v
         self.s = s
         self.d = d
-        self.relative_lane = relative_lane
+        self.recipe = recipe
+
+    @property
+    def relative_lane(self):
+        return self.recipe.relative_lane
+
+    @property
+    def only_padding_mode(self):
+        """ if planning time is shorter than the TP's time resolution, the result will be only padding in the TP"""
+        return self.t < TRAJECTORY_TIME_RESOLUTION
 
     def __str__(self):
         return str({k: str(v) for (k, v) in self.__dict__.items()})

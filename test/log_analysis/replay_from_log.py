@@ -1,10 +1,16 @@
 import sys
+
+from decision_making.paths import Paths
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from typing import Dict
 
 import numpy as np
+import pickle
 
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING, PG_PICKLE_FILE_NAME
 from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -16,12 +22,11 @@ from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIER_STRING_BP, \
     STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, DmLogParser
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
-from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
-#LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
 LOG_PATH_FOR_ANALYSIS = '/home/xzjsyy/av_code/spav/logs/AV_Log_dm_main.log'
 TARGET_LOG_TIME = 57906.0
+
 
 # TODO: Remove temporary TP facade. used only to bypass the Lcm Ser/Deser methods
 class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
@@ -33,7 +38,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received state.
         :return: deserialized State
         """
-        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
+        input_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE, timeout=1)
         object_state = ClassSerializer.deserialize(class_type=State, message=input_state)
         return object_state
 
@@ -44,7 +49,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], timeout=1)
+        input_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS, timeout=1)
         object_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=input_params)
         return object_params
 
@@ -56,17 +61,18 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     :param tp_params_serialized: serialized trajectory parameters input message
     :return:
     """
+    scene_static_pg_no_split = pickle.load(open(Paths.get_map_absolute_path_filename(PG_PICKLE_FILE_NAME), 'rb'))
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
 
     # Create PubSub Mock
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
 
     # Publish messages using pubsub mock
-    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state_serialized)
-    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], tp_params_serialized)
+    pubsub.publish(UC_SYSTEM_STATE, state_serialized)
+    pubsub.publish(UC_SYSTEM_TRAJECTORY_PARAMS, tp_params_serialized)
 
     # Initialize TP
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-    MapService.initialize()
     predictor = RoadFollowingPredictor(logger)
     planner = WerlingPlanner(logger, predictor)
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
@@ -136,6 +142,7 @@ def main():
     try:
         execute_tp(state_serialized=tp_state_serialized, tp_params_serialized=tp_params_serialized)
         assert True
+
     except Exception as e:
         assert False
 

@@ -1,13 +1,13 @@
 import itertools
-from abc import abstractmethod
 from collections import defaultdict
+
+from abc import abstractmethod
 from logging import Logger
 from typing import List, Optional, Type
 
 import rte.python.profiler as prof
 from decision_making.src.exceptions import raises
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -42,7 +42,7 @@ class ActionSpace:
         pass
 
     @prof.ProfileFunction()
-    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
+    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         """
         For a given recipe (and a state), returns true if the recipe passes all filters in self._recipe_filtering
         :param action_recipe: recipe to validate
@@ -52,7 +52,7 @@ class ActionSpace:
         return self._recipe_filtering.filter_recipe(action_recipe, behavioral_state)
 
     @prof.ProfileFunction()
-    def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState) -> List[bool]:
+    def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         """
         For a given list of recipes (and a state) - for each recipe, returns true if the recipe passes all filters
         in self._recipe_filtering
@@ -120,12 +120,12 @@ class ActionSpaceContainer(ActionSpace):
         return [action for idx, action in sorted(indexed_action_specs, key=lambda idx_action: idx_action[0])]
 
     @raises(NotImplemented)
-    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
+    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         return self._recipe_handler[action_recipe.__class__].filter_recipe(action_recipe, behavioral_state)
 
     # TODO: figure out how to remove the for loop for better efficiency and stay consistent with ordering
     @raises(NotImplemented)
-    def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
+    def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState):
         grouped_actions = defaultdict(list)
         grouped_idxs = defaultdict(list)
         for idx, recipe in enumerate(action_recipes):

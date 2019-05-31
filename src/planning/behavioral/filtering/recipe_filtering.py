@@ -1,6 +1,7 @@
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe
 from logging import Logger
 from typing import List, Optional
@@ -11,13 +12,13 @@ class RecipeFilter:
     """
     Base class for filter implementations that act on ActionRecipe and returns a boolean value that corresponds to
     whether the ActionRecipe satisfies the constraint in the filter. All filters have to get as input ActionRecipe
-    (or one of its children) and  BehavioralState (or one of its children) even if they don't actually use them.
+    (or one of its children) and  BehavioralGridState (or one of its children) even if they don't actually use them.
     """
 
     @abstractmethod
-    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralState) -> List[bool]:
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         """
-        Filters an ActionRecipe based on the state of ego and nearby vehicles (BehavioralState).
+        Filters an ActionRecipe based on the state of ego and nearby vehicles (BehavioralGridState).
         :param recipes: an object representing the semantic action to be considered
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :return: A boolean result, True if recipe is valid and false if filtered
@@ -38,9 +39,9 @@ class RecipeFiltering:
         self._filters: List[RecipeFilter] = filters or []
         self.logger = logger
 
-    def filter_recipes(self, recipes: List[ActionRecipe], behavioral_state: BehavioralState) -> List[bool]:
+    def filter_recipes(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         """
-        Filters a list of 'ActionRecipe's based on the state of ego and nearby vehicles (BehavioralState).
+        Filters a list of 'ActionRecipe's based on the state of ego and nearby vehicles (BehavioralGridState).
         :param recipes: A list of objects representing the semantic actions to be considered
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :return: A boolean List , True where the respective recipe is valid and false where it is filtered
@@ -51,9 +52,9 @@ class RecipeFiltering:
             recipes = [recipes[i] if mask[i] else None for i in range(len(recipes))]
         return mask
 
-    def filter_recipe(self, recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
+    def filter_recipe(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         """
-        Filters an 'ActionRecipe's based on the state of ego and nearby vehicles (BehavioralState).
+        Filters an 'ActionRecipe's based on the state of ego and nearby vehicles (BehavioralGridState).
         :param recipe: An object representing the semantic actions to be considered
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :return: A boolean , True where the recipe is valid and false where it is filtered

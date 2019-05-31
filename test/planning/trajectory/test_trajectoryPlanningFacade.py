@@ -12,10 +12,9 @@ from decision_making.test.planning.trajectory.mock_trajectory_planning_facade im
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from rte.ctm.pythonwrappers.src.FrenetSerret2DFrame import FrenetSerret2DFrame
 from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 from decision_making.test.planning.custom_fixtures import state
 import numpy as np
-
-from decision_making.test.planning.custom_fixtures import short_testable_map_api
 
 
 def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTrue():
@@ -28,7 +27,7 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
     poly_d_coefs = np.array([5.58098455e-01, -2.05184044e+00, 1.97018719e+00,
                              3.80399214e-08, -1.14119374e-08, 5.00000000e-01])
 
-    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5,frenet, poly_s_coefs, poly_d_coefs)
+    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
@@ -51,7 +50,7 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
     poly_d_coefs = np.array([5.58098455e-01, -2.05184044e+00, 1.97018719e+00,
                              3.80399214e-08, -1.14119374e-08, 5.00000000e-01])
 
-    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
+    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
@@ -75,7 +74,7 @@ def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
     poly_d_coefs = np.array([5.58098455e-01, -2.05184044e+00, 1.97018719e+00,
                              3.80399214e-08, -1.14119374e-08, 5.00000000e-01])
 
-    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
+    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
@@ -105,7 +104,7 @@ def test_prepareVisualizationMsg_withObjects_returnsValidMsg(state):
     predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
     msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
 
-    assert len(msg.s_Data.as_actors_predictions) == len(state.dynamic_objects)
+    assert len(msg.data.as_actors_predictions) == len(state.dynamic_objects)
 
 
 # def test_prepareVisualizationMsg_withoutObjects_returnsValidMsg(state):
@@ -121,4 +120,4 @@ def test_prepareVisualizationMsg_withObjects_returnsValidMsg(state):
 #     predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
 #     msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
 
-#     assert len(msg.s_Data.as_actors_predictions) == len(state.dynamic_objects)
+    assert len(msg.data.as_actors_predictions) == len(state.dynamic_objects)
