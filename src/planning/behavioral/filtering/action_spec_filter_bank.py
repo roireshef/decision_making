@@ -280,7 +280,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
 
     def __init__(self):
         super(BeyondSpecSpeedLimitFilter, self).__init__(extend_short_action_specs=True)
-        self.distances = BrakingDistances.create_braking_distances(aggresiveness_level=AggressivenessLevel.STANDARD)
+        self.distances = BrakingDistances.create_braking_distances(aggresiveness_level=AggressivenessLevel.CALM.value)
 
     def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> (
     int, float):
