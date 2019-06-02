@@ -13,7 +13,7 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
-from decision_making.src.planning.types import C_V
+from decision_making.src.planning.types import FS_SV, C_V
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
@@ -113,6 +113,7 @@ class StateModule(DmModule):
                              timestamp=timestamp,
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
+                             map_state_on_host_lane=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                              confidence=1.0)
 
@@ -150,6 +151,7 @@ class StateModule(DmModule):
                                     timestamp=timestamp,
                                     cartesian_state=cartesian_state,
                                     map_state=map_state if map_state.lane_id > 0 else None,
+                                    map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
                                     size=size,
                                     confidence=confidence)
 
