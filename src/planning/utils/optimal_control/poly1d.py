@@ -188,6 +188,31 @@ class Poly1D:
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
 
+    @classmethod
+    def are_jerks_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, jerk_limits: Limits) -> np.ndarray:
+        """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on the jerk values, return True if restrictions are met,
+        False otherwise
+        :param poly_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param jerk_limits: minimal and maximal allowed values of jerks [m/sec^3]
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
+        return cls.are_derivatives_in_limits(degree=3, poly_coefs=poly_coefs, T_vals=T_vals, limits=jerk_limits)
+
+    @classmethod
+    def is_jerks_in_limits(cls, poly_coefs: np.ndarray, T: float, jerk_limits: Limits) -> bool:
+        """
+        given coefficients vector of a polynomial x(t), and restrictions on the jerk values,
+        return True if restrictions are met, False otherwise
+        :param poly_coefs: 1D numpy array of x(t)'s coefficients
+        :param T: planning time horizon [sec]
+        :param jerk_limits: minimal and maximal allowed values of jerks [m/sec^3]
+        :return: True if restrictions are met, False otherwise
+        """
+        return cls.are_jerks_in_limits(np.array([poly_coefs]), np.array([T]), jerk_limits)[0]
+
 
 class QuarticPoly1D(Poly1D):
     @staticmethod

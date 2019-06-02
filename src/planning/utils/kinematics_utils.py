@@ -1,6 +1,6 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS
+    LON_ACC_LIMITS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.global_constants import MAX_CURVATURE
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
@@ -40,7 +40,9 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
-                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits) -> np.ndarray:
+                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
+                                   lon_jerk_limits: Limits,
+                                   curvature_limits: Limits) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -48,9 +50,12 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
+        :param lon_jerk_limits: longitudinal jerk limits to test for in cartesian frame [m/sec^3]
+        :param curvature_limits: curvature limits to test for in cartesian frame [1/m]
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
+        lon_jerk = np.hstack((np.zeros((lon_acceleration.shape[0], 1)), np.diff(lon_acceleration)))/TRAJECTORY_TIME_RESOLUTION
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
         curvature = ctrajectories[:, :, C_K]
@@ -59,13 +64,14 @@ class KinematicUtils:
             NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
-            NumpyUtils.is_in_limits(curvature, np.array([-MAX_CURVATURE, MAX_CURVATURE])), axis=1)
+            NumpyUtils.is_in_limits(lon_jerk, lon_jerk_limits) &
+            NumpyUtils.is_in_limits(curvature, curvature_limits), axis=1)
 
         return conforms
 
     @staticmethod
-    # TODO: add jerk to filter?
     def filter_by_longitudinal_frenet_limits(poly_coefs_s: np.ndarray, T_s_vals: np.ndarray,
+                                             lon_jerk_limits: Limits,
                                              lon_acceleration_limits: Limits,
                                              lon_velocity_limits: Limits,
                                              reference_route_limits: Limits) -> np.ndarray:
@@ -75,14 +81,17 @@ class KinematicUtils:
         :param poly_coefs_s: 2D matrix of solutions (1st dim), each one is a vector of coefficients of a longitudinal
         s(t) polynomial (2nd dim), with t in the range [0, T] (T specified in T_s_vals)
         :param T_s_vals: 1d numpy array - the T for the polynomials in <poly_coefs_s>
-        :param lon_acceleration_limits: acceleration limits to test the trajectories keep
-        :param lon_velocity_limits: velocity limits to test the trajectories keep
+        :param lon_jerk_limits: jerk limits trajectories should be within
+        :param lon_acceleration_limits: acceleration limits trajectories should be within
+        :param lon_velocity_limits: velocity limits trajectories should be within
         :param reference_route_limits: the minimal and maximal progress (s value) on the reference route used
         in the frenet frame used for planning
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
-        # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
+        # validate the progress on the reference-route curve doesn't extrapolate, velocity is non-negative,
+        # and acceleration and jerk are within reasonable limits.
         conforms = \
+            QuinticPoly1D.are_jerks_in_limits(poly_coefs_s, T_s_vals, lon_jerk_limits) & \
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) & \
             QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) & \
             QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits)
