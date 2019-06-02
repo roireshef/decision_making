@@ -164,7 +164,7 @@ class TrajectoryPlannerCosts:
         :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
         """
         lon_jerks, lat_jerks = Jerk.compute_jerks(ctrajectories, dt)
-        jerk_costs = params.lon_jerk_cost_weight * lon_jerks + params.lat_jerk_cost_weight * lat_jerks
+        jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
         return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
 

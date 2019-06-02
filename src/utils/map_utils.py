@@ -327,7 +327,7 @@ class MapUtils:
                 break
 
             next_road_idx_on_plan = current_road_idx_on_plan + 1
-            if next_road_idx_on_plan > len(navigation_plan.s_RoadIDs) - 1:
+            if next_road_idx_on_plan > len(navigation_plan.road_ids) - 1:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
                                              "current_segment_end_s=%f lookahead_distance=%f" %
                                              (navigation_plan, lookahead_distance - cumulative_distance,
@@ -335,7 +335,7 @@ class MapUtils:
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
             # road segment. This assumes a single correct downstream segment.
-            next_road_segment_id_on_plan = navigation_plan.s_RoadIDs[next_road_idx_on_plan]
+            next_road_segment_id_on_plan = navigation_plan.road_ids[next_road_idx_on_plan]
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
 
             if len(downstream_lanes_ids) == 0:

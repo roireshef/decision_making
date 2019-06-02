@@ -235,8 +235,8 @@ class CostBasedBehavioralPlanner:
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
-                                           lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
-                                           lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
+                                           lon_jerk_cost=LON_JERK_COST_WEIGHT,
+                                           lat_jerk_cost=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)

@@ -7,7 +7,7 @@ import numpy as np
 import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
 
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
@@ -70,7 +70,7 @@ class StateModule(DmModule):
 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, postprocessed_state)
 
-                self.pubsub.publish(UC_SYSTEM_STATE, postprocessed_state.serialize())
+                self.pubsub.publish(UC_SYSTEM_STATE_LCM, postprocessed_state.serialize())
 
         except Exception:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
@@ -139,6 +139,8 @@ class StateModule(DmModule):
             # TODO: Handle multiple hypotheses
             cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
             map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
+            # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
+            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
                               obj_loc.s_bounding_box.e_l_width,
                               obj_loc.s_bounding_box.e_l_height)

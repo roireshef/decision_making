@@ -1,10 +1,10 @@
 import copy
 import numpy as np
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicObject import TsSYSDynamicObject
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_EgoState import TsSYSEgoState
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectSize import TsSYSObjectSize
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_OccupancyState import TsSYSOccupancyState
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_State import TsSYSState
+from common_data.interface.Rte_Types.python.sub_structures.LcmDynamicObject import LcmDynamicObject
+from common_data.interface.Rte_Types.python.sub_structures.LcmEgoState import LcmEgoState
+from common_data.interface.Rte_Types.python.sub_structures.LcmObjectSize import LcmObjectSize
+from common_data.interface.Rte_Types.python.sub_structures.LcmOccupancyState import LcmOccupancyState
+from common_data.interface.Rte_Types.python.sub_structures.LcmState import LcmState
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
@@ -30,18 +30,18 @@ class OccupancyState(PUBSUB_MSG_IMPL):
         self.free_space = np.copy(free_space)
         self.confidence = np.copy(confidence)
 
-    def serialize(self) ->TsSYSOccupancyState:
-        pubsub_msg = TsSYSOccupancyState()
-        pubsub_msg.e_Cnt_Timestamp = self.timestamp
-        pubsub_msg.s_FreeSpace = SerializationUtils.serialize_non_typed_small_array(self.free_space)
-        pubsub_msg.s_Confidence = SerializationUtils.serialize_non_typed_small_array(self.confidence)
+    def serialize(self) ->LcmOccupancyState:
+        pubsub_msg = LcmOccupancyState()
+        pubsub_msg.timestamp = self.timestamp
+        pubsub_msg.free_space = SerializationUtils.serialize_non_typed_small_array(self.free_space)
+        pubsub_msg.confidence = SerializationUtils.serialize_non_typed_small_array(self.confidence)
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSOccupancyState) -> ():
-        return cls(pubsubMsg.e_Cnt_Timestamp,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FreeSpace),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_Confidence))
+    def deserialize(cls, pubsubMsg: LcmOccupancyState) -> ():
+        return cls(pubsubMsg.timestamp,
+                   SerializationUtils.deserialize_any_array(pubsubMsg.free_space),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.confidence))
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
@@ -55,8 +55,8 @@ class ObjectSize(PUBSUB_MSG_IMPL):
         self.height = height
 
     def serialize(self):
-        # type: () -> TsSYSObjectSize
-        pubsub_msg = TsSYSObjectSize()
+        # type: () -> LcmObjectSize
+        pubsub_msg = LcmObjectSize()
         pubsub_msg.e_l_Length = self.length
         pubsub_msg.e_l_Width = self.width
         pubsub_msg.e_l_Height = self.height
@@ -64,8 +64,8 @@ class ObjectSize(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg):
-        # type: (TsSYSObjectSize) -> ObjectSize
-        return cls(pubsubMsg.e_l_Length, pubsubMsg.e_l_Width, pubsubMsg.e_l_Height)
+        # type: (LcmObjectSize) -> ObjectSize
+        return cls(pubsubMsg.length, pubsubMsg.width, pubsubMsg.height)
 
 
 class DynamicObject(PUBSUB_MSG_IMPL):
@@ -209,24 +209,24 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                                           self.size, self.confidence)
 
     def serialize(self):
-        # type: () -> TsSYSDynamicObject
-        pubsub_msg = TsSYSDynamicObject()
-        pubsub_msg.e_i_ObjectID = self.obj_id
-        pubsub_msg.e_Cnt_Timestamp = self.timestamp
-        pubsub_msg.a_e_CachedCartesianState = self.cartesian_state
-        pubsub_msg.s_CachedMapState = self._cached_map_state.serialize()
-        pubsub_msg.s_Size = self.size.serialize()
-        pubsub_msg.e_r_Confidence = self.confidence
+        # type: () -> LcmDynamicObject
+        pubsub_msg = LcmDynamicObject()
+        pubsub_msg.obj_id = self.obj_id
+        pubsub_msg.timestamp = self.timestamp
+        pubsub_msg._cached_cartesian_state = self.cartesian_state
+        pubsub_msg._cached_map_state = self._cached_map_state.serialize()
+        pubsub_msg.size = self.size.serialize()
+        pubsub_msg.confidence = self.confidence
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg):
-        # type: (TsSYSDynamicObject) -> DynamicObject
-        return cls(pubsubMsg.e_i_ObjectID, pubsubMsg.e_Cnt_Timestamp
-                   , pubsubMsg.a_e_CachedCartesianState
-                   , MapState.deserialize(pubsubMsg.s_CachedMapState) if pubsubMsg.s_CachedMapState.e_i_LaneID > 0 else None
-                   , ObjectSize.deserialize(pubsubMsg.s_Size)
-                   , pubsubMsg.e_r_Confidence)
+        # type: (LcmDynamicObject) -> DynamicObject
+        return cls(pubsubMsg.obj_id, pubsubMsg.timestamp
+                   , pubsubMsg._cached_cartesian_state
+                   , MapState.deserialize(pubsubMsg._cached_map_state) if pubsubMsg._cached_map_state.lane_id > 0 else None
+                   , ObjectSize.deserialize(pubsubMsg.size)
+                   , pubsubMsg.confidence)
 
 
 class EgoState(DynamicObject):
@@ -247,15 +247,15 @@ class EgoState(DynamicObject):
                                              map_state=map_state, size=size, confidence=confidence)
 
     def serialize(self):
-        # type: () -> TsSYSEgoState
-        pubsub_msg = TsSYSEgoState()
-        pubsub_msg.s_DynamicObject = super(self.__class__, self).serialize()
+        # type: () -> LcmEgoState
+        pubsub_msg = LcmEgoState()
+        pubsub_msg.dynamic_obj = super(self.__class__, self).serialize()
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg):
-        # type: (TsSYSEgoState) -> EgoState
-        dyn_obj = DynamicObject.deserialize(pubsubMsg.s_DynamicObject)
+        # type: (LcmEgoState) -> EgoState
+        dyn_obj = DynamicObject.deserialize(pubsubMsg.dynamic_obj)
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
                    , dyn_obj._cached_cartesian_state
                    , dyn_obj._cached_map_state
@@ -268,7 +268,6 @@ class State(PUBSUB_MSG_IMPL):
     occupancy_state = OccupancyState
     dynamic_objects = List[DynamicObject]
     ego_state = EgoState
-    is_sampled = bool
 
     def __init__(self, is_sampled, occupancy_state, dynamic_objects, ego_state):
         # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> None
@@ -296,29 +295,27 @@ class State(PUBSUB_MSG_IMPL):
                      ego_state or self.ego_state)
 
     def serialize(self):
-        # type: () -> TsSYSState
-        pubsub_msg = TsSYSState()
-
-        pubsub_msg.e_b_isSampled = self.is_sampled
-        pubsub_msg.s_OccupancyState = self.occupancy_state.serialize()
+        # type: () -> LcmState
+        pubsub_msg = LcmState()
+        pubsub_msg.is_sampled = self.is_sampled
+        pubsub_msg.occupancy_state = self.occupancy_state.serialize()
         ''' resize the list at once to the right length '''
-        pubsub_msg.e_Cnt_NumOfObjects = len(self.dynamic_objects)
+        pubsub_msg.num_obj = len(self.dynamic_objects)
 
-        for i in range(pubsub_msg.e_Cnt_NumOfObjects):
-            pubsub_msg.s_DynamicObjects[i] = self.dynamic_objects[i].serialize()
-        pubsub_msg.s_EgoState = self.ego_state.serialize()
+        for i in range(pubsub_msg.num_obj):
+            pubsub_msg.dynamic_objects[i] = self.dynamic_objects[i].serialize()
+        pubsub_msg.ego_state = self.ego_state.serialize()
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg):
-        # type: (TsSYSState) -> State
+        # type: (LcmState) -> State
         dynamic_objects = list()
-        for i in range(pubsubMsg.e_Cnt_NumOfObjects):
-            dynamic_objects.append(DynamicObject.deserialize(pubsubMsg.s_DynamicObjects[i]))
-        return cls(pubsubMsg.e_b_isSampled
-                   , OccupancyState.deserialize(pubsubMsg.s_OccupancyState)
+        for i in range(pubsubMsg.num_obj):
+            dynamic_objects.append(DynamicObject.deserialize(pubsubMsg.dynamic_objects[i]))
+        return cls(pubsubMsg.is_sampled, OccupancyState.deserialize(pubsubMsg.occupancy_state)
                    , dynamic_objects
-                   , EgoState.deserialize(pubsubMsg.s_EgoState))
+                   , EgoState.deserialize(pubsubMsg.ego_state))
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod

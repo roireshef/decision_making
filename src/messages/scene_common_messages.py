@@ -1,6 +1,4 @@
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_Header import TsSYSHeader
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_MapOrigin import TsSYSMapOrigin
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_Timestamp import TsSYSTimestamp
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSTimestamp, TsSYSMapOrigin, TsSYSHeader
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
@@ -54,10 +52,11 @@ class MapOrigin(PUBSUB_MSG_IMPL):
     e_l_altitude = float
     s_Timestamp = Timestamp
 
-    def __init__(self, e_phi_latitude: float, e_phi_longitude: float, e_l_altitude: float, s_Timestamp: Timestamp) -> None:
+    def __init__(self, e_phi_latitude, e_phi_longitude, e_l_altitude, s_Timestamp):
         """
         All parameters are in ENU (east-north-up) coordinates, in [m] units
         """
+        # type: (float, float, float, Timestamp) -> None
         self.e_phi_latitude = e_phi_latitude
         self.e_phi_longitude = e_phi_longitude
         self.e_l_altitude = e_l_altitude
@@ -86,7 +85,8 @@ class Header(PUBSUB_MSG_IMPL):
     s_Timestamp = Timestamp
     e_Cnt_version = int
 
-    def __init__(self, e_Cnt_SeqNum : int, s_Timestamp : Timestamp, e_Cnt_version : int) -> None:
+    def __init__(self, e_Cnt_SeqNum, s_Timestamp, e_Cnt_version):
+        # type: (int, Timestamp, int)->None
         """
         Header Information is controlled by Middleware
         :param e_Cnt_SeqNum: Starts from 0 and increments at every update of this data structure
@@ -112,3 +112,4 @@ class Header(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSHeader)->Header
         return cls(pubsubMsg.e_Cnt_SeqNum, Timestamp.deserialize(pubsubMsg.s_Timestamp), pubsubMsg.e_Cnt_version)
+

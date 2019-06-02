@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
+from common_data.interface.Rte_Types.python.sub_structures.LcmFrenetSerret2DFrame import LcmFrenetSerret2DFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
@@ -38,8 +38,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         self._ds = ds
 
     def serialize(self):
-        # type: () -> TsSYSFrenetSerret2DFrame
-        pubsub_msg = TsSYSFrenetSerret2DFrame()
+        # type: () -> LcmFrenetSerret2DFrame
+        pubsub_msg = LcmFrenetSerret2DFrame()
 
         pubsub_msg.s_Points = SerializationUtils.serialize_non_typed_array(self.O)
         pubsub_msg.s_FrenetT = SerializationUtils.serialize_non_typed_array(self.T)
@@ -53,13 +53,13 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg):
-        # type: (TsSYSFrenetSerret2DFrame)->FrenetSerret2DFrame
-        return cls(SerializationUtils.deserialize_any_array(pubsubMsg.s_Points),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FrenetT),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FrenetN),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FrenetK),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FrenetKTag),
-                   pubsubMsg.e_l_DS)
+        # type: (LcmFrenetSerret2DFrame)->FrenetSerret2DFrame
+        return cls(SerializationUtils.deserialize_any_array(pubsubMsg.points),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.T),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.N),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.k),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.k_tag),
+                   pubsubMsg.ds)
 
     @property
     def ds(self):

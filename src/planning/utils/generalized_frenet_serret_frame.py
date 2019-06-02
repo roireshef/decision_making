@@ -3,8 +3,8 @@ from typing import List
 import numpy as np
 import numpy_indexed as npi
 
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSubsegment import TsSYSFrenetSubsegment
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_GeneralizedFrenetSerretFrame import TsSYSGeneralizedFrenetSerretFrame
+from common_data.interface.Rte_Types.python.sub_structures.LcmFrenetSubsegment import LcmFrenetSubsegment
+from common_data.interface.Rte_Types.python.sub_structures.LcmGeneralizedFrenetSerretFrame import LcmGeneralizedFrenetSerretFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
@@ -27,16 +27,16 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
         self.e_i_SStart = s_start
         self.e_i_SEnd = s_end
 
-    def serialize(self) -> TsSYSFrenetSubsegment:
-        pubsub_msg = TsSYSFrenetSubsegment()
-        pubsub_msg.e_i_SegmentID = self.e_i_SegmentID
-        pubsub_msg.e_i_SStart = self.e_i_SStart
-        pubsub_msg.e_i_SEnd = self.e_i_SEnd
+    def serialize(self) -> LcmFrenetSubsegment:
+        pubsub_msg = LcmFrenetSubsegment()
+        pubsub_msg.segment_id = self.e_i_SegmentID
+        pubsub_msg.s_start = self.e_i_SStart
+        pubsub_msg.s_end = self.e_i_SEnd
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSFrenetSubsegment):
-        return cls(pubsubMsg.e_i_SegmentID, pubsubMsg.e_i_SStart, pubsubMsg.e_i_SEnd)
+    def deserialize(cls, pubsubMsg: LcmFrenetSubsegment):
+        return cls(pubsubMsg.segment_id, pubsubMsg.s_start, pubsubMsg.s_end)
 
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
@@ -50,33 +50,33 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
 
-    def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
-        pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
-        pubsub_msg.s_Points = SerializationUtils.serialize_non_typed_array(self.O)
-        pubsub_msg.s_T = SerializationUtils.serialize_non_typed_array(self.T)
-        pubsub_msg.s_N = SerializationUtils.serialize_non_typed_array(self.N)
-        pubsub_msg.s_K = SerializationUtils.serialize_non_typed_array(self.k)
-        pubsub_msg.s_KTag = SerializationUtils.serialize_non_typed_array(self.k_tag)
-        pubsub_msg.s_SegmentsID = SerializationUtils.serialize_non_typed_int_array(self._segments_id)
-        pubsub_msg.s_SegmentsSStart = SerializationUtils.serialize_non_typed_array(self._segments_s_start)
-        pubsub_msg.s_SegmentsSOffsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
-        pubsub_msg.s_SegmentsDS = SerializationUtils.serialize_non_typed_array(self._segments_ds)
-        pubsub_msg.s_SegmentsPointOffset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
+    def serialize(self) -> LcmGeneralizedFrenetSerretFrame:
+        pubsub_msg = LcmGeneralizedFrenetSerretFrame()
+        pubsub_msg.points = SerializationUtils.serialize_non_typed_array(self.O)
+        pubsub_msg.T = SerializationUtils.serialize_non_typed_array(self.T)
+        pubsub_msg.N = SerializationUtils.serialize_non_typed_array(self.N)
+        pubsub_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
+        pubsub_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
+        pubsub_msg.segments_id = SerializationUtils.serialize_non_typed_int_array(self._segments_id)
+        pubsub_msg.segments_s_start = SerializationUtils.serialize_non_typed_array(self._segments_s_start)
+        pubsub_msg.segments_s_offsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
+        pubsub_msg.segments_ds = SerializationUtils.serialize_non_typed_array(self._segments_ds)
+        pubsub_msg.segments_point_offset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
 
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSGeneralizedFrenetSerretFrame):
-        return cls(SerializationUtils.deserialize_any_array(pubsubMsg.s_Points),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_T),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_N),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_K),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_KTag),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsID),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsSStart),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsSOffsets),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsDS),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsPointOffset))
+    def deserialize(cls, pubsubMsg: LcmGeneralizedFrenetSerretFrame):
+        return cls(SerializationUtils.deserialize_any_array(pubsubMsg.points),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.T),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.N),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.k),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.k_tag),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.segments_id),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.segments_s_start),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.segments_s_offsets),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.segments_ds),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.segments_point_offset))
 
     @property
     def segments(self) -> List[FrenetSubSegment]:
