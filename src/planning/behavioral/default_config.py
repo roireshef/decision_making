@@ -5,7 +5,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank i
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as RecipeFilterIfNone, \
     FilterActionsTowardsNonOccupiedCells, FilterActionsTowardBackAndParallelCells, FilterOvertakeActions, \
-    FilterIfNoLane, FilterLaneChanging, FilterActionsWithTooFastTarget, FilterTooFastStaticActions
+    FilterIfNoLane, FilterLaneChanging
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -13,14 +13,12 @@ from rte.python.logger.AV_logger import AV_Logger
 DEFAULT_STATIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                            FilterIfNoLane(),
                                                            FilterLaneChanging(),
-                                                           FilterTooFastStaticActions(),
                                                            ], logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                             FilterActionsTowardsNonOccupiedCells(),
                                                             FilterActionsTowardBackAndParallelCells(),
                                                             FilterOvertakeActions(),
                                                             FilterLaneChanging(),
-                                                            FilterActionsWithTooFastTarget(),
                                                             ],
                                                    logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone(),

@@ -1,10 +1,8 @@
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, EPS
 from typing import List
-import numpy as np
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe
+    RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.utils.map_utils import MapUtils
 
@@ -12,6 +10,12 @@ from decision_making.src.utils.map_utils import MapUtils
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [(recipe.relative_lane, recipe.relative_lon) in behavioral_state.road_occupancy_grid
+                if recipe is not None else False for recipe in recipes]
+
+
+class FilterActionsTowardsOtherLanes(RecipeFilter):
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.relative_lane == RelativeLane.SAME_LANE
                 if recipe is not None else False for recipe in recipes]
 
 
@@ -30,20 +34,6 @@ class FilterActionsTowardBackAndParallelCells(RecipeFilter):
 class FilterOvertakeActions(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [recipe.action_type != ActionType.OVERTAKE_VEHICLE
-                if recipe is not None else False for recipe in recipes]
-
-
-class FilterActionsWithTooFastTarget(RecipeFilter):
-    def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [behavioral_state.road_occupancy_grid[(recipe.relative_lane, recipe.relative_lon)][0].
-                                  dynamic_object.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-                if (recipe and behavioral_state) is not None else False
-                for recipe in recipes]
-
-
-class FilterTooFastStaticActions(RecipeFilter):
-    def filter(self, recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + EPS
                 if recipe is not None else False for recipe in recipes]
 
 

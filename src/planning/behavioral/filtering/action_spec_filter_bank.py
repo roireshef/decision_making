@@ -106,9 +106,6 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         # to prevent inverse of singular matrices (T=0) check safety only for non-tracking actions
         # padding actions are safe
         non_padding_specs_idx = np.array([i for i, spec in enumerate(action_specs) if not spec.only_padding_mode], dtype=int)
-        if non_padding_specs_idx.shape[0] == 0:
-            return [True] * len(action_specs)
-
         non_padding_specs = np.array(action_specs)[non_padding_specs_idx]
 
         # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
