@@ -16,6 +16,12 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
 
+NAVIGATION_PLAN = np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
+                            51360, 228028, 87622, 228007, 87660, 87744, 9893,
+                            9894, 87740, 77398, 87741, 25969, 10068, 87211, 10320,
+                            10322, 228029, 87739, 40953, 10073, 10066, 87732, 43516,
+                            87770, 228034, 87996, 228037, 10536, 88088, 228039, 88192,
+                            10519, 10432, 3537])
 
 class MapUtils:
 
@@ -285,22 +291,14 @@ class MapUtils:
         :return: generalized Frenet frame for the given route part
         """
         # find the starting point
-        route_plan_road_segment_ids = route_plan.s_Data.a_i_road_segment_ids
         if starting_lon <= 0:  # the starting point is behind lane_id
             lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
             init_lane_id = lane_ids[-1]
-            # add road ids from behind the ego vehicle to the route_plan road segment list:
-            ego_road_id = MapUtils.get_road_segment_id_from_lane_id(lane_id)
-            ego_road_index = np.argwhere(route_plan_road_segment_ids == ego_road_id)[0][0]
-            route_plan_road_segment_ids = route_plan_road_segment_ids[ego_road_index:]
-            for lane_seg_id in lane_ids[1:]:
-                road_seg_id = MapUtils.get_road_segment_id_from_lane_id(lane_seg_id)
-                route_plan_road_segment_ids = np.insert(route_plan_road_segment_ids, 0, road_seg_id)
         else:  # the starting point is within or after lane_id
             init_lane_id, init_lon = lane_id, starting_lon
 
         # get the full lanes path
-        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, route_plan_road_segment_ids)
+        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, NAVIGATION_PLAN)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
         # create GFF

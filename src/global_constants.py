@@ -186,7 +186,7 @@ TD_MIN_DT = 3
 CLOSE_TO_ZERO_NEGATIVE_VELOCITY = -0.1
 
 # close to zero velocity, which may be considered as zero velocity (used by frenet->cartesian conversion)
-NEGLIGIBLE_VELOCITY = 1e-4
+NEGLIGIBLE_VELOCITY = 0.01
 
 # Frenet-Serret Conversions #
 

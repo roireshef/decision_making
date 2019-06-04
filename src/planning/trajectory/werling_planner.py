@@ -135,12 +135,14 @@ class WerlingPlanner(TrajectoryPlanner):
         if len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+            bad_ti = np.argmax(np.abs(ctrajectories[0, :, C_K]))
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
                                           "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
                                           "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s); "
                                           "planned lat. accelerations range [%s, %s] (limits: %s); "
+                                          "\nplanned k range [%s, %s]; fstate: %s\ncstate: %s\n"
                                           "number of trajectories passed according to Cartesian limits: %s/%s;"
                                           "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
                                           (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
@@ -153,9 +155,12 @@ class WerlingPlanner(TrajectoryPlanner):
                                            NumpyUtils.str_log(cost_params.lon_acceleration_limits),
                                            np.min(lat_acc), np.max(lat_acc),
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
+                                           np.max(np.min(ctrajectories[:, :, C_K], axis=1)),
+                                           np.min(np.max(ctrajectories[:, :, C_K], axis=1)),
+                                           ftrajectories[0, bad_ti, :], ctrajectories[0, bad_ti, :],
                                            len(cartesian_filtered_indices), len(ctrajectories),
                                            goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                           planning_horizon * (
+                                           T_target_horizon * (
                                                    ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)

@@ -1,8 +1,10 @@
+import numpy as np
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, ROUTE_PLANNING_MODULE_PERIOD
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
+    ROUTE_PLANNING_MODULE_PERIOD, NAVIGATION_PLANNING_NAME_FOR_LOGGING
 from decision_making.paths import Paths
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
@@ -30,7 +32,9 @@ from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
 
+
 DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
+
 
 
 class DmInitialization:
@@ -45,17 +49,6 @@ class DmInitialization:
         pubsub = PubSub()
         state_module = StateModule(pubsub, logger, None)
         return state_module
-
-    @staticmethod
-    def create_route_planner() -> RoutePlanningFacade:
-        logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)
-
-        pubsub = PubSub()
-
-        planner = BinaryCostBasedRoutePlanner()
-
-        route_planning_module = RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
-        return route_planning_module
 
     @staticmethod
     def create_behavioral_planner() -> BehavioralPlanningFacade:
@@ -108,11 +101,6 @@ def main():
 
     modules_list = \
         [
-            DmProcess(lambda: DmInitialization.create_route_planner(),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD},
-                      name='RP'),
-
             DmProcess(lambda: DmInitialization.create_state_module(),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={},
