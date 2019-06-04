@@ -8,7 +8,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, T_S_STEPS
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, T_S_STEPS, T_S_OFFSET_MIN, T_S_OFFSET_MAX
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -55,12 +55,10 @@ class WerlingPlanner(TrajectoryPlanner):
 
         is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
-        T_s_step = 2  # TODO: calculate T_s_step
-        T_s_grid = T_target_horizon + T_s_step * np.arange(T_S_STEPS if is_target_ahead else 1)
-
+        T_s_grid = np.linspace(T_S_OFFSET_MIN, T_S_OFFSET_MAX, T_S_STEPS) + T_target_horizon \
+            if is_target_ahead else np.array([T_target_horizon])
         sx_range = goal_frenet_state[FS_SX] + goal_frenet_state[FS_SV] * (T_s_grid - T_target_horizon)
-        dx_range = np.linspace(DX_OFFSET_MIN + goal_frenet_state[FS_DX],
-                               DX_OFFSET_MAX + goal_frenet_state[FS_DX],
+        dx_range = np.linspace(DX_OFFSET_MIN + goal_frenet_state[FS_DX], DX_OFFSET_MAX + goal_frenet_state[FS_DX],
                                DX_STEPS)
 
         fconstraints_tT = FrenetConstraints(sx=sx_range, sv=goal_frenet_state[FS_SV], sa=goal_frenet_state[FS_SA],
@@ -93,11 +91,14 @@ class WerlingPlanner(TrajectoryPlanner):
             ftrajectories_optimization, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(
                 fconstraints_t0, fconstraints_tT, T_s_grid, T_d_grid, self.dt, T_trajectory_end_horizon)
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories_optimization)
+            poly_s, poly_d = poly_coefs[:, :6], poly_coefs[:, 6:]
         else:
             # only pad
             ftrajectories = self.predictor.predict_2d_frenet_states(ego_by_goal_state[np.newaxis, :],
                                                                     np.arange(0, planning_horizon + EPS, self.dt))
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories)
+            poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
+            poly_s, poly_d = poly_coefs_s[np.newaxis], poly_coefs_d[np.newaxis]
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
@@ -160,10 +161,12 @@ class WerlingPlanner(TrajectoryPlanner):
         filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories[cartesian_filtered_indices], state,
                                goal_frenet_state, cost_params, global_time_samples,
-                               T_target_horizon + state.ego_state.timestamp_in_sec,
-                               self._predictor, self.dt, reference_route)
+                               T_target_horizon, self._predictor, self.dt, reference_route,
+                               poly_s[cartesian_filtered_indices], poly_d[cartesian_filtered_indices])
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
+
+        print('Chosen trajectory %d from %s' % (sorted_filtered_idxs[0], cartesian_filtered_indices))
 
         if is_target_ahead:  # Actual werling planning has occurred because T_s > 0.1 and the target is ahead of us
             # TODO: what if future sampling from poly_s will result with negative velocity (uncorrected for negative velocity)?
@@ -172,15 +175,14 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_s=T_target_horizon,
                 T_d=T_d_vals[cartesian_filtered_indices[sorted_filtered_idxs[0]]],
                 frenet_frame=reference_route,
-                poly_s_coefs=poly_coefs[cartesian_filtered_indices[sorted_filtered_idxs[0]]][:6],
-                poly_d_coefs=poly_coefs[cartesian_filtered_indices[sorted_filtered_idxs[0]]][6:],
+                poly_s_coefs=poly_s[cartesian_filtered_indices[sorted_filtered_idxs[0]]],
+                poly_d_coefs=poly_d[cartesian_filtered_indices[sorted_filtered_idxs[0]]],
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            poly_s, poly_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
                                                               planning_horizon, planning_horizon, planning_horizon,
-                                                              reference_route, poly_s, poly_d)
+                                                              reference_route, poly_s[0], poly_d[0])
         return samplable_trajectory, \
            ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
            filtered_trajectory_costs[sorted_filtered_idxs]
@@ -203,8 +205,8 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      goal_time: float, predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame) \
-            -> np.ndarray:
+                      T_s: float, predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame,
+                      poly_coefs_s: np.array, poly_coefs_d: np.array) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -214,25 +216,31 @@ class WerlingPlanner(TrajectoryPlanner):
                 global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
+        :param T_s: original longitudinal planning time
         :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :param dt: time step of ctrajectories
+        :param reference_route: the reference route (GFF) of TP
+        :param poly_coefs_s: Nx6 matrix of coefficients of polynomials for s for all trajectories
+        :param poly_coefs_d: Nx6 matrix of coefficients of polynomials for d for all trajectories
         :return: numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
         """
         ''' deviation from goal cost '''
-        goal_time_idx = np.argmin(np.abs(global_time_samples - goal_time))
-        last_fpoints = ftrajectories[:, goal_time_idx, :]
-        trajectory_end_goal_diff = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
-                                             last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
-        trajectory_end_goal_dist = np.sqrt(trajectory_end_goal_diff[0] ** 2 +
-                                           (params.dist_from_goal_lat_factor * trajectory_end_goal_diff[1]) ** 2)
-        dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
+        # calculate trajectory end-point in Frenet coordinates
+        end_fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, np.array([T_s]))
+        end_fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, np.array([T_s]))
+
+        # calculate distance from trajectory end-point to the goal
+        dist_from_goal_s = end_fstates_s[:, 0, 0] - goal_in_frenet[FS_SX]
+        dist_from_goal_d = end_fstates_d[:, 0, 0] - goal_in_frenet[FS_DX]
+        dist_from_goal = np.sqrt(dist_from_goal_s ** 2 + (params.dist_from_goal_lat_factor * dist_from_goal_d) ** 2)
+
+        dist_from_goal_costs = Math.clipped_sigmoid(dist_from_goal - params.dist_from_goal_cost.offset,
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
         ''' point-wise costs: obstacles, deviations, jerk '''
         pointwise_costs = TrajectoryPlannerCosts.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
                                                                          global_time_samples, predictor, dt,
                                                                          reference_route)
-
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
@@ -332,6 +340,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
             # append polynomials, trajectories and time-horizons to the dimensions s buffers
             poly_s = np.vstack((poly_s, partial_poly_s))
+            # print('%s %s' % (solutions_s.shape.__str__(), partial_solutions_s.shape.__str__()))
             solutions_s = np.concatenate((solutions_s, partial_solutions_s), axis=0)
             horizons_s = np.append(horizons_s, np.repeat(T_s, len(constraints_s)))
 
