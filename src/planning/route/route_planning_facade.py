@@ -1,3 +1,4 @@
+import pickle
 from logging import Logger
 import time
 import traceback
@@ -48,6 +49,12 @@ class RoutePlanningFacade(DmModule):
             # Read inputs
             start_time = time.time()
             scene_static = self._get_current_scene_static()
+
+            # TODO: for debug - remove once pickled.
+            if len([x.e_i_lane_segment_id for x in scene_static.s_Data.s_SceneStaticGeometry.as_scene_lane_segments
+                    if x.e_i_lane_segment_id==58375683]) > 0:
+                pickle.dump(scene_static, '~/scene_static/%s' % str(scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
+
             route_planner_input = RoutePlannerInputData()
             route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                                     nav_plan=scene_static.s_Data.s_NavigationPlan)
