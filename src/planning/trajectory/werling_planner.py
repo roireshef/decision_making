@@ -107,7 +107,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
-                                                                             cost_params.lat_acceleration_limits)
+                                                                             cost_params.lat_acceleration_limits,
+                                                                             cost_params.desired_velocity)
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
         ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]

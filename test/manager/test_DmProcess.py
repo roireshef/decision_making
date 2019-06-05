@@ -11,7 +11,6 @@ from decision_making.test.planning.behavioral.mock_behavioral_facade import Beha
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from rte.python.logger.AV_logger import AV_Logger
 
-
 def create_behavioral_planner() -> BehavioralPlanningFacade:
 
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
