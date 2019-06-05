@@ -2,7 +2,7 @@ import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LON_JERK_LIMITS, CURV_LIMITS
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LON_JERK_LIMITS, CURV_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, StaticActionRecipe
@@ -93,7 +93,7 @@ class FilterForKinematics(ActionSpecFilter):
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
                 cartesian_points[np.newaxis, ...], VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
-                LON_JERK_LIMITS, CURV_LIMITS)[0]
+                LON_JERK_LIMITS, CURV_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
             are_valid.append(is_valid_in_cartesian)
 
         return are_valid
