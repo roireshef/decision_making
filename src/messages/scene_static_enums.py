@@ -17,6 +17,15 @@ class MapLaneType(Enum):
     BidirectionalLane = 11
 
 
+class OverlapType(Enum):
+    CeSYS_e_OverlapType_CROSS = 0
+    CeSYS_e_OverlapType_LEFT_MERGE = 1
+    CeSYS_e_OverlapType_RIGHT_MERGE = 2
+    CeSYS_e_OverlapType_LEFT_SPLIT = 3
+    CeSYS_e_OverlapType_RIGHT_SPLIT = 4
+
+
+
 class MapRoadSegmentType(Enum):
     Normal = 0
     Intersection = 1

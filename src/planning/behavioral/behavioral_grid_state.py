@@ -88,6 +88,55 @@ class BehavioralGridState:
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
+    def _create_mirror_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
+        """
+        Takes all the dynamic objects that are on intersections, and adds 'pseudo (mirror) -objects' that are located
+        on the matching lane segment. According to the intersection
+        An 'overloaded' dynamic object looks like this:
+
+        map_states of overloaded should have the following:
+            obj_id:    the negative id of the original dynamic object
+            timestamp: same as original dynamic object
+            cartesian_state:same as original dynamic object
+            map_state:  (lane id as the pseudo-object), lane_fstate as None for lazy initialization)
+            map_state_on_host_lane:same as original dynamic object, expected to be removed soon
+            size:same as original dynamic object
+            confidence:same as original dynamic object
+        :param dynamic_objects:
+        :return:
+        """
+        pseudo_dynamic_objects = []
+        for dynamic_object in dynamic_objects:
+            for overlapping_lane_segment in MapUtils.get_lane_segment_overlaps(dynamic_object.map_state.lane_id):
+                pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
+                                                            timestamp=dynamic_object.timestamp,
+                                                            cartesian_state=dynamic_object.cartesian_state,
+                                                            map_state=MapState(None, overlapping_lane_segment),
+                                                            map_state_on_host_lane=dynamic_object.map_state,
+                                                            size=dynamic_object.size,
+                                                            confidence=dynamic_object.confidence))
+        return dynamic_objects + pseudo_dynamic_objects
+
+    @staticmethod
+    def _lazy_set_map_states(dynamic_objects: List[DynamicObject],
+                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+                             rel_lanes_per_obj: np.array):
+        """
+        Takes the relevant map_states and calculates the fstate ( map_states with None fstate and not None rel_lanes_per_obj)
+        TODO: Fix double Conversion
+        :param object_map_states:
+        :param extended_lane_frames:
+        :param rel_lanes_per_obj:
+        :return:
+        """
+        for i, dynamic_object in enumerate(dynamic_objects):
+            if dynamic_object.map_state.lane_fstate is None and rel_lanes_per_obj[i] is not None:
+                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
+                    cstate_to_fstate(dynamic_object.cartesian_state)
+                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
+                    convert_to_segment_state(dynamic_object.map_state.lane_fstate)[1]
+
+    @staticmethod
     @prof.ProfileFunction()
     def _add_road_semantics(dynamic_objects: List[DynamicObject],
                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
@@ -104,23 +153,30 @@ class BehavioralGridState:
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
         # calculate objects' segment map_states
-        object_map_states = [obj.map_state for obj in dynamic_objects]
+        # adds mirror objects to any dynamic object which is on the intersection
+        overloaded_dynamic_objects = BehavioralGridState._create_mirror_objects(dynamic_objects)
+
+        object_map_states = [obj.map_state for obj in overloaded_dynamic_objects]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj = np.full(len(dynamic_objects), None)
+        rel_lanes_per_obj = np.full(len(overloaded_dynamic_objects), None)
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
             relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
             rel_lanes_per_obj[relevant_objects] = rel_lane
 
+        # setting the missing map_states to pseudo-objects
+        BehavioralGridState._lazy_set_map_states(overloaded_dynamic_objects, extended_lane_frames,
+                                                 rel_lanes_per_obj)
+
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
             extended_lane_frames, projected_ego_fstates, object_map_states)
 
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
-                for i, obj in enumerate(dynamic_objects) if rel_lanes_per_obj[i] is not None]
+                for i, obj in enumerate(overloaded_dynamic_objects) if rel_lanes_per_obj[i] is not None]
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
@@ -197,7 +253,7 @@ class BehavioralGridState:
         extended_lane_frames = {}
         for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
             try:
-                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
+                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, route_plan=route_plan)
             except MappingException as e:

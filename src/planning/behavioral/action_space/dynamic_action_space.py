@@ -34,6 +34,19 @@ class DynamicActionSpace(ActionSpace):
         """a list of Recipe classes this action space can handle with"""
         return [DynamicActionRecipe]
 
+    @staticmethod
+    def _get_relevant_target_from_grid(behavioral_state, action_recipe):
+        """
+         Gets the relevant object from a grid. Dynamic objects are ordered according to decreasing
+         longitudinal distances from host vehicle
+        :param behavioral_state: current behavioral state
+        :param action_recipe:
+        :return:
+        """
+        # TODO: Handle the case when there is slow but far vehicle. This might estimate the time to collision based on
+        # aggresiveness level, host speed, dynamic object speed, and the longitudinal distance
+        return behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
+
     @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
