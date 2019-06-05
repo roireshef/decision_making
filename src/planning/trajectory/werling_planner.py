@@ -242,7 +242,13 @@ class WerlingPlanner(TrajectoryPlanner):
         pointwise_costs = TrajectoryPlannerCosts.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
                                                                          global_time_samples, predictor, dt,
                                                                          reference_route)
-        return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
+        total_pointwise_costs = np.sum(pointwise_costs, axis=(1, 2))
+
+        if np.argmin(total_pointwise_costs + dist_from_goal_costs) > 0:
+            print('dist_from_goal_s=%s pointwise=%s; goal_v=%.3f' %
+                  (dist_from_goal_s, total_pointwise_costs, goal_in_frenet[FS_SV]))
+
+        return total_pointwise_costs + dist_from_goal_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
