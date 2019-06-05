@@ -60,11 +60,11 @@ def route_plan_oval_track():
 # TODO: This should be a parametrized_fixture.
 def create_route_plan_msg(road_segment_ids):
     return RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
-                    s_Data=DataRoutePlan(e_b_is_valid=True,
-                                         e_Cnt_num_road_segments=10,
-                                         a_i_road_segment_ids=road_segment_ids,
-                                         a_Cnt_num_lane_segments=0,
-                                         as_route_plan_lane_segments=[]))
+                     s_Data=DataRoutePlan(e_b_is_valid=True,
+                                          e_Cnt_num_road_segments=10,
+                                          a_i_road_segment_ids=road_segment_ids,
+                                          a_Cnt_num_lane_segments=0,
+                                          as_route_plan_lane_segments=[]))
 
 
 @pytest.fixture(scope='function')
