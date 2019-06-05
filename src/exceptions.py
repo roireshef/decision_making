@@ -108,10 +108,6 @@ class LaneNotFound(MappingException):
     pass
 
 
-class NoActionsLeftForBPError(Exception):
-    pass
-
-
 class ConstraintFilterHaltWithValue(Exception):
     """
     This is raised internally within ConstraintFilter when halt (stopping the filter without completing the entire execution)
@@ -123,6 +119,9 @@ class ConstraintFilterHaltWithValue(Exception):
     @property
     def value(self) -> bool:
         return self._value
+
+class NoActionsLeftForBPError(Exception):
+    pass
 
 
 class OutOfSegmentBack(Exception):

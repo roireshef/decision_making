@@ -1,11 +1,10 @@
-from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
+from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe
@@ -57,10 +56,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs
 
-        # find all same-lane static actions with velocity below the desired
         filtered_indices = [i for i, recipe in enumerate(action_recipes)
                             if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                            and recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                             and recipe.relative_lane == RelativeLane.SAME_LANE]
         if len(filtered_indices) == 0:
             raise NoActionsLeftForBPError()
@@ -82,5 +79,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         print('BP time %.3f: STATIC ACTION: goal_time=%.3f: spec.v=%.3f, ego_fstate = %s' %
               (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, spec.v, NumpyUtils.str_log(ego_fstate)))
 
-        costs[follow_lane_valid_action_idxs[-1]] = 0  # choose the most fast action among the calmest actions
+        # choose the most fast action among the calmest actions;
+        # it's last in the recipes list since the recipes are sorted in the increasing order of velocities
+        costs[follow_lane_valid_action_idxs[-1]] = 0
         return costs
