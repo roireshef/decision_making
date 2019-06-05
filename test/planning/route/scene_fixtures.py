@@ -29,7 +29,7 @@ class TakeOverTestData:
         self.expected_takeover = expected_takeover
 
 
-def default_route_plan() -> DataRoutePlan:
+def default_route_plan_for_PG_split_file() -> DataRoutePlan:
     return DataRoutePlan(e_b_is_valid=True,
                          e_Cnt_num_road_segments = 10,
                          a_i_road_segment_ids = np.arange(20, 30),
@@ -88,7 +88,7 @@ def modify_default_lane_attributes(lane_attribute_modifications: LaneAttributeMo
                                           "scene_three"])
 def construction_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -171,7 +171,7 @@ def construction_scene_and_expected_output(request):
                                           "scene_two"])
 def map_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -230,7 +230,7 @@ def map_scene_and_expected_output(request):
                                           "scene_ten"])
 def gmfa_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -332,7 +332,7 @@ def gmfa_scene_and_expected_output(request):
 @pytest.fixture(scope='function', params=["scene_one"])
 def lane_direction_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -355,7 +355,7 @@ def lane_direction_scene_and_expected_output(request):
                                           "scene_two"])
 def combined_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -490,7 +490,7 @@ def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState :
                                           "scene_three"])
 def construction_scene_for_takeover_test(request):
     # Set Default Expected Output
-    route_plan_data = default_route_plan()
+    route_plan_data = default_route_plan_for_PG_split_file()
     expected_takover = False
     ego_state = generate_ego_state(ego_lane_id = 200 , ego_lane_station = 0)
 
