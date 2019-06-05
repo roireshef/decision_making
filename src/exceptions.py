@@ -120,6 +120,10 @@ class ConstraintFilterHaltWithValue(Exception):
     def value(self) -> bool:
         return self._value
 
+class NoActionsLeftForBPError(Exception):
+    pass
+
+
 class OutOfSegmentBack(Exception):
     pass
 

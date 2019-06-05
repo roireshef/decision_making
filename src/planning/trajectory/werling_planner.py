@@ -155,7 +155,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                            len(cartesian_filtered_indices), len(ctrajectories),
                                            NumpyUtils.str_log(goal_frenet_state), goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                           T * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+                                           T_target_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
