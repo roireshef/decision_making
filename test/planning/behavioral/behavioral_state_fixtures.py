@@ -32,6 +32,7 @@ NAVIGATION_PLAN_OVAL_TRACK = np.array([3537, 76406, 3646, 46577, 46613, 87759, 8
                                        40953, 10073, 10066, 87732, 43516, 87770, 228034, 87996,
                                        228037, 10536, 88088, 228039, 88192, 10519, 10432, 3537])
 
+
 @pytest.fixture(scope='function')
 def route_plan_20_30():
     yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
@@ -46,6 +47,7 @@ def route_plan_20():
                                          a_i_road_segment_ids=np.array([20]),
                                          a_Cnt_num_lane_segments=0,
                                          as_route_plan_lane_segments=[]))
+
 
 @pytest.fixture(scope='function')
 def route_plan_oval_track():
@@ -71,7 +73,7 @@ def create_route_plan_msg(road_segment_ids):
 def ego_state_for_takover_message_simple_scene():
 
     ego_lane_id = 101
-    ego_lane_lon = 0 # station along the lane
+    ego_lane_lon = 0  # station along the lane
     ego_vel = 10
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
@@ -85,7 +87,7 @@ def ego_state_for_takover_message_simple_scene():
 def ego_state_for_takover_message_default_scene():
 
     ego_lane_id = 201
-    ego_lane_lon = 100 # station along the lane
+    ego_lane_lon = 100  # station along the lane
     ego_vel = 10
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
@@ -380,11 +382,13 @@ def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_obje
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
                                                 route_plan_20_30, None)
 
+
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
         state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
                                                 route_plan_20_30, None)
+
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
@@ -411,4 +415,3 @@ def follow_lane_recipes():
     yield [StaticActionRecipe(RelativeLane.SAME_LANE, velocity, agg)
            for velocity in velocity_grid
            for agg in AggressivenessLevel]
-
