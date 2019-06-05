@@ -72,7 +72,7 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
+LtON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
