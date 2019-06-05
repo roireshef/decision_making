@@ -21,6 +21,7 @@ from decision_making.src.state.state import OccupancyState, State, ObjectSize, E
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
     scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle
+from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 NAVIGATION_PLAN = np.array(range(20, 30))
@@ -34,11 +35,7 @@ NAVIGATION_PLAN_OVAL_TRACK = np.array([3537, 76406, 3646, 46577, 46613, 87759, 8
 @pytest.fixture(scope='function')
 def route_plan_20_30():
     yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
-                    s_Data=DataRoutePlan(e_b_is_valid=True,
-                                         e_Cnt_num_road_segments=10,
-                                         a_i_road_segment_ids=np.arange(20, 30, 1, dtype=np.int),
-                                         a_Cnt_num_lane_segments=0,
-                                         as_route_plan_lane_segments=[]))
+                    s_Data=default_route_plan_for_PG_split_file())
 
 
 @pytest.fixture(scope='function')
