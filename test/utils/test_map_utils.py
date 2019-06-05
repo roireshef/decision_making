@@ -15,7 +15,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static
 
 
 MAP_SPLIT = "PG_split.bin"
@@ -187,7 +187,6 @@ def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static_p
                                              create_route_plan_msg(np.array(road_segment_ids)).s_Data.a_i_road_segment_ids)
     assert len(sub_segments) == len(road_segment_ids)
 
-
 def test_advanceOnPlan_navPlanTooShort_validateRelevantException(scene_static_pg_split):
     """
     test the method _advance_on_plan
@@ -232,6 +231,34 @@ def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static
         assert False
     except DownstreamLaneNotFound:
         assert True
+
+
+def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static, route_plan_20_30):
+    """
+    test the method _advance_by_cost
+        run lookahead_dist from the beginning until end of the map
+        cost for each road segment should be the same, 0, as each is in the navigation plan
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    road_segment_ids = MapUtils.get_road_segment_ids()
+
+    # Give all lane segments first ordinal end cost of 0
+    lane_cost_dict = {
+        201:0, 211:0, 221:0, 231:0, 241:0, 251:0, 261:0, 271:0, 281:0, 291:0
+    }
+
+    current_ordinal = 1
+    # test lookahead distance until the end of the map: verify no exception is thrown
+    cumulative_distance = 0
+    for road_id in road_segment_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
+        cumulative_distance += MapUtils.get_lane_length(lane_id)
+    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
+
+    #TODO: Change route_plan_20_30 to route_plan based on road_segment_ids
+    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, route_plan_20_30)
+    assert len(sub_segments) == len(road_segment_ids)
+
 
 
 def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength(scene_static_pg_split):
