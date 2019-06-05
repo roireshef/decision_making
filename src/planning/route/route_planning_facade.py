@@ -1,3 +1,4 @@
+import pickle
 from logging import Logger
 import time
 import traceback
@@ -48,6 +49,7 @@ class RoutePlanningFacade(DmModule):
             # Read inputs
             start_time = time.time()
             scene_static = self._get_current_scene_static()
+
             route_planner_input = RoutePlannerInputData()
             route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                                     nav_plan=scene_static.s_Data.s_NavigationPlan)
