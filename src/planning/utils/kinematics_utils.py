@@ -3,7 +3,7 @@ from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRI
     LON_ACC_LIMITS
 from decision_making.src.global_constants import MAX_CURVATURE
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -131,9 +131,20 @@ class KinematicUtils:
         :param frenet_state: the current frenet state to pull positions and velocities from
         :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
         """
-        poly_s = np.array([0, 0, 0, 0, frenet_state[FS_SV], frenet_state[FS_SX]])
+        poly_s, poly_d = KinematicUtils.create_2D_linear_profile_polynomials(frenet_state[np.newaxis])
+        return poly_s[0], poly_d[0]
+
+    @staticmethod
+    def create_2D_linear_profile_polynomials(frenet_states: FrenetStates2D) -> (np.ndarray, np.ndarray):
+        """
+        Given N frenet states, create two Nx6 matrices (s, d) of polynomials that assume constant velocity
+        (we keep the same momentary velocity). Those polynomials are degenerate to s(t)=v*t+x form
+        :param frenet_states: the current frenet states to pull positions and velocities from
+        :return: a tuple of Nx6 matrices (s(t), d(t)) polynomial coefficient arrays
+        """
+        poly_s = np.c_[np.zeros((frenet_states.shape[0], 4)), frenet_states[:, FS_SV], frenet_states[:, FS_SX]]
         # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
-        poly_d = np.zeros(QuinticPoly1D.num_coefs())
+        poly_d = np.zeros((frenet_states.shape[0], QuinticPoly1D.num_coefs()))
         return poly_s, poly_d
 
     @staticmethod
