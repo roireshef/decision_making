@@ -114,6 +114,7 @@ class DynamicActionSpace(ActionSpace):
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=w_T, w_J=w_J, dx=ds, a_0=a_0, v_0=v_0, v_T=v_T, T_m=T_m)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually

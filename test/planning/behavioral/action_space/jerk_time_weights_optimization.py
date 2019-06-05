@@ -62,9 +62,9 @@ class TimeJerkWeightsOptimization:
 
         # create the grid of states
         v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
-        braking = np.where(v0 > vT)
+        braking = np.where(np.logical_and(0 < v0 - vT, v0 - vT <= 8))
         v0, vT, a0, s = v0[braking], vT[braking], a0[braking], s[braking]
-        limited_headway = np.where((s >= v0 * SAFETY_HEADWAY) & (s < v0 * 4))
+        limited_headway = np.where((s >= v0 * SAFETY_HEADWAY) & (s < v0 * 3))
         v0, vT, a0, s = v0[limited_headway], vT[limited_headway], a0[limited_headway], s[limited_headway]
         v0, vT, a0, s = np.ravel(v0), np.ravel(vT), np.ravel(a0), np.ravel(s)
 
@@ -105,7 +105,7 @@ class TimeJerkWeightsOptimization:
 
                 # extract valid actions
                 valid_idxs = np.where(np.logical_and(~np.isnan(T), T > 0))[0]
-                tot_time_in_limits[aggr] = np.sum(~np.isnan(T))
+                tot_time_in_limits[aggr] = valid_idxs.shape[0]
 
                 in_limits[aggr, valid_idxs], profile_rates[wi, aggr], tot_kinematics_in_limits[aggr], tot_safe[aggr] = \
                     TimeJerkWeightsOptimization.check_actions_in_limits(T[valid_idxs], a0[valid_idxs], v0[valid_idxs],
