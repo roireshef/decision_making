@@ -126,8 +126,9 @@ class WerlingPlanner(TrajectoryPlanner):
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
                                                                              cost_params.lat_acceleration_limits,
-                                                                             LON_JERK_LIMITS,
-                                                                             CURV_LIMITS)
+                                                                             cost_params.lat_acceleration_limits,
+                                                                             LON_JERK_LIMITS, CURV_LIMITS,
+                                                                             cost_params.desired_velocity)
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
         ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
@@ -157,8 +158,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                            len(cartesian_filtered_indices), len(ctrajectories),
                                            goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                           planning_horizon * (
-                                                   ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+                                           T_target_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)

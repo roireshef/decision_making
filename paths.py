@@ -38,11 +38,21 @@ class Paths:
         return os.path.join(os.path.dirname(__file__), 'resources')
 
     @staticmethod
-    def get_maps_path():
+    def get_scene_static_path():
         # type: () -> str
         return os.path.join(os.path.dirname(__file__), 'resources/scene_static_mocks')
 
     @staticmethod
-    def get_map_absolute_path_filename(filename):
+    def get_scene_dynamic_path():
+        # type: () -> str
+        return os.path.join(os.path.dirname(__file__), 'resources/scene_dynamic_mocks')
+
+    @staticmethod
+    def get_scene_static_absolute_path_filename(filename):
         # type: (str) -> str
-        return os.path.join(Paths.get_maps_path(), filename)
+        return os.path.join(Paths.get_scene_static_path(), filename)
+
+    @staticmethod
+    def get_scene_dynamic_absolute_path_filename(filename):
+        # type: (str) -> str
+        return os.path.join(Paths.get_scene_dynamic_path(), filename)

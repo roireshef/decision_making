@@ -1,3 +1,7 @@
+import pickle
+from decision_making.paths import Paths
+from decision_making.src.planning.types import FS_SA, C_A
+
 from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
@@ -15,10 +19,17 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
+    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
-NAVIGATION_PLAN = np.array(range(20,30))
+NAVIGATION_PLAN = np.array(range(20, 30))
+
+NAVIGATION_PLAN_OVAL_TRACK = np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
+                                       51360, 228028, 87622, 228007, 87660, 87744, 9893, 9894, 87740,
+                                       77398, 87741, 25969, 10068, 87211, 10320, 10322, 228029, 87739,
+                                       40953, 10073, 10066, 87732, 43516, 87770, 228034, 87996,
+                                       228037, 10536, 88088, 228039, 88192, 10519, 10432, 3537])
 
 @pytest.fixture(scope='function')
 def route_plan_20_30():
@@ -36,6 +47,15 @@ def route_plan_20():
                     s_Data=DataRoutePlan(e_b_is_valid=True,
                                          e_Cnt_num_road_segments=1,
                                          a_i_road_segment_ids=np.array([20]),
+                                         a_Cnt_num_lane_segments=0,
+                                         as_route_plan_lane_segments=[]))
+
+@pytest.fixture(scope='function')
+def route_plan_oval_track():
+    yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
+                    s_Data=DataRoutePlan(e_b_is_valid=True,
+                                         e_Cnt_num_road_segments=1,
+                                         a_i_road_segment_ids=NAVIGATION_PLAN_OVAL_TRACK,
                                          a_Cnt_num_lane_segments=0,
                                          as_route_plan_lane_segments=[]))
 
@@ -63,6 +83,7 @@ def ego_state_for_takover_message_simple_scene():
 
     yield ego_state
 
+
 @pytest.fixture(scope='function')
 def ego_state_for_takover_message_default_scene():
 
@@ -75,6 +96,7 @@ def ego_state_for_takover_message_default_scene():
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     yield ego_state
+
 
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
@@ -122,6 +144,16 @@ def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
             obj_id += 1
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
+def state_with_objects_for_acceleration_towards_vehicle():
+    # loads a scene dynamic where the vehicle is driving in its desired velocity towards another vehicle
+    SceneStaticModel.get_instance().set_scene_static(scene_static_accel_towards_vehicle())
+    scene_dynamic = scene_dynamic_accel_towards_vehicle()
+    # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
+    scene_dynamic.ego_state.cartesian_state[C_A] = 1
+    yield scene_dynamic
 
 
 @pytest.fixture(scope='function')
@@ -325,6 +357,13 @@ def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_3
 
 
 @pytest.fixture(scope='function')
+def behavioral_grid_state_with_objects_for_acceleration_towards_vehicle(
+        state_with_objects_for_acceleration_towards_vehicle, route_plan_oval_track: RoutePlan):
+    yield BehavioralGridState.create_from_state(state_with_objects_for_acceleration_towards_vehicle,
+                                                route_plan_oval_track, None)
+
+
+@pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
         state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
@@ -344,13 +383,11 @@ def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_obje
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
                                                 route_plan_20_30, None)
 
-
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
         state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
                                                 route_plan_20_30, None)
-
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
@@ -362,8 +399,6 @@ def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State
 
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
                                                 route_plan_20_30, None)
-
-
 
 
 @pytest.fixture(scope='function')

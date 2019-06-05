@@ -41,8 +41,8 @@ class KinematicUtils:
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
                                    lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
-                                   lon_jerk_limits: Limits,
-                                   curvature_limits: Limits) -> np.ndarray:
+                                   lon_jerk_limits: Limits, curvature_limits: Limits,
+                                   desired_velocity: float) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -52,6 +52,7 @@ class KinematicUtils:
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
         :param lon_jerk_limits: longitudinal jerk limits to test for in cartesian frame [m/sec^3]
         :param curvature_limits: curvature limits to test for in cartesian frame [1/m]
+        :param desired_velocity: desired longitudinal speed [m/sec]
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
@@ -60,13 +61,26 @@ class KinematicUtils:
         lon_velocity = ctrajectories[:, :, C_V]
         curvature = ctrajectories[:, :, C_K]
 
-        conforms = np.all(
+        # validates the following behavior for each trajectory:
+        # (1) applies negative jerk to reduce initial positive acceleration, if necessary
+        #     (initial jerk is calculated by subtracting the first two acceleration samples)
+        # (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
+        # (3) keeps the velocity under the desired velocity limit.
+        conforms_desired = np.logical_or(
+            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity), axis=1),
+            (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
+
+        # check velocity and acceleration limits
+        # note: while we filter any trajectory that exceeds the velocity limit, we allow trajectories to break the
+        #       desired velocity limit, as long as they slowdown towards the desired velocity.
+        conforms_limits = np.all(
             NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
             NumpyUtils.is_in_limits(lon_jerk, lon_jerk_limits) &
             NumpyUtils.is_in_limits(curvature, curvature_limits), axis=1)
 
+        conforms = np.logical_and(conforms_limits, conforms_desired)
         return conforms
 
     @staticmethod
