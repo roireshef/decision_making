@@ -56,6 +56,9 @@ class DynamicActionSpace(ActionSpace):
         # get desired terminal velocity
         v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in target_map_states])
 
+        v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
+        a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
+
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
@@ -75,8 +78,7 @@ class DynamicActionSpace(ActionSpace):
                                                        behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        T_s = DynamicActionSpace.calc_T_s(weights[:, 2], weights[:, 0], ds, projected_ego_fstates[:, FS_SA],
-                                          projected_ego_fstates[:, FS_SV], v_T)
+        T_s = DynamicActionSpace.calc_T_s(weights[:, 2], weights[:, 0], ds, a_0, v_0, v_T)
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -106,7 +108,7 @@ class DynamicActionSpace(ActionSpace):
         return action_specs
 
     @staticmethod
-    def calc_T_s(w_T: np.array, w_J: np.array, ds: np.array, a_0: np.array, v_0: np.array, v_T: np.array,
+    def calc_T_s(w_T: np.array, w_J: np.array, ds: np.array, a_0: float, v_0: np.array, v_T: np.array,
                  T_m: float=SPECIFICATION_HEADWAY):
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(

@@ -8,7 +8,7 @@ import re
 
 from decision_making.src.global_constants import EPS, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_LIMITS, \
     TRAJECTORY_TIME_RESOLUTION, SPECIFICATION_HEADWAY, SAFETY_HEADWAY, LON_ACC_LIMITS, VELOCITY_LIMITS, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.utils.math_utils import Math
 
 
@@ -34,7 +34,7 @@ class TimeJerkWeightsOptimization:
         Output detailed states coverage (3D grid of states) for the best weights set or compare two weights sets.
         """
         # states grid ranges
-        V_MIN = 16
+        V_MIN = 0
         V_MAX = 27   # max velocity in the states grid
         V_STEP = 1  # velocity step in the states grid
         S_MIN = 10   # min distance between two objects in the states grid
@@ -51,10 +51,11 @@ class TimeJerkWeightsOptimization:
         GRID_RESOLUTION = 10   # the weights grid resolution
 
         TYPICAL_CAR_LENGTH = 5
-        margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + TYPICAL_CAR_LENGTH
+        safety_margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + TYPICAL_CAR_LENGTH
+        specify_margin = LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT + TYPICAL_CAR_LENGTH
 
         # create ranges of the grid of states
-        v0_range = np.arange(V_MIN, V_MAX + EPS, 2)  # np.arange(0, V_MAX + EPS, V_STEP)
+        v0_range = np.arange(V_MIN, V_MAX + EPS, 2)
         vT_range = np.arange(V_MIN, V_MAX + EPS, V_STEP)
         a0_range = np.array([0])
         s_range = np.arange(S_MIN, S_MAX + EPS, S_STEP)
@@ -100,14 +101,16 @@ class TimeJerkWeightsOptimization:
                 jerk_weights = np.full(vT.shape[0], w[aggr])
 
                 # calculate planning time like in DynamicActionSpace.specify_goal
-                T = DynamicActionSpace.calc_T_s(time_weights, jerk_weights, s - margin, a0, v0, vT)
+                T = DynamicActionSpace.calc_T_s(time_weights, jerk_weights, s - specify_margin, a0[0], v0, vT)
 
                 # extract valid actions
-                valid_idxs = np.where(np.logical_and(np.logical_not(np.isnan(T)), T > 0))[0]
-                in_limits[aggr, valid_idxs], profile_rates[wi, aggr], \
-                                tot_kinematics_in_limits[aggr], tot_safe[aggr], tot_time_in_limits[aggr] = \
+                valid_idxs = np.where(np.logical_and(~np.isnan(T), T > 0))[0]
+                tot_time_in_limits[aggr] = np.sum(~np.isnan(T))
+
+                in_limits[aggr, valid_idxs], profile_rates[wi, aggr], tot_kinematics_in_limits[aggr], tot_safe[aggr] = \
                     TimeJerkWeightsOptimization.check_actions_in_limits(T[valid_idxs], a0[valid_idxs], v0[valid_idxs],
-                                                                        vT[valid_idxs], s[valid_idxs], margin)
+                                                                        vT[valid_idxs], s[valid_idxs],
+                                                                        specify_margin, safety_margin)
 
             # combine velocity & acceleration limits with time limits and safety, to obtain states validity
             valid_states_mask[wi] = in_limits.any(axis=0)  # OR on aggressiveness levels
@@ -148,7 +151,8 @@ class TimeJerkWeightsOptimization:
         return weights
 
     @staticmethod
-    def check_actions_in_limits(T: np.array, a0: np.array, v0: np.array, vT: np.array, s: np.array, margin: float):
+    def check_actions_in_limits(T: np.array, a0: np.array, v0: np.array, vT: np.array, s: np.array,
+                                specify_margin: float, safety_margin: float):
         """
         given a set of actions, calculate which of them are in limits (kinematics, safety, time limits)
         and return braking quality and limits statistics
@@ -157,26 +161,26 @@ class TimeJerkWeightsOptimization:
         :param v0: initial velocities array
         :param vT: target velocities array
         :param s: array of initial distances from the target
-        :param margin: minimal distance between cars' centers
+        :param specify_margin: target distance between cars' centers in addition to the headway
+        :param safety_margin: minimal safe distance between cars' centers in addition to the headway
         :return: boolean array of actions in limits, braking quality of actions in limit, statistics data
         """
         # calculate s profile of host & target
         zeros = np.zeros_like(T)
-        poly_host = QuinticPoly1D.s_profile_coefficients(a0, v0, vT, s - margin, T, SPECIFICATION_HEADWAY)
+        poly_host = QuinticPoly1D.s_profile_coefficients(a0, v0, vT, s - specify_margin, T, SPECIFICATION_HEADWAY)
         poly_target = np.c_[zeros, zeros, zeros, zeros, vT, s]
 
         # calculate states validity wrt velocity, acceleration and time limits
         vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(
             poly_host, T, LON_ACC_LIMITS, VELOCITY_LIMITS, np.array([-np.inf, np.inf]))
-        safe_actions = KinematicUtils.are_maintaining_distance(poly_host, poly_target, margin, SAFETY_HEADWAY, np.c_[zeros, T])
-        time_in_limits = (T <= BP_ACTION_T_LIMITS[LIMIT_MAX])
-        in_limits = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
+        safe_actions = KinematicUtils.are_maintaining_distance(poly_host, poly_target, safety_margin, SAFETY_HEADWAY, np.c_[zeros, T])
+        in_limits = np.logical_and(vel_acc_in_limits, safe_actions)
 
         # Calculate average (on all valid actions) braking profile quality.
         # Late braking (less pleasant for passengers) gets lower rate than early braking.
         braking_rates = TimeJerkWeightsOptimization.calculate_braking_profile_qualities(poly_host, T, a0, v0, vT, s, in_limits)
 
-        return in_limits, braking_rates, np.sum(vel_acc_in_limits), np.sum(safe_actions), np.sum(time_in_limits)
+        return in_limits, braking_rates, np.sum(vel_acc_in_limits), np.sum(safe_actions)
 
     @staticmethod
     def calculate_braking_profile_qualities(poly_host: np.array, T: np.array, a0: np.array, v0: np.array, vT: np.array,
