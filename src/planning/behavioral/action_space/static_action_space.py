@@ -55,7 +55,18 @@ class StaticActionSpace(ActionSpace):
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
 
-        T_s = StaticActionSpace.calc_T_s(w_T=weights[:, 2], w_J=weights[:, 1], v_0=v_0, a_0=a_0, v_T=v_T)
+        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+        cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 0], a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T)
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+        T_s = np.fmin.reduce(roots_s, axis=-1)
+
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
+        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
+        # intersecting in T=0.
+        # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
+        T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -79,55 +90,3 @@ class StaticActionSpace(ActionSpace):
                         for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
 
         return action_specs
-
-    @staticmethod
-    def calc_T_s(w_T: np.array, w_J: np.array, v_0: float, a_0: float, v_T: np.array):
-        """
-        given initial & end constraints and time-jerk weights, calculate longitudinal planning time
-        :param w_T: array of weights of Time component in time-jerk cost function
-        :param w_J: array of weights of longitudinal jerk component in time-jerk cost function
-        :param v_0: array of initial velocities [m/s]
-        :param a_0: array of initial accelerations [m/s^2]
-        :param v_T: array of final velocities [m/s]
-        :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
-        """
-        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
-        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
-        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
-        # intersecting in T=0.
-        non_zero_actions = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
-
-        # Get polynomial coefficients of time-jerk cost function derivative for our settings
-        non_zero_T = StaticActionSpace.calc_T_s_for_non_zero_actions(
-            w_T[non_zero_actions], w_J[non_zero_actions], v_0, a_0, v_T[non_zero_actions])
-
-        # calculate T for all actions
-        T = np.zeros_like(v_T)  # including tracking actions
-        T[non_zero_actions] = non_zero_T
-        return T
-
-    @staticmethod
-    def calc_T_s_for_non_zero_actions(w_T: np.array, w_J: np.array, v_0: float, a_0: float, v_T: np.array):
-        """
-        given initial & end constraints and time-jerk weights, calculate longitudinal planning time
-        :param w_T: array of weights of Time component in time-jerk cost function
-        :param w_J: array of weights of longitudinal jerk component in time-jerk cost function
-        :param v_0: array of initial velocities [m/s]
-        :param a_0: array of initial accelerations [m/s^2]
-        :param v_T: array of final velocities [m/s]
-        :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
-        """
-        # Get polynomial coefficients of time-jerk cost function derivative for our settings
-        time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(w_T, w_J, a_0, v_0, v_T)
-
-        # Find roots of the polynomial in order to get extremum points
-        cost_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, BP_ACTION_T_LIMITS)
-        non_nan_actions = np.logical_not(np.isnan(cost_roots).all(axis=-1))
-
-        # find cost values for the found roots (including NaNs)
-        costs_in_roots = Math.zip_polyval2d(time_cost_derivative_poly_coefs[non_nan_actions], cost_roots[non_nan_actions])
-
-        # calculate T
-        T = np.full(v_T.shape[0], np.nan)  # including nan actions
-        T[non_nan_actions] = cost_roots[non_nan_actions, np.nanargmin(costs_in_roots, axis=-1)]
-        return T

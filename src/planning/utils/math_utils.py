@@ -145,12 +145,11 @@ class Math:
         return np.linalg.eigvals(A)
 
     @staticmethod
-    def find_real_roots_in_limits(coef_matrix: np.ndarray, value_limits: Limits):
+    def find_real_roots(coef_matrix: np.ndarray):
         """
         Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
         NOTE THAT IN ORDER FOR THIS TO WORK, K has to be >=2 and to have no zeros in its first column (degenerate polynomial)
         :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
-        :param value_limits: Boundaries for desired roots to look for.
         :return: 2D numpy array [Nx(K-1)]
         """
         if np.any(coef_matrix[..., 0] == 0):
@@ -159,14 +158,40 @@ class Math:
 
         # if polynomial is of degree 0 (f(x) = c), it has no roots
         if coef_matrix.shape[-1] < 2:
-            return np.full(coef_matrix.shape, np.nan)
+            return np.full(coef_matrix.shape, np.nan), np.full(coef_matrix.shape, False)
 
         roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
-        is_in_limits = NumpyUtils.is_in_limits(real_roots, value_limits)
-        real_roots[~np.logical_and(is_real, is_in_limits)] = np.nan
-        return real_roots
+        return real_roots, is_real
+
+    @staticmethod
+    def find_real_roots_in_limits(coef_matrix: np.ndarray, value_limits: Limits):
+        """
+        Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
+        NOTE THAT IN ORDER FOR THIS TO WORK, K has to be >=2 and to have no zeros in its first column (degenerate polynomial)
+        :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
+        :param value_limits: Boundaries for desired roots to look for.
+        :return: 2D numpy array [Nx(K-1)]
+        """
+        roots_real_part, is_real = Math.find_real_roots(coef_matrix)
+        is_in_limits = NumpyUtils.is_in_limits(roots_real_part, value_limits)
+        roots_real_part[~np.logical_and(is_real, is_in_limits)] = np.nan
+        return roots_real_part
+
+    @staticmethod
+    def zip_find_real_roots_in_limits(coef_matrix: np.ndarray, value_limits: np.ndarray):
+        """
+        Given a matrix of polynomials coefficients, returns their Real roots within a matrix of boundaries.
+        NOTE THAT IN ORDER FOR THIS TO WORK, K has to be >=2 and to have no zeros in its first column (degenerate polynomial)
+        :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
+        :param value_limits: 2D numpy array [Nx2]: [min, max] boundary for desired roots for each polynomial.
+        :return: 2D numpy array [Nx(K-1)]
+        """
+        roots_real_part, is_real = Math.find_real_roots(coef_matrix)
+        is_in_limits = np.logical_and(roots_real_part >= value_limits[:, :1], roots_real_part <= value_limits[:, 1:])
+        roots_real_part[~np.logical_and(is_real, is_in_limits)] = np.nan
+        return roots_real_part
 
     @staticmethod
     def div(a,  b, precision=DIVISION_FLOATING_ACCURACY):
