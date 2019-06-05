@@ -1,5 +1,6 @@
 import numpy as np
 import rte.python.profiler as prof
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
@@ -8,6 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
     RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
+from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_SA, FS_DX, FS_SV, FS_SX
 from decision_making.src.planning.types import LAT_CELL
@@ -16,7 +18,6 @@ from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, 
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List
-from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 
 
 class FilterIfNone(ActionSpecFilter):
@@ -91,7 +92,9 @@ class FilterForKinematics(ActionSpecFilter):
 
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
-                cartesian_points[np.newaxis, ...], VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)[0]
+                cartesian_points[np.newaxis, ...],
+                VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
+                BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
             are_valid.append(is_valid_in_cartesian)
 
         return are_valid

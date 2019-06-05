@@ -204,3 +204,4 @@ if __name__ == "__main__":
     # Enter path of log file to analyze here:
     file = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
     plot_dynamics(file)
+

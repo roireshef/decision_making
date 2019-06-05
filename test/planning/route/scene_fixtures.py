@@ -53,7 +53,7 @@ def modify_default_lane_attributes(lane_attribute_modifications: LaneAttributeMo
         lane_attribute_modifications = {}
 
     # Load saved scene static message
-    scene_static = pickle.load(open(Paths.get_map_absolute_path_filename(PG_SPLIT_PICKLE_FILE_NAME), 'rb'))
+    scene_static = pickle.load(open(Paths.get_scene_static_absolute_path_filename(PG_SPLIT_PICKLE_FILE_NAME), 'rb'))
 
     for lane_segment in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments:
         # Check for lane attribute modifications
