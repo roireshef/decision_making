@@ -15,7 +15,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 
 MAP_SPLIT = "PG_split.bin"
@@ -233,13 +233,13 @@ def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static
         assert True
 
 
-def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static, route_plan_20_30):
+def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static_pg_split, route_plan_20_30):
     """
     test the method _advance_by_cost
         run lookahead_dist from the beginning until end of the map
         cost for each road segment should be the same, 0, as each is in the navigation plan
     """
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     road_segment_ids = MapUtils.get_road_segment_ids()
 
     # Give all lane segments first ordinal end cost of 0
