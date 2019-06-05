@@ -9,8 +9,13 @@ from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_
 from decision_making.src.state.state import EgoState
 
 
-def plot_dynamics(path: str):
-    f = open(path, 'r')
+def plot_dynamics(log_file_path: str):
+    """
+    Plot various graphs concerning localization, BP and TP outputs
+    :param log_file_path: path to AV_Log_dm_main.log file
+    :return: a showable matplotlib figure
+    """
+    f = open(log_file_path, 'r')
     ego_cv = []
     ego_ca = []
     ego_curv = []
@@ -20,6 +25,7 @@ def plot_dynamics(path: str):
     other_cv = []
     other_sv = []
     other_sx = []
+    euclid_dist = []
     timestamp_in_sec = []
 
     spec_t = []
@@ -42,6 +48,7 @@ def plot_dynamics(path: str):
 
     trajectory = []
     trajectory_time = []
+    no_valid_traj_timestamps = []
 
     while True:
         text = f.readline()
@@ -72,6 +79,10 @@ def plot_dynamics(path: str):
                 other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
                 other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
                 other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
+
+            ego_cx_cy = np.array(state_dict['ego_state']['_cached_cartesian_state']['array'][C_X: C_Y + 1])
+            other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
+            euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
 
         if 'Chosen behavioral action spec' in text:
             spec_str = text.split('Chosen behavioral action spec ')[1]
@@ -120,14 +131,18 @@ def plot_dynamics(path: str):
                 traj_dict['s_Data']['a_TrajectoryWaypoints']['shape'])[:points_counter])
             trajectory_time.append(timestamp.timestamp_in_seconds)
 
+        if 'CartesianLimitsViolated' in text:
+            no_valid_traj_timestamps.append(float(text.split('timestamp_in_sec: ')[1].split(',')[0]))
+
     f = plt.figure(1)
 
     ax1 = plt.subplot(5, 2, 1)
-    ego_cx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    other_cx_plot,  = plt.plot(timestamp_in_sec, other_sx)
+    ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
+    other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
+    euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist)
     plt.xlabel('time[s]')
-    plt.ylabel('longitude[m]')
-    plt.legend([ego_cx_plot, other_cx_plot], ['ego_s', 'other_s'])
+    plt.ylabel('longitude[m]/distance[m]')
+    plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
@@ -193,14 +208,17 @@ def plot_dynamics(path: str):
     ax10 = plt.subplot(5, 2, 10, sharex=ax1)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_A], '-.')
+    no_valid_traj_plot = plt.scatter(no_valid_traj_timestamps, [1]*len(no_valid_traj_timestamps), s=5, c='k')
 
     plt.xlabel('time[s]')
     plt.ylabel('trajectories (acc.)')
+    plt.legend([no_valid_traj_plot], ['no_val_traj'])
 
-    plt.show()
+    return f
 
 
 if __name__ == "__main__":
     # Enter path of log file to analyze here:
-    file = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
-    plot_dynamics(file)
+    file_path = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
+    f = plot_dynamics(file_path)
+    plt.show(f)
