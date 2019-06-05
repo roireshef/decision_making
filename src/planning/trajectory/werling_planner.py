@@ -138,13 +138,14 @@ class WerlingPlanner(TrajectoryPlanner):
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
             raise CartesianLimitsViolated("No valid trajectories. "
-                                          "timestamp_in_sec: %f, time horizon: %f, "
+                                          "timestamp_in_sec: %f, time horizon: %f,\n"
                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
-                                          "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
-                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s); "
-                                          "planned lat. accelerations range [%s, %s] (limits: %s); "
-                                          "number of trajectories passed according to Cartesian limits: %s/%s;"
-                                          "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
+                                          "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s);\n"
+                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s);\n"
+                                          "planned lat. accelerations range [%s, %s] (limits: %s);\n"
+                                          "number of trajectories passed according to Cartesian limits: %s/%s;\n"
+                                          "goal_frenet = %s;\n "
+                                          "distance from ego to goal = %f, time*approx_velocity = %f" %
                                           (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                            np.max(np.min(ctrajectories[:, :, C_V], axis=1)),
