@@ -63,6 +63,10 @@ class TrajectoryPlannerCosts:
         # Filter close objects
         close_objects = [obs for obs in state.dynamic_objects
                          if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
+        # for debugging:
+        for obs in close_objects:
+            print(f' close object is located at ({obs.x},{obs.y}) which is {np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y])} far from ego ')
+            print(f' reference route first frenet point[0] is at {reference_route.points[0]}')
 
         with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(close_objects), ctrajectories.shape)):
             if len(close_objects) == 0:

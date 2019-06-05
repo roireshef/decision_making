@@ -48,7 +48,7 @@ def plot_dynamics(path: str):
         if not text:
             break
 
-        if '_scene_dynamic_callback' in text:
+        if '_scene_dynamic_callback' in text and 'Publishing State ' in text:
             state_str = text.split('Publishing State ')[1]
             try:
                 state_dict = ast.literal_eval(state_str)

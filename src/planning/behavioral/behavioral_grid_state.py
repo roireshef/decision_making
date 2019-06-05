@@ -184,6 +184,7 @@ class BehavioralGridState:
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
         # create generalized_frames for the nearest lanes
         suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
+        print(f' building the GFF from s={suggested_ref_route_start}')
 
         # TODO: remove this hack when all unit-tests have enough margin backward
         # if there is no long enough road behind ego, set ref_route_start = 0

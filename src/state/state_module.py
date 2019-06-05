@@ -2,6 +2,7 @@ from logging import Logger
 from threading import Lock
 from traceback import format_exc
 from typing import Optional, Any, List
+import time
 
 import numpy as np
 import rte.python.profiler as prof
@@ -13,7 +14,7 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
-from decision_making.src.planning.types import C_V, FS_SV, C_A, FS_SA
+from decision_making.src.planning.types import C_V, FS_SV, C_A, FS_SA, FS_SX
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
@@ -59,6 +60,7 @@ class StateModule(DmModule):
 
     @prof.ProfileFunction()
     def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):
+        start_time = time.time()
         try:
             with self._scene_dynamic_lock:
 
@@ -71,9 +73,13 @@ class StateModule(DmModule):
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, postprocessed_state)
 
                 self.pubsub.publish(UC_SYSTEM_STATE, postprocessed_state.serialize())
+                self.logger.info(f' STATE_EGO_TIME: {state.ego_state.timestamp}')
+                self.logger.info(f' STATE_S: {state.ego_state.map_state.lane_fstate[FS_SX]}')
 
         except Exception:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
+
+        self.logger.info(f' STATE_EXEC_TIME: {time.time() - start_time}')
 
     def _handle_negative_velocities(self, state: State) -> State:
         """
