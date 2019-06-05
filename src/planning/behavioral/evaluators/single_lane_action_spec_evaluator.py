@@ -1,9 +1,9 @@
+from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe
@@ -54,17 +54,20 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs
 
-        # if a dynamic action not found, calculate maximal valid existing velocity for same-lane static actions
-        terminal_velocities = np.unique([recipe.velocity for i, recipe in enumerate(action_recipes)
-                                         if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                                         and recipe.relative_lane == RelativeLane.SAME_LANE])
-        maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
+        filtered_indices = [i for i, recipe in enumerate(action_recipes)
+                            if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                            and recipe.relative_lane == RelativeLane.SAME_LANE]
+        if len(filtered_indices) == 0:
+            raise NoActionsLeftForBPError()
 
-        # find the most calm same-lane static action with the maximal existing velocity
-        follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
-                                         if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                                         and recipe.relative_lane == RelativeLane.SAME_LANE
-                                         and recipe.velocity == maximal_allowed_velocity]
+        # find the minimal aggressiveness level among valid static recipes
+        min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_indices])
 
-        costs[follow_lane_valid_action_idxs[0]] = 0  # choose the found static action
+        # find the most fast action with the minimal aggressiveness level
+        follow_lane_valid_action_idxs = [idx for idx in filtered_indices
+                                         if action_recipes[idx].aggressiveness.value == min_aggr_level]
+
+        # choose the most fast action among the calmest actions;
+        # it's last in the recipes list since the recipes are sorted in the increasing order of velocities
+        costs[follow_lane_valid_action_idxs[-1]] = 0
         return costs

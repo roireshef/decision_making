@@ -140,14 +140,14 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference 
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 10
+TRAJECTORY_NUM_POINTS = 15
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.0
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.5
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
@@ -186,7 +186,8 @@ TD_MIN_DT = 3
 CLOSE_TO_ZERO_NEGATIVE_VELOCITY = -0.1
 
 # close to zero velocity, which may be considered as zero velocity (used by frenet->cartesian conversion)
-NEGLIGIBLE_VELOCITY = 1e-4
+# Don't decrease the value 0.01, since otherwise frenet->cartesian conversion creates state with too high curvature.
+NEGLIGIBLE_VELOCITY = 0.01
 
 # Frenet-Serret Conversions #
 
@@ -280,3 +281,5 @@ TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
 
 PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
 PG_PICKLE_FILE_NAME = 'PG.pkl'
+ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME = 'accel_scene_static.pkl'
+ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME = 'accel_scene_dynamic.pkl'
