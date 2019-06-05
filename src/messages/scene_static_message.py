@@ -112,16 +112,24 @@ class LaneOverlap(PUBSUB_MSG_IMPL):
         pubsub_msg.e_e_overlap_type = self.e_e_overlap_type
         return pubsub_msg
 
+    @classmethod
+    def deserialize(cls, pubsubMsg: TsSYSLaneOverlap):
+        return cls(pubsubMsg.e_i_first_lane_segment_id, pubsubMsg.e_i_second_lane_segment_id,
+                   pubsubMsg.e_e_overlap_type)
+
 class SceneRoadIntersection(PUBSUB_MSG_IMPL):
     e_i_road_intersection_id = int
     e_Cnt_lane_coupling_count = int
     a_i_lane_coupling_segment_ids = np.ndarray
     e_Cnt_intersection_road_segment_count = int
     a_i_intersection_road_segment_ids = np.ndarray
+    e_Cnt_lane_overlaps_count = int
+    as_lane_overlaps = List[LaneOverlap]
 
     def __init__(self, e_i_road_intersection_id: int,
                  e_Cnt_lane_coupling_count: int, a_i_lane_coupling_segment_ids: np.ndarray,
-                 e_Cnt_intersection_road_segment_count: int, a_i_intersection_road_segment_ids: np.ndarray) -> None:
+                 e_Cnt_intersection_road_segment_count: int, a_i_intersection_road_segment_ids: np.ndarray,
+                 e_Cnt_lane_overlaps_count: int, as_lane_overlaps: List[LaneOverlap]) -> None:
         """
         Road-intersection information
         :param e_i_road_intersection_id: ID of this road-intersection
@@ -138,6 +146,8 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
         self.a_i_lane_coupling_segment_ids = a_i_lane_coupling_segment_ids
         self.e_Cnt_intersection_road_segment_count = e_Cnt_intersection_road_segment_count
         self.a_i_intersection_road_segment_ids = a_i_intersection_road_segment_ids
+        self.e_Cnt_lane_overlaps_count = e_Cnt_lane_overlaps_count
+        self.as_lane_overlaps = as_lane_overlaps
 
     def serialize(self) -> TsSYSSceneRoadIntersection:
         pubsub_msg = TsSYSSceneRoadIntersection()
@@ -149,6 +159,8 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_Cnt_intersection_road_segment_count = self.e_Cnt_intersection_road_segment_count
         pubsub_msg.a_i_intersection_road_segment_ids = self.a_i_intersection_road_segment_ids
+        pubsub_msg.e_Cnt_lane_overlaps_count = self.e_Cnt_lane_overlaps_count
+        pubsub_msg.as_lane_overlaps = self.as_lane_overlaps
 
         return pubsub_msg
 
@@ -158,7 +170,10 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_lane_coupling_count,
                    pubsubMsg.a_i_lane_coupling_segment_ids[:pubsubMsg.e_Cnt_lane_coupling_count],
                    pubsubMsg.e_Cnt_intersection_road_segment_count,
-                   pubsubMsg.a_i_intersection_road_segment_ids[:pubsubMsg.e_Cnt_intersection_road_segment_count])
+                   pubsubMsg.a_i_intersection_road_segment_ids[:pubsubMsg.e_Cnt_intersection_road_segment_count],
+                   pubsubMsg.e_Cnt_lane_overlaps_count,
+                   pubsubMsg.as_lane_overlaps[:pubsubMsg.e_Cnt_lane_overlaps_count])
+
 
 class AdjacentLane(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
