@@ -149,6 +149,16 @@ class RoutePlan(PUBSUB_MSG_IMPL):
         self.s_Header = s_Header
         self.s_Data = s_Data
 
+    def to_costs_dict(self):
+        """
+         returns a complete dictionary of lane costs:
+         keys are lane_segment_ids and values are tuples of ( LANE_OCCUPANCY_COST_IND = 0 , LANE_END_COST_IND = 1)
+        :return:
+        """
+        return {route_plan_lane_segment.e_i_lane_segment_id:
+                    (route_plan_lane_segment.e_cst_lane_occupancy_cost, route_plan_lane_segment.e_cst_lane_end_cost)
+                for route_plan_lane_segment_list in self.s_Data.as_route_plan_lane_segments
+                for route_plan_lane_segment in route_plan_lane_segment_list}
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):
