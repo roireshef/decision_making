@@ -381,36 +381,6 @@ class MapUtils:
         return lane_subsegments
 
     @staticmethod
-    def _get_costs_per_lanes(lane_list, navigation_plan) -> Dict[int, int]:
-        """
-        :param lane_list: List of lanes to get cost of
-        :param navigation_plan: The navigation plan to obtain lane segments from
-        :return:  The costs for passing in each lane segment id
-        """
-        lane_costs: Dict[int, int] = {}
-        for lane_id in lane_list:
-            lane_costs[lane_id] = TempRoutePlanner.get_cost(lane_id, navigation_plan)
-            # TODO above line should be changed to lane_costs[lane_id] = RoutePlanner.get_cost(lane_id)
-            #      RoutePlanner should know the navigation plan already
-        return lane_costs
-
-    @staticmethod
-    @raises(DownstreamLaneNotFound)
-    def _choose_next_lane_id_by_cost(current_lane_id, navigation_plan) -> int:
-        """
-        Currently assumes that Lookahead spreads only current lane segment and the next lane segment(!)
-
-        :param current_lane_id:  The current lane from which to choose
-        :param navigation_plan:  The navigation plan that determines the costs
-        :return:  the id of the lane with the minimal costs
-        """
-        # TODO Remove navigation_plan from arg list, RoutePlanner will know navigation plan already
-        downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
-        costs_per_downstream_lanes = MapUtils._get_costs_per_lanes(downstream_lanes_ids, navigation_plan)
-        return min([(downstream_lane_id, costs_per_downstream_lanes[downstream_lane_id])
-                    for downstream_lane_id in downstream_lanes_ids], key=lambda x: x[1])[0]
-
-    @staticmethod
     @raises(DownstreamLaneNotFound, LaneCostNotFound)
     def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan) -> int:
         """
