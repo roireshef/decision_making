@@ -66,9 +66,9 @@ BP_ACTION_T_LIMITS = np.array([0.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [6, 0.15, 0.1],
+    [4, 0.15, 0.1],
     [0.2, 0.15, 0.1],
-    [0.004, 0.15, 0.1]
+    [0.015, 0.15, 0.1]
 ])
 
 # [1/m] maximal trajectory curvature, based on the minimal turning radius, which is defined in a basic car's spec
@@ -76,7 +76,7 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 MAX_CURVATURE = 0.2
 
 # Longitudinal Jerk Limits [m/sec^3]
-LON_JERK_LIMITS = np.array([-1000.0, 1000.0])
+LON_JERK_LIMITS = np.array([-10.0, 10.0])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
