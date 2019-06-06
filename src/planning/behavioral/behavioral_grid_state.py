@@ -105,14 +105,15 @@ class BehavioralGridState:
         :return:
         """
         pseudo_dynamic_objects = []
-        for dynamic_object in dynamic_objects:
-            for overlapping_lane_segment in MapUtils.get_lane_segment_overlaps(dynamic_object.map_state.lane_id):
-                pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
-                                                            timestamp=dynamic_object.timestamp,
-                                                            cartesian_state=dynamic_object.cartesian_state,
-                                                            map_state=MapState(None, overlapping_lane_segment),
-                                                            size=dynamic_object.size,
-                                                            confidence=dynamic_object.confidence))
+        # TODO: Rewrite function so that it is not dependent on overlap interface
+        # for dynamic_object in dynamic_objects:
+        #     for overlapping_lane_segment in MapUtils.get_lane_segment_overlaps(dynamic_object.map_state.lane_id):
+        #         pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
+        #                                                     timestamp=dynamic_object.timestamp,
+        #                                                     cartesian_state=dynamic_object.cartesian_state,
+        #                                                     map_state=MapState(None, overlapping_lane_segment),
+        #                                                     size=dynamic_object.size,
+        #                                                     confidence=dynamic_object.confidence))
         return dynamic_objects + pseudo_dynamic_objects
 
     @staticmethod

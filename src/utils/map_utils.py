@@ -573,26 +573,6 @@ class MapUtils:
         return road_intersections[0]
 
     @staticmethod
-    def get_lane_segment_overlaps(lane_id):
-        """
-        Returns the overlapping lane_segments of lane_id if lane_id is in an intersection
-        :param lane_id:
-        :return:
-        """
-        road_id = MapUtils.get_road_segment_id_from_lane_id(lane_id=lane_id)
-        if MapUtils.get_road_segment(road_id).e_e_road_segment_type != MapRoadSegmentType.Intersection:
-            return []
-        road_intersection = MapUtils.get_intersection(road_id)
-        overlaps = []
-        # TODO: Vectorize this
-        for overlap in road_intersection.as_lane_overlaps:
-            if overlap.e_i_first_lane_segment_id == lane_id:
-                overlaps.append(overlap.e_i_second_lane_segment_id)
-            elif overlap.e_i_second_lane_segment_id == lane_id:
-                overlaps.append(overlap.e_i_first_lane_segment_id)
-        return overlaps
-
-    @staticmethod
     def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> np.array:
         """
         Returns a the locations (s coordinates) of Static_Traffic_flow_controls on the GFF

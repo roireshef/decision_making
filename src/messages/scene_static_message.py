@@ -16,11 +16,10 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneStatic imp
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import TsSYSDataSceneStatic
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadIntersection import TsSYSSceneRoadIntersection
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegment import TsSYSSceneRoadSegment
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_LaneOverlap import TsSYSLaneOverlap
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header 
 from decision_making.src.messages.scene_static_enums import MapLaneType, MapRoadSegmentType, MovingDirection,\
-    ManeuverType, MapLaneMarkerType, RoadObjectType, TrafficSignalState, NominalPathPoint, OverlapType
+    ManeuverType, MapLaneMarkerType, RoadObjectType, TrafficSignalState
 
 MAX_LANE_ATTRIBUTES = 8
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
@@ -94,42 +93,16 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_downstream_segment_count,
                    pubsubMsg.a_i_downstream_road_segment_ids[:pubsubMsg.e_Cnt_downstream_segment_count])
 
-class LaneOverlap(PUBSUB_MSG_IMPL):
-    e_i_first_lane_segment_id = int
-    e_i_second_lane_segment_id = int
-    e_e_overlap_type = OverlapType
-
-    def __init__(self, e_i_first_lane_segment_id: int, e_i_second_lane_segment_id: int,
-                 e_e_overlap_type: OverlapType) -> None:
-        self.e_e_overlap_type = e_e_overlap_type
-        self.e_i_first_lane_segment_id = e_i_first_lane_segment_id
-        self.e_i_second_lane_segment_id = e_i_second_lane_segment_id
-
-    def serialize(self) -> TsSYSLaneOverlap:
-        pubsub_msg = TsSYSLaneOverlap()
-        pubsub_msg.e_i_first_lane_segment_id = self.e_i_first_lane_segment_id
-        pubsub_msg.e_i_second_lane_segment_id = self.e_i_second_lane_segment_id
-        pubsub_msg.e_e_overlap_type = self.e_e_overlap_type
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSLaneOverlap):
-        return cls(pubsubMsg.e_i_first_lane_segment_id, pubsubMsg.e_i_second_lane_segment_id,
-                   pubsubMsg.e_e_overlap_type)
-
 class SceneRoadIntersection(PUBSUB_MSG_IMPL):
     e_i_road_intersection_id = int
     e_Cnt_lane_coupling_count = int
     a_i_lane_coupling_segment_ids = np.ndarray
     e_Cnt_intersection_road_segment_count = int
     a_i_intersection_road_segment_ids = np.ndarray
-    e_Cnt_lane_overlaps_count = int
-    as_lane_overlaps = List[LaneOverlap]
 
     def __init__(self, e_i_road_intersection_id: int,
                  e_Cnt_lane_coupling_count: int, a_i_lane_coupling_segment_ids: np.ndarray,
-                 e_Cnt_intersection_road_segment_count: int, a_i_intersection_road_segment_ids: np.ndarray,
-                 e_Cnt_lane_overlaps_count: int, as_lane_overlaps: List[LaneOverlap]) -> None:
+                 e_Cnt_intersection_road_segment_count: int, a_i_intersection_road_segment_ids: np.ndarray) -> None:
         """
         Road-intersection information
         :param e_i_road_intersection_id: ID of this road-intersection
@@ -146,8 +119,6 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
         self.a_i_lane_coupling_segment_ids = a_i_lane_coupling_segment_ids
         self.e_Cnt_intersection_road_segment_count = e_Cnt_intersection_road_segment_count
         self.a_i_intersection_road_segment_ids = a_i_intersection_road_segment_ids
-        self.e_Cnt_lane_overlaps_count = e_Cnt_lane_overlaps_count
-        self.as_lane_overlaps = as_lane_overlaps
 
     def serialize(self) -> TsSYSSceneRoadIntersection:
         pubsub_msg = TsSYSSceneRoadIntersection()
@@ -159,8 +130,6 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_Cnt_intersection_road_segment_count = self.e_Cnt_intersection_road_segment_count
         pubsub_msg.a_i_intersection_road_segment_ids = self.a_i_intersection_road_segment_ids
-        pubsub_msg.e_Cnt_lane_overlaps_count = self.e_Cnt_lane_overlaps_count
-        pubsub_msg.as_lane_overlaps = self.as_lane_overlaps
 
         return pubsub_msg
 
@@ -170,10 +139,7 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_lane_coupling_count,
                    pubsubMsg.a_i_lane_coupling_segment_ids[:pubsubMsg.e_Cnt_lane_coupling_count],
                    pubsubMsg.e_Cnt_intersection_road_segment_count,
-                   pubsubMsg.a_i_intersection_road_segment_ids[:pubsubMsg.e_Cnt_intersection_road_segment_count],
-                   pubsubMsg.e_Cnt_lane_overlaps_count,
-                   pubsubMsg.as_lane_overlaps[:pubsubMsg.e_Cnt_lane_overlaps_count])
-
+                   pubsubMsg.a_i_intersection_road_segment_ids[:pubsubMsg.e_Cnt_intersection_road_segment_count])
 
 class AdjacentLane(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
@@ -283,8 +249,6 @@ class LaneCoupling(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_intersection_id,
                    pubsubMsg.e_i_downstream_lane_segment_id, pubsubMsg.e_i_upstream_lane_segment_id,
                    ManeuverType(pubsubMsg.e_e_maneuver_type))
-
-
 
 class StaticTrafficFlowControl(PUBSUB_MSG_IMPL):
     e_e_road_object_type = RoadObjectType
