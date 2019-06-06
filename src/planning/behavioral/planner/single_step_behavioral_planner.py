@@ -44,6 +44,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         :param state: the current world state
         :param behavioral_state: processed behavioral state
         :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
+        :param recipes_mask: a list of recipe-sized boolean values indicating if the respective recipe is valid or not [bool]
         :param route_plan:
         :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
         """
@@ -83,6 +84,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         valid_idxs = np.where(action_specs_mask)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
+
+        if isinstance(action_recipes[selected_action_index], StaticActionRecipe):
+            action_specs_mask = self.action_spec_validator.filter_action_specs([action_specs[129]], behavioral_state)
 
         return selected_action_index, selected_action_spec
 
