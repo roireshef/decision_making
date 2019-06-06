@@ -128,7 +128,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                              cost_params.lon_acceleration_limits,
                                                                              cost_params.lat_acceleration_limits,
                                                                              LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS,
-                                                                             CURV_LIMITS, cost_params.desired_velocity)
+                                                                             cost_params.desired_velocity)
 
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
@@ -146,7 +146,6 @@ class WerlingPlanner(TrajectoryPlanner):
                                           "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s);\n"
                                           "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s);\n"
                                           "planned lat. accelerations range [%s, %s] (limits: %s);\n"
-                                          "[highest minimal curvature, lowest maximal curvature] [%s, %s] (limits: %s);\n"
                                           "number of trajectories passed according to Cartesian limits: %s/%s;\n"
                                           "goal_frenet = %s;\n "
                                           "distance from ego to goal = %f, time*approx_velocity = %f" %
@@ -160,8 +159,6 @@ class WerlingPlanner(TrajectoryPlanner):
                                            NumpyUtils.str_log(cost_params.lon_acceleration_limits),
                                            np.min(lat_acc), np.max(lat_acc),
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
-                                           np.min(ctrajectories[:, :, C_K]), np.max(ctrajectories[:, :, C_K]),
-                                           NumpyUtils.str_log(CURV_LIMITS),
                                            len(cartesian_filtered_indices), len(ctrajectories),
                                            goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
                                            T_target_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))

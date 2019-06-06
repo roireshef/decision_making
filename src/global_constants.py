@@ -76,8 +76,8 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 MAX_CURVATURE = 0.2
 
 # Longitudinal Jerk Limits [m/sec^3] in acceleration and deceleration scenarios, respectively
-LON_JERK_ACCEL_LIMITS = np.array([-10, 10])
-LON_JERK_DECEL_LIMITS = np.array([-10, 10])
+LON_JERK_ACCEL_LIMITS = np.array([-5, 1])
+LON_JERK_DECEL_LIMITS = np.array([-5, 5])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
@@ -150,14 +150,14 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference 
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 15
+TRAJECTORY_NUM_POINTS = 10
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.5
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.0
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
@@ -255,7 +255,6 @@ BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
-ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 
