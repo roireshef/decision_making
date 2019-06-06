@@ -142,6 +142,7 @@ class KinematicUtils:
         :param frenet_states: the current frenet states to pull positions and velocities from
         :return: a tuple of Nx6 matrices (s(t), d(t)) polynomial coefficient arrays
         """
+        # zero 4 highest coefficients of poly_s: from x^5 until x^2 (including)
         poly_s = np.c_[np.zeros((frenet_states.shape[0], S2+1)), frenet_states[:, FS_SV], frenet_states[:, FS_SX]]
         # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
         poly_d = np.zeros((frenet_states.shape[0], QuinticPoly1D.num_coefs()))
