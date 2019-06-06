@@ -130,7 +130,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             # solve for s(t)
             A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T[not_padding_mode]))
             poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s[not_padding_mode])
-        poly_coefs_s[padding_mode], _ = KinematicUtils.create_2D_linear_profile_polynomials(terminal_fstates[padding_mode])
+        poly_coefs_s[padding_mode], _ = KinematicUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
 
         are_valid = []
         for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
@@ -140,7 +140,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
-            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomials(target_fstate)
+            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
 
             # minimal margin used in addition to headway (center-to-center of both objects)
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
