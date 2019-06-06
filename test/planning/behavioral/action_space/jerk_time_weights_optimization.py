@@ -62,7 +62,7 @@ class TimeJerkWeightsOptimization:
 
         # create the grid of states
         v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
-        braking = np.where(np.logical_and(0 < v0 - vT, v0 - vT <= 8))
+        braking = np.where(np.logical_and(0 < v0 - vT, v0 - vT <= 10))
         v0, vT, a0, s = v0[braking], vT[braking], a0[braking], s[braking]
         limited_headway = np.where((s >= v0 * SAFETY_HEADWAY) & (s < v0 * 3))
         v0, vT, a0, s = v0[limited_headway], vT[limited_headway], a0[limited_headway], s[limited_headway]
