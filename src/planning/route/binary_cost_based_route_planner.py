@@ -251,9 +251,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         route_lane_segments: RoutePlanRoadSegment = []
 
-        downstream_road_segment_not_found = True    # as the name suggests
-                                                    # if there is NO downstream lane (as defined in map) to the current
-                                                    # road segment (any of its lanes) that is in the route
+        # As the name suggests, if there is NO downstream lane (as defined in map) to the current
+        # road segment (any of its lanes) that is in the route
+        downstream_road_segment_not_found = True
 
         if not self.get_route_plan_lane_segments():  # check if this is the last road segment in the nav plan
             downstream_road_segment_not_found = False
@@ -281,8 +281,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         if (downstream_road_segment_not_found):
             raise RoadSegmentLaneSegmentMismatch('Binary Cost Based Route Planner: Not a single downstream lane segment for the current '
                                                  'road segment ID {0} were found in the route plan downstream road segment ID {1} '
-                                                 'described in the navigation plan'.format(road_segment_id,
-                                                 self._route_plan_input_data.get_next_road_segment(road_segment_id)))
+                                                 'described in the navigation plan'.format(
+                                                     road_segment_id, self._route_plan_input_data.get_next_road_segment(road_segment_id)))
 
         return route_lane_segments
 
