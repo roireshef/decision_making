@@ -21,9 +21,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         self.__route_plan_lane_segments = route_plan_lane_segments or []
         self._route_plan_input_data = route_plan_input_data or RoutePlannerInputData()
 
-    def get_route_plan_lane_segments(self) -> RoutePlanRoadSegments:
-        return self.__route_plan_lane_segments
-
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
     def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
@@ -167,7 +164,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # search through all downstream lanes to to current lane
         downstream_lane_found_in_route = False
 
-        downstream_route_lane_segments: RoutePlanRoadSegment = self.get_route_plan_lane_segments()[-1]
+        downstream_route_lane_segments: RoutePlanRoadSegment = self.__route_plan_lane_segments[-1]
 
         downstream_route_lane_segment_ids = np.array([route_lane_segment.e_i_lane_segment_id for route_lane_segment in downstream_route_lane_segments])
 
@@ -217,7 +214,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         lane_occupancy_cost = BinaryCostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
 
         # Calculate lane end costs (from lane occupancy costs)
-        if not self.get_route_plan_lane_segments():  # if route_plan_lane_segments is empty indicating the last segment in route
+        if not self.__route_plan_lane_segments:  # if route_plan_lane_segments is empty indicating the last segment in route
             if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
                 lane_end_cost = TRUE_COST
             else:
@@ -255,7 +252,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # road segment (any of its lanes) that is in the route
         downstream_road_segment_not_found = True
 
-        if not self.get_route_plan_lane_segments():  # check if this is the last road segment in the nav plan
+        if not self.__route_plan_lane_segments:  # check if this is the last road segment in the nav plan
             downstream_road_segment_not_found = False
 
         downstream_lane_segment_ids_for_road_segment: List[List[int]] = []
@@ -329,4 +326,4 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                              e_Cnt_num_road_segments=num_road_segments,
                              a_i_road_segment_ids=np.array(road_segment_ids),
                              a_Cnt_num_lane_segments=np.array(num_lane_segments),
-                             as_route_plan_lane_segments=self.get_route_plan_lane_segments())
+                             as_route_plan_lane_segments=self.__route_plan_lane_segments)
