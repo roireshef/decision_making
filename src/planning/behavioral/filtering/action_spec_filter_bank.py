@@ -16,6 +16,7 @@ from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 
@@ -40,62 +41,74 @@ class FilterForKinematics(ActionSpecFilter):
         :return: boolean list per action spec: True if a spec passed the filter
         """
         # extract all relevant information for boundary conditions
-        initial_fstates = np.array([behavioral_state.projected_ego_fstates[spec.relative_lane] for spec in action_specs])
-        terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
-        T = np.array([spec.t for spec in action_specs])
+        #with prof.time_range('init'):
+        with DMProfiler('filter_init'):
+            initial_fstates = np.array([behavioral_state.projected_ego_fstates[spec.relative_lane] for spec in action_specs])
+            terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+            T = np.array([spec.t for spec in action_specs])
 
         # create boolean arrays indicating whether the specs are in tracking mode
-        padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
-        not_padding_mode = np.logical_not(padding_mode)
+        with DMProfiler('filter_check_padding_mode'):
+            padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
+            not_padding_mode = np.logical_not(padding_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[not_padding_mode])
+        #with prof.time_range('QuinticPoly1D.inverse_time_constraints_tensor'):
+        with DMProfiler('filter_QuinticPoly1D.inverse_time_constraints_tensor'):
+            A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[not_padding_mode])
 
         # represent initial and terminal boundary conditions (for two Frenet axes s,d) for non-tracking specs
         constraints_s = np.concatenate((initial_fstates[not_padding_mode, :FS_DX], terminal_fstates[not_padding_mode, :FS_DX]), axis=1)
         constraints_d = np.concatenate((initial_fstates[not_padding_mode, FS_DX:], terminal_fstates[not_padding_mode, FS_DX:]), axis=1)
 
         # solve for s(t) and d(t)
-        poly_coefs_s, poly_coefs_d = np.zeros((len(action_specs), 6)), np.zeros((len(action_specs), 6))
-        poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
-        # in tracking mode (constant velocity) the s polynomials have "approximately" only two non-zero coefficients
-        poly_coefs_s[padding_mode, 4:] = np.c_[terminal_fstates[padding_mode, FS_SV], terminal_fstates[padding_mode, FS_SX]]
+        with DMProfiler('filter_solve_Quintic'):
+            poly_coefs_s, poly_coefs_d = np.zeros((len(action_specs), 6)), np.zeros((len(action_specs), 6))
+            poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+            poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+            # in tracking mode (constant velocity) the s polynomials have "approximately" only two non-zero coefficients
+            poly_coefs_s[padding_mode, 4:] = np.c_[terminal_fstates[padding_mode, FS_SV], terminal_fstates[padding_mode, FS_SX]]
 
         are_valid = []
-        for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
-            # TODO: in the future, consider leaving only a single action (for better "learnability")
 
-            # extract the relevant (cached) frenet frame per action according to the destination lane
-            frenet_frame = behavioral_state.extended_lane_frames[spec.relative_lane]
+        with DMProfiler('filter_loop_over'):
+            for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
+                # TODO: in the future, consider leaving only a single action (for better "learnability")
 
-            if not spec.only_padding_mode:
-                # if the action is static, there's a chance the 5th order polynomial is actually a degenerate one
-                # (has lower degree), so we clip the first zero coefficients and send a polynomial with lower degree
-                # TODO: This handling of polynomial coefficients being 5th or 4th order should happen in an inner context and get abstracted from this method
-                first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
-                is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(
-                    poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
+                # extract the relevant (cached) frenet frame per action according to the destination lane
+                frenet_frame = behavioral_state.extended_lane_frames[spec.relative_lane]
 
-                # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
-                # we can save time by not checking cartesian limits
-                if not is_valid_in_frenet:
-                    are_valid.append(False)
-                    continue
+                with DMProfiler('filter_by_longitudinal_frenet_limits'):
+                    if not spec.only_padding_mode:
+                        # if the action is static, there's a chance the 5th order polynomial is actually a degenerate one
+                        # (has lower degree), so we clip the first zero coefficients and send a polynomial with lower degree
+                        # TODO: This handling of polynomial coefficients being 5th or 4th order should happen in an inner context and get abstracted from this method
+                        first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
+                        is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(
+                            poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
 
-            total_time = max(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, t)
-            time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
+                        # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
+                        # we can save time by not checking cartesian limits
+                        if not is_valid_in_frenet:
+                            are_valid.append(False)
+                            continue
 
-            # generate a SamplableWerlingTrajectory (combination of s(t), d(t) polynomials applied to a Frenet frame)
-            samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
-            cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
+                total_time = max(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, t)
+                time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
 
-            # validate cartesian points against cartesian limits
-            is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
-                cartesian_points[np.newaxis, ...],
-                VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
-                BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
-            are_valid.append(is_valid_in_cartesian)
+                # generate a SamplableWerlingTrajectory (combination of s(t), d(t) polynomials applied to a Frenet frame)
+
+                with DMProfiler('filter_sample'):
+                    samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
+                    cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
+
+                # validate cartesian points against cartesian limits
+                with DMProfiler('filter_by_cartesian_limits'):
+                    is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
+                        cartesian_points[np.newaxis, ...],
+                        VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
+                        BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
+                    are_valid.append(is_valid_in_cartesian)
 
         return are_valid
 

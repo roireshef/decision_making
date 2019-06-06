@@ -2,6 +2,7 @@ import time
 
 import numpy as np
 import traceback
+from decision_making.src.utils.dm_profiler import DMProfiler
 from logging import Logger
 import numpy as np
 import cProfile
@@ -83,11 +84,13 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
 
-            with prof.time_range("get_current_state"):
+            #with prof.time_range("get_current_state"):
+            with DMProfiler('get_current_state'):
                 state = self._get_current_state()
 
 
-            with prof.time_range("get_scene_static"):
+            #with prof.time_range("get_scene_static"):
+            with DMProfiler('get_scene_static'):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
@@ -113,12 +116,14 @@ class BehavioralPlanningFacade(DmModule):
 
             route_plan = self._get_current_route_plan()
 
-            with prof.time_range("take_over"):
+            #with prof.time_range("take_over"):
+            with DMProfiler('take_over'):
                 # calculate the takeover message
                 takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
                 self._publish_takeover(takeover_message)
 
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
+            with DMProfiler('plan'):
+                trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
                                                                                                            route_plan)
 
             self._last_trajectory = samplable_trajectory
