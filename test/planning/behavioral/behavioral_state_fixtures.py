@@ -3,7 +3,7 @@ from decision_making.paths import Paths
 from decision_making.src.planning.types import FS_SA, C_A
 
 from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from typing import List
 
@@ -26,12 +26,6 @@ from decision_making.test.planning.route.scene_fixtures import default_route_pla
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 NAVIGATION_PLAN = np.array(range(20, 30))
 
-NAVIGATION_PLAN_OVAL_TRACK = np.array([3537, 76406, 3646, 46577, 46613, 87759, 8766, 76838, 228030,
-                                       51360, 228028, 87622, 228007, 87660, 87744, 9893, 9894, 87740,
-                                       77398, 87741, 25969, 10068, 87211, 10320, 10322, 228029, 87739,
-                                       40953, 10073, 10066, 87732, 43516, 87770, 228034, 87996,
-                                       228037, 10536, 88088, 228039, 88192, 10519, 10432, 3537])
-
 
 @pytest.fixture(scope='function')
 def route_plan_20_30():
@@ -49,14 +43,78 @@ def route_plan_20():
                                          as_route_plan_lane_segments=[]))
 
 
-@pytest.fixture(scope='function')
-def route_plan_oval_track():
+@pytest.fixture(scope='session')
+def route_plan_for_oval_track_file():
+    '''
+    Currently, the pickle file that contains oval track data is missing road segments 10432, 3537, 76406, 3646, and 46577. This is the
+    part of the oval track close to the entrance and exit. If the pickle file is updated to include those road segments, this fixture
+    should be updated to account for them.
+    '''
+    nav_plan = [46613, 87759, 8766, 76838, 228030, 51360, 228028, 87622, 228007, 87660, 87744, 9893, 9894, 87740, 77398, 87741, 25969,
+                10068, 87211, 10320, 10322, 228029, 87739, 40953, 10073, 10066, 87732, 43516, 87770, 228034, 87996, 228037, 10536, 88088,
+                228039, 88192, 10519]
+
+    num_lane_segments = []
+    route_plan_lane_segments = []
+
+    for road_segment_id in nav_plan:
+        road_segment = MapUtils.get_road_segment(road_segment_id)
+        num_lane_segments.append(road_segment.e_Cnt_lane_segment_id_count)
+
+        route_plan_road_segment = [RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
+                                                        e_cst_lane_occupancy_cost=0.0,
+                                                        e_cst_lane_end_cost=0.0) for lane_segment_id in road_segment.a_i_lane_segment_ids]
+
+        if road_segment_id is 87759:
+            route_plan_road_segment[4].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 76838:
+            route_plan_road_segment[4].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 228030:
+            route_plan_road_segment[4].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 228028:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 87622:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 228007:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 40953:
+            route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 228034:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 87996:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 228037:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 88088:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 228039:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 88192:
+            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
+            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        elif road_segment_id is 10519:
+            for route_plan_lane_segment in route_plan_road_segment:
+                route_plan_lane_segment.e_cst_lane_end_cost = 1.0
+
+        route_plan_lane_segments.append(route_plan_road_segment)
+
     yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
                     s_Data=DataRoutePlan(e_b_is_valid=True,
-                                         e_Cnt_num_road_segments=1,
-                                         a_i_road_segment_ids=NAVIGATION_PLAN_OVAL_TRACK,
-                                         a_Cnt_num_lane_segments=0,
-                                         as_route_plan_lane_segments=[]))
+                                         e_Cnt_num_road_segments=len(nav_plan),
+                                         a_i_road_segment_ids=np.array(nav_plan),
+                                         a_Cnt_num_lane_segments=np.array(num_lane_segments),
+                                         as_route_plan_lane_segments=route_plan_lane_segments))
 
 
 # TODO: This should be a parametrized_fixture.
@@ -357,9 +415,9 @@ def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_3
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_acceleration_towards_vehicle(
-        state_with_objects_for_acceleration_towards_vehicle, route_plan_oval_track: RoutePlan):
+        state_with_objects_for_acceleration_towards_vehicle, route_plan_for_oval_track_file: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_acceleration_towards_vehicle,
-                                                route_plan_oval_track, None)
+                                                route_plan_for_oval_track_file, None)
 
 
 @pytest.fixture(scope='function')
