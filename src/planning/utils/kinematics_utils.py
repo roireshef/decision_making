@@ -1,6 +1,6 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS
+    LON_ACC_LIMITS, EPS
 from decision_making.src.global_constants import MAX_CURVATURE
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2
@@ -62,8 +62,9 @@ class KinematicUtils:
         #     (initial jerk is calculated by subtracting the first two acceleration samples)
         # (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
         # (3) keeps the velocity under the desired velocity limit.
+        # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_desired = np.logical_or(
-            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity), axis=1),
+            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity + EPS), axis=1),
             (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
         # check velocity and acceleration limits
