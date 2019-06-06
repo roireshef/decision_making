@@ -99,7 +99,6 @@ class BehavioralGridState:
             timestamp: same as original dynamic object
             cartesian_state:same as original dynamic object
             map_state:  (lane id as the pseudo-object), lane_fstate as None for lazy initialization)
-            map_state_on_host_lane:same as original dynamic object, expected to be removed soon
             size:same as original dynamic object
             confidence:same as original dynamic object
         :param dynamic_objects:
@@ -112,7 +111,6 @@ class BehavioralGridState:
                                                             timestamp=dynamic_object.timestamp,
                                                             cartesian_state=dynamic_object.cartesian_state,
                                                             map_state=MapState(None, overlapping_lane_segment),
-                                                            map_state_on_host_lane=dynamic_object.map_state,
                                                             size=dynamic_object.size,
                                                             confidence=dynamic_object.confidence))
         return dynamic_objects + pseudo_dynamic_objects
