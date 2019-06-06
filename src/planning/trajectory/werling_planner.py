@@ -191,7 +191,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            poly_s, poly_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
+            poly_s, poly_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
                                                               planning_horizon, planning_horizon, planning_horizon,
                                                               reference_route, poly_s, poly_d)
