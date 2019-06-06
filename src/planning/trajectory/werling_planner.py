@@ -8,7 +8,7 @@ from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, CURV_LIMITS, LON_JERK_LIMITS
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, CURV_LIMITS, LON_JERK_LIMITS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -137,12 +137,17 @@ class WerlingPlanner(TrajectoryPlanner):
         if len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+            lon_acc = ctrajectories[:, :, C_A]
+            lon_jerk = np.hstack(
+                (np.zeros((lon_acc.shape[0], 1)), np.diff(lon_acc))) / TRAJECTORY_TIME_RESOLUTION
+
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f,\n"
                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
                                           "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s);\n"
                                           "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s);\n"
                                           "planned lat. accelerations range [%s, %s] (limits: %s);\n"
+                                          "[highest minimal lon_jerk, lowest maximal lon_jerk] [%s, %s] (limits: %s);\n"
                                           "[highest minimal curvature, lowest maximal curvature] [%s, %s] (limits: %s);\n"
                                           "number of trajectories passed according to Cartesian limits: %s/%s;\n"
                                           "goal_frenet = %s;\n "
@@ -157,6 +162,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                            NumpyUtils.str_log(cost_params.lon_acceleration_limits),
                                            np.min(lat_acc), np.max(lat_acc),
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
+                                           np.min(lon_jerk), np.max(lon_jerk),
+                                           NumpyUtils.str_log(LON_JERK_LIMITS),
                                            np.min(ctrajectories[:, :, C_K]), np.max(ctrajectories[:, :, C_K]),
                                            NumpyUtils.str_log(CURV_LIMITS),
                                            len(cartesian_filtered_indices), len(ctrajectories),
