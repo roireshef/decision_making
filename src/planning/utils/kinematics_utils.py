@@ -98,7 +98,6 @@ class KinematicUtils:
         lon_jerk = np.hstack((np.zeros((lon_acceleration.shape[0], 1)), np.diff(lon_acceleration)))/TRAJECTORY_TIME_RESOLUTION
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
-        curvature = ctrajectories[:, :, C_K]
 
         # validates the following behavior for each trajectory:
         # (1) applies negative jerk to reduce initial positive acceleration, if necessary
@@ -116,8 +115,7 @@ class KinematicUtils:
             NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
-            NumpyUtils.is_in_limits(lon_jerk, lon_jerk_limits) &
-            NumpyUtils.is_in_limits(curvature, curvature_limits), axis=1)
+            NumpyUtils.is_in_limits(lon_jerk, lon_jerk_limits), axis=1)
 
         conforms = np.logical_and(conforms_limits, conforms_desired)
         return conforms
