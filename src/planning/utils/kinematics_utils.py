@@ -55,7 +55,6 @@ class KinematicUtils:
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
-        curvature = ctrajectories[:, :, C_K]
 
         # validates the following behavior for each trajectory:
         # (1) applies negative jerk to reduce initial positive acceleration, if necessary
