@@ -72,8 +72,7 @@ class KinematicUtils:
         #       desired velocity limit, as long as they slowdown towards the desired velocity.
         conforms_limits = np.all(NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
                                  NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
-                                 NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
-                                 NumpyUtils.is_in_limits(curvature, np.array([-MAX_CURVATURE, MAX_CURVATURE])), axis=1)
+                                 NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
 
         conforms = np.logical_and(conforms_limits, conforms_desired)
         return conforms
