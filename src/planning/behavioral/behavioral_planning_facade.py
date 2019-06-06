@@ -78,7 +78,7 @@ class BehavioralPlanningFacade(DmModule):
         :return: void
         """
 
-        pr = cProfile.Profile
+        pr = cProfile.Profile()
         pr.enable()
         try:
             start_time = time.time()
