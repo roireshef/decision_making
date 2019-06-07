@@ -115,6 +115,7 @@ class BehavioralGridState:
                 if obj_lane.e_Cnt_upstream_lane_count == 1:
                     if MapUtils.get_lane(obj_lane.as_upstream_lanes[0].e_i_lane_segment_id) \
                             .e_Cnt_downstream_lane_count > 1:
+                        # Get overlapping lanes and create pseudo objects in those lanes
                         other_lanes = [lane for lane in MapUtils.get_lane(obj_lane.as_upstream_lanes[0].e_i_lane_segment_id)
                              .as_downstream_lanes if lane.e_i_lane_segment_id != obj_lane_id]
                         for other_lane in other_lanes:
