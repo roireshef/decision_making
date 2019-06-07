@@ -194,9 +194,9 @@ class BehavioralPlanningFacade(DmModule):
         # find ego road segment row index in as_route_plan_lane_segments 2-d array which matches the index in a_i_road_segment_ids 1-d array
         route_plan_start_idx = np.argwhere(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
 
-        if len(route_plan_start_idx[0]) == 0:  # check if ego road segment Id is listed inside route plan data
+        if route_plan_start_idx.size == 0:  # check if ego road segment Id is listed inside route plan data
             raise EgoRoadSegmentNotFound('Route plan does not include data for ego road segment ID {0}'.format(ego_road_segment_id))
-        if len(route_plan_start_idx[0]) > 1:
+        elif route_plan_start_idx.size > 1:
             raise RepeatedRoadSegments('Route Plan has repeated data for road segment ID {0}'.format(ego_road_segment_id))
 
         ego_row_idx = route_plan_start_idx[0][0]
