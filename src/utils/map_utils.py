@@ -6,7 +6,7 @@ from decision_making.src.global_constants import EPS, LANE_END_COST_IND
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment, SceneRoadIntersection
-from decision_making.src.messages.scene_static_enums import NominalPathPoint, MapRoadSegmentType
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
