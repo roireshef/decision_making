@@ -3,11 +3,12 @@ import rte.python.profiler as prof
 from typing import List, Optional
 from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
     DownstreamLaneDataNotFound
-from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST
+from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST, TAKE_SPLIT, \
+    PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
     RoutePlanRoadSegment, RoutePlanRoadSegments
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType,\
-    MapLaneDirection, GMAuthorityType, LaneConstructionType
+    MapLaneDirection, GMAuthorityType, LaneConstructionType, MapRoadSegmentType, ManeuverType
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 
@@ -272,6 +273,67 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         return route_lane_segments
 
+    def _modify_lane_end_costs_on_last_road_segment(self, lane_segment_ids: List[int], cost: float) -> None:
+        """
+        This function modifies lane end costs for the last road segment in self._route_plan_lane_segments.
+        :param lane_segment_ids: List of lane segment IDs that will have their associated lane end costs modified
+        :param cost: New lane end cost
+        :return:
+        """
+        for lane_segment in self._route_plan_lane_segments[-1]:
+            if lane_segment.e_i_lane_segment_id in lane_segment_ids:
+                lane_segment.e_cst_lane_end_cost = cost
+
+    def _modify_lane_end_costs_for_lane_splits(self, road_segment_id: int) -> None:
+        """
+        At a lane split, the lane end costs determine whether the vehicle takes the split or drives straight. This function modifies these
+        costs according to the TAKE_SPLIT and PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT config parameters.
+        :param road_segment_id:
+        :return:
+        """
+        lane_segment_ids = []  # Lane segment IDs that will have their associated lane end costs modified
+        lane_segment_ids_on_road_segment = self._route_plan_input_data.get_lane_segment_ids_for_road_segment(road_segment_id).tolist()
+
+        # Find lane segment IDs that need to be altered
+        for lane_segment_id in lane_segment_ids_on_road_segment:
+            downstream_lanes = self._route_plan_input_data.get_lane_segment_base(lane_segment_id).as_downstream_lanes
+
+            if len(downstream_lanes) > 1:
+                if TAKE_SPLIT:
+                    # First, determine if the lane has both a left and right split. If this happens, we prioritize one split over the other.
+                    left_split_present = False
+                    right_split_present = False
+
+                    for downstream_lane in downstream_lanes:
+                        if downstream_lane.e_e_maneuver_type == ManeuverType.LEFT_SPLIT:
+                            left_split_present = True
+                        elif downstream_lane.e_e_maneuver_type == ManeuverType.RIGHT_SPLIT:
+                            right_split_present = True
+
+                    if left_split_present and right_split_present:
+                        left_and_right_split_present = True
+                    else:
+                        left_and_right_split_present = False
+
+                    # Second, determine the lanes that will have their lane end costs modified
+                    for downstream_lane in downstream_lanes:
+                        if downstream_lane.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION:
+                            lane_segment_ids.append(lane_segment_id)
+
+                        if left_and_right_split_present:
+                            if downstream_lane.e_e_maneuver_type == ManeuverType.LEFT_SPLIT and PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT:
+                                lane_segment_ids.append(lane_segment_id)
+                            elif (downstream_lane.e_e_maneuver_type == ManeuverType.RIGHT_SPLIT and
+                                  not(PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT)):
+                                lane_segment_ids.append(lane_segment_id)
+                else:
+                    for downstream_lane in downstream_lanes:
+                        if downstream_lane.e_e_maneuver_type != ManeuverType.STRAIGHT_CONNECTION:
+                            lane_segment_ids.append(lane_segment_id)
+
+        # Set lane end costs
+        self._modify_lane_end_costs_on_last_road_segment(lane_segment_ids, TRUE_COST)
+
     @prof.ProfileFunction()
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """
@@ -282,6 +344,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         road_segment_ids: List[int] = []
         num_lane_segments: List[int] = []
+        prev_road_segment_was_intersection = False
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # key -> road_segment_id
@@ -290,7 +353,18 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         self._route_plan_lane_segments: RoutePlanRoadSegments = []
         self._route_plan_input_data = route_plan_input_data
 
-        for (road_segment_id, lane_segment_ids) in reversed(route_plan_input_data.get_lane_segment_ids_for_route().items()):
+        for (road_segment_id, lane_segment_ids) in reversed(self._route_plan_input_data.get_lane_segment_ids_for_route().items()):
+            # Check whether any costs need to be altered in the previous road segment. Recall that we are looping over the road segments in
+            # reversee order so the previous road segment here is actually the downstream road segment.
+            if prev_road_segment_was_intersection:
+                # Modify lane end costs for lane splits
+                self._modify_lane_end_costs_for_lane_splits(road_segment_id)
+
+            # Assign flag for use on next loop
+            if self._route_plan_input_data.get_road_segment(road_segment_id).e_e_road_segment_type == MapRoadSegmentType.Intersection:
+                prev_road_segment_was_intersection = True
+            else:
+                prev_road_segment_was_intersection = False
 
             route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
 
