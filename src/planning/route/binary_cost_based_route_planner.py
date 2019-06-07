@@ -267,7 +267,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             raise RoadSegmentLaneSegmentMismatch('Binary Cost Based Route Planner: Not a single downstream lane segment for the current '
                                                  'road segment ID {0} were found in the route plan downstream road segment ID {1} '
                                                  'described in the navigation plan'.format(
-                                                     road_segment_id, self._route_plan_input_data.get_next_road_segment(road_segment_id)))
+                                                     road_segment_id,
+                                                     self._route_plan_input_data.get_next_road_segment_id(road_segment_id)))
 
         return route_lane_segments
 
