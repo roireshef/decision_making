@@ -61,7 +61,7 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     :param tp_params_serialized: serialized trajectory parameters input message
     :return:
     """
-    scene_static_pg_no_split = pickle.load(open(Paths.get_map_absolute_path_filename(PG_PICKLE_FILE_NAME), 'rb'))
+    scene_static_pg_no_split = pickle.load(open(Paths.get_scene_static_absolute_path_filename(PG_PICKLE_FILE_NAME), 'rb'))
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
 
     # Create PubSub Mock

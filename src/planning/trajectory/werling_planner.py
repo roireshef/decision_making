@@ -125,7 +125,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
-                                                                             cost_params.lat_acceleration_limits)
+                                                                             cost_params.lat_acceleration_limits,
+                                                                             cost_params.desired_velocity)
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
         ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
@@ -195,7 +196,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            poly_s, poly_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
+            poly_s, poly_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
                                                               planning_horizon, planning_horizon, planning_horizon,
                                                               reference_route, poly_s, poly_d)
