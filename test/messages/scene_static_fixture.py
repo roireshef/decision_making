@@ -4,6 +4,8 @@ import pickle
 from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, PG_PICKLE_FILE_NAME, \
     ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME
 from decision_making.paths import Paths
+from decision_making.src.messages.scene_static_message import SceneRoadSegment, MapRoadSegmentType, SceneLaneSegmentBase, \
+    MapLaneType, LaneSegmentConnectivity, ManeuverType, LaneCoupling
 
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
 
@@ -47,6 +49,7 @@ def testable_scene_static_mock():
     # frame_origin = [32, 34]
     return SceneStaticUtils.create_scene_static_from_points(road_segment_ids=[1, 2],
                                                             num_lanes=NUM_LANES,
+
                                                             lane_width=LANE_WIDTH,
                                                             points_of_roads=road_coordinates)
 
@@ -68,3 +71,23 @@ def short_testable_scene_static_mock():
                                                             num_lanes=NUM_LANES,
                                                             lane_width=LANE_WIDTH,
                                                             points_of_roads=road_coordinates)
+
+@pytest.fixture()
+def lane_split_scene_static():
+    scene = short_testable_scene_static_mock()
+    # disconnect leftmost lane in 1st road segment
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_left_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_left_adjacent_lane_count = 0
+    # remove downstreams from segment 12
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[2].as_downstream_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[2].e_Cnt_downstream_lane_count = 0
+
+    # add connection from 11 to 22
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_downstream_lane_count = 2
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes.append(LaneSegmentConnectivity(22, ManeuverType.LEFT_SPLIT))
+
+    # add upstream connection from 22 to 11
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[5].as_upstream_lanes = LaneSegmentConnectivity(11, ManeuverType.LEFT_SPLIT)
+
+    return scene
+
