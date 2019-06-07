@@ -109,19 +109,17 @@ class BehavioralGridState:
         for dynamic_object in dynamic_objects:
             map_state = dynamic_object.map_state
             if map_state.is_on_road():
-                obj_lane = map_state.lane_id
-                road_segment_id = MapUtils.get_road_segment_id_from_lane_id(obj_lane)
-                road_segment = MapUtils.get_road_segment(road_segment_id)
-                if road_segment.e_e_road_segment_type == MapRoadSegmentType.Intersection:
-                    intersection = MapUtils.get_intersection(road_segment_id)
-                    for lane in intersection.a_i_lane_coupling_segment_ids:
-                        if lane != obj_lane:
-                            pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
-                                                                        timestamp=dynamic_object.timestamp,
-                                                                        cartesian_state=dynamic_object.cartesian_state,
-                                                                        map_state=MapState(None, lane),
-                                                                        size=dynamic_object.size,
-                                                                        confidence=dynamic_object.confidence))
+                obj_lane_id = map_state.lane_id
+                obj_lane = MapUtils.get_lane(obj_lane_id)
+                if obj_lane.e_Cnt_lane_coupling_count > 0:
+                    lane_couplings = obj_lane.as_lane_coupling
+                    for lane_coupling in lane_couplings:
+                        pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
+                                                                    timestamp=dynamic_object.timestamp,
+                                                                    cartesian_state=dynamic_object.cartesian_state,
+                                                                    map_state=MapState(None, lane_coupling.e_i_lane_segment_id),
+                                                                    size=dynamic_object.size,
+                                                                    confidence=dynamic_object.confidence))
         return dynamic_objects + pseudo_dynamic_objects
 
     @staticmethod
