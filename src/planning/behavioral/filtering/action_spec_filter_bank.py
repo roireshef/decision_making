@@ -2,10 +2,10 @@ import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LON_JERK_LIMITS, CURV_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LON_JERK_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, StaticActionRecipe
+    RelativeLongitudinalPosition, StaticActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -13,6 +13,7 @@ from decision_making.src.planning.types import FS_SA, FS_DX, FS_SV, FS_SX
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List
@@ -93,8 +94,17 @@ class FilterForKinematics(ActionSpecFilter):
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
                 cartesian_points[np.newaxis, ...], VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
-                LON_JERK_LIMITS, CURV_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
+                LON_JERK_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
             are_valid.append(is_valid_in_cartesian)
+
+        # TODO: remove it
+        if not any(are_valid):
+            ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
+            frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
+            init_idx = frenet.get_index_on_frame_from_s(ego_fstate[:1])[0][0]
+            print('ERROR in BP-KINEMATIC filter: %.3f: ego_fstate=%s; nominal_k=%s' %
+                  (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(ego_fstate),
+                   frenet.k[init_idx:init_idx + 50, 0]))
 
         return are_valid
 

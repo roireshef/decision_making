@@ -1,3 +1,4 @@
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
@@ -36,7 +37,22 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                             if action_specs_mask[i]
                                             and recipe.relative_lane == RelativeLane.SAME_LANE
                                             and recipe.action_type == ActionType.FOLLOW_VEHICLE]
+
         if len(follow_vehicle_valid_action_idxs) > 0:
+
+            # TODO: remove it
+            spec = action_specs[follow_vehicle_valid_action_idxs[0]]
+            ref_route = behavioral_state.extended_lane_frames[spec.recipe.relative_lane]
+            ego = behavioral_state.ego_state
+            ego_fstate = ref_route.cstate_to_fstate(ego.cartesian_state)
+            obj = behavioral_state.road_occupancy_grid[(spec.recipe.relative_lane, spec.recipe.relative_lon)][0].dynamic_object
+            obj_fstate = ref_route.cstate_to_fstate(obj.cartesian_state)
+            s_T = (obj_fstate[0] - ego_fstate[0]) - (ego.size.length + obj.size.length) / 2 - 5  # LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            headway = s_T / ego.cartesian_state[3] if ego.cartesian_state[3] > 0 else np.inf
+            print('BP time %.3f: DYNAMIC_ACTION goal_time=%.3f: sva=%s dvel=%.2f s_T=%.2f headway=%.2f; spec=%s' %
+                  (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, ego_fstate[:3], ego_fstate[1] - obj_fstate[1],
+                   s_T, headway, spec))
+
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs
 
@@ -52,6 +68,16 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         # find the most fast action with the minimal aggressiveness level
         follow_lane_valid_action_idxs = [idx for idx in filtered_indices
                                          if action_recipes[idx].aggressiveness.value == min_aggr_level]
+
+        # TODO: remove it
+        ego = behavioral_state.ego_state
+        spec = action_specs[follow_lane_valid_action_idxs[-1]]
+        frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
+        ego_fstate = frenet.cstate_to_fstate(ego.cartesian_state)
+
+        np.set_printoptions(suppress=True)
+        print('BP time %.3f: STATIC ACTION: goal_time=%.3f: spec.v=%.3f, ego_fstate = %s' %
+              (ego.timestamp_in_sec, ego.timestamp_in_sec + spec.t, spec.v, NumpyUtils.str_log(ego_fstate)))
 
         # choose the most fast action among the calmest actions;
         # it's last in the recipes list since the recipes are sorted in the increasing order of velocities
