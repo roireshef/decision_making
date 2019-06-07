@@ -95,8 +95,8 @@ class FilterForKinematics(ActionSpecFilter):
             samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
             cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
 
-            # validate cartesian points hold lateral acceleration limits, gradually from the external limits
-            # LAT_ACC_LIMITS to the desired internal limits BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS
+            # validate cartesian points hold lateral acceleration limits, gradually from the absolute limits
+            # LAT_ACC_LIMITS to the desired more strict limits BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS
             cartesian_points[:, C_K] *= np.linspace(1, 1./BP_LAT_ACC_STRICT_COEF, cartesian_points.shape[0])
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
