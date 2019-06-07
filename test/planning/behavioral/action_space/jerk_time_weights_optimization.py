@@ -9,7 +9,8 @@ import re
 
 from decision_making.src.global_constants import EPS, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_LIMITS, \
     TRAJECTORY_TIME_RESOLUTION, SPECIFICATION_HEADWAY, SAFETY_HEADWAY, LON_ACC_LIMITS, VELOCITY_LIMITS, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, FILTER_V_0_GRID, LON_JERK_LIMITS
+    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, LON_JERK_LIMITS, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.utils.math_utils import Math
 
 
@@ -135,7 +136,7 @@ class TimeJerkWeightsOptimization:
         :return:
         """
         # it's sufficient to test only maximal velocity
-        v0 = VELOCITY_LIMITS[1]
+        v0 = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
         vT = 0
         w_J_arr = np.arange(0.05, 2, 0.05)
         size = w_J_arr.shape[0]
@@ -325,5 +326,5 @@ class TimeJerkWeightsOptimization:
 
 
 if __name__ == '__main__':
-    TimeJerkWeightsOptimization.jerk_time_weights_optimization_for_slower_front_car()
-    #TimeJerkWeightsOptimization.check_static_braking_actions()
+    #TimeJerkWeightsOptimization.jerk_time_weights_optimization_for_slower_front_car()
+    TimeJerkWeightsOptimization.check_static_braking_actions()
