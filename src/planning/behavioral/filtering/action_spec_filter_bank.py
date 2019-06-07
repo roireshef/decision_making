@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_DX, FS_SV, FS_SX
+from decision_making.src.planning.types import FS_DX, FS_SV, FS_SX, C_K, C_V
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
@@ -95,11 +95,14 @@ class FilterForKinematics(ActionSpecFilter):
             samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
             cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
 
+            # validate cartesian points hold lateral acceleration limits, gradually from the external limits
+            # LAT_ACC_LIMITS to the desired internal limits BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS
+            cartesian_points[:, C_K] *= np.linspace(1, 1./BP_LAT_ACC_STRICT_COEF, cartesian_points.shape[0])
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
                 cartesian_points[np.newaxis, ...],
-                VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS,
-                BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
+                VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
+
             are_valid.append(is_valid_in_cartesian)
 
         # TODO: remove it
