@@ -103,9 +103,6 @@ def route_plan_for_oval_track_file():
         elif road_segment_id is 88192:
             route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
             route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 10519:
-            for route_plan_lane_segment in route_plan_road_segment:
-                route_plan_lane_segment.e_cst_lane_end_cost = 1.0
 
         route_plan_lane_segments.append(route_plan_road_segment)
 
