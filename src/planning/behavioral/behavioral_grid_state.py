@@ -111,15 +111,19 @@ class BehavioralGridState:
             if map_state.is_on_road():
                 obj_lane_id = map_state.lane_id
                 obj_lane = MapUtils.get_lane(obj_lane_id)
-                if obj_lane.e_Cnt_lane_coupling_count > 0:
-                    lane_couplings = obj_lane.as_lane_coupling
-                    for lane_coupling in lane_couplings:
-                        pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
-                                                                    timestamp=dynamic_object.timestamp,
-                                                                    cartesian_state=dynamic_object.cartesian_state,
-                                                                    map_state=MapState(None, lane_coupling.e_i_lane_segment_id),
-                                                                    size=dynamic_object.size,
-                                                                    confidence=dynamic_object.confidence))
+                # Only project if there is one upstream lane that has multiple downstreams
+                if obj_lane.e_Cnt_upstream_lane_count == 1:
+                    if MapUtils.get_lane(obj_lane.as_upstream_lanes[1].e_i_lane_segment_id) \
+                            .e_Cnt_downstream_lane_count > 1:
+                        other_lanes = [lane for lane in MapUtils.get_lane(obj_lane.as_upstream_lanes[1].e_i_lane_segment_id)
+                             .as_downstream_lanes if lane != obj_lane_id]
+                        for other_lane in other_lanes:
+                            pseudo_dynamic_objects.append(DynamicObject(obj_id = -dynamic_object.obj_id,
+                                                                        timestamp = dynamic_object.timestamp,
+                                                                        cartesian_state = dynamic_object.cartesian_state,
+                                                                        map_state = MapState(None, other_lane),
+                                                                        size = dynamic_object.size,
+                                                                        confidence = dynamic_object.confidence))
         return dynamic_objects + pseudo_dynamic_objects
 
     @staticmethod
