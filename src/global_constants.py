@@ -76,10 +76,6 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
     [0.01, 0.15, 0.1]
 ])
 
-# [1/m] maximal trajectory curvature, based on the minimal turning radius, which is defined in a basic car's spec
-# A typical turning radius = 5 m, then MAX_CURVATURE = 0.2.
-MAX_CURVATURE = 0.2
-
 # Longitudinal Jerk Limits [m/sec^3]
 LON_JERK_LIMITS = np.array([-5.0, 5.0])
 
@@ -88,8 +84,6 @@ LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
-
-CURV_LIMITS = np.array([-MAX_CURVATURE, MAX_CURVATURE])
 
 # Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
 SPECIFICATION_HEADWAY = 1.5

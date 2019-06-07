@@ -55,8 +55,7 @@ class StaticActionSpace(ActionSpace):
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
 
-        T_s = StaticActionSpace.calc_T_s(weights[:, 2], weights[:, 0],
-                                         projected_ego_fstates[:, FS_SA], projected_ego_fstates[:, FS_SV], v_T)
+        T_s = StaticActionSpace.calc_T_s(weights[:, 2], weights[:, 0], a_0, v_0, v_T)
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
