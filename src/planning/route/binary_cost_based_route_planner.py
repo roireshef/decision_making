@@ -16,10 +16,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     """
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
     """
-    def __init__(self, route_plan_lane_segments: Optional[RoutePlanRoadSegments] = None,
-                 route_plan_input_data: Optional[RoutePlannerInputData] = None):
-        self._route_plan_lane_segments = route_plan_lane_segments or []
-        self._route_plan_input_data = route_plan_input_data or RoutePlannerInputData()
+    def __init__(self):
+        super().__init__()
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class

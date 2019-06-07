@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import List, Dict, Optional
 import rte.python.profiler as prof
-from decision_making.src.messages.route_plan_message import DataRoutePlan
+from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanRoadSegments
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
     SceneRoadSegment, SceneLaneSegmentBase
 from decision_making.src.exceptions import MissingInputInformation, RepeatedRoadSegments, raises,\
@@ -234,6 +234,10 @@ class RoutePlannerInputData():
 
 class RoutePlanner(metaclass=ABCMeta):
     """Abstract route planner class"""
+    def __init__(self):
+        self._route_plan_lane_segments: RoutePlanRoadSegments = []
+        self._route_plan_input_data: RoutePlannerInputData = None
+
     @abstractmethod
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """Abstract route planner method. Implementation details will be in child class/methods """
