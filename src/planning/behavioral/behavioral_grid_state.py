@@ -8,6 +8,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_static_enums import MapRoadSegmentType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
@@ -105,15 +106,22 @@ class BehavioralGridState:
         :return:
         """
         pseudo_dynamic_objects = []
-        # TODO: Rewrite function so that it is not dependent on overlap interface
-        # for dynamic_object in dynamic_objects:
-        #     for overlapping_lane_segment in MapUtils.get_lane_segment_overlaps(dynamic_object.map_state.lane_id):
-        #         pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
-        #                                                     timestamp=dynamic_object.timestamp,
-        #                                                     cartesian_state=dynamic_object.cartesian_state,
-        #                                                     map_state=MapState(None, overlapping_lane_segment),
-        #                                                     size=dynamic_object.size,
-        #                                                     confidence=dynamic_object.confidence))
+        for dynamic_object in dynamic_objects:
+            map_state = dynamic_object.map_state
+            if map_state.is_on_road():
+                obj_lane = map_state.lane_id
+                road_segment_id = MapUtils.get_road_segment_id_from_lane_id(obj_lane)
+                road_segment = MapUtils.get_road_segment(road_segment_id)
+                if road_segment.e_e_road_segment_type == MapRoadSegmentType.Intersection:
+                    intersection = MapUtils.get_intersection(road_segment_id)
+                    for lane in intersection.a_i_lane_coupling_segment_ids:
+                        if lane != obj_lane:
+                            pseudo_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
+                                                                        timestamp=dynamic_object.timestamp,
+                                                                        cartesian_state=dynamic_object.cartesian_state,
+                                                                        map_state=MapState(None, lane),
+                                                                        size=dynamic_object.size,
+                                                                        confidence=dynamic_object.confidence))
         return dynamic_objects + pseudo_dynamic_objects
 
     @staticmethod
