@@ -3,9 +3,7 @@ import time
 import numpy as np
 import traceback
 from logging import Logger
-import numpy as np
 
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
@@ -18,7 +16,7 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
     RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
-    EGO_LENGTH, MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG
+    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -32,8 +30,6 @@ from decision_making.src.planning.trajectory.samplable_trajectory import Samplab
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import State
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
 
