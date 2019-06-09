@@ -78,18 +78,11 @@ class BehavioralPlanningFacade(DmModule):
 
         try:
             start_time = time.time()
-            st = time.time()
             state = self._get_current_state()
-            t1 = time.time() - st
 
-            st = time.time()
             scene_static = self._get_current_scene_static()
-            t2 = time.time() - st
-            st = time.time()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
-            t3 = time.time() - st
 
-            st = time.time()
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
@@ -99,35 +92,19 @@ class BehavioralPlanningFacade(DmModule):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")
-
-                # TODO: remove it
-                ego = state.ego_state
-                print('BP if: time %.3f; orig-fstate: %s -> %s; ' %
-                      (ego.timestamp_in_sec, ego.map_state.lane_fstate[:3], updated_state.ego_state.map_state.lane_fstate[:3]))
             else:
                 updated_state = state
-                # TODO: remove it
-                print('BP else: time %.3f; orig-fstate: %s ' %
-                      (state.ego_state.timestamp_in_sec, state.ego_state.map_state.lane_fstate[:3]))
-            t4 = time.time() - st
 
-            st = time.time()
             route_plan = self._get_current_route_plan()
-            t5 = time.time() - st
 
-            st = time.time()
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
 
             self._publish_takeover(takeover_message)
-            t6 = time.time() - st
 
-            st = time.time()
             trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
                                                                                                            route_plan)
-            t7 = time.time() - st
 
-            st = time.time()
             self._last_trajectory = samplable_trajectory
 
             # Send plan to trajectory
@@ -139,10 +116,6 @@ class BehavioralPlanningFacade(DmModule):
             self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
 
             MetricLogger.get_logger().report()
-            t8 = time.time() - st
-
-            print('BP running time %f: t1=%.3f t2=%.3f t3=%.3f t4=%.3f t5=%.3f t6=%.3f t7=%.3f t8=%.3f' %
-                  (time.time() - start_time, t1, t2, t3, t4, t5, t6, t7, t8))
 
         except StateHasNotArrivedYet:
             self.logger.warning("StateHasNotArrivedYet was raised. skipping planning.")

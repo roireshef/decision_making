@@ -38,46 +38,6 @@ class KinematicUtils:
         return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
 
     @staticmethod
-    def are_maintaining_distance(poly_host: np.array, poly_target: np.array, margin: float, headway: float,
-                                 time_range: np.array):
-        """
-        Given two arrays of s(t) longitudinal polynomials (one for host, one for target), this function checks if host maintains
-        at least a distance of margin + headway (time * host_velocity) in the time range specified by <time_range>.
-        :param poly_host: 2d numpy array - coefficients of host's polynomials s(t)
-        :param poly_target: 2d numpy array - coefficients of target's polynomials s(t)
-        :param margin: the minimal stopping distance to keep in meters (in addition to headway, highly relevant for stopping)
-        :param headway: the time to use for the headway formula: time*velocity = distance to keep.
-        :param time_range: the matrix [Nx2] of relevant ranges of t for checking the polynomials, i.e. [0, T]
-        :return: boolean array - for each polynomial: True if host maintains proper distance from target, False otherwise
-        """
-        maintaining_distance = np.full(poly_host.shape[0], False)
-
-        for first_non_zero in range(poly_host.shape[1]):
-
-            poly_idxs = np.where(np.argmin(poly_host == 0, axis=-1) == first_non_zero)[0]
-            if len(poly_idxs) == 0:
-                continue
-            current_poly_host, current_poly_target, current_time_range = poly_host[poly_idxs], poly_target[poly_idxs], time_range[poly_idxs]
-
-            # coefficients of host vehicle velocity v_h(t) of host
-            vel_poly = Math.polyder2d(current_poly_host, 1)
-
-            # poly_diff is the polynomial of the distance between poly2 and poly1 with subtracting the required distance also
-            poly_diff = current_poly_target - current_poly_host
-            poly_diff[:, -1] -= margin
-
-            # add headway
-            poly_diff[:, 1:] -= vel_poly * headway
-
-            roots = Math.zip_find_real_roots_in_limits(poly_diff, current_time_range)
-
-            maintaining_distance[poly_idxs] = \
-                np.logical_and(np.all(np.greater(Math.zip_polyval2d(poly_diff, current_time_range), 0), axis=-1),
-                               np.all(np.isnan(roots), axis=-1))
-
-        return maintaining_distance
-
-    @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
                                    lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
                                    lon_jerk_limits: Limits, desired_velocity: float) -> np.ndarray:
