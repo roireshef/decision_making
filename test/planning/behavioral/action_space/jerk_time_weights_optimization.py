@@ -192,7 +192,11 @@ class TimeJerkWeightsOptimization:
         # calculate states validity wrt velocity, acceleration and time limits
         vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(
             poly_host, T, LON_JERK_LIMITS, LON_ACC_LIMITS, VELOCITY_LIMITS, np.array([-np.inf, np.inf]))
-        safe_actions = KinematicUtils.are_maintaining_distance(poly_host, poly_target, safety_margin, SAFETY_HEADWAY, np.c_[zeros, T])
+        #safe_actions = KinematicUtils.are_maintaining_distance(poly_host, poly_target, safety_margin, SAFETY_HEADWAY, np.c_[zeros, T])
+        safe_actions = []
+        for poly_s, poly_tar, t in zip(poly_host, poly_target, T):
+            safe_actions.append(KinematicUtils.is_maintaining_distance(poly_s, poly_tar, safety_margin, SAFETY_HEADWAY, np.array([0, t])))
+        safe_actions = np.array(safe_actions)
         in_limits = np.logical_and(vel_acc_in_limits, safe_actions)
 
         # Calculate average (on all valid actions) braking profile quality.
@@ -326,5 +330,5 @@ class TimeJerkWeightsOptimization:
 
 
 if __name__ == '__main__':
-    #TimeJerkWeightsOptimization.jerk_time_weights_optimization_for_slower_front_car()
+    TimeJerkWeightsOptimization.jerk_time_weights_optimization_for_slower_front_car()
     TimeJerkWeightsOptimization.check_static_braking_actions()
