@@ -216,17 +216,16 @@ def test_filter_staticActionsWithLeadingVehicle_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode,
         follow_lane_recipes: List[StaticActionRecipe]):
     """
-    # actions [0, 1, 3, 9, 12, 13, 15, 16] are None after specify
+    # actions [0, 9, 12, 15] are None after specify
     # actions [6-17] are static, aiming to higher velocity - which hits the front vehicle
-    # action 8 can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
+    # actions 7, 8 are safe and can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
     """
 
     logger = AV_Logger.get_logger()
-    predictor = RoadFollowingPredictor(logger)
 
     filtering = RecipeFiltering(filters=[], logger=logger)
 
-    expected_filter_results = np.array([False, False, True, False, True, True, False, False, True,
+    expected_filter_results = np.array([False, True, True, True, True, True, False, True, True,
                                         False, False, False, False, False, False, False, False, False], dtype=bool)
     static_action_space = StaticActionSpace(logger, filtering=filtering)
 
