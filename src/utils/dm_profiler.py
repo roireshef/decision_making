@@ -2,6 +2,8 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from rte.python.logger.AV_logger import AV_Logger
 import time
+import math
+import numpy as np
 from os import rename, environ
 from decision_making.src.utils.tabulate import tabulate
 
@@ -59,18 +61,14 @@ def plot_profiler():
 def summarize_profiler():
     profs = get_profs()
     data=[]
-    headers = ['label', '#calls' , 'avg.time', 'cumulative_time']
+    headers = ['label', '#calls' , 'avg.time', 'max.time', 'stdev.', 'cumulative_time']
     for p, timed_series in profs.items():
         cumulative_time = sum([t for _, t in timed_series])
-        data.append([p,len(timed_series),cumulative_time/len(timed_series),cumulative_time])
+        max_time = max([t for _, t in timed_series])
+        std = np.std([t for _, t in timed_series])
+        data.append([p,len(timed_series), cumulative_time/len(timed_series), max_time, std ,cumulative_time])
 
-
-    print(tabulate(sorted(data, key=lambda x:x[3], reverse=True), headers))
-#    print('name      n_calls     avg_time(sec)      cumtime')
-#    print('---------------------------------------------------')
-#    for m in sorted(sultracruise/decision_making/src/utils/dm_profiler.py:76ummary.keys(), key=lambda x: summary[x]['avg_time'], reverse=True):
-#        print(f"{m}     {summary[m]['n_calls']}     {summary[m]['avg_time']}    {summary[m]['cumtime']}")
-#    print('---------------------------------------------------')
+    print(tabulate(sorted(data, key=lambda x:x[-1], reverse=True), headers))
 
 
 if __name__ == '__main__':
