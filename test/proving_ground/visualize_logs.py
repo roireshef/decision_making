@@ -27,6 +27,7 @@ def plot_dynamics(log_file_path: str):
     other_sx = []
     euclid_dist = []
     timestamp_in_sec = []
+    do_timestamp_in_sec = []
 
     spec_t = []
     spec_v = []
@@ -55,13 +56,14 @@ def plot_dynamics(log_file_path: str):
         if not text:
             break
 
-        if '_scene_dynamic_callback' in text:
+        if '_scene_dynamic_callback' in text and 'Publishing State ' in text:
             state_str = text.split('Publishing State ')[1]
             try:
                 state_dict = ast.literal_eval(state_str)
             except ValueError as e:
                 cnt += 1
                 continue
+
             ego_cv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_V])
             ego_ca.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_A])
             ego_curv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_K])
@@ -77,12 +79,15 @@ def plot_dynamics(log_file_path: str):
                 other_sx.append(0.0)
                 euclid_dist.append(0.0)
             else:
-                other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
-                other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
-                other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
-                ego_cx_cy = np.array(state_dict['ego_state']['_cached_cartesian_state']['array'][C_X: C_Y + 1])
-                other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
-                euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
+                if('_cached_map_state' in dyn_obj_list[0].keys() and dyn_obj_list[0]['_cached_map_state'] is not None):
+                    other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
+                    other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
+                    other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
+                    ego_cx_cy = np.array(state_dict['ego_state']['_cached_cartesian_state']['array'][C_X: C_Y + 1])
+                    other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
+                    euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
+                    do_timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
+
 
         if 'Chosen behavioral action spec' in text:
             spec_str = text.split('Chosen behavioral action spec ')[1]
@@ -138,15 +143,15 @@ def plot_dynamics(log_file_path: str):
 
     ax1 = plt.subplot(5, 2, 1)
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
-    euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist)
+    other_sx_plot,  = plt.plot(do_timestamp_in_sec, other_sx)
+    euclid_dist_plot, = plt.plot(do_timestamp_in_sec, euclid_dist)
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
     plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
-    other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
+    other_sv_plot,  = plt.plot(do_timestamp_in_sec, other_sv)
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
     plt.legend([ego_sv_plot, other_sv_plot], ['ego_sv', 'other_sv'])
