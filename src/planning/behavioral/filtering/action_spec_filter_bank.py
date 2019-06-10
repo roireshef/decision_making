@@ -42,19 +42,19 @@ class FilterForKinematics(ActionSpecFilter):
         """
         # extract all relevant information for boundary conditions
         #with prof.time_range('init'):
-        with DMProfiler('filter_init'):
+        with DMProfiler(f'{self.__class__.__name__}.filter_init'):
             initial_fstates = np.array([behavioral_state.projected_ego_fstates[spec.relative_lane] for spec in action_specs])
             terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
             T = np.array([spec.t for spec in action_specs])
 
         # create boolean arrays indicating whether the specs are in tracking mode
-        with DMProfiler('filter_check_padding_mode'):
+        with DMProfiler(f'{self.__class__.__name__}.filter_check_padding_mode'):
             padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
             not_padding_mode = np.logical_not(padding_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
         #with prof.time_range('QuinticPoly1D.inverse_time_constraints_tensor'):
-        with DMProfiler('filter_QuinticPoly1D.inverse_time_constraints_tensor'):
+        with DMProfiler(f'{self.__class__.__name__}.filter_QuinticPoly1D.inverse_time_constraints_tensor'):
             A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[not_padding_mode])
 
         # represent initial and terminal boundary conditions (for two Frenet axes s,d) for non-tracking specs
@@ -62,7 +62,7 @@ class FilterForKinematics(ActionSpecFilter):
         constraints_d = np.concatenate((initial_fstates[not_padding_mode, FS_DX:], terminal_fstates[not_padding_mode, FS_DX:]), axis=1)
 
         # solve for s(t) and d(t)
-        with DMProfiler('filter_solve_Quintic'):
+        with DMProfiler(f'{self.__class__.__name__}.filter_solve_Quintic'):
             poly_coefs_s, poly_coefs_d = np.zeros((len(action_specs), 6)), np.zeros((len(action_specs), 6))
             poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
             poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
@@ -71,14 +71,14 @@ class FilterForKinematics(ActionSpecFilter):
 
         are_valid = []
 
-        with DMProfiler('filter_loop_over'):
+        with DMProfiler(f'{self.__class__.__name__}.filter_loop_over'):
             for poly_s, poly_d, t, spec in zip(poly_coefs_s, poly_coefs_d, T, action_specs):
                 # TODO: in the future, consider leaving only a single action (for better "learnability")
 
                 # extract the relevant (cached) frenet frame per action according to the destination lane
                 frenet_frame = behavioral_state.extended_lane_frames[spec.relative_lane]
 
-                with DMProfiler('filter_by_longitudinal_frenet_limits'):
+                with DMProfiler(f'{self.__class__.__name__}.filter_by_longitudinal_frenet_limits'):
                     if not spec.only_padding_mode:
                         # if the action is static, there's a chance the 5th order polynomial is actually a degenerate one
                         # (has lower degree), so we clip the first zero coefficients and send a polynomial with lower degree
@@ -97,13 +97,12 @@ class FilterForKinematics(ActionSpecFilter):
                 time_samples = np.arange(0, total_time + EPS, WERLING_TIME_RESOLUTION)
 
                 # generate a SamplableWerlingTrajectory (combination of s(t), d(t) polynomials applied to a Frenet frame)
-
-                with DMProfiler('filter_sample'):
+                with DMProfiler(f'{self.__class__.__name__}.filter_sample'):
                     samplable_trajectory = SamplableWerlingTrajectory(0, t, t, total_time, frenet_frame, poly_s, poly_d)
                     cartesian_points = samplable_trajectory.sample(time_samples)  # sample cartesian points from the solution
 
                 # validate cartesian points against cartesian limits
-                with DMProfiler('filter_by_cartesian_limits'):
+                with DMProfiler(f'{self.__class__.__name__}.filter_by_cartesian_limits'):
                     is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
                         cartesian_points[np.newaxis, ...],
                         VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,

@@ -14,6 +14,7 @@ from decision_making.src.planning.behavioral.planner.cost_based_behavioral_plann
     CostBasedBehavioralPlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.dm_profiler import DMProfiler
 from logging import Logger
 from typing import Optional, List
 
@@ -91,12 +92,13 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         action_recipes = self.action_space.recipes
 
-        with prof.time_range("plan_create_from_state"):
+        with DMProfiler(f'{self.__class__.__name__}.plan_create_from_state'):
+
             # create road semantic grid from the raw State object
             # behavioral_state contains road_occupancy_grid and ego_state
             behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
-        with prof.time_range("recipe_filtering"):
+        with DMProfiler(f'{self.__class__.__name__}.recipe_filtering'):
             # Recipe filtering
             recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 
@@ -105,7 +107,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
                                                                          recipes_mask, route_plan)
 
-        with prof.time_range("plan_generate_trajectory"):
+        with DMProfiler(f'{self.__class__.__name__}.plan_generate_trajectory'):
             trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
                 behavioral_state=behavioral_state, action_spec=selected_action_spec)
             visualization_message = BehavioralVisualizationMsg(
@@ -115,7 +117,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
 
-        with prof.time_range("plan_generate_baseline_trajectory"):
+        with DMProfiler(f'{self.__class__.__name__}.plan_generate_baseline_trajectory'):
             baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
                 state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
                 behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])

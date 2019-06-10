@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABCMeta
+from decision_making.src.utils.dm_profiler import DMProfiler
 from logging import Logger
 
 from decision_making.src.infra.pubsub import PubSub

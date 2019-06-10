@@ -30,6 +30,7 @@ from decision_making.src.planning.utils.localization_utils import LocalizationUt
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
@@ -74,9 +75,11 @@ class TrajectoryPlanningFacade(DmModule):
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
-            state = self._get_current_state()
+            with DMProfiler(f'{self.__class__.__name__}.get_current_state'):
+                state = self._get_current_state()
 
-            params = self._get_mission_params()
+            with DMProfiler(f'{self.__class__.__name__}.get_mission_params'):
+                params = self._get_mission_params()
 
             # Longitudinal planning horizon (Ts)
             T_target_horizon = params.target_time - state.ego_state.timestamp_in_sec
@@ -123,12 +126,14 @@ class TrajectoryPlanningFacade(DmModule):
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, T_target_horizon,
-                     T_trajectory_end_horizon, params.cost_params)
 
-            trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
-                                                           samplable_trajectory=samplable_trajectory)
+            with DMProfiler(f'{self.__class__.__name__}.plan'):
+                samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
+                    plan(updated_state, params.reference_route, params.target_state, T_target_horizon,
+                         T_trajectory_end_horizon, params.cost_params)
+
+                trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
+                                                               samplable_trajectory=samplable_trajectory)
 
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)

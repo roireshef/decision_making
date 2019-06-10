@@ -85,12 +85,12 @@ class BehavioralPlanningFacade(DmModule):
             start_time = time.time()
 
             #with prof.time_range("get_current_state"):
-            with DMProfiler('get_current_state'):
+            with DMProfiler(f'{self.__class__.__name__}.get_current_state'):
                 state = self._get_current_state()
 
 
             #with prof.time_range("get_scene_static"):
-            with DMProfiler('get_scene_static'):
+            with DMProfiler(f'{self.__class__.__name__}.get_scene_static'):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
@@ -117,12 +117,12 @@ class BehavioralPlanningFacade(DmModule):
             route_plan = self._get_current_route_plan()
 
             #with prof.time_range("take_over"):
-            with DMProfiler('take_over'):
+            with DMProfiler(f'{self.__class__.__name__}.take_over'):
                 # calculate the takeover message
                 takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
                 self._publish_takeover(takeover_message)
 
-            with DMProfiler('plan'):
+            with DMProfiler(f'{self.__class__.__name__}.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
                                                                                                            route_plan)
 
