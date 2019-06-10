@@ -74,7 +74,7 @@ class FilterForKinematics(ActionSpecFilter):
                 # TODO: This handling of polynomial coefficients being 5th or 4th order should happen in an inner context and get abstracted from this method
                 first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
                 is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(
-                    poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_JERK_LIMITS, LON_ACC_LIMITS, VELOCITY_LIMITS,
+                    poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_ACC_LIMITS, VELOCITY_LIMITS,
                     frenet_frame.s_limits)[0]
 
                 # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,

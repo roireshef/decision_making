@@ -190,8 +190,9 @@ class TimeJerkWeightsOptimization:
         poly_target = np.c_[zeros, zeros, zeros, zeros, vT, s]
 
         # calculate states validity wrt velocity, acceleration and time limits
-        vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(
-            poly_host, T, LON_JERK_LIMITS, LON_ACC_LIMITS, VELOCITY_LIMITS, np.array([-np.inf, np.inf]))
+        vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_host, T, LON_ACC_LIMITS,
+                                                                                VELOCITY_LIMITS, np.array([-np.inf, np.inf])) & \
+                            QuinticPoly1D.are_jerks_in_limits(poly_host, T, LON_JERK_LIMITS)
         safe_actions = []
         for poly_s, poly_tar, t in zip(poly_host, poly_target, T):
             safe_actions.append(KinematicUtils.is_maintaining_distance(poly_s, poly_tar, safety_margin, SAFETY_HEADWAY, np.array([0, t])))

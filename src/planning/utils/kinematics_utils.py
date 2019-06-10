@@ -81,7 +81,6 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_longitudinal_frenet_limits(poly_coefs_s: np.ndarray, T_s_vals: np.ndarray,
-                                             lon_jerk_limits: Limits,
                                              lon_acceleration_limits: Limits,
                                              lon_velocity_limits: Limits,
                                              reference_route_limits: Limits) -> np.ndarray:
@@ -91,7 +90,6 @@ class KinematicUtils:
         :param poly_coefs_s: 2D matrix of solutions (1st dim), each one is a vector of coefficients of a longitudinal
         s(t) polynomial (2nd dim), with t in the range [0, T] (T specified in T_s_vals)
         :param T_s_vals: 1d numpy array - the T for the polynomials in <poly_coefs_s>
-        :param lon_jerk_limits: jerk limits trajectories should be within
         :param lon_acceleration_limits: acceleration limits trajectories should be within
         :param lon_velocity_limits: velocity limits trajectories should be within
         :param reference_route_limits: the minimal and maximal progress (s value) on the reference route used
@@ -101,7 +99,6 @@ class KinematicUtils:
         # validate the progress on the reference-route curve doesn't extrapolate, velocity is non-negative,
         # and acceleration and jerk are within reasonable limits.
         conforms = \
-            QuinticPoly1D.are_jerks_in_limits(poly_coefs_s, T_s_vals, lon_jerk_limits) & \
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) & \
             QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) & \
             QuinticPoly1D.are_derivatives_in_limits(0, poly_coefs_s, T_s_vals, reference_route_limits)
