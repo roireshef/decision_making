@@ -140,14 +140,6 @@ class WerlingPlanner(TrajectoryPlanner):
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
 
-            cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories,
-                                                                                 cost_params.velocity_limits,
-                                                                                 cost_params.lon_acceleration_limits,
-                                                                                 cost_params.lat_acceleration_limits,
-                                                                                 LON_JERK_ACCEL_LIMITS,
-                                                                                 LON_JERK_DECEL_LIMITS,
-                                                                                 cost_params.desired_velocity)
-
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f,\n"
                                           "extrapolated time horizon: %f. goal: %s, state: %s.\n"
