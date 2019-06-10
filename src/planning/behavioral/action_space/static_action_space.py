@@ -82,6 +82,19 @@ class StaticActionSpace(ActionSpace):
 
     @staticmethod
     def calc_T_s(w_T: np.array, w_J: np.array, a_0: float, v_0: np.array, v_T: np.array):
+        """
+        Given jerk-time weights, ego initial velocity & acceleration, and targets' velocities, calculate a
+        longitudinal planning time for each action.
+        The planning time T_s is a minima of the cost function, which is a linear combination of the action's
+        cumulative jerk and T_s itself. The given weights w_T, w_J are the coefficients of this combination.
+        In this implementation we pick the first (minimal) root of the cost function.
+        :param w_T: 1D array of time weights, a weight for each action
+        :param w_J: 1D array of jerk weights, a weight for each action
+        :param a_0: ego initial acceleration
+        :param v_0: ego initial velocity
+        :param v_T: target velocities of the actions
+        :return: 1D array of planning times for the actions
+        """
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(w_T=w_T, w_J=w_J, a_0=a_0, v_0=v_0, v_T=v_T)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
