@@ -85,9 +85,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
 
-        if isinstance(action_recipes[selected_action_index], StaticActionRecipe):
-            action_specs_mask = self.action_spec_validator.filter_action_specs([action_specs[129]], behavioral_state)
-
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
