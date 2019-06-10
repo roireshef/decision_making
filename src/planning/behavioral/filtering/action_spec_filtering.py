@@ -8,6 +8,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from logging import Logger
 from typing import List, Optional
 from itertools import compress
+from decision_making.src.utils.dm_profiler import DMProfiler
 
 
 @six.add_metaclass(ABCMeta)
@@ -50,7 +51,8 @@ class ActionSpecFiltering:
             valid_action_specs = list(compress(action_specs, mask))
 
             # a mask only on the valid action specs
-            current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
+            with DMProfiler(f'{action_spec_filter.__class__.__name__}.filter'):
+                current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
 
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
