@@ -126,7 +126,8 @@ class WerlingPlanner(TrajectoryPlanner):
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
                                                                              cost_params.lat_acceleration_limits,
-                                                                             LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS,
+                                                                             cost_params.lon_jerk_limits_while_accelerating,
+                                                                             cost_params.lon_jerk_limits_while_decelerating,
                                                                              cost_params.desired_velocity)
 
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
@@ -138,6 +139,14 @@ class WerlingPlanner(TrajectoryPlanner):
         if len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+
+            cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories,
+                                                                                 cost_params.velocity_limits,
+                                                                                 cost_params.lon_acceleration_limits,
+                                                                                 cost_params.lat_acceleration_limits,
+                                                                                 LON_JERK_ACCEL_LIMITS,
+                                                                                 LON_JERK_DECEL_LIMITS,
+                                                                                 cost_params.desired_velocity)
 
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f,\n"

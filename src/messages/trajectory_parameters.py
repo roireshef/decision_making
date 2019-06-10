@@ -59,12 +59,16 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     velocity_limits = Limits
     lon_acceleration_limits = Limits
     lat_acceleration_limits = Limits
+    lon_jerk_limits_while_accelerating = Limits
+    lon_jerk_limits_while_decelerating = Limits
     desired_velocity = float
+
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
                  lon_jerk_cost_weight, lat_jerk_cost_weight,
-                 velocity_limits, lon_acceleration_limits, lat_acceleration_limits, desired_velocity):
-        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits, int)->None
+                 velocity_limits, lon_acceleration_limits, lat_acceleration_limits, lon_jerk_limits_while_accelerating,
+                 lon_jerk_limits_while_decelerating, desired_velocity):
+        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams, SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams, float,float,float,Limits,Limits,Limits, Limits,Limits, int)->None
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -91,6 +95,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
+        :param lon_jerk_limits_while_accelerating: Limits of allowed longitudinal jerk in [m/sec^3] while accelerating
+        :param lon_jerk_limits_while_decelerating: Limits of allowed longitudinal jerk in [m/sec^3] while decelerating
         :param desired_velocity : The longitudinal velocity the vehicle should aim for [m/sec]
         """
         self.obstacle_cost_x = obstacle_cost_x
@@ -105,10 +111,12 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         self.dist_from_goal_lat_factor = dist_from_goal_lat_factor
         self.lon_jerk_cost_weight = lon_jerk_cost_weight
         self.lat_jerk_cost_weight = lat_jerk_cost_weight
+        self.desired_velocity = desired_velocity
         self.velocity_limits = velocity_limits
         self.lon_acceleration_limits = lon_acceleration_limits
         self.lat_acceleration_limits = lat_acceleration_limits
-        self.desired_velocity = desired_velocity
+        self.lon_jerk_limits_while_accelerating = lon_jerk_limits_while_accelerating
+        self.lon_jerk_limits_while_decelerating = lon_jerk_limits_while_decelerating
 
     def serialize(self):
         # type: ()-> TsSYSTrajectoryCostParams
@@ -126,10 +134,12 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         pubsub_msg.e_l_DistFromGoalLatFactor = self.dist_from_goal_lat_factor
         pubsub_msg.e_Wt_LonJerkCostWeight = self.lon_jerk_cost_weight
         pubsub_msg.e_Wt_LatJerkCostWeight = self.lat_jerk_cost_weight
+        pubsub_msg.e_v_DesiredVelocity = self.desired_velocity
         pubsub_msg.e_v_VelocityLimits = self.velocity_limits
         pubsub_msg.e_a_LonAccelerationLimits = self.lon_acceleration_limits
         pubsub_msg.e_a_LatAccelerationLimits = self.lat_acceleration_limits
-        pubsub_msg.e_v_DesiredVelocity = self.desired_velocity
+        pubsub_msg.e_j_LonJerkLimitsWhileAccelerating = self.lon_jerk_limits_while_accelerating
+        pubsub_msg.e_j_LonJerkLimitsWhileDecelerating = self.lon_jerk_limits_while_decelerating
 
         return pubsub_msg
 
@@ -151,6 +161,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                    , pubsubMsg.e_v_VelocityLimits
                    , pubsubMsg.e_a_LonAccelerationLimits
                    , pubsubMsg.e_a_LatAccelerationLimits
+                   , pubsubMsg.e_j_LonJerkLimitsWhileAccelerating
+                   , pubsubMsg.e_j_LonJerkLimitsWhileDecelerating
                    , pubsubMsg.e_v_DesiredVelocity)
 
 

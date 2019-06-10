@@ -1,4 +1,4 @@
-from decision_making.src.exceptions import NoActionsLeftForBPError
+from decision_making.src.exceptions import NoActionsLeftForBP
 from logging import Logger
 from typing import List
 
@@ -44,8 +44,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                             if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
                             and recipe.relative_lane == RelativeLane.SAME_LANE]
         if len(filtered_indices) == 0:
-            raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
-                                          behavioral_state.ego_state.timestamp_in_sec)
+            raise NoActionsLeftForBP("All actions were filtered in BP. timestamp_in_sec: %f" %
+                                     behavioral_state.ego_state.timestamp_in_sec)
 
         # find the minimal aggressiveness level among valid static recipes
         min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_indices])

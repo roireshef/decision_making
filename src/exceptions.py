@@ -121,7 +121,7 @@ class ConstraintFilterHaltWithValue(Exception):
         return self._value
 
 
-class NoActionsLeftForBPError(Exception):
+class NoActionsLeftForBP(BehavioralPlanningException):
     pass
 
 
