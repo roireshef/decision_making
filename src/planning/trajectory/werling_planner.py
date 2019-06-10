@@ -169,7 +169,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
-        print('Chosen trajectory %d from %s' % (cartesian_filtered_indices[sorted_filtered_idxs[0]], cartesian_filtered_indices))
+        if cartesian_filtered_indices[sorted_filtered_idxs[0]] > 0:
+            print('Chosen trajectory %d from %s' % (cartesian_filtered_indices[sorted_filtered_idxs[0]], cartesian_filtered_indices))
 
         if is_target_ahead:  # Actual werling planning has occurred because T_s > 0.1 and the target is ahead of us
             # TODO: what if future sampling from poly_s will result with negative velocity (uncorrected for negative velocity)?
