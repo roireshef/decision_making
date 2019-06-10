@@ -98,3 +98,4 @@ LAT_CELL, LON_CELL = 0, 1
 NumpyIndicesArray = np.ndarray
 
 LaneSegmentID = int
+LaneEndCost = float  # Lane end cost assigned by Route Planner

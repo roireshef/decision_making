@@ -1,6 +1,6 @@
 import numpy as np
 import rte.python.profiler as prof
-from typing import List, Optional
+from typing import List, Optional, Dict
 from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
     DownstreamLaneDataNotFound
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST, TAKE_SPLIT, \
@@ -9,8 +9,9 @@ from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
     RoutePlanRoadSegment, RoutePlanRoadSegments
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType,\
     MapLaneDirection, GMAuthorityType, LaneConstructionType, MapRoadSegmentType, ManeuverType
-from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
+from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase, LaneSegmentConnectivity
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.planning.types import LaneSegmentID, LaneEndCost
 
 
 class BinaryCostBasedRoutePlanner(RoutePlanner):
@@ -284,6 +285,36 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             if lane_segment.e_i_lane_segment_id in lane_segment_ids:
                 lane_segment.e_cst_lane_end_cost = cost
 
+    def _get_lane_end_costs_on_last_road_segment(self) -> Dict[LaneSegmentID, LaneEndCost]:
+        """
+        This function returns the lane end costs for the last road segment in self._route_plan_lane_segments as a dictionary.
+        :return: Dictionary where keys are lane segment IDs and values are lane end costs
+        """
+        lane_end_costs: Dict[LaneSegmentID, LaneEndCost] = {}
+
+        for lane_segment in self._route_plan_lane_segments[-1]:
+            lane_end_costs[lane_segment.e_i_lane_segment_id] = lane_segment.e_cst_lane_end_cost
+
+        return lane_end_costs
+
+    def _are_multiple_downstream_lanes_with_zero_end_costs_present(self, downstream_lanes: List[LaneSegmentConnectivity]) -> bool:
+        """
+        This function determines if multiple downstream lanes have end costs equal to FALSE_COST.
+        :param downstream_lanes: List of downstream lanes
+        :return: True if multiple downstream lanes have zero end costs; False otherwise
+        """
+        num_zero_lane_end_costs = 0
+        lane_end_costs = self._get_lane_end_costs_on_last_road_segment()
+
+        for downstream_lane in downstream_lanes:
+            if lane_end_costs[downstream_lane.e_i_lane_segment_id] == FALSE_COST:
+                num_zero_lane_end_costs += 1
+
+        if num_zero_lane_end_costs > 1:
+            return True
+        else:
+            return False
+
     def _modify_lane_end_costs_for_lane_splits(self, road_segment_id: int) -> None:
         """
         At a lane split, the lane end costs determine whether the vehicle takes the split or drives straight. This function modifies these
@@ -298,7 +329,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         for lane_segment_id in lane_segment_ids_on_road_segment:
             downstream_lanes = self._route_plan_input_data.get_lane_segment_base(lane_segment_id).as_downstream_lanes
 
-            if len(downstream_lanes) > 1:
+            if len(downstream_lanes) > 1 and self._are_multiple_downstream_lanes_with_zero_end_costs_present(downstream_lanes):
                 if TAKE_SPLIT:
                     # First, determine if the lane has both a left and right split. If this happens, we prioritize one split over the other.
                     left_split_present = False
