@@ -5,8 +5,6 @@ import traceback
 from decision_making.src.utils.dm_profiler import DMProfiler
 from logging import Logger
 import numpy as np
-import cProfile
-import rte.python.profiler as prof
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -79,8 +77,6 @@ class BehavioralPlanningFacade(DmModule):
         :return: void
         """
 
-        pr = cProfile.Profile()
-        pr.enable()
         try:
             start_time = time.time()
 
@@ -103,16 +99,8 @@ class BehavioralPlanningFacade(DmModule):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")
-
-                # TODO: remove it
-                ego = state.ego_state
-                print('BP if: time %.3f; orig-fstate: %s -> %s; ' %
-                      (ego.timestamp_in_sec, ego.map_state.lane_fstate[:3], updated_state.ego_state.map_state.lane_fstate[:3]))
             else:
                 updated_state = state
-                # TODO: remove it
-                print('BP else: time %.3f; orig-fstate: %s ' %
-                      (state.ego_state.timestamp_in_sec, state.ego_state.map_state.lane_fstate[:3]))
 
             route_plan = self._get_current_route_plan()
 
@@ -159,7 +147,6 @@ class BehavioralPlanningFacade(DmModule):
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: %s. Trace: %s" %
                                  (e, traceback.format_exc()))
-        pr.disable()
 
     def _get_current_state(self) -> State:
         """

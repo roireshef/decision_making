@@ -99,28 +99,8 @@ class TrajectoryPlanningFacade(DmModule):
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
-
-                # TODO: remove it
-                ego_fstate = params.reference_route.cstate_to_fstate(state.ego_state.cartesian_state)
-                ego_time = state.ego_state.timestamp_in_sec
-                sampled_cartesian = sampled_state.ego_state.cartesian_state
-                dist_to_goal = np.linalg.norm(params.target_state[:2] - sampled_cartesian[:2])
-                time_to_goal = params.target_time - ego_time
-                sampled_fstate = params.reference_route.cstate_to_fstate(sampled_cartesian)
-                np.set_printoptions(suppress=True)
-                print('TP if: time %.3f, goal_time=%.3f; orig-fstate: %s -> %s; '
-                      'to_goal: t=%.3f s=%.3f s/t=%.3f; cpoint: %s' %
-                      (ego_time, params.target_time, NumpyUtils.str_log(ego_fstate), NumpyUtils.str_log(sampled_fstate),
-                       time_to_goal, dist_to_goal, dist_to_goal / time_to_goal, sampled_cartesian[:2]))
-
                 updated_state = sampled_state
             else:
-                # TODO: remove it
-                ego_fstate = params.reference_route.cstate_to_fstate(state.ego_state.cartesian_state)
-                print('TP else: time %.3f, goal_time=%.3f; orig-fstate: (%.2f, %.3f, %.2f); lane_id %d' %
-                      (state.ego_state.timestamp_in_sec, params.target_time, ego_fstate[0], ego_fstate[1], ego_fstate[2],
-                      state.ego_state.map_state.lane_id))
-
                 updated_state = state
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
