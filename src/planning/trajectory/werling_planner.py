@@ -169,9 +169,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
-        if cartesian_filtered_indices[sorted_filtered_idxs[0]] > 0:
-            print('Chosen trajectory %d from %s' % (cartesian_filtered_indices[sorted_filtered_idxs[0]], cartesian_filtered_indices))
-
         if is_target_ahead:  # Actual werling planning has occurred because T_s > 0.1 and the target is ahead of us
             # TODO: what if future sampling from poly_s will result with negative velocity (uncorrected for negative velocity)?
             samplable_trajectory = SamplableWerlingTrajectory(
@@ -252,12 +249,15 @@ class WerlingPlanner(TrajectoryPlanner):
             costs[effective_len:] = 0
 
         total_pointwise_costs = np.sum(pointwise_costs, axis=(1, 2))
+        total_costs = total_pointwise_costs + dist_from_goal_costs
 
-        if np.argmin(total_pointwise_costs + dist_from_goal_costs) > 0:
-            print('dist_from_goal_s=%s pointwise=%s; goal_v=%.3f' %
-                  (dist_from_goal_s, total_pointwise_costs, goal_in_frenet[FS_SV]))
+        # TODO: remove it
+        lowest_cost_idx = np.argmin(total_costs)
+        if dist_from_goal[lowest_cost_idx] > EPS:
+            print('dist_from_goal_s=%s dist_from_goal_d=%s pointwise=%s; goal_v=%.3f' %
+                  (dist_from_goal_s, dist_from_goal_d, total_pointwise_costs, goal_in_frenet[FS_SV]))
 
-        return total_pointwise_costs + dist_from_goal_costs
+        return total_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
