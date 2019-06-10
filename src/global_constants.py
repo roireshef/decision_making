@@ -168,10 +168,10 @@ WERLING_TIME_RESOLUTION = 0.1
 T_S_OFFSET_MIN, T_S_OFFSET_MAX = 0, 4
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = 0, 0
+DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 
 # Linspace number of steps in the constraints parameters grid-search
-T_S_STEPS, DX_STEPS = 3, 1
+T_S_STEPS, DX_STEPS = 3, 9
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 1
