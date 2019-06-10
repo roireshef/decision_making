@@ -96,3 +96,5 @@ LAT_CELL, LON_CELL = 0, 1
 
 # 1D Numpy array of indices (dtype = np.int)
 NumpyIndicesArray = np.ndarray
+
+LaneSegmentID = int

@@ -13,6 +13,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import EgoState, ObjectSize
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
+from decision_making.src.planning.types import LaneSegmentID
 
 
 class RoutePlanTestData:
@@ -40,7 +41,6 @@ def default_route_plan_for_PG_split_file() -> DataRoutePlan:
                                                         for lane_segment_id_base in np.arange(200, 300, 10)])
 
 
-LaneSegmentID = int
 IsLaneAttributeActive = bool
 LaneAttribute = int  # actually, LaneMappingStatusType, MapLaneDirection, GMAuthorityType, or LaneConstructionType
 LaneAttributeConfidence = float
