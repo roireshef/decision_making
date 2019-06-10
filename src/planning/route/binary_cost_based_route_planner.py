@@ -3,7 +3,7 @@ import rte.python.profiler as prof
 from typing import List, Optional, Dict
 from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
     DownstreamLaneDataNotFound
-from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST, TAKE_SPLIT, \
+from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, HIGH_COST, LOW_COST, TAKE_SPLIT, \
     PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
     RoutePlanRoadSegment, RoutePlanRoadSegments
@@ -27,12 +27,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of lane map type. Current implementation is binary cost.
         :param mapping_status_attribute: type of mapped
-        :return: normalized cost (FALSE_COST to TRUE_COST)
+        :return: normalized cost (LOW_COST to HIGH_COST)
         """
         if ((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
             (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
-            return FALSE_COST
-        return TRUE_COST
+            return LOW_COST
+        return HIGH_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -40,12 +40,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of construction zone type. Current implementation is binary cost.
         :param construction_zone_attribute: type of lane construction
-        :return: Normalized cost (FALSE_COST to TRUE_COST)
+        :return: Normalized cost (LOW_COST to HIGH_COST)
         """
         if ((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
             (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
-            return FALSE_COST
-        return TRUE_COST
+            return LOW_COST
+        return HIGH_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -53,13 +53,13 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of lane direction. Current implementation is binary cost.
         :param lane_dir_in_route_attribute: map lane direction in respect to host
-        :return: Normalized cost (FALSE_COST to TRUE_COST)
+        :return: Normalized cost (LOW_COST to HIGH_COST)
         """
         if ((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
             (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
             (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
-            return FALSE_COST
-        return TRUE_COST
+            return LOW_COST
+        return HIGH_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -67,11 +67,11 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of GM authorized driving area. Current implementation is binary cost.
         :param gm_authority_attribute: type of GM authority
-        :return: Normalized cost (FALSE_COST to TRUE_COST)
+        :return: Normalized cost (LOW_COST to HIGH_COST)
         """
         if (gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None):
-            return FALSE_COST
-        return TRUE_COST
+            return LOW_COST
+        return HIGH_COST
 
     @staticmethod
     @raises(LaneAttributeNotFound)
@@ -82,7 +82,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         according to the (input) lane attribute, which lane attribute method to invoke
         :param lane_attribute_index: pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
         :param lane_attribute_value: value of the pointed lane attribute
-        :return: Normalized lane occupancy cost based on the concerned lane attribute (FALSE_COST to TRUE_COST)
+        :return: Normalized lane occupancy cost based on the concerned lane attribute (LOW_COST to HIGH_COST)
         """
         if 'attribute_based_occupancy_cost_methods' not in BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost.__dict__:
             # The above if check and then setting of attribute_based_occupancy_cost_methods within the if block is equivalent of
@@ -139,10 +139,10 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
             lane_attribute_occupancy_cost = BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost(lane_attribute_index=lane_attribute_index, lane_attribute_value=lane_attribute_value)
             # Check if the lane is unoccupiable
-            if(lane_attribute_occupancy_cost == TRUE_COST):
-                return TRUE_COST
+            if(lane_attribute_occupancy_cost == HIGH_COST):
+                return HIGH_COST
 
-        return FALSE_COST
+        return LOW_COST
 
     @raises(DownstreamLaneDataNotFound)
     # Following method is kept public in order to unit test the method from outside the class
@@ -156,7 +156,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             (bool):  lane conectivity diagnostics info, whether at least one downstream lane segment (as described in the map)
                      is in the downstream route road segement
         """
-        min_downstream_lane_segment_occupancy_cost = TRUE_COST
+        min_downstream_lane_segment_occupancy_cost = HIGH_COST
 
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
         # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
@@ -212,10 +212,10 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         # Calculate lane end costs (from lane occupancy costs)
         if not self._route_plan_lane_segments:  # if route_plan_lane_segments is empty indicating the last segment in route
-            if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
-                lane_end_cost = TRUE_COST
+            if (lane_occupancy_cost == HIGH_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=HIGH_COST)
+                lane_end_cost = HIGH_COST
             else:
-                lane_end_cost = FALSE_COST
+                lane_end_cost = LOW_COST
 
             downstream_lane_found_in_route = True
             # Because this is the last road segment in (current) route  we don't want to trigger RoadSegmentLaneSegmentMismatch
@@ -224,8 +224,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
             lane_end_cost, downstream_lane_found_in_route = self._lane_end_cost_calc(lane_segment_base_data=lane_segment_base_data)
 
-            if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
-                lane_end_cost = TRUE_COST
+            if (lane_occupancy_cost == HIGH_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=HIGH_COST)
+                lane_end_cost = HIGH_COST
 
         # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
         current_route_lane_segment = RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
@@ -299,7 +299,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
     def _are_multiple_downstream_lanes_with_zero_end_costs_present(self, downstream_lanes: List[LaneSegmentConnectivity]) -> bool:
         """
-        This function determines if multiple downstream lanes have end costs equal to FALSE_COST.
+        This function determines if multiple downstream lanes have end costs equal to LOW_COST.
         :param downstream_lanes: List of downstream lanes
         :return: True if multiple downstream lanes have zero end costs; False otherwise
         """
@@ -307,7 +307,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         lane_end_costs = self._get_lane_end_costs_on_last_road_segment()
 
         for downstream_lane in downstream_lanes:
-            if lane_end_costs[downstream_lane.e_i_lane_segment_id] == FALSE_COST:
+            if lane_end_costs[downstream_lane.e_i_lane_segment_id] == LOW_COST:
                 num_zero_lane_end_costs += 1
 
         if num_zero_lane_end_costs > 1:
@@ -363,7 +363,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                             lane_segment_ids.append(downstream_lane.e_i_lane_segment_id)
 
         # Set lane end costs
-        self._modify_lane_end_costs_on_last_road_segment(lane_segment_ids, TRUE_COST)
+        self._modify_lane_end_costs_on_last_road_segment(lane_segment_ids, HIGH_COST)
 
     @prof.ProfileFunction()
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
