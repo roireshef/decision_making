@@ -98,7 +98,7 @@ class WerlingPlanner(TrajectoryPlanner):
             ftrajectories = self.predictor.predict_2d_frenet_states(ego_by_goal_state[np.newaxis, :],
                                                                     np.arange(0, planning_horizon + EPS, self.dt))
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories)
-            poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
+            poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
             T_s_vals = np.array([planning_horizon])
             poly_s, poly_d = poly_coefs_s[np.newaxis], poly_coefs_d[np.newaxis]
 
