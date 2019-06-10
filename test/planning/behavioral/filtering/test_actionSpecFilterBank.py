@@ -135,10 +135,13 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
 ]))
-def test_filter_closeToTrackingMode_allActionsAreValid(
+def test_filter_closeToTrackingMode_ActionValidityAsExpected(
         behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
-    """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx """
+    """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx
+        First two actions are valid, third one has a jerk that surpasses the upper limit
+        in the acceleration case and thus invalidated
+    """
 
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)
@@ -148,7 +151,7 @@ def test_filter_closeToTrackingMode_allActionsAreValid(
     # only look at the same lane, front cell actions
     actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
 
-    expected_filter_results = np.array([True, True, True], dtype=bool)
+    expected_filter_results = np.array([True, True, False], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
 
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,

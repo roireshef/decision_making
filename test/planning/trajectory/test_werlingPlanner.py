@@ -43,7 +43,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     v0 = 5
     vT = 5
-    Ts = 2
+    Ts = 3
 
     predictor = RoadFollowingPredictor(logger)
 

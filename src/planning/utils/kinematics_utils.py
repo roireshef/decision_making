@@ -65,7 +65,7 @@ class KinematicUtils:
         #     (initial jerk is calculated by subtracting the first two acceleration samples)
         # (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
         # (3) keeps the velocity under the desired velocity limit.
-        # TODO: velocity and jerk comparison is temporarily done with an EPS margin, due to numerical issues
+        # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_desired = np.logical_or(
             np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity + EPS), axis=1),
             (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
