@@ -2,7 +2,7 @@ import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, CURV_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
