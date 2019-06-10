@@ -318,18 +318,18 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                     # Second, determine the lanes that will have their lane end costs modified
                     for downstream_lane in downstream_lanes:
                         if downstream_lane.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION:
-                            lane_segment_ids.append(lane_segment_id)
+                            lane_segment_ids.append(downstream_lane.e_i_lane_segment_id)
 
                         if left_and_right_split_present:
                             if downstream_lane.e_e_maneuver_type == ManeuverType.LEFT_SPLIT and PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT:
-                                lane_segment_ids.append(lane_segment_id)
+                                lane_segment_ids.append(downstream_lane.e_i_lane_segment_id)
                             elif (downstream_lane.e_e_maneuver_type == ManeuverType.RIGHT_SPLIT and
                                   not(PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT)):
-                                lane_segment_ids.append(lane_segment_id)
+                                lane_segment_ids.append(downstream_lane.e_i_lane_segment_id)
                 else:
                     for downstream_lane in downstream_lanes:
                         if downstream_lane.e_e_maneuver_type != ManeuverType.STRAIGHT_CONNECTION:
-                            lane_segment_ids.append(lane_segment_id)
+                            lane_segment_ids.append(downstream_lane.e_i_lane_segment_id)
 
         # Set lane end costs
         self._modify_lane_end_costs_on_last_road_segment(lane_segment_ids, TRUE_COST)
