@@ -163,7 +163,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # search through all downstream lanes to to current lane
         downstream_lane_found_in_route = False
 
-        downstream_route_lane_segments: RoutePlanRoadSegment = self._route_plan_lane_segments[-1]
+        downstream_route_lane_segments: RoutePlanRoadSegment = self._route_plan_lane_segments_reversed[-1]
 
         downstream_route_lane_segment_ids = np.array([route_lane_segment.e_i_lane_segment_id for route_lane_segment in downstream_route_lane_segments])
 
@@ -211,7 +211,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         lane_occupancy_cost = BinaryCostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
 
         # Calculate lane end costs (from lane occupancy costs)
-        if not self._route_plan_lane_segments:  # if route_plan_lane_segments is empty indicating the last segment in route
+        if not self._route_plan_lane_segments_reversed:  # if route_plan_lane_segments is empty indicating the last segment in route
             if (lane_occupancy_cost == HIGH_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=HIGH_COST)
                 lane_end_cost = HIGH_COST
             else:
@@ -248,7 +248,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # road segment (any of its lanes) that is in the route
         downstream_road_segment_not_found = True
 
-        if not self._route_plan_lane_segments:  # check if this is the last road segment in the nav plan
+        if not self._route_plan_lane_segments_reversed:  # check if this is the last road segment in the nav plan
             downstream_road_segment_not_found = False
 
         lane_segment_ids = self._route_plan_input_data.get_lane_segment_ids_for_road_segment(road_segment_id)
@@ -276,23 +276,23 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
     def _modify_lane_end_costs_on_last_road_segment(self, lane_segment_ids: List[int], cost: float) -> None:
         """
-        This function modifies lane end costs for the last road segment in self._route_plan_lane_segments.
+        This function modifies lane end costs for the last road segment in self._route_plan_lane_segments_reversed.
         :param lane_segment_ids: List of lane segment IDs that will have their associated lane end costs modified
         :param cost: New lane end cost
         :return:
         """
-        for lane_segment in self._route_plan_lane_segments[-1]:
+        for lane_segment in self._route_plan_lane_segments_reversed[-1]:
             if lane_segment.e_i_lane_segment_id in lane_segment_ids:
                 lane_segment.e_cst_lane_end_cost = cost
 
     def _get_lane_end_costs_on_last_road_segment(self) -> Dict[LaneSegmentID, LaneEndCost]:
         """
-        This function returns the lane end costs for the last road segment in self._route_plan_lane_segments as a dictionary.
+        This function returns the lane end costs for the last road segment in self._route_plan_lane_segments_reversed as a dictionary.
         :return: Dictionary where keys are lane segment IDs and values are lane end costs
         """
         lane_end_costs: Dict[LaneSegmentID, LaneEndCost] = {}
 
-        for lane_segment in self._route_plan_lane_segments[-1]:
+        for lane_segment in self._route_plan_lane_segments_reversed[-1]:
             lane_end_costs[lane_segment.e_i_lane_segment_id] = lane_segment.e_cst_lane_end_cost
 
         return lane_end_costs
@@ -373,15 +373,15 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                  RoutePlannerInputData() class definition.
         :return: DataRoutePlan , the complete route plan information ready to be serialized and published
         """
-        road_segment_ids: List[int] = []
-        num_lane_segments: List[int] = []
+        road_segment_ids_reversed: List[int] = []
+        num_lane_segments_reversed: List[int] = []
         prev_road_segment_was_intersection = False
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # key -> road_segment_id
         # value -> lane_segment_ids
 
-        self._route_plan_lane_segments: RoutePlanRoadSegments = []
+        self._route_plan_lane_segments_reversed: RoutePlanRoadSegments = []
         self._route_plan_input_data = route_plan_input_data
 
         for (road_segment_id, lane_segment_ids) in reversed(self._route_plan_input_data.get_lane_segment_ids_for_route().items()):
@@ -400,24 +400,14 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
 
             # append the road segment sepecific info , as the road seg iteration is reverse
-            road_segment_ids.append(road_segment_id)
+            road_segment_ids_reversed.append(road_segment_id)
 
-            num_lane_segments.append(len(lane_segment_ids))
+            num_lane_segments_reversed.append(len(lane_segment_ids))
 
-            self._route_plan_lane_segments.append(route_lane_segments)
+            self._route_plan_lane_segments_reversed.append(route_lane_segments)
 
-        # Two step append (O(n)) and reverse (O(n)) is less costly than one step insert (o(n^2)) at the beginning of the list
-        # at each road segment loop (of length n)
-        road_segment_ids.reverse()
-        num_lane_segments.reverse()
-        self._route_plan_lane_segments.reverse()
-
-        num_road_segments = len(road_segment_ids)
-
-        valid = True
-
-        return DataRoutePlan(e_b_is_valid=valid,
-                             e_Cnt_num_road_segments=num_road_segments,
-                             a_i_road_segment_ids=np.array(road_segment_ids),
-                             a_Cnt_num_lane_segments=np.array(num_lane_segments),
-                             as_route_plan_lane_segments=self._route_plan_lane_segments)
+        return DataRoutePlan(e_b_is_valid=True,
+                             e_Cnt_num_road_segments=len(road_segment_ids_reversed),
+                             a_i_road_segment_ids=np.array(list(reversed(road_segment_ids_reversed))),
+                             a_Cnt_num_lane_segments=np.array(list(reversed(num_lane_segments_reversed))),
+                             as_route_plan_lane_segments=list(reversed(self._route_plan_lane_segments_reversed)))

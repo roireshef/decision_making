@@ -248,7 +248,7 @@ class RoutePlannerInputData():
 class RoutePlanner(metaclass=ABCMeta):
     """Abstract route planner class"""
     def __init__(self):
-        self._route_plan_lane_segments: RoutePlanRoadSegments = []
+        self._route_plan_lane_segments_reversed: RoutePlanRoadSegments = []
         self._route_plan_input_data: RoutePlannerInputData = None
 
     @abstractmethod
