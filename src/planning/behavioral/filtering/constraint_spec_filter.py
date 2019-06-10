@@ -13,7 +13,7 @@ import numpy as np
 
 
 @six.add_metaclass(ABCMeta)
-class BeyondSpecConstraintFilter(ActionSpecFilter):
+class BeyondSpecBrakingFilter(ActionSpecFilter):
     """
     An ActionSpecFilter which implements a predefined constraint.
      The filter is defined by:
@@ -123,7 +123,7 @@ class BeyondSpecConstraintFilter(ActionSpecFilter):
                 points_under_test = self._select_points(behavioral_state, action_spec)
                 # for the case when the action is very short, use extended spec, since TP output has minimal
                 # trajectory length
-                extended_spec = BeyondSpecConstraintFilter._extend_spec(action_spec)
+                extended_spec = BeyondSpecBrakingFilter._extend_spec(action_spec)
                 # test the ability to brake before all selected points given their curvature
                 mask_value = (self._braking_distances(extended_spec, points_under_test) <
                               self._actual_distances(extended_spec, points_under_test)).all()
