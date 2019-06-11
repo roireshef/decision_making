@@ -1,16 +1,15 @@
-from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
 
 import numpy as np
 import re
 
 from decision_making.src.global_constants import EPS, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_LIMITS, \
     TRAJECTORY_TIME_RESOLUTION, SPECIFICATION_HEADWAY, SAFETY_HEADWAY, LON_ACC_LIMITS, VELOCITY_LIMITS, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, LON_JERK_LIMITS, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS
 from decision_making.src.planning.utils.math_utils import Math
 
 
@@ -64,7 +63,7 @@ class TimeJerkWeightsOptimization:
 
         # create the grid of states
         v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
-        braking = np.where(np.logical_and(0 < v0 - vT, v0 - vT <= 26))
+        braking = np.where(v0 > vT)
         v0, vT, a0, s = v0[braking], vT[braking], a0[braking], s[braking]
         limited_headway = np.where((s >= v0 * SAFETY_HEADWAY) & (s < v0 * 3))
         v0, vT, a0, s = v0[limited_headway], vT[limited_headway], a0[limited_headway], s[limited_headway]
@@ -136,15 +135,49 @@ class TimeJerkWeightsOptimization:
         :return:
         """
         # it's sufficient to test only maximal velocity
-        v0 = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-        vT = 0
-        w_J_arr = np.arange(0.05, 2, 0.05)
+        # test braking scenario from 90 to 0
+        w_J_arr = np.geomspace(0.001, 2, 100)
         size = w_J_arr.shape[0]
+        v0 = np.full(w_J_arr.shape, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+        a0 = np.zeros(w_J_arr.shape)
+        vT = np.zeros(w_J_arr.shape)
         # calculate times for braking actions with STANDARD level and verify they are less than BP_ACTION_T_LIMIT[1]
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
-        T_s = StaticActionSpace.calc_T_s(np.full(size, w_T), w_J_arr, a_0=0, v_0=v0, v_T=vT)
-        print('\nBP_ACTION_T_LIMIT: %.1f, Braking time from velocity %.3f for different weights:\n\tw_J\t\t\t\tT_s\n%s'
-              % (BP_ACTION_T_LIMITS[1], v0, np.c_[w_J_arr, T_s]))
+        T = KinematicUtils.calc_T_s(np.full(size, w_T), w_J_arr, v0, a0, vT, BP_ACTION_T_LIMITS)
+        valid = ~np.isnan(T)
+
+        poly_host = QuarticPoly1D.s_profile_coefficients(a0[valid], v0[valid], vT[valid], T[valid])
+
+        # calculate states validity wrt velocity, acceleration and time limits
+        vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_host, T[valid], LON_ACC_LIMITS,
+                                                                                VELOCITY_LIMITS, np.array([-np.inf, np.inf])) & \
+                            Poly1D.are_jerks_in_limits(poly_host, T[valid], LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS)
+
+        np.set_printoptions(suppress=True)
+        print('\nBP_ACTION_T_LIMIT: %.1f, Braking time from velocity %.3f for different weights:\n%s'
+              % (BP_ACTION_T_LIMITS[1], v0[0], np.c_[w_J_arr[valid], T[valid], vel_acc_in_limits]))
+
+        # test acceleration scenario from 0 to 20
+        w_J_arr = np.geomspace(0.01, 12, 100)
+        size = w_J_arr.shape[0]
+        v0 = np.zeros(w_J_arr.shape)
+        a0 = np.zeros(w_J_arr.shape)
+        vT = np.full(w_J_arr.shape, 20/3.6)
+        # calculate times for braking actions with STANDARD level and verify they are less than BP_ACTION_T_LIMIT[1]
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
+        T = KinematicUtils.calc_T_s(np.full(size, w_T), w_J_arr, v0, a0, vT, BP_ACTION_T_LIMITS)
+        valid = ~np.isnan(T)
+
+        poly_host = QuarticPoly1D.s_profile_coefficients(a0[valid], v0[valid], vT[valid], T[valid])
+
+        # calculate states validity wrt velocity, acceleration and time limits
+        vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_host, T[valid], LON_ACC_LIMITS,
+                                                                                VELOCITY_LIMITS, np.array([-np.inf, np.inf])) & \
+                            Poly1D.are_jerks_in_limits(poly_host, T[valid], LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS)
+
+        np.set_printoptions(suppress=True)
+        print('\nBP_ACTION_T_LIMIT: %.1f, Acceleration time to velocity %.3f for different weights:\n%s'
+              % (BP_ACTION_T_LIMITS[1], vT[0], np.c_[w_J_arr[valid], T[valid], vel_acc_in_limits]))
 
     @staticmethod
     def create_full_range_of_weights(w2_from: float, w2_till: float, w12_ratio_from: float, w12_ratio_till: float,
@@ -192,7 +225,7 @@ class TimeJerkWeightsOptimization:
         # calculate states validity wrt velocity, acceleration and time limits
         vel_acc_in_limits = KinematicUtils.filter_by_longitudinal_frenet_limits(poly_host, T, LON_ACC_LIMITS,
                                                                                 VELOCITY_LIMITS, np.array([-np.inf, np.inf])) & \
-                            QuinticPoly1D.are_jerks_in_limits(poly_host, T, LON_JERK_LIMITS)
+                            QuinticPoly1D.are_jerks_in_limits(poly_host, T, LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS)
         safe_actions = []
         for poly_s, poly_tar, t in zip(poly_host, poly_target, T):
             safe_actions.append(KinematicUtils.is_maintaining_distance(poly_s, poly_tar, safety_margin, SAFETY_HEADWAY, np.array([0, t])))
@@ -330,5 +363,5 @@ class TimeJerkWeightsOptimization:
 
 
 if __name__ == '__main__':
-    TimeJerkWeightsOptimization.jerk_time_weights_optimization_for_slower_front_car()
+    #TimeJerkWeightsOptimization.jerk_time_weights_optimization_for_slower_front_car()
     TimeJerkWeightsOptimization.check_static_braking_actions()

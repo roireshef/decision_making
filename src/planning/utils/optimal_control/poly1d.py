@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from decision_making.src.global_constants import EPS
 from typing import Union
 
 import numpy as np
@@ -187,6 +188,55 @@ class Poly1D:
         :return: True if restrictions are met, False otherwise
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
+
+    @classmethod
+    def are_jerks_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray,
+                            accel_jerk_limits: Limits, decel_jerk_limits: Limits) -> np.ndarray:
+        """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on the jerk values, return True if restrictions are met,
+        False otherwise
+        :param poly_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param accel_jerk_limits: minimal and maximal allowed values of jerks for positive accelerations [m/sec^3]
+        :param decel_jerk_limits: minimal and maximal allowed values of jerks for negative accelerations [m/sec^3]
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
+        poly_jerk_der = Math.polyder2d(poly_coefs, m=4)
+        poly_jerk = Math.polyder2d(poly_coefs, m=3)
+        poly_acc = Math.polyder2d(poly_coefs, m=2)
+
+        # TODO: implement tests for those cases
+        if poly_jerk_der.shape[-1] == 0:  # No derivative - polynomial is constant
+            if poly_jerk.shape[-1] == 0:  # Also polynomial is zero (null)
+                return NumpyUtils.is_in_limits(np.full((poly_jerk.shape[0], 1), 0), decel_jerk_limits)
+            else:
+                return NumpyUtils.is_in_limits(poly_jerk[:, 0], decel_jerk_limits)
+        elif poly_jerk_der.shape[-1] == 1:  # 1st order derivative is constant - poly_jerk is a*x+b
+            # No need to test for t=0 (assuming it's valid), only t=T
+            suspected_jerks = Math.zip_polyval2d(poly_jerk, T_vals[:, np.newaxis])
+            suspected_accs = Math.zip_polyval2d(poly_acc, T_vals[:, np.newaxis])
+            return np.all(np.logical_or(
+                np.logical_and(suspected_accs > EPS, NumpyUtils.is_in_limits(suspected_jerks, accel_jerk_limits)),
+                np.logical_and(suspected_accs <= EPS, NumpyUtils.is_in_limits(suspected_jerks, decel_jerk_limits))),
+                axis=1)
+
+        #  Find roots of jerk_poly (nan for complex or negative roots).
+        suspected_points = Math.find_real_roots_in_limits(poly_jerk_der, value_limits=np.array([0, np.inf]))
+        suspected_points = np.c_[suspected_points, T_vals]
+        suspected_jerks = Math.zip_polyval2d(poly_jerk, suspected_points)
+        suspected_accs = Math.zip_polyval2d(poly_acc, suspected_points)
+
+        # are extrema points out of [0, T] range and are they non-complex
+        is_suspected_point_in_time_range = (suspected_points <= T_vals[:, np.newaxis])
+
+        # check if extrema values are within [a_min, a_max] limits or very close to the limits
+        is_suspected_value_in_limits = np.logical_or(
+            np.logical_and(suspected_accs > EPS, NumpyUtils.is_almost_in_limits(suspected_jerks, accel_jerk_limits)),
+            np.logical_and(suspected_accs <= EPS, NumpyUtils.is_almost_in_limits(suspected_jerks, decel_jerk_limits)))
+
+        # for all non-complex extrema points that are inside the time range, verify their values are in [a_min, a_max]
+        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1)
 
 
 class QuarticPoly1D(Poly1D):

@@ -56,7 +56,8 @@ class KinematicUtils:
         """
 
         lon_acceleration = ctrajectories[:, :, C_A]
-        lon_jerk = np.hstack((np.zeros((lon_acceleration.shape[0], 1)), np.diff(lon_acceleration)))/TRAJECTORY_TIME_RESOLUTION
+        lon_jerk = np.gradient(lon_acceleration, axis=1)/TRAJECTORY_TIME_RESOLUTION if lon_acceleration.shape[1] > 1 \
+            else np.zeros_like(lon_acceleration)
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
 
