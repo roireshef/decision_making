@@ -120,7 +120,8 @@ class ConstraintFilterHaltWithValue(Exception):
     def value(self) -> bool:
         return self._value
 
-class NoActionsLeftForBPError(Exception):
+
+class NoActionsLeftForBP(BehavioralPlanningException):
     pass
 
 

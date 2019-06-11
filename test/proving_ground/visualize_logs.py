@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from decision_making.paths import Paths
-from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, EPS
+from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON
 from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y
 from decision_making.src.state.state import EgoState
@@ -49,6 +49,7 @@ def plot_dynamics(log_file_path: str):
     trajectory = []
     trajectory_time = []
     no_valid_traj_timestamps = []
+    no_action_in_bp_timestamps = []
 
     while True:
         text = f.readline()
@@ -94,6 +95,9 @@ def plot_dynamics(log_file_path: str):
             spec_v.append(float(spec_dict['v']))
             spec_s.append(float(spec_dict['s']))
             spec_time.append(float(time))
+
+        if 'NoActionsLeftForBP' in text:
+            no_action_in_bp_timestamps.append(float(text.split('timestamp_in_sec: ')[1]))
 
         if 'Chosen behavioral action recipe' in text:
             recipe_str = text.split('Chosen behavioral action recipe')[1].split('Recipe: ')[1].replace("<", "'<").replace(">", ">'")
@@ -165,10 +169,11 @@ def plot_dynamics(log_file_path: str):
     ax5 = plt.subplot(5, 2, 9, sharex=ax1)
     spec_t_plot,  = plt.plot(spec_time, spec_t, 'o-')
     spec_v_plot,  = plt.plot(spec_time, spec_v, 'o-')
+    bp_no_actions_plot = plt.scatter(no_action_in_bp_timestamps, [1]*len(no_action_in_bp_timestamps), s=5, c='k')
 
     plt.xlabel('time[s]')
     plt.ylabel('spec_time/spec_velocity')
-    plt.legend([spec_t_plot, spec_v_plot], ['spec_t [s]', 'spec_v [m/s]'])
+    plt.legend([spec_t_plot, spec_v_plot, bp_no_actions_plot], ['spec_t [s]', 'spec_v [m/s]', 'no_actions_bp'])
 
     ax6 = plt.subplot(5, 2, 2, sharex=ax1)
     bp_if_lon,  = plt.plot(bp_if_time, bp_if_lon_err, 'o-.')

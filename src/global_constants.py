@@ -66,13 +66,17 @@ BP_ACTION_T_LIMITS = np.array([0.0, 15.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [4, 0.15, 0.1],
+    [1, 0.15, 0.1],
     [0.2, 0.15, 0.1],
     [0.015, 0.15, 0.1]
 ])
 
+# Longitudinal Jerk Limits [m/sec^3] in acceleration and deceleration scenarios, respectively
+LON_JERK_ACCEL_LIMITS = np.array([-5, 1])
+LON_JERK_DECEL_LIMITS = np.array([-5, 5])
+
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-1.5, 1.5])
@@ -196,10 +200,6 @@ NEGLIGIBLE_VELOCITY = 0.01
 # [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)
 TINY_CURVATURE = 1e-4
 
-# [1/m] maximal trajectory curvature, based on the minimal turning radius, which is defined in a basic car's spec
-# A typical turning radius = 5 m, then MAX_CURVATURE = 0.2.
-MAX_CURVATURE = 0.2
-
 # [m/sec^2] when acceleration is not specified - TP uses this as goal acceleration
 DEFAULT_ACCELERATION = 0.0
 
@@ -251,7 +251,6 @@ BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
-ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 

@@ -44,6 +44,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         :param state: the current world state
         :param behavioral_state: processed behavioral state
         :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
+        :param recipes_mask: a list of recipe-sized boolean values indicating if the respective recipe is valid or not [bool]
         :param route_plan:
         :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
         """

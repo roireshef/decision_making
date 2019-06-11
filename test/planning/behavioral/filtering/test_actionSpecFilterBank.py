@@ -135,10 +135,13 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
 ]))
-def test_filter_closeToTrackingMode_allActionsAreValid(
+def test_filter_closeToTrackingMode_ActionValidityAsExpected(
         behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
-    """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx """
+    """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx
+        First two actions are valid, third one has a jerk that surpasses the upper limit
+        in the acceleration case and thus invalidated
+    """
 
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)
@@ -148,7 +151,7 @@ def test_filter_closeToTrackingMode_allActionsAreValid(
     # only look at the same lane, front cell actions
     actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
 
-    expected_filter_results = np.array([True, True, True], dtype=bool)
+    expected_filter_results = np.array([True, True, False], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
 
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
@@ -216,17 +219,16 @@ def test_filter_staticActionsWithLeadingVehicle_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode,
         follow_lane_recipes: List[StaticActionRecipe]):
     """
-    # actions [0, 1, 3, 9, 12, 13, 15, 16] are None after specify
+    # actions [0, 9, 12, 15] are None after specify
     # actions [6-17] are static, aiming to higher velocity - which hits the front vehicle
-    # action 8 can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
+    # actions 7, 8 are safe and can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
     """
 
     logger = AV_Logger.get_logger()
-    predictor = RoadFollowingPredictor(logger)
 
     filtering = RecipeFiltering(filters=[], logger=logger)
 
-    expected_filter_results = np.array([False, False, True, False, True, True, False, False, True,
+    expected_filter_results = np.array([False, True, True, True, True, True, False, True, True,
                                         False, False, False, False, False, False, False, False, False], dtype=bool)
     static_action_space = StaticActionSpace(logger, filtering=filtering)
 

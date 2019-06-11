@@ -1,4 +1,5 @@
 import numpy as np
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
 from sklearn.utils.extmath import cartesian
 from typing import Optional, List, Type
@@ -78,18 +79,8 @@ class DynamicActionSpace(ActionSpace):
                                                        behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
-            v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_HEADWAY)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-        T_s = np.fmin.reduce(roots_s, axis=-1)
-
-        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
-        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
-        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
-        # intersecting in T=0.
-        # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
-        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, SPECIFICATION_HEADWAY)] = 0
+        T_s = KinematicUtils.calc_T_s(weights[:, 2], weights[:, 0], projected_ego_fstates[:, FS_SV],
+                                      projected_ego_fstates[:, FS_SA], v_T, BP_ACTION_T_LIMITS, ds)
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -106,8 +97,7 @@ class DynamicActionSpace(ActionSpace):
         # to keep from the target vehicle.
         distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
                                                              v_0=projected_ego_fstates[:, FS_SV],
-                                                             v_T=v_T, T=T, dx=ds,
-                                                             T_m=SPECIFICATION_HEADWAY)(T)
+                                                             v_T=v_T, T=T, dx=ds, T_m=SPECIFICATION_HEADWAY)(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 

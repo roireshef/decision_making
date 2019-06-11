@@ -4,7 +4,8 @@ import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_LAT_ACC_STRICT_COEF, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
+    LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, StaticActionRecipe, RelativeLane
@@ -77,7 +78,8 @@ class FilterForKinematics(ActionSpecFilter):
                 # TODO: This handling of polynomial coefficients being 5th or 4th order should happen in an inner context and get abstracted from this method
                 first_non_zero = np.argmin(np.equal(poly_s, 0)) if isinstance(spec.recipe, StaticActionRecipe) else 0
                 is_valid_in_frenet = KinematicUtils.filter_by_longitudinal_frenet_limits(
-                    poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_ACC_LIMITS, VELOCITY_LIMITS, frenet_frame.s_limits)[0]
+                    poly_s[np.newaxis, first_non_zero:], np.array([t]), LON_ACC_LIMITS, VELOCITY_LIMITS,
+                    frenet_frame.s_limits)[0]
 
                 # frenet checks are analytical and do not require conversions so they are faster. If they do not pass,
                 # we can save time by not checking cartesian limits
@@ -97,9 +99,8 @@ class FilterForKinematics(ActionSpecFilter):
             cartesian_points[:, C_K] *= np.linspace(1, 1./BP_LAT_ACC_STRICT_COEF, cartesian_points.shape[0])
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
-                cartesian_points[np.newaxis, ...],
-                VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
-
+                cartesian_points[np.newaxis, ...], VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
+                LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
             are_valid.append(is_valid_in_cartesian)
 
         # TODO: remove it

@@ -8,7 +8,7 @@ from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -126,7 +126,10 @@ class WerlingPlanner(TrajectoryPlanner):
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
                                                                              cost_params.lat_acceleration_limits,
+                                                                             cost_params.lon_jerk_limits_while_accelerating,
+                                                                             cost_params.lon_jerk_limits_while_decelerating,
                                                                              cost_params.desired_velocity)
+
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
         ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
@@ -137,6 +140,12 @@ class WerlingPlanner(TrajectoryPlanner):
             np.set_printoptions(suppress=True)
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+            lon_acc = ctrajectories[:, :, C_A]
+            lon_jerk = np.hstack((np.zeros((lon_acc.shape[0], 1)), np.diff(lon_acc))) / TRAJECTORY_TIME_RESOLUTION
+            bad_accel_jerk = np.logical_and(
+                lon_acc > EPS, ~NumpyUtils.is_in_limits(lon_jerk, cost_params.lon_jerk_limits_while_accelerating))
+            bad_decel_jerk = np.logical_and(
+                lon_acc <= EPS, ~NumpyUtils.is_in_limits(lon_jerk, cost_params.lon_jerk_limits_while_decelerating))
             lat_acc_traj_idx = np.argmin(np.max(np.abs(lat_acc), axis=1))
             lat_acc_t_idx = np.argmax(np.abs(lat_acc[lat_acc_traj_idx]))
             lat_acc_v = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_V]
@@ -149,11 +158,12 @@ class WerlingPlanner(TrajectoryPlanner):
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
                                           "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
-                                          "[min/max velocity] [%s, %s] (limits: %s); "
-                                          "[min/max lon_acc] [%s, %s] (limits: %s)\n"
-                                          "min/max lat_acc [%s, %s] (limits: %s); passed limits: %s/%s\n"
-                                          "ego_frenet = %s\ngoal_frenet = %s\n"
-                                          "distance from ego to goal = %f, time*approx_velocity = %f\n"
+                                          "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s)\n"
+                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s)\n"
+                                          "[highest minimal lat_acc, lowest maximal lat_acc] [%s, %s] (limits: %s)\n"
+                                          "bad accel jerks %s for acc=%s, bad decel jerks %s for acc=%s\nlon_acc=%s\n"
+                                          "passed limits: %s/%s\nego_frenet = %s\ngoal_frenet = %s\n"
+                                          "distance from ego to goal = %f, time*approx_velocity = %f"
                                           "worst_lat_acc: t=%.1f v=%.3f k=%f; nominal_points.k=%s" %
                                           (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
                                            NumpyUtils.str_log(goal), str(state).replace('\n', ''),
@@ -165,6 +175,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                            NumpyUtils.str_log(cost_params.lon_acceleration_limits),
                                            np.min(lat_acc), np.max(lat_acc),
                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
+                                           lon_jerk[bad_accel_jerk], lon_acc[bad_accel_jerk],
+                                           lon_jerk[bad_decel_jerk], lon_acc[bad_decel_jerk], lon_acc,
                                            len(cartesian_filtered_indices), len(ctrajectories),
                                            NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
                                            goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
