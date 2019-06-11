@@ -8,7 +8,7 @@ from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRES
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
     RoutePlanRoadSegment, RoutePlanRoadSegments
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType,\
-    MapLaneDirection, GMAuthorityType, LaneConstructionType, MapRoadSegmentType, ManeuverType
+    MapLaneDirection, GMAuthorityType, LaneConstructionType, ManeuverType
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase, LaneSegmentConnectivity
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.planning.types import LaneSegmentID, LaneEndCost
@@ -389,7 +389,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         road_segment_ids_reversed: List[int] = []
         num_lane_segments_reversed: List[int] = []
-        prev_road_segment_was_intersection = False
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # key -> road_segment_id
@@ -399,17 +398,14 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         self._route_plan_input_data = route_plan_input_data
 
         for (road_segment_id, lane_segment_ids) in reversed(self._route_plan_input_data.get_lane_segment_ids_for_route().items()):
-            # Check whether any costs need to be altered in the previous road segment. Recall that we are looping over the road segments in
-            # reversee order so the previous road segment here is actually the downstream road segment.
-            if prev_road_segment_was_intersection:
+            # If self._route_plan_lane_segments_reversed is empty, it is the first time through this loop. On all subsequent loops, we
+            # need to check whether any costs need to be altered in the previous road segment. Recall that we are looping over the road
+            # segments in reversee order so the previous road segment here is actually the downstream road segment.
+            # TODO: Once road segment types are actually published, we can limit the number of times we check for lane splits by only
+            # checking when the downstream road segment type is Intersection.
+            if self._route_plan_lane_segments_reversed:
                 # Modify lane end costs for lane splits
                 self._modify_lane_end_costs_for_lane_splits(road_segment_id)
-
-            # Assign flag for use on next loop
-            if self._route_plan_input_data.get_road_segment(road_segment_id).e_e_road_segment_type == MapRoadSegmentType.Intersection:
-                prev_road_segment_was_intersection = True
-            else:
-                prev_road_segment_was_intersection = False
 
             route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
 
