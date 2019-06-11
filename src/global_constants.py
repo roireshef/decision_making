@@ -76,7 +76,7 @@ LON_JERK_ACCEL_LIMITS = np.array([-5, 1])
 LON_JERK_DECEL_LIMITS = np.array([-5, 5])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 2.0]) 
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
