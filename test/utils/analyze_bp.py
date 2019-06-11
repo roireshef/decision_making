@@ -100,7 +100,7 @@ def summarize_profiler():
 
 
 if __name__ == "__main__":
-    summarize_profiler()
+    #summarize_profiler()
     plot_profiler()
     #print(get_profs())
     #plot_bp_execution_times()
