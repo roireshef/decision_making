@@ -83,12 +83,14 @@ class RoutePlanningFacade(DmModule):
 
     @prof.ProfileFunction()
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
+        with DMProfiler(f'{self.__class__.__name__}._get_current_scene_static.get_latest_sample'):
+            is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
 
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
-        scene_static = SceneStatic.deserialize(serialized_scene_static)
+        with DMProfiler(f'{self.__class__.__name__}._get_current_scene_static.deserialize'):
+            scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.timestamp = Timestamp.from_seconds(scene_static.s_Header.s_Timestamp.timestamp_in_seconds)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
