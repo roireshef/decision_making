@@ -8,7 +8,7 @@ from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LON_JERK_LIMITS
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -123,9 +123,13 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
-        cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, cost_params.velocity_limits, cost_params.lon_acceleration_limits,
-            cost_params.lat_acceleration_limits, LON_JERK_LIMITS, cost_params.desired_velocity)
+        cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
+                                                                             cost_params.lon_acceleration_limits,
+                                                                             cost_params.lat_acceleration_limits,
+                                                                             cost_params.lon_jerk_limits_while_accelerating,
+                                                                             cost_params.lon_jerk_limits_while_decelerating,
+                                                                             cost_params.desired_velocity)
+
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
         ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
@@ -135,12 +139,13 @@ class WerlingPlanner(TrajectoryPlanner):
         if len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+
             raise CartesianLimitsViolated("No valid trajectories. "
                                           "timestamp_in_sec: %f, time horizon: %f, "
                                           "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
-                                          "[min/max velocity] [%s, %s] (limits: %s); "
-                                          "[min/max lon_acc] [%s, %s] (limits: %s)\n"
-                                          "min/max lat_acc [%s, %s] (limits: %s); passed limits: %s/%s\n"
+                                          "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
+                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s)\n"
+                                          "[highest minimal lat_acc, lowest maximal lat_acc] [%s, %s] (limits: %s); passed limits: %s/%s\n"
                                           "ego_frenet = %s\ngoal_frenet = %s\n"
                                           "distance from ego to goal = %f, time*approx_velocity = %f" %
                                           (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,

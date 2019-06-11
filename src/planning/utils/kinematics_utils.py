@@ -40,7 +40,8 @@ class KinematicUtils:
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
                                    lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
-                                   lon_jerk_limits: Limits, desired_velocity: float) -> np.ndarray:
+                                   lon_jerk_accel_limits: Limits, lon_jerk_decel_limits: Limits,
+                                   desired_velocity: float) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -48,10 +49,12 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
-        :param lon_jerk_limits: longitudinal jerk limits to test for in cartesian frame [m/sec^3]
+        :param lon_jerk_accel_limits: longitudinal jerk limits for acceleration scenarios to test for in cartesian frame [m/sec^3]
+        :param lon_jerk_decel_limits: longitudinal jerk limits for acceleration scenarios to test for in cartesian frame [m/sec^3]
         :param desired_velocity: desired longitudinal speed [m/sec]
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
+
         lon_acceleration = ctrajectories[:, :, C_A]
         lon_jerk = np.hstack((np.zeros((lon_acceleration.shape[0], 1)), np.diff(lon_acceleration)))/TRAJECTORY_TIME_RESOLUTION
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
@@ -67,16 +70,18 @@ class KinematicUtils:
             np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity + EPS), axis=1),
             (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
-        # check velocity and acceleration limits
+        # check velocity ,acceleration and jerk limits (where jerk limits are different for acceleration and decelartion scenarios)
         # note: while we filter any trajectory that exceeds the velocity limit, we allow trajectories to break the
         #       desired velocity limit, as long as they slowdown towards the desired velocity.
         conforms_limits = np.all(
             NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
             NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
-            NumpyUtils.is_in_limits(lon_jerk, lon_jerk_limits), axis=1)
+            np.logical_or(np.logical_and(lon_acceleration > EPS, NumpyUtils.is_in_limits(lon_jerk, lon_jerk_accel_limits)),
+                          np.logical_and(lon_acceleration <= EPS, NumpyUtils.is_in_limits(lon_jerk, lon_jerk_decel_limits))), axis=1)
 
         conforms = np.logical_and(conforms_limits, conforms_desired)
+
         return conforms
 
     @staticmethod
@@ -96,8 +101,8 @@ class KinematicUtils:
         in the frenet frame used for planning
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
-        # validate the progress on the reference-route curve doesn't extrapolate, velocity is non-negative,
-        # and acceleration and jerk are within reasonable limits.
+        # validate the progress on the reference-route curve doesn't extrapolate, velocity and acceleration
+        # are within reasonable limits.
         conforms = \
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_s_vals, lon_acceleration_limits) & \
             QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_s_vals, lon_velocity_limits) & \

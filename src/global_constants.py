@@ -71,8 +71,9 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
     [0.015, 0.15, 0.1]
 ])
 
-# Longitudinal Jerk Limits [m/sec^3]
-LON_JERK_LIMITS = np.array([-5.0, 5.0])
+# Longitudinal Jerk Limits [m/sec^3] in acceleration and deceleration scenarios, respectively
+LON_JERK_ACCEL_LIMITS = np.array([-5, 1])
+LON_JERK_DECEL_LIMITS = np.array([-5, 5])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
@@ -248,7 +249,6 @@ BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
-ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 
