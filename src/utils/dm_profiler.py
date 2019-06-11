@@ -58,17 +58,22 @@ def plot_profiler():
         plot_timed_series_labeled(timed_series, p)
     plt.legend()
 
+
 def summarize_profiler():
     profs = get_profs()
-    data=[]
-    headers = ['label', '#calls' , 'avg.time', 'max.time', 'stdev.', 'cumulative_time']
+    data = []
+    headers = ['label', '#calls', 'avg.time', 'max.time', 'stdev.', '25%', '75%', '95%', 'cumulative_time']
     for p, timed_series in profs.items():
-        cumulative_time = sum([t for _, t in timed_series])
-        max_time = max([t for _, t in timed_series])
-        std = np.std([t for _, t in timed_series])
-        data.append([p,len(timed_series), cumulative_time/len(timed_series), max_time, std ,cumulative_time])
+        time_instances = [t for _, t in timed_series]
+        cumulative_time = sum(time_instances)
+        max_time = max(time_instances)
+        std = np.std(time_instances)
+        data.append([p, len(timed_series), cumulative_time/len(timed_series), max_time, std ,
+                     np.percentile(time_instances, 25),
+                     np.percentile(time_instances, 75),
+                     np.percentile(time_instances, 95), cumulative_time])
 
-    print(tabulate(sorted(data, key=lambda x:x[-1], reverse=True), headers))
+    print(tabulate(sorted(data, key=lambda x: x[-1], reverse=True), headers))
 
 
 if __name__ == '__main__':
