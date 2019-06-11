@@ -3,9 +3,9 @@ from typing import List
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, StaticActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
-from decision_making.src.global_constants import *
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.utils.map_utils import MapUtils
+from src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
