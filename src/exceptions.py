@@ -187,6 +187,10 @@ class DownstreamLaneDataNotFound(RoutePlanningException):
     pass
 
 
+class RoutePlanNotDefinedForAnyRoadSegment(RoutePlanningException):
+    pass
+
+
 def raises(*e):
     # type: (Exception)
     """

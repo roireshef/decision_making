@@ -2,7 +2,7 @@ import numpy as np
 import rte.python.profiler as prof
 from typing import List, Optional, Dict
 from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
-    DownstreamLaneDataNotFound
+    DownstreamLaneDataNotFound, RoutePlanNotDefinedForAnyRoadSegment
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, HIGH_COST, LOW_COST, TAKE_SPLIT, \
     PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
@@ -274,6 +274,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         return route_lane_segments
 
+    @raises(RoutePlanNotDefinedForAnyRoadSegment)
     def _modify_lane_end_costs_on_last_road_segment(self, lane_segment_ids: List[int], cost: float) -> None:
         """
         This function modifies lane end costs for the last road segment in self._route_plan_lane_segments_reversed.
@@ -281,15 +282,25 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param cost: New lane end cost
         :return:
         """
+        if not lane_segment_ids:    # Return if list of lane segmend IDs is empty
+            return
+
+        if not self._route_plan_lane_segments_reversed:
+            raise RoutePlanNotDefinedForAnyRoadSegment("Attempting to access _route_plan_lane_segments_reversed, but it's empty.")
+
         for lane_segment in self._route_plan_lane_segments_reversed[-1]:
             if lane_segment.e_i_lane_segment_id in lane_segment_ids:
                 lane_segment.e_cst_lane_end_cost = cost
 
+    @raises(RoutePlanNotDefinedForAnyRoadSegment)
     def _get_lane_end_costs_on_last_road_segment(self) -> Dict[LaneSegmentID, LaneEndCost]:
         """
         This function returns the lane end costs for the last road segment in self._route_plan_lane_segments_reversed as a dictionary.
         :return: Dictionary where keys are lane segment IDs and values are lane end costs
         """
+        if not self._route_plan_lane_segments_reversed:
+            raise RoutePlanNotDefinedForAnyRoadSegment("Attempting to access _route_plan_lane_segments_reversed, but it's empty.")
+
         lane_end_costs: Dict[LaneSegmentID, LaneEndCost] = {}
 
         for lane_segment in self._route_plan_lane_segments_reversed[-1]:
@@ -303,6 +314,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param downstream_lanes: List of downstream lanes
         :return: True if multiple downstream lanes have zero end costs; False otherwise
         """
+        if not downstream_lanes:    # If no downstream lanes are provided, return False.
+            return False
+
         num_zero_lane_end_costs = 0
         lane_end_costs = self._get_lane_end_costs_on_last_road_segment()
 
