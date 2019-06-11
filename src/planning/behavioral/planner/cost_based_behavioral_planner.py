@@ -154,7 +154,7 @@ class CostBasedBehavioralPlanner:
             # in case of very short action, create samplable trajectory using linear polynomials from ego time,
             # such that it passes through the goal at goal time
             ego_by_goal_state = KinematicUtils.create_ego_by_goal_state(goal_fstate, action_spec.t)
-            poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
+            poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
         else:
             # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
             A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))

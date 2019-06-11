@@ -105,42 +105,42 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
          of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
          maintaining the required safety-headway + constant safety-margin"""
-
-        # to prevent inverse of singular matrices (T=0) check safety only for non-tracking actions
-        # padding actions are safe
-        non_padding_specs_idx = np.array([i for i, spec in enumerate(action_specs) if not spec.only_padding_mode], dtype=int)
-        non_padding_specs = np.array(action_specs)[non_padding_specs_idx]
-
         # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
         # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
         relative_cells = [(spec.recipe.relative_lane,
                            spec.recipe.relative_lon if isinstance(spec.recipe, DynamicActionRecipe) else RelativeLongitudinalPosition.FRONT)
-                          for spec in non_padding_specs]
+                          for spec in action_specs]
         target_vehicles = [behavioral_state.road_occupancy_grid[cell][0]
                            if len(behavioral_state.road_occupancy_grid[cell]) > 0 else None
                            for cell in relative_cells]
+        T = np.array([spec.t for spec in action_specs])
 
         # represent initial and terminal boundary conditions (for s axis)
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
-        terminal_fstates = np.array([spec.as_fstate() for spec in non_padding_specs])
-        constraints_s = np.concatenate((initial_fstates[:, :(FS_SA+1)], terminal_fstates[:, :(FS_SA+1)]), axis=1)
+        terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+        constraints_s = np.concatenate((initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX]), axis=1)
+        poly_coefs_s = np.empty(shape=(len(action_specs), QuinticPoly1D.num_coefs()), dtype=np.float)
+
+        # create boolean arrays indicating whether the specs are in tracking mode
+        padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
+        not_padding_mode = np.logical_not(padding_mode)
 
         # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        T = np.array([spec.t for spec in non_padding_specs])
-        A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T)
+        if not_padding_mode.any():
+            # solve for s(t)
+            A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T[not_padding_mode]))
+            poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s[not_padding_mode])
+        poly_coefs_s[padding_mode], _ = KinematicUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
 
-        # solve for s(t)
-        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-
-        non_padding_are_valid = []
+        are_valid = []
         for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
             if target is None:
-                non_padding_are_valid.append(True)
+                are_valid.append(True)
                 continue
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
-            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomials(target_fstate)
+            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
 
             # minimal margin used in addition to headway (center-to-center of both objects)
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
@@ -149,12 +149,10 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
                                                              np.array([0, t]))
-            non_padding_are_valid.append(is_safe)
 
-        # return boolean list for all actions, including only_padding_mode (always valid)
-        are_valid = np.full(len(action_specs), True)
-        are_valid[non_padding_specs_idx] = non_padding_are_valid
-        return list(are_valid)
+            are_valid.append(is_safe)
+
+        return are_valid
 
 
 class StaticTrafficFlowControlFilter(ActionSpecFilter):

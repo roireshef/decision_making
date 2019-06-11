@@ -94,7 +94,7 @@ class RoutePlanSubscriber(DmModule):
                                  (e, traceback.format_exc()))
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
@@ -110,7 +110,7 @@ class RoutePlanSubscriber(DmModule):
         then we will output the last received state.
         :return: deserialized RoutePlan
         """
-        is_success, input_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN, timeout=1)
+        is_success, input_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN)
         if input_route_plan is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_ROUTE_PLAN)

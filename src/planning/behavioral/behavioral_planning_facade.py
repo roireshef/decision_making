@@ -145,7 +145,7 @@ class BehavioralPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE, timeout=1)
+        is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_state is None:
             if self._started_receiving_states:
@@ -168,7 +168,7 @@ class BehavioralPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized RoutePlan
         """
-        is_success, serialized_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN, timeout=1)
+        is_success, serialized_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN)
         if serialized_route_plan is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_ROUTE_PLAN)
@@ -194,9 +194,9 @@ class BehavioralPlanningFacade(DmModule):
         # find ego road segment row index in as_route_plan_lane_segments 2-d array which matches the index in a_i_road_segment_ids 1-d array
         route_plan_start_idx = np.argwhere(route_plan_data.a_i_road_segment_ids == ego_road_segment_id)
 
-        if len(route_plan_start_idx[0]) == 0:  # check if ego road segment Id is listed inside route plan data
+        if route_plan_start_idx.size == 0:  # check if ego road segment Id is listed inside route plan data
             raise EgoRoadSegmentNotFound('Route plan does not include data for ego road segment ID {0}'.format(ego_road_segment_id))
-        if len(route_plan_start_idx[0]) > 1:
+        elif route_plan_start_idx.size > 1:
             raise RepeatedRoadSegments('Route Plan has repeated data for road segment ID {0}'.format(ego_road_segment_id))
 
         ego_row_idx = route_plan_start_idx[0][0]
@@ -242,7 +242,7 @@ class BehavioralPlanningFacade(DmModule):
         return takeover_message
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
 
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
