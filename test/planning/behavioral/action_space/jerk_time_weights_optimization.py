@@ -52,9 +52,9 @@ class TimeJerkWeightsOptimization:
         W01_RATIO_TILL = 64   # max of the range of ratio w0/w1
         GRID_RESOLUTION = 10   # the weights grid resolution
 
-        TYPICAL_CAR_LENGTH = 5
-        safety_margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + TYPICAL_CAR_LENGTH
-        specify_margin = LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT + TYPICAL_CAR_LENGTH
+        EGO_LENGTH = 5
+        safety_margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + EGO_LENGTH
+        specify_margin = LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT + EGO_LENGTH
 
         # create ranges of the grid of states
         v0_range = np.arange(V_MIN, V_MAX + EPS, 2)
@@ -103,7 +103,7 @@ class TimeJerkWeightsOptimization:
                 jerk_weights = np.full(vT.shape[0], w[aggr])
 
                 # calculate planning time like in DynamicActionSpace.specify_goal
-                T = DynamicActionSpace.calc_T_s(time_weights, jerk_weights, s - specify_margin, a0[0], v0, vT)
+                T = KinematicUtils.calc_T_s(time_weights, jerk_weights, v0, a0, vT, BP_ACTION_T_LIMITS, s - specify_margin)
 
                 # extract valid actions
                 valid_idxs = np.where(np.logical_and(~np.isnan(T), T > 0))[0]

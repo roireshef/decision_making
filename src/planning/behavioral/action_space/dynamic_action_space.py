@@ -1,4 +1,5 @@
 import numpy as np
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
 from sklearn.utils.extmath import cartesian
 from typing import Optional, List, Type
@@ -78,7 +79,8 @@ class DynamicActionSpace(ActionSpace):
                                                        behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        T_s = DynamicActionSpace.calc_T_s(weights[:, 2], weights[:, 0], ds, a_0, v_0, v_T)
+        T_s = KinematicUtils.calc_T_s(weights[:, 2], weights[:, 0], projected_ego_fstates[:, FS_SV],
+                                      projected_ego_fstates[:, FS_SA], v_T, BP_ACTION_T_LIMITS, ds)
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -95,8 +97,7 @@ class DynamicActionSpace(ActionSpace):
         # to keep from the target vehicle.
         distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
                                                              v_0=projected_ego_fstates[:, FS_SV],
-                                                             v_T=v_T, T=T, dx=ds,
-                                                             T_m=SPECIFICATION_HEADWAY)(T)
+                                                             v_T=v_T, T=T, dx=ds, T_m=SPECIFICATION_HEADWAY)(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
@@ -106,36 +107,3 @@ class DynamicActionSpace(ActionSpace):
                         for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
 
         return action_specs
-
-    @staticmethod
-    def calc_T_s(w_T: np.array, w_J: np.array, ds: np.array, a_0: float, v_0: np.array, v_T: np.array,
-                 T_m: float=SPECIFICATION_HEADWAY):
-        """
-        Given jerk-time weights, ego initial velocity & acceleration, initial distances from the targets and
-        targets' velocities, calculate a longitudinal planning time for each action.
-        The planning time T_s is a minima of the cost function, which is a linear combination of the action's
-        cumulative jerk and T_s itself. The given weights w_T, w_J are the coefficients of this combination.
-        In this implementation we pick the first (minimal) root of the cost function.
-        :param w_T: 1D array of time weights, a weight for each action
-        :param w_J: 1D array of jerk weights, a weight for each action
-        :param ds: initial distances from the targets
-        :param a_0: ego initial acceleration
-        :param v_0: ego initial velocity
-        :param v_T: target velocities of the actions
-        :param T_m: target headway
-        :return: 1D array of planning times for the actions
-        """
-        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=w_T, w_J=w_J, dx=ds, a_0=a_0, v_0=v_0, v_T=v_T, T_m=T_m)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-
-        T_s = np.fmin.reduce(roots_s, axis=-1)
-
-        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
-        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
-        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
-        # intersecting in T=0.
-        # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
-        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, SPECIFICATION_HEADWAY)] = 0
-        return T_s

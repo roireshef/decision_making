@@ -10,6 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Sta
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from sklearn.utils.extmath import cartesian
@@ -52,10 +53,8 @@ class StaticActionSpace(ActionSpace):
         # get desired terminal velocity
         v_T = np.array([action_recipe.velocity for action_recipe in action_recipes])
 
-        v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
-        a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
-
-        T_s = StaticActionSpace.calc_T_s(weights[:, 2], weights[:, 0], a_0, v_0, v_T)
+        T_s = KinematicUtils.calc_T_s(weights[:, 2], weights[:, 0], projected_ego_fstates[:, FS_SV],
+                                      projected_ego_fstates[:, FS_SA], v_T, BP_ACTION_T_LIMITS)
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -79,31 +78,3 @@ class StaticActionSpace(ActionSpace):
                         for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
 
         return action_specs
-
-    @staticmethod
-    def calc_T_s(w_T: np.array, w_J: np.array, a_0: float, v_0: np.array, v_T: np.array):
-        """
-        Given jerk-time weights, ego initial velocity & acceleration, and targets' velocities, calculate a
-        longitudinal planning time for each action.
-        The planning time T_s is a minima of the cost function, which is a linear combination of the action's
-        cumulative jerk and T_s itself. The given weights w_T, w_J are the coefficients of this combination.
-        In this implementation we pick the first (minimal) root of the cost function.
-        :param w_T: 1D array of time weights, a weight for each action
-        :param w_J: 1D array of jerk weights, a weight for each action
-        :param a_0: ego initial acceleration
-        :param v_0: ego initial velocity
-        :param v_T: target velocities of the actions
-        :return: 1D array of planning times for the actions
-        """
-        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(w_T=w_T, w_J=w_J, a_0=a_0, v_0=v_0, v_T=v_T)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-        T_s = np.fmin.reduce(roots_s, axis=-1)
-
-        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
-        # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
-        # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
-        # intersecting in T=0.
-        # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
-        T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
-        return T_s
