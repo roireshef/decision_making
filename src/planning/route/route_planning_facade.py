@@ -14,6 +14,7 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger import MetricLogger
 
 
@@ -48,17 +49,21 @@ class RoutePlanningFacade(DmModule):
         try:
             # Read inputs
             start_time = time.time()
-            scene_static = self._get_current_scene_static()
+            with DMProfiler(f'{self.__class__.__name__}._get_current_scene_static'):
+                scene_static = self._get_current_scene_static()
 
-            route_planner_input = RoutePlannerInputData()
-            route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
-                                                    nav_plan=scene_static.s_Data.s_NavigationPlan)
+            with DMProfiler(f'{self.__class__.__name__}.route_planner_input'):
+                route_planner_input = RoutePlannerInputData()
+                route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
+                                                        nav_plan=scene_static.s_Data.s_NavigationPlan)
 
             # Plan
-            route_plan = self.__planner.plan(route_planner_input)
+            with DMProfiler(f'{self.__class__.__name__}.plan'):
+                route_plan = self.__planner.plan(route_planner_input)
 
             # Write outputs
-            self._publish_results(route_plan)
+            with DMProfiler(f'{self.__class__.__name__}._publish_results'):
+                self._publish_results(route_plan)
 
             self.logger.info("{} {}".format(LOG_MSG_ROUTE_PLANNER_IMPL_TIME, time.time() - start_time))
 
