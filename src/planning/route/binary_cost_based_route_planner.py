@@ -1,17 +1,17 @@
 import numpy as np
 import rte.python.profiler as prof
-from typing import List, Optional, Dict
-from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
+from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound, \
     DownstreamLaneDataNotFound, RoutePlanNotDefinedForAnyRoadSegment
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, HIGH_COST, LOW_COST, TAKE_SPLIT, \
     PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT
-from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan, \
     RoutePlanRoadSegment, RoutePlanRoadSegments
-from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType,\
+from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, \
     MapLaneDirection, GMAuthorityType, LaneConstructionType, ManeuverType
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase, LaneSegmentConnectivity
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.planning.types import LaneSegmentID, LaneEndCost
+from typing import List, Dict
 
 
 class BinaryCostBasedRoutePlanner(RoutePlanner):
