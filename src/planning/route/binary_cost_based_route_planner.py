@@ -1,17 +1,17 @@
 import numpy as np
 import rte.python.profiler as prof
-from typing import List, Optional, Dict
-from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
-    DownstreamLaneDataNotFound
+from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound, \
+    DownstreamLaneDataNotFound, RoutePlanNotDefinedForAnyRoadSegment
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, HIGH_COST, LOW_COST, TAKE_SPLIT, \
     PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT
-from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan, \
     RoutePlanRoadSegment, RoutePlanRoadSegments
-from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType,\
-    MapLaneDirection, GMAuthorityType, LaneConstructionType, MapRoadSegmentType, ManeuverType
+from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, \
+    MapLaneDirection, GMAuthorityType, LaneConstructionType, ManeuverType
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase, LaneSegmentConnectivity
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.planning.types import LaneSegmentID, LaneEndCost
+from typing import List, Dict
 
 
 class BinaryCostBasedRoutePlanner(RoutePlanner):
@@ -274,6 +274,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         return route_lane_segments
 
+    @raises(RoutePlanNotDefinedForAnyRoadSegment)
     def _modify_lane_end_costs_on_last_road_segment(self, lane_segment_ids: List[int], cost: float) -> None:
         """
         This function modifies lane end costs for the last road segment in self._route_plan_lane_segments_reversed.
@@ -281,15 +282,25 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param cost: New lane end cost
         :return:
         """
+        if not lane_segment_ids:    # Return if list of lane segmend IDs is empty
+            return
+
+        if not self._route_plan_lane_segments_reversed:
+            raise RoutePlanNotDefinedForAnyRoadSegment("Attempting to access _route_plan_lane_segments_reversed, but it's empty.")
+
         for lane_segment in self._route_plan_lane_segments_reversed[-1]:
             if lane_segment.e_i_lane_segment_id in lane_segment_ids:
                 lane_segment.e_cst_lane_end_cost = cost
 
+    @raises(RoutePlanNotDefinedForAnyRoadSegment)
     def _get_lane_end_costs_on_last_road_segment(self) -> Dict[LaneSegmentID, LaneEndCost]:
         """
         This function returns the lane end costs for the last road segment in self._route_plan_lane_segments_reversed as a dictionary.
         :return: Dictionary where keys are lane segment IDs and values are lane end costs
         """
+        if not self._route_plan_lane_segments_reversed:
+            raise RoutePlanNotDefinedForAnyRoadSegment("Attempting to access _route_plan_lane_segments_reversed, but it's empty.")
+
         lane_end_costs: Dict[LaneSegmentID, LaneEndCost] = {}
 
         for lane_segment in self._route_plan_lane_segments_reversed[-1]:
@@ -303,6 +314,9 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         :param downstream_lanes: List of downstream lanes
         :return: True if multiple downstream lanes have zero end costs; False otherwise
         """
+        if not downstream_lanes:    # If no downstream lanes are provided, return False.
+            return False
+
         num_zero_lane_end_costs = 0
         lane_end_costs = self._get_lane_end_costs_on_last_road_segment()
 
@@ -375,7 +389,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         road_segment_ids_reversed: List[int] = []
         num_lane_segments_reversed: List[int] = []
-        prev_road_segment_was_intersection = False
 
         # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
         # key -> road_segment_id
@@ -385,17 +398,14 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         self._route_plan_input_data = route_plan_input_data
 
         for (road_segment_id, lane_segment_ids) in reversed(self._route_plan_input_data.get_lane_segment_ids_for_route().items()):
-            # Check whether any costs need to be altered in the previous road segment. Recall that we are looping over the road segments in
-            # reversee order so the previous road segment here is actually the downstream road segment.
-            if prev_road_segment_was_intersection:
+            # If self._route_plan_lane_segments_reversed is empty, it is the first time through this loop. On all subsequent loops, we
+            # need to check whether any costs need to be altered in the previous road segment. Recall that we are looping over the road
+            # segments in reversee order so the previous road segment here is actually the downstream road segment.
+            # TODO: Once road segment types are actually published, we can limit the number of times we check for lane splits by only
+            # checking when the downstream road segment type is Intersection.
+            if self._route_plan_lane_segments_reversed:
                 # Modify lane end costs for lane splits
                 self._modify_lane_end_costs_for_lane_splits(road_segment_id)
-
-            # Assign flag for use on next loop
-            if self._route_plan_input_data.get_road_segment(road_segment_id).e_e_road_segment_type == MapRoadSegmentType.Intersection:
-                prev_road_segment_was_intersection = True
-            else:
-                prev_road_segment_was_intersection = False
 
             route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
 

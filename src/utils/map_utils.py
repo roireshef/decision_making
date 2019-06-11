@@ -1,11 +1,11 @@
 import numpy as np
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, \
-    LaneCostNotFound, IntersectionNotFound
+    LaneCostNotFound
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
-    SceneLaneSegmentBase, SceneRoadSegment, SceneRoadIntersection
+    SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D, FS_SX
@@ -393,10 +393,13 @@ class MapUtils:
         route_plan_costs = route_plan.to_costs_dict()
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
         try:
+            #TODO: what if multiple downstream lanes have same cost
             minimal_lane_id = min([downstream_lane_id for downstream_lane_id in downstream_lanes_ids],
                                   key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
         except KeyError:
             raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
+        except ValueError:
+            raise DownstreamLaneNotFound(f"No downstream lane found for lane id {current_lane_id}")
         return minimal_lane_id
 
     @staticmethod
@@ -555,22 +558,6 @@ class MapUtils:
             raise RoadNotFound('road %d not found' % road_id)
         assert len(road_segments) == 1
         return road_segments[0]
-
-    @staticmethod
-    @raises(IntersectionNotFound)
-    def get_intersection(road_id: int) -> SceneRoadIntersection:
-        """
-        returns the intersection object
-        :param road_id:
-        :return:
-        """
-        scene_static = SceneStaticModel.get_instance().get_scene_static()
-        road_intersections = [road_intersection for road_intersection in scene_static.s_Data.as_scene_road_intersection
-                              if road_intersection.e_i_road_intersection_id == road_id]
-        if len(road_intersections) == 0:
-            raise IntersectionNotFound('road {0} is not found or not an intersection'.format(road_id))
-        assert len(road_intersections) == 1
-        return road_intersections[0]
 
     @staticmethod
     def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> np.array:
