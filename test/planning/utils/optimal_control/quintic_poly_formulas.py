@@ -201,7 +201,7 @@ class QuinticMotionPredicatesCreator:
         """
         Creates predicates for the jerk-time weights and dynamic action types given
         :param jerk_time_weights: a 2-dimensional of shape [Kx3] where its rows are different sets of weights and each
-                set of weights is built from 3 terms :  longitudinal jerk, latitudinal jerk and action time weights.
+                set of weights is built from 3 terms :  longitudinal jerk, lateral jerk and action time weights.
         :param action_types: a list of all action types for which predicates will be created
         :return:
         """

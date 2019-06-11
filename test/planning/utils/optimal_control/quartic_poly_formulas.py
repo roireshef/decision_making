@@ -151,7 +151,7 @@ class QuarticMotionPredicatesCreator:
         """
         Creates predicates for the jerk-time weights and the follow_lane static action
         :param jerk_time_weights: a 2-dimensional of shape [Kx3] where its rows are different sets of weights and each
-                set of weights is built from 3 terms :  longitudinal jerk, latitudinal jerk and action time weights.
+                set of weights is built from 3 terms :  longitudinal jerk, lateral jerk and action time weights.
         :return:
         """
         action_type = ActionType.FOLLOW_LANE

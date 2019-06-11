@@ -78,7 +78,7 @@ LON_JERK_DECEL_LIMITS = np.array([-5, 5])
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-5.5, 2.0])
 
-# Latitudinal Acceleration Limits [m/sec^2]
+# Lateral Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
@@ -180,7 +180,7 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = 0, 0
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 1, 1, 1
 
-# Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
+# Linspace number of steps in lateral horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 1
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
