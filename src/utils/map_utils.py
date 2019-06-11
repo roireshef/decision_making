@@ -393,10 +393,13 @@ class MapUtils:
         route_plan_costs = route_plan.to_costs_dict()
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
         try:
+            #TODO: what if multiple downstream lanes have same cost
             minimal_lane_id = min([downstream_lane_id for downstream_lane_id in downstream_lanes_ids],
                                   key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
         except KeyError:
             raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
+        except ValueError:
+            raise DownstreamLaneNotFound(f"No downstream lane found for lane id {current_lane_id}")
         return minimal_lane_id
 
     @staticmethod
