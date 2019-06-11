@@ -15,6 +15,7 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.utils.dm_profiler import DMProfiler
 
 
 class DynamicObjectWithRoadSemantics:
@@ -73,19 +74,22 @@ class BehavioralGridState:
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, logger)
 
-        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
-                                 for rel_lane in extended_lane_frames}
+        with DMProfiler(f'{cls.__name__}.create_gff'):
+            extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, logger)
 
-        # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
-        dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
-                   key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
+        with DMProfiler(f'{cls.__name__}.everything_else'):
+            projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
+                                     for rel_lane in extended_lane_frames}
 
-        multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
-                                                                         state.ego_state)
-        return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
+            # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
+            dynamic_objects_with_road_semantics = \
+                sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
+                       key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
+
+            multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
+                                                                             state.ego_state)
+            return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
     @prof.ProfileFunction()
