@@ -115,15 +115,22 @@ class BehavioralGridState:
                 if obj_lane.e_Cnt_upstream_lane_count == 1:
                     upstreamLane = MapUtils.get_lane(obj_lane.as_upstream_lanes[0].e_i_lane_segment_id)
                     if upstreamLane.e_Cnt_downstream_lane_count > 1:
-                        # Get overlapping lanes and create pseudo objects in those lanes
-                        other_lanes = [lane for lane in upstreamLane.as_downstream_lanes if lane.e_i_lane_segment_id != obj_lane_id]
-                        for other_lane in other_lanes:
-                            pseudo_dynamic_objects.append(DynamicObject(obj_id = -dynamic_object.obj_id,
-                                                                        timestamp = dynamic_object.timestamp,
-                                                                        cartesian_state = dynamic_object.cartesian_state,
-                                                                        map_state = MapState(None, other_lane),
-                                                                        size = dynamic_object.size,
-                                                                        confidence = dynamic_object.confidence))
+                        downstreamLanes = [MapUtils.get_lane(downstream_lane.e_i_lane_segment_id)
+                                           for downstream_lane in upstreamLane.as_downstream_lanes]
+
+                        # Check if all downstream lanes are in the same road segment, otherwise it is a fork instead of a split
+                        if all(downstreamLane.e_i_road_segment_id == downstreamLanes[0].e_i_road_segment_id
+                               for downstreamLane in downstreamLanes):
+                            # Get overlapping lanes and create pseudo objects in those lanes
+                            other_lanes = [lane for lane in upstreamLane.as_downstream_lanes
+                                           if lane.e_i_lane_segment_id != obj_lane_id]
+                            for other_lane in other_lanes:
+                                pseudo_dynamic_objects.append(DynamicObject(obj_id = -dynamic_object.obj_id,
+                                                                            timestamp = dynamic_object.timestamp,
+                                                                            cartesian_state = dynamic_object.cartesian_state,
+                                                                            map_state = MapState(None, other_lane),
+                                                                            size = dynamic_object.size,
+                                                                            confidence = dynamic_object.confidence))
         return dynamic_objects + pseudo_dynamic_objects
 
     @staticmethod
