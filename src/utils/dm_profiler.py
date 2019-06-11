@@ -1,11 +1,10 @@
+import time
 from collections import defaultdict
 import matplotlib.pyplot as plt
-from rte.python.logger.AV_logger import AV_Logger
-import time
-import math
 import numpy as np
-from os import rename, environ
 from decision_making.src.utils.tabulate import tabulate
+from os import rename, environ
+from rte.python.logger.AV_logger import AV_Logger
 
 PROF_FILE = environ['SPAV_PATH']+'/logs/prof_log.log'
 PROF_INDICATOR = 'PROF'
@@ -37,9 +36,9 @@ class DMProfiler:
 
 
 
-def plot_timed_series_labeled(timed_series, label, **kwargs):
+def plot_timed_series_labeled(timed_series, label):
     times, measurements = zip(*timed_series)
-    plt.plot(times, measurements, label=label, **kwargs)
+    plt.plot(times, measurements, label=label)
 
 
 def get_profs():
@@ -49,20 +48,22 @@ def get_profs():
             if line.find(PROF_INDICATOR) == -1:
                 continue
             _, label, time_stamp, instance = line.split(':')
-            data[label].append((time_stamp, float(instance)))
+            data[label].append((float(time_stamp), float(instance)))
     return data
 
-def plot_profiler():
+def plot_profiler(label_pattern):
     profs = get_profs()
     for p, timed_series in profs.items():
-        plot_timed_series_labeled(timed_series, p)
+        if p.find(label_pattern) != -1:
+            plot_timed_series_labeled(timed_series, p)
     plt.legend()
+    plt.show()
 
 
 def summarize_profiler():
     profs = get_profs()
     data = []
-    headers = ['label', '#calls', 'avg.time', 'max.time', 'stdev.', '25%', '75%', '95%', 'cumulative_time']
+    headers = ['label', '#calls', 'avg.time', 'max.time', 'stdev.', '25%', '50%', '75%', '95%', 'cumulative_time']
     for p, timed_series in profs.items():
         time_instances = [t for _, t in timed_series]
         cumulative_time = sum(time_instances)
@@ -70,6 +71,7 @@ def summarize_profiler():
         std = np.std(time_instances)
         data.append([p, len(timed_series), cumulative_time/len(timed_series), max_time, std ,
                      np.percentile(time_instances, 25),
+                     np.percentile(time_instances, 50),
                      np.percentile(time_instances, 75),
                      np.percentile(time_instances, 95), cumulative_time])
 
@@ -78,9 +80,7 @@ def summarize_profiler():
 
 if __name__ == '__main__':
     summarize_profiler()
-#    with DMProfiler('lab1'):
-#        time.sleep(1)
-#
-#    with DMProfiler('lab2'):
-#        time.sleep(2)
+    plot_profiler('get_scene_static')
+
+
 
