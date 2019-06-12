@@ -104,7 +104,7 @@ class BehavioralGridState:
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
         # calculate objects' segment map_states
-        object_map_states = [obj.map_state for obj in dynamic_objects]
+        object_map_states = [obj.map_state for obj in dynamic_objects if not obj.off_map]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None

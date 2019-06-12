@@ -78,9 +78,10 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     _cached_map_state = MapState
     size = ObjectSize
     confidence = float
+    off_map = bool
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
-        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float) -> None
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map):
+        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool) -> None
         """
         Data object that hold
         :param obj_id: object id
@@ -96,6 +97,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self._cached_map_state = map_state
         self.size = copy.copy(size)
         self.confidence = confidence
+        self.off_map = off_map
 
     @property
     def x(self):
@@ -217,6 +219,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         pubsub_msg.s_CachedMapState = self._cached_map_state.serialize()
         pubsub_msg.s_Size = self.size.serialize()
         pubsub_msg.e_r_Confidence = self.confidence
+        pubsub_msg.e_b_offMap = self.off_map
         return pubsub_msg
 
     @classmethod
@@ -226,7 +229,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                    , pubsubMsg.a_e_CachedCartesianState
                    , MapState.deserialize(pubsubMsg.s_CachedMapState) if pubsubMsg.s_CachedMapState.e_i_LaneID > 0 else None
                    , ObjectSize.deserialize(pubsubMsg.s_Size)
-                   , pubsubMsg.e_r_Confidence)
+                   , pubsubMsg.e_r_Confidence, pubsubMsg.e_b_offMap)
 
 
 class EgoState(DynamicObject):
@@ -244,7 +247,7 @@ class EgoState(DynamicObject):
         :param confidence: of object's existence
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
-                                             map_state=map_state, size=size, confidence=confidence)
+                                             map_state=map_state, size=size, confidence=confidence, off_map=False)
 
     def serialize(self):
         # type: () -> TsSYSEgoState
