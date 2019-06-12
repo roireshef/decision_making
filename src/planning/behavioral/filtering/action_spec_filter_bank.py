@@ -2,11 +2,11 @@ from collections import defaultdict
 
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_ACTION_T_LIMITS, \
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+from decision_making.src.global_constants import EPS, WERLING_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
+    LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, KPH_MPS_CONVERSION_CONSTANT, BP_ACTION_T_LIMITS, \
     TRAJECTORY_TIME_RESOLUTION
-from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
-    FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition
@@ -288,7 +288,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         Finds speed limits in upcoming points
         :param behavioral_state
         :param action_spec:
-        :return: tuple of (Frenet index with lowest speed limit, value of lowest speed limit)
+        :return: tuple of (Frenet indicies, speed limits at those indicies)
         """
 
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
@@ -308,8 +308,8 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         beyond_spec_gff_states = np.array([[idx, 0., 0., 0., 0., 0.] for idx in points_s])
         # get lane ids of the beyond spec points
         lane_ids, segment_states = target_lane_frenet.convert_to_segment_states(beyond_spec_gff_states)
-        # find speed limits of beyond spec points
-        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed / 3.6 for lane_id in lane_ids]
+        # find speed limits of beyond spec points (read as KPH from the map)
+        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed / KPH_MPS_CONVERSION_CONSTANT for lane_id in lane_ids]
         return (np.array(range(beyond_spec_range[0], beyond_spec_range[1])), np.array(speed_limits))
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
@@ -317,7 +317,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         Find points with speed limit slower than the spec velocity
         :param behavioral_state:
         :param action_spec:
-        :return:
+        :return: points that require braking after the spec
         """
         if action_spec is None:
             self._raise_false()
@@ -339,7 +339,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         :param behavioral_state:
         :param action_spec:
         :param points:
-        :return:
+        :return: braking distances needed to slow down enough for the speed limits
         """
         _, speed_limits = points
         brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
@@ -351,7 +351,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         :param behavioral_state:
         :param action_spec:
         :param points:
-        :return:
+        :return: distances from current position to lower speed limit areas
         """
         slow_points_idx, _ = points
         frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
