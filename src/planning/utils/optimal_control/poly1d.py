@@ -585,24 +585,3 @@ class QuinticPoly1D(Poly1D):
                           + 12 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
                           - 3 * T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m))]) / T ** 5
         return coefs
-
-    @staticmethod
-    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array, T_m: float):
-        """
-        Given a set of quintic actions, i.e. arrays of v0, vT, a0, dx and T (all arrays of the same size), calculate
-        coefficients for longitudinal polynomial profile for each action.
-        :param a_0: array of initial accelerations
-        :param v_0: array of initial velocities
-        :param v_T: array of target velocities
-        :param dx: [m] array of initial distances from the target
-        :param T: [sec] array of action times
-        :param T_m: [sec] T_m * v_T is added to dx
-        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
-        """
-        return np.c_[
-            (-0.5 * T ** 2 * a_0 - 3.0 * T * (v_0 + v_T) + 6.0 * dx + 6.0 * v_T * (T - T_m)) / T ** 5,
-            (1.5 * T ** 2 * a_0 + T * (8.0 * v_0 + 7.0 * v_T) - 15.0 * dx - 15.0 * v_T * (T - T_m)) / T ** 4,
-            (-1.5 * T ** 2 * a_0 - T * (6.0 * v_0 + 4.0 * v_T) + 10.0 * dx + 10.0 * v_T * (T - T_m)) / T ** 3,
-            0.5 * a_0,
-            v_0,
-            np.zeros_like(v_0)]
