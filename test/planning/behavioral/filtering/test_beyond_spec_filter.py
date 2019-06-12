@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
-from decision_making.src.planning.behavioral.filtering.beyond_spec_filter import BeyondSpecBrakingFilter
+from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import BeyondSpecBrakingFilter
 
 
 class DummyBeyondSpecFilter(BeyondSpecBrakingFilter):

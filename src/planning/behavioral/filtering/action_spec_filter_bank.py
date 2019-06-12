@@ -9,7 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
     RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
-from decision_making.src.planning.behavioral.filtering.beyond_spec_filter import BeyondSpecBrakingFilter
+from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import BeyondSpecBrakingFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_SA, FS_DX, FS_SV, FS_SX, C_K
 from decision_making.src.planning.types import LAT_CELL
