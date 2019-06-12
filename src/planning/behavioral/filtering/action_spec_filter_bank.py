@@ -1,3 +1,5 @@
+import six
+from abc import ABCMeta, abstractmethod
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
@@ -9,7 +11,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
     RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
-from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import BeyondSpecBrakingFilter
+from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_SA, FS_DX, FS_SV, FS_SX, C_K
 from decision_making.src.planning.types import LAT_CELL
@@ -17,7 +19,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
-from typing import List, Union
+from typing import List, Union, Any
 
 
 class FilterIfNone(ActionSpecFilter):
@@ -182,6 +184,87 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         return [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
                 for action_spec in action_specs]
+
+
+@six.add_metaclass(ABCMeta)
+class BeyondSpecBrakingFilter(ConstraintSpecFilter):
+    """
+    An ActionSpecFilter which implements a predefined constraint.
+     The filter is defined by:
+     (1) x-axis (select_points method)
+     (2) the function to test on these points (_target_function)
+     (3) the constraint function (_constraint_function)
+     (4) the condition function between target and constraints (_condition function)
+
+     Usage:
+        extend BeyondSpecConstraintFilter class and implement the appropriate functions: (at least the four methods
+        described above).
+        To terminate the filter calculation use _raise_true/_raise_false  at any stage.
+    """
+    def __init__(self):
+        super(BeyondSpecBrakingFilter, self).__init__()
+        self.distances = BrakingDistances.create_braking_distances()
+
+    @abstractmethod
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
+        """
+         selects relevant points (or other information) based on the action_spec (e.g., select all points in the
+          trajectory defined by action_spec that require slowing down due to curvature).
+         This method is not restricted to returns a specific type, and can be used to pass any relevant information to
+         the target and constraint functions.
+        :param behavioral_state:  The behavioral_state as the context of this filtering
+        :param action_spec:  The action spec in question
+        :return: Any type that should be used by the _target_function and _constraint_function
+        """
+        pass
+
+    def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) -> np.array:
+        """
+        The definition of the function to be tested.
+        :param behavioral_state:  A behavioral grid state
+        :param action_spec: the action spec which to filter
+        :return: the result of the target function as an np.ndarray
+        """
+        return self._braking_distances(action_spec, points[1])
+
+    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) -> np.array:
+        """
+        Defines the constraint function over points.
+
+        :param behavioral_state:  A behavioral grid state at the context of filtering
+        :param action_spec: the action spec which to filter
+        :return: the result of the constraint function as an np.ndarray
+        """
+        return self._actual_distances(action_spec, points[0])
+
+    def _condition(self, target_values: np.array, constraints_values: np.array) -> bool:
+        """
+        The test condition to apply on the results of target and constraint values
+        :param target_values: the (externally calculated) target function
+        :param constraints_values: the (externally calculated) constraint values
+        :return: a single boolean indicating whether this action_spec should be filtered or not
+        """
+        return np.all(target_values < constraints_values)
+
+    def _braking_distances(self, action_spec: ActionSpec, slow_points_velocity_limits: np.array) -> np.ndarray:
+        """
+        The braking distance required by using the CALM aggressiveness level to brake from the spec velocity
+        to the given points' velocity limits.
+        :param action_spec:
+        :param slow_points_velocity_limits: velocity limits of selected points
+        :return: braking distances from the spec velocity to the given velocities
+        """
+        return self.distances[FILTER_V_0_GRID.get_index(action_spec.v),
+                              FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
+
+    def _actual_distances(self, action_spec: ActionSpec, slow_points_s: np.array) -> np.ndarray:
+        """
+        The distance from current points to the 'slow points'
+        :param action_spec:
+        :param slow_points_s: s coordinates of selected points
+        :return: distances from the spec's endpoint (spec.s) to the given points
+        """
+        return slow_points_s - action_spec.s
 
 
 class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):

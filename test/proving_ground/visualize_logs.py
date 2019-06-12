@@ -56,7 +56,11 @@ def plot_dynamics(log_file_path: str):
             break
 
         if '_scene_dynamic_callback' in text:
-            state_str = text.split('Publishing State ')[1]
+            split_str = text.split('Publishing State ')
+            if len(split_str) < 2:
+                cnt += 1
+                continue
+            state_str = split_str[1]
             try:
                 state_dict = ast.literal_eval(state_str)
             except ValueError as e:
