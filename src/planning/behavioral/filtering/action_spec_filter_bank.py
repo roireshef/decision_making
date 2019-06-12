@@ -303,14 +303,14 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         beyond_spec_range = target_lane_frenet._get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0]
         # get s for all points in the range
         points_s = target_lane_frenet.get_s_from_index_on_frame(
-            np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
+            np.array(range(beyond_spec_range[0], beyond_spec_range[1] + 1)), 0)
 
         beyond_spec_gff_states = np.array([[idx, 0., 0., 0., 0., 0.] for idx in points_s])
         # get lane ids of the beyond spec points
         lane_ids, segment_states = target_lane_frenet.convert_to_segment_states(beyond_spec_gff_states)
         # find speed limits of beyond spec points (read as KPH from the map)
         speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed / KPH_MPS_CONVERSION_CONSTANT for lane_id in lane_ids]
-        return (np.array(range(beyond_spec_range[0], beyond_spec_range[1])), np.array(speed_limits))
+        return (np.array(range(beyond_spec_range[0], beyond_spec_range[1] + 1)), np.array(speed_limits))
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
         """
