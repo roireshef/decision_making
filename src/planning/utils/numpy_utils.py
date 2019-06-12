@@ -107,7 +107,6 @@ class UniformGrid:
         :param value: the value to be looked for on axis
         :return: index of the closest value on the equally-spaced axis
         """
-        assert self.start <= value <= self.end, "value %s is outside the grid %s" % (value, str(self))
         return self.get_indices(np.array([value]))[0]
 
     def get_indices(self, values):
@@ -116,5 +115,7 @@ class UniformGrid:
         :param values: the value (or array of values) to be looked for on axis
         :return: index (or array of indices) of the closest value on the equally-spaced axis
         """
+        assert np.logical_and(self.start <= values, values <= self.end).all(), "values %s are outside the grid %s" % \
+                                                                               (values, str(self))
         indices = np.round((values - self.start) / self.resolution)
         return np.clip(indices, 0, self.length - 1).astype(np.int)
