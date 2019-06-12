@@ -82,7 +82,7 @@ def dynamic_objects_not_on_road():
                                                                                       e_i_host_lane_frenet_id=0,
                                                                                       a_cartesian_pose=cartesian_state,
                                                                                       a_lane_frenet_pose=np.zeros(6),
-                                                                                      a_host_lane_frenet_pose=np.zeros(6))])]
+                                                                                      a_host_lane_frenet_pose=np.zeros(6), e_b_off_map=True)])]
     objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
     yield objects
 
@@ -142,7 +142,7 @@ def state(scene_static_short_testable):
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
     ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]),
                          map_state=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
-                         size=size, confidence=0)
+                         size=size, confidence=0, off_map=False)
     yield State(False, occupancy_state, dynamic_objects, ego_state)
 
 

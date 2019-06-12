@@ -122,18 +122,18 @@ def prediction_timestamps() -> np.array:
 def init_dyn_obj(init_cartesian_state: CartesianExtendedState, car_size: ObjectSize) -> DynamicObject:
     yield DynamicObject.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(0e9),
                                                     cartesian_state=init_cartesian_state, size=car_size,
-                                                    confidence=0)
+                                                    confidence=0, off_map=False)
 
 
 @pytest.fixture(scope='function')
 def init_ego_state(static_cartesian_state: CartesianExtendedState, car_size: ObjectSize) -> EgoState:
     yield EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID, timestamp=int(0e9),
-                                               cartesian_state=static_cartesian_state, size=car_size, confidence=0)
+                                               cartesian_state=static_cartesian_state, size=car_size, confidence=0, off_map=False)
 
 @pytest.fixture(scope='function')
 def init_dynamic_ego_state(init_ego_cartesian_state: CartesianExtendedState, car_size: ObjectSize) -> EgoState:
     yield EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID, timestamp=int(0e9),
-                                               cartesian_state=init_ego_cartesian_state, size=car_size, confidence=0)
+                                               cartesian_state=init_ego_cartesian_state, size=car_size, confidence=0, off_map=False)
 
 
 @pytest.fixture(scope='function')
@@ -154,7 +154,7 @@ def unaligned_dynamic_object(predicted_cartesian_state_1_constant_yaw: Cartesian
     yield DynamicObject.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
                                                     timestamp=int(prediction_timestamps[1] * 1e9),
                                                     cartesian_state=predicted_cartesian_state_1_constant_yaw,
-                                                    size=car_size, confidence=0)
+                                                    size=car_size, confidence=0, off_map=False)
 
 
 @pytest.fixture(scope='function')
@@ -180,16 +180,16 @@ def predicted_dyn_object_states_constant_yaw(predicted_cartesian_state_0: Cartes
         DynamicObject.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
                                                   timestamp=int(prediction_timestamps[0] * 1e9),
                                                   cartesian_state=predicted_cartesian_state_0, size=car_size,
-                                                  confidence=0),
+                                                  confidence=0, off_map=False),
         DynamicObject.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
                                                   timestamp=int(prediction_timestamps[1] * 1e9),
                                                   cartesian_state=predicted_cartesian_state_1_constant_yaw,
-                                                  size=car_size, confidence=0),
+                                                  size=car_size, confidence=0, off_map=False),
 
         DynamicObject.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
                                                   timestamp=int(prediction_timestamps[2] * 1e9),
                                                   cartesian_state=predicted_cartesian_state_2_constant_yaw,
-                                                  size=car_size, confidence=0)
+                                                  size=car_size, confidence=0, off_map=False)
     ]
 
     yield object_states
@@ -204,16 +204,16 @@ def predicted_dyn_object_states_road_yaw(predicted_cartesian_state_0: CartesianE
         DynamicObject.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
                                                   timestamp=int(prediction_timestamps[0] * 1e9),
                                                   cartesian_state=predicted_cartesian_state_0, size=car_size,
-                                                  confidence=0),
+                                                  confidence=0, off_map=False),
         DynamicObject.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
                                                   timestamp=int(prediction_timestamps[1] * 1e9),
                                                   cartesian_state=predicted_cartesian_state_1_road_yaw,
-                                                  size=car_size, confidence=0),
+                                                  size=car_size, confidence=0, off_map=False),
 
         DynamicObject.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
                                                   timestamp=int(prediction_timestamps[2] * 1e9),
                                                   cartesian_state=predicted_cartesian_state_2_road_yaw,
-                                                  size=car_size, confidence=0)
+                                                  size=car_size, confidence=0, off_map=False)
     ]
 
     yield object_states
@@ -226,16 +226,16 @@ def predicted_static_ego_states(static_cartesian_state: CartesianExtendedState, 
         EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                              timestamp=int(prediction_timestamps[0] * 1e9),
                                              cartesian_state=static_cartesian_state, size=car_size,
-                                             confidence=0),
+                                             confidence=0, off_map=False),
         EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                              timestamp=int(prediction_timestamps[1] * 1e9),
                                              cartesian_state=static_cartesian_state,
-                                             size=car_size, confidence=0),
+                                             size=car_size, confidence=0, off_map=False),
 
         EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                              timestamp=int(prediction_timestamps[2] * 1e9),
                                              cartesian_state=static_cartesian_state,
-                                             size=car_size, confidence=0)
+                                             size=car_size, confidence=0, off_map=False)
     ]
 
     yield ego_states
@@ -250,16 +250,16 @@ def predicted_dynamic_ego_states(predicted_ego_cartesian_state_0: CartesianExten
         EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                              timestamp=int(prediction_timestamps[0] * 1e9),
                                              cartesian_state=predicted_ego_cartesian_state_0, size=car_size,
-                                             confidence=0),
+                                             confidence=0, off_map=False),
         EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                              timestamp=int(prediction_timestamps[1] * 1e9),
                                              cartesian_state=predicted_ego_cartesian_state_1,
-                                             size=car_size, confidence=0),
+                                             size=car_size, confidence=0, off_map=False),
 
         EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                              timestamp=int(prediction_timestamps[2] * 1e9),
                                              cartesian_state=predicted_ego_cartesian_state_2,
-                                             size=car_size, confidence=0)
+                                             size=car_size, confidence=0, off_map=False)
     ]
 
     yield ego_states
@@ -296,7 +296,7 @@ def original_state_with_sorrounding_objects(scene_static_testable):
 
     ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=np.array(
         [ego_pos[0], ego_pos[1], ego_yaw, 0.0, 0.0, 0.0]),
-                                                     size=car_size, confidence=1.0)
+                                                     size=car_size, confidence=1.0, off_map=False)
 
     # Generate objects at the following locations:
     obj_id = 1
@@ -321,7 +321,7 @@ def original_state_with_sorrounding_objects(scene_static_testable):
                                                                        cartesian_state=np.array(
                                                                               [obj_pos[0], obj_pos[1], obj_yaw, 0.0,
                                                                                0.0, 0.0]),
-                                                                       size=car_size, confidence=1.0)
+                                                                       size=car_size, confidence=1.0, off_map=False)
 
             dynamic_objects.append(dynamic_object)
             obj_id += 1

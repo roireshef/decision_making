@@ -118,7 +118,7 @@ class StateModule(DmModule):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0)
+                             confidence=1.0, off_map=False)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,
