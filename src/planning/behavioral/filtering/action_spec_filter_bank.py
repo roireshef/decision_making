@@ -103,15 +103,6 @@ class FilterForKinematics(ActionSpecFilter):
                 LON_JERK_ACCEL_LIMITS, LON_JERK_DECEL_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)[0]
             are_valid.append(is_valid_in_cartesian)
 
-        # TODO: remove it
-        if not any(are_valid):
-            ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
-            frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-            init_idx = frenet.get_index_on_frame_from_s(ego_fstate[:1])[0][0]
-            print('ERROR in BP-KINEMATIC filter: %.3f: ego_fstate=%s; nominal_k=%s' %
-                  (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(ego_fstate),
-                   frenet.k[init_idx:init_idx + 50, 0]))
-
         return are_valid
 
 
@@ -166,15 +157,6 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                                                              np.array([0, t]))
 
             are_valid.append(is_safe)
-
-        # TODO: remove it
-        if not any(are_valid) and len(target_vehicles) > 0:
-            ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
-            frenet = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-            obj_fstate = frenet.convert_from_segment_state(target_vehicles[0].dynamic_object.map_state.lane_fstate,
-                                                           target_vehicles[0].dynamic_object.map_state.lane_id)
-            print('ERROR in BP-SAFETY filter %.3f: ego_fstate=%s obj_fstate=%s T=%s' %
-                  (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(ego_fstate), obj_fstate[:3], T))
 
         return are_valid
 

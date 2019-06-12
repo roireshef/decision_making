@@ -88,16 +88,8 @@ class BehavioralPlanningFacade(DmModule):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")
-
-                # TODO: remove it
-                ego = state.ego_state
-                print('BP if: time %.3f; orig-fstate: %s -> %s; ' %
-                      (ego.timestamp_in_sec, ego.map_state.lane_fstate[:3], updated_state.ego_state.map_state.lane_fstate[:3]))
             else:
                 updated_state = state
-                # TODO: remove it
-                print('BP else: time %.3f; orig-fstate: %s ' %
-                      (state.ego_state.timestamp_in_sec, state.ego_state.map_state.lane_fstate[:3]))
 
             route_plan = self._get_current_route_plan()
 
