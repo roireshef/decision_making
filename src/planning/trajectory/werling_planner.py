@@ -134,8 +134,8 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories_filtered) == 0:
-            WerlingPlanner._raise_error_with_error_message(state, ftrajectories, ctrajectories, reference_route,
-                                                           T_target_horizon, planning_horizon, goal, ego_frenet_state, goal_frenet_state, cost_params)
+            WerlingPlanner._raise_error(state, ftrajectories, ctrajectories, reference_route, T_target_horizon,
+                                        planning_horizon, goal, ego_frenet_state, goal_frenet_state, cost_params)
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
@@ -332,13 +332,10 @@ class WerlingPlanner(TrajectoryPlanner):
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]
 
     @staticmethod
-    def _raise_error_with_error_message(state: State, ftrajectories: FrenetTrajectories2D,
-                                        ctrajectories: CartesianExtendedTrajectories,
-                                        reference_route: FrenetSerret2DFrame,
-                                        T_target_horizon: float, planning_horizon: float,
-                                        goal: CartesianExtendedState,
-                                        ego_frenet_state: FrenetState2D, goal_frenet_state: FrenetState2D,
-                                        cost_params: TrajectoryCostParams) -> None:
+    def _raise_error(state: State, ftrajectories: FrenetTrajectories2D,ctrajectories: CartesianExtendedTrajectories,
+                     reference_route: FrenetSerret2DFrame, T_target_horizon: float, planning_horizon: float,
+                     goal: CartesianExtendedState, ego_frenet_state: FrenetState2D, goal_frenet_state: FrenetState2D,
+                     cost_params: TrajectoryCostParams) -> None:
         """
         Raise error and print error message, when all trajectories were filtered in Werling.
         See the parameters description in function plan().

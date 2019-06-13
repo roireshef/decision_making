@@ -248,6 +248,6 @@ class CostBasedBehavioralPlanner:
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS,
-                                           desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+                                           desired_velocity=np.inf)  # TP should not consider desired_velocity
 
         return cost_params
