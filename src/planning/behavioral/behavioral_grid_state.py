@@ -273,7 +273,8 @@ class BehavioralGridState:
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, route_plan=route_plan)
             except MappingException as e:
-                logger.warning(e)
+                if rel_lane == RelativeLane.SAME_LANE:
+                    logger.warning(e)
                 continue
 
         return extended_lane_frames
