@@ -43,8 +43,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
-        # Need to __init__ base FrenetSerret2DFrame class here
-        FrenetSerret2DFrame.init_from_components(points=points, T=T, N=N, K=k, k_tag=k_tag, ds=0)
+        frame = FrenetSerret2DFrame.init_from_components(points=points, T=T, N=N, K=k, k_tag=k_tag, ds=np.average(segments_ds))
+        FrenetSerret2DFrame.__init__(self, frame.pImpl)
         self._segment_ids = segment_ids
         self._segments_s_start = segments_s_start
         self._segments_s_offsets = segments_s_offsets
