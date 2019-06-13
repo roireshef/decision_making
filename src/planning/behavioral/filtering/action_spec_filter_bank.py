@@ -53,8 +53,7 @@ class FilterForKinematics(ActionSpecFilter):
         ctrajectories = np.zeros((len(action_specs), len(time_samples), 6), dtype=float)
 
         # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
-        for rel_lane in specs_by_rel_lane.keys():
-            lane_specs = specs_by_rel_lane[rel_lane]
+        for rel_lane, lane_specs in specs_by_rel_lane.items():
             specs_t = np.array([spec.t for spec in lane_specs])
             pad_mode = np.array([spec.only_padding_mode for spec in lane_specs])
             goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
