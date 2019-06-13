@@ -97,7 +97,6 @@ class Poly1D:
 
         return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
 
-    # TODO: test this!
     @staticmethod
     def zip_polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
         """
