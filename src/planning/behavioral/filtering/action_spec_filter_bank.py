@@ -94,6 +94,9 @@ class FilterForKinematics(ActionSpecFilter):
 
             # validate cartesian points hold lateral acceleration limits, gradually from the absolute limits
             # LAT_ACC_LIMITS to the desired more strict limits BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS
+            # The motivation:
+            # Immediately after the current state the strict lateral acceleration limit may be slightly violated.
+            # Then we should enable trajectory that starts with less strict limit and ends with strict limit.
             cartesian_points[:, C_K] *= np.linspace(1, 1./BP_LAT_ACC_STRICT_COEF, cartesian_points.shape[0])
             # validate cartesian points against cartesian limits
             is_valid_in_cartesian = KinematicUtils.filter_by_cartesian_limits(
@@ -197,13 +200,15 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
      (4) the condition function between target and constraints (_condition function)
 
      Usage:
-        extend BeyondSpecConstraintFilter class and implement the appropriate functions: (at least the four methods
-        described above).
+        extend ConstraintSpecFilter class and implement the following functions:
+            _target_function
+            _constraint_function
+            _condition
         To terminate the filter calculation use _raise_true/_raise_false  at any stage.
     """
     def __init__(self):
         super(BeyondSpecBrakingFilter, self).__init__()
-        self.distances = BrakingDistances.create_braking_distances()
+        self.braking_distances = BrakingDistances.create_braking_distances()
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
@@ -220,20 +225,20 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
 
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) -> np.array:
         """
-        The definition of the function to be tested.
+        Calculate the braking distances from action_spec.s to the selected points, using static
+        actions with STANDARD aggressiveness level.
         :param behavioral_state:  A behavioral grid state
         :param action_spec: the action spec which to filter
-        :return: the result of the target function as an np.ndarray
+        :return: array of braking distances from action_spec.s to the selected points
         """
         return self._braking_distances(action_spec, points[1])
 
     def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) -> np.array:
         """
-        Defines the constraint function over points.
-
+        Calculate the actual distances from action_spec.s to the selected points.
         :param behavioral_state:  A behavioral grid state at the context of filtering
         :param action_spec: the action spec which to filter
-        :return: the result of the constraint function as an np.ndarray
+        :return: array of actual distances from action_spec.s to the selected points
         """
         return self._actual_distances(action_spec, points[0])
 
@@ -254,8 +259,8 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
         :param slow_points_velocity_limits: velocity limits of selected points
         :return: braking distances from the spec velocity to the given velocities
         """
-        return self.distances[FILTER_V_0_GRID.get_index(action_spec.v),
-                              FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
+        return self.braking_distances[FILTER_V_0_GRID.get_index(action_spec.v),
+                                      FILTER_V_T_GRID.get_indices(slow_points_velocity_limits)]
 
     def _actual_distances(self, action_spec: ActionSpec, slow_points_s: np.array) -> np.ndarray:
         """
@@ -300,17 +305,16 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
         if stop_bar_s is None:  # no stop bars
             self._raise_true()
-        if action_spec.s >= target_lane_frenet.s_max:
-            self._raise_false()
         return np.array([stop_bar_s]), np.array([0])
 
 
 class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
     """
-    Checks if it is possible to break to desired lateral acceleration limit from the goal to the end of the frenet frame
+    Checks if it is possible to brake from the action's goal to all nominal points beyond action_spec.s
+    (until the end of the frenet frame), without violation of the lateral acceleration limits.
     the following edge cases are treated by raise_true/false:
-    (A) spec is not None
-    (B) (spec.s >= target_lane_frenet.s_max then continue)
+    (A) action_spec.v == 0 (return True)
+    (B) there are no selected (slow) points (return True)
     """
     def __init__(self):
         super().__init__()
@@ -324,9 +328,11 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         :return:
         """
         # get the worst case braking distance from spec.v to 0
-        max_braking_distance = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
+        max_braking_distance = self.braking_distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
         max_relevant_s = min(action_spec.s + max_braking_distance, frenet_frame.s_max)
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
+        # beyond_spec_range[0] must be BEYOND spec.s because the actual distances from spec.s to the
+        # selected points have to be positive.
         beyond_spec_range = frenet_frame.get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0] + 1
         # get s for all points in the range
         points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
@@ -343,6 +349,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         :return:
         """
         if action_spec.v == 0:
+            # When spec velocity is 0, there is no problem to "brake" beyond spec. In this case the filter returns True.
             self._raise_true()
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         beyond_spec_s, points_velocity_limits = self._get_velocity_limits_of_points(action_spec, target_lane_frenet)
