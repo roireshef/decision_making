@@ -80,7 +80,7 @@ class Poly1D:
           1. position (evaluation of the polynomial)
           2. velocity (evaluation of the 1st derivative of the polynomial)
           2. acceleration (evaluation of the 2st derivative of the polynomial)
-        :param poly_coefs: 2d numpy array [MxL] of the quartic (position) polynomials coefficients, where
+        :param poly_coefs: 2d numpy array [MxL] of the (position) polynomials coefficients, where
          each row out of the M is a different polynomial and contains L coefficients
         :param time_samples: 1d numpy array [K] of the time stamps for the evaluation of the polynomials
         :return: 3d numpy array [M,K,3] with the following dimensions:
@@ -101,14 +101,15 @@ class Poly1D:
     @staticmethod
     def zip_polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
         """
-        For each x(t) position polynomial(s) and time-sample it generates 3 values:
+        For n-th position polynomial and k-th element in n-th row of time-samples matrix (where n runs on all
+        polynomials), it generates 3 values:
           1. position (evaluation of the polynomial)
           2. velocity (evaluation of the 1st derivative of the polynomial)
-          2. acceleration (evaluation of the 2st derivative of the polynomial)
-        :param poly_coefs: 2d numpy array [MxL] of the quartic (position) polynomials coefficients, where
-         each row out of the M is a different polynomial and contains L coefficients
-        :param time_samples: 2d numpy array [MxK] of the time stamps for the evaluation of the polynomials
-        :return: 3d numpy array [M,K,3] with the following dimensions:
+          3. acceleration (evaluation of the 2st derivative of the polynomial)
+        :param poly_coefs: 2d numpy array [NxL] of the (position) polynomials coefficients, where
+         each row out of the N is a different polynomial and contains L coefficients
+        :param time_samples: 2d numpy array [NxK] of the time stamps for the evaluation of the polynomials
+        :return: 3d numpy array [N,K,3] with the following dimensions:
             [position value, velocity value, acceleration value]
         """
         # compute the coefficients of the polynom's 1st derivative (m=1)
