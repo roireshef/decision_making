@@ -50,6 +50,7 @@ class FilterForKinematics(ActionSpecFilter):
                 indices_by_rel_lane[spec.relative_lane].append(i)
 
         time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
+        ctrajectories = np.zeros((len(action_specs), len(time_samples), 6), dtype=float)
 
         # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
         for rel_lane in specs_by_rel_lane.keys():
@@ -79,7 +80,7 @@ class FilterForKinematics(ActionSpecFilter):
             # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
             for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
                     zip(spec_t_idxs, last_pad_idxs, ftrajectories_s, ftrajectories_d, lane_specs):
-                # if spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, extrapolate trajectories between spec.t and
+                # if spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, pad ftrajectories_s from spec.t to
                 # MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
                 if spec_t_idx < last_pad_idx:
                     times_beyond_spec = np.arange(spec_t_idx, last_pad_idx) * TRAJECTORY_TIME_RESOLUTION - spec.t
@@ -90,10 +91,11 @@ class FilterForKinematics(ActionSpecFilter):
                 trajectory_d[spec_t_idx:] = 0
 
             # convert Frenet trajectories to cartesian trajectories
-            ctrajectories = frenet.ftrajectories_to_ctrajectories(np.c_[ftrajectories_s, ftrajectories_d])
+            ctrajectories[indices_by_rel_lane[rel_lane]] = frenet.ftrajectories_to_ctrajectories(
+                np.c_[ftrajectories_s, ftrajectories_d])
 
-            return list(KinematicUtils.filter_by_cartesian_limits(
-                ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
+        return list(KinematicUtils.filter_by_cartesian_limits(
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
