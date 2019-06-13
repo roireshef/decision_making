@@ -20,7 +20,7 @@ def test_frenetConversion_errors(scene_static_pg_no_split):
         print(road_id, ": ", MapUtils.get_lanes_ids_from_road_segment_id(road_id))
 
     lane_id = 200
-    nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+    nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 
     points = nominal_points[:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
                                 NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
