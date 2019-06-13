@@ -56,7 +56,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         pubsub_msg.s_Points = SerializationUtils.serialize_non_typed_array(self.O)
         pubsub_msg.s_T = SerializationUtils.serialize_non_typed_array(self.T)
         pubsub_msg.s_N = SerializationUtils.serialize_non_typed_array(self.N)
-        pubsub_msg.s_K = SerializationUtils.serialize_non_typed_array(self.k)
+        pubsub_msg.s_K = SerializationUtils.serialize_non_typed_array(self.K)
         pubsub_msg.s_KTag = SerializationUtils.serialize_non_typed_array(self.k_tag)
         pubsub_msg.s_SegmentsID = SerializationUtils.serialize_non_typed_int_array(self._segment_ids)
         pubsub_msg.s_SegmentsSStart = SerializationUtils.serialize_non_typed_array(self._segments_s_start)

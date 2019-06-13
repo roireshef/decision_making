@@ -72,7 +72,7 @@ class SceneStaticUtils:
                     point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = lane_frenet.O[i, FP_DX]
                     point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value] = np.arctan2(lane_frenet.T[i, 1],
                                                                                                     lane_frenet.T[i, 0])
-                    point[NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value] = lane_frenet.k[i]
+                    point[NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value] = lane_frenet.K[i]
                     point[NominalPathPoint.CeSYS_NominalPathPoint_e_il2_curvature_rate.value] = lane_frenet.k_tag[i]
                     point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_cross_slope.value] = 0
                     point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_along_slope.value] = 0

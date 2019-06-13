@@ -355,12 +355,12 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_
     # take the rightest lane
     lane_id = lane_ids[0]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    closest_lane_id = MapUtils.get_closest_lane(frenet.points[1])
+    closest_lane_id = MapUtils.get_closest_lane(frenet.O[1])
     assert lane_id == closest_lane_id
     # take the leftmost lane
     lane_id = lane_ids[-1]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2])
+    closest_lane_id = MapUtils.get_closest_lane(frenet.O[-2])
     assert lane_id == closest_lane_id
 
 

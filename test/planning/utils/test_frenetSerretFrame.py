@@ -172,7 +172,7 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough(scene_stat
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
     road_segment_id = MapUtils.get_road_segment_ids()[0]
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
-    route_points = MapUtils.get_lane_frenet_frame(lane_id).points
+    route_points = MapUtils.get_lane_frenet_frame(lane_id).O
 
     # "Train" points: assumed to be sampled sufficiently dense (according to ROAD_MAP_REQUIRED_RES)
     _, route_points_upsampled_to_required_res, _ = \
