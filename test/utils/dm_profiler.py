@@ -110,7 +110,7 @@ def summarize_profiler():
 
 if __name__ == '__main__':
     summarize_profiler()
-    plot_profiler('get_scene_static')
+    plot_profiler('')
 
 
 
