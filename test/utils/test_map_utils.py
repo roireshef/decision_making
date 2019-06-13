@@ -16,7 +16,8 @@ from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
+    scene_static_short_testable
 
 
 MAP_SPLIT = "PG_split.bin"
@@ -263,7 +264,7 @@ def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static_p
 
 def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static, route_plan_1_2):
     """
-    test the method _advance_by_cost
+    tests the method _advance_by_cost
     The straight connection will have a higher cost, so vehicle should take the split (to lane 20)
     :param right_lane_split_scene_static:
     :param route_plan_1_2:
@@ -277,7 +278,24 @@ def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static,
     sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
     assert sub_segments[1].e_i_SegmentID == 20
 
-def test_getLookaheadFrenetByCosts_correctLaneAddedInGFF(right_lane_split_scene_static, route_plan_1_2):
+def test_advanceByCost_chooseOnlyLaneNoSplit(scene_static_short_testable, route_plan_1_2):
+    """
+    tests the method _advance_by_cost
+    There are no splits, so vehicle should continue onto lane 21 even though it has a cost of 1
+    :param scene_static_short_testable:
+    :param route_plan_1_2:
+    :return:
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+
+    # set cost of straight connection lane (lane 21) to be 1
+    [lane for lane in route_plan_1_2.s_Data.as_route_plan_lane_segments[1] if lane.e_i_lane_segment_id  == 21][0].e_cst_lane_end_cost = 1
+
+    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
+    assert sub_segments[1].e_i_SegmentID == 21
+
+
+def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split_scene_static, route_plan_1_2):
     SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
 
     # set cost of straight connection lane (lane 21) to be 1
