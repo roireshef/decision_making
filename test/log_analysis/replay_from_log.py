@@ -38,7 +38,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received state.
         :return: deserialized State
         """
-        input_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE, timeout=1)
+        input_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE)
         object_state = ClassSerializer.deserialize(class_type=State, message=input_state)
         return object_state
 
@@ -49,7 +49,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        input_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS, timeout=1)
+        input_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS)
         object_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=input_params)
         return object_params
 
@@ -61,7 +61,7 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     :param tp_params_serialized: serialized trajectory parameters input message
     :return:
     """
-    scene_static_pg_no_split = pickle.load(open(Paths.get_map_absolute_path_filename(PG_PICKLE_FILE_NAME), 'rb'))
+    scene_static_pg_no_split = pickle.load(open(Paths.get_scene_static_absolute_path_filename(PG_PICKLE_FILE_NAME), 'rb'))
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
 
     # Create PubSub Mock

@@ -44,6 +44,8 @@ class ManeuverType(Enum):
     LEFT_LANE_CHANGE_CONNECTION = 10
     RIGHT_LANE_CHANGE_CONNECTION = 11
     NO_ALLOWED_CONNECTION = 12
+    LEFT_SPLIT = 13
+    RIGHT_SPLIT = 14
 
 
 class MapLaneMarkerType(Enum):

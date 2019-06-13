@@ -13,7 +13,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, \
-    ROAD_SHOULDERS_WIDTH
+    ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -154,7 +154,7 @@ class CostBasedBehavioralPlanner:
             # in case of very short action, create samplable trajectory using linear polynomials from ego time,
             # such that it passes through the goal at goal time
             ego_by_goal_state = KinematicUtils.create_ego_by_goal_state(goal_fstate, action_spec.t)
-            poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomials(ego_by_goal_state)
+            poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
         else:
             # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
             A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
@@ -247,6 +247,7 @@ class CostBasedBehavioralPlanner:
                                            lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
-                                           lat_acceleration_limits=LAT_ACC_LIMITS)
+                                           lat_acceleration_limits=LAT_ACC_LIMITS,
+                                           desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
 
         return cost_params

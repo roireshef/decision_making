@@ -1,13 +1,10 @@
 import numpy as np
 import pytest
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
-from decision_making.src.state.map_state import MapState
-
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-     ROUTE_PLANNING_NAME_FOR_LOGGING
-from decision_making.src.scene.scene_static_model import SceneStaticModel
+    TRAJECTORY_PLANNING_NAME_FOR_LOGGING, ROUTE_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
     ObjectLocalization, BoundingBoxSize, ObjectClassification, ObjectHypothesis, ObjectTrackDynamicProperty
@@ -18,6 +15,8 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
 from decision_making.src.state.state_module import DynamicObjectsData
 from decision_making.src.utils.map_utils import MapUtils
@@ -32,6 +31,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
 OLD_TIMESTAMP_PARAM = 'old_timestamp'
+
 
 ### MESSAGES ###
 
@@ -190,6 +190,23 @@ def scene_dynamic_fix(scene_static_pg_split):
 
     yield scene_dynamic
 
+@pytest.fixture(scope='function')
+def scene_dynamic_fix(scene_static_pg_split):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+
+    lane_id = 200
+    cstate = np.array([1100, 7, 0, 1.0, 0.0, 0])
+
+    frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    fstate = frenet.cstate_to_fstate(cstate)
+
+    timestamp = Timestamp.from_seconds(5.0)
+    ego_localization = HostLocalization(lane_id, 0, cstate, fstate)
+    header = Header(0, timestamp, 0)
+    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
+
+    yield scene_dynamic
 
 @pytest.fixture(scope='function')
 def ego_state_fix():
@@ -226,7 +243,8 @@ def trajectory_params():
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, 3.0, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT,
-                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
+                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
+                                                  BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, target_time=16, trajectory_end_time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY,

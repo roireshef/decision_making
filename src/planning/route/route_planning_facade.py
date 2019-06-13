@@ -1,3 +1,4 @@
+import pickle
 from logging import Logger
 import time
 import traceback
@@ -48,6 +49,7 @@ class RoutePlanningFacade(DmModule):
             # Read inputs
             start_time = time.time()
             scene_static = self._get_current_scene_static()
+
             route_planner_input = RoutePlannerInputData()
             route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                                     nav_plan=scene_static.s_Data.s_NavigationPlan)
@@ -76,7 +78,7 @@ class RoutePlanningFacade(DmModule):
 
     @prof.ProfileFunction()
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
 
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %

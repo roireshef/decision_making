@@ -1,9 +1,9 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS
+    LON_ACC_LIMITS, EPS
 from decision_making.src.global_constants import MAX_CURVATURE
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -40,7 +40,8 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
-                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits) -> np.ndarray:
+                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
+                                   desired_velocity: float) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -48,19 +49,31 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
+        :param desired_velocity: desired longitudinal speed [m/sec]
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
-        curvature = ctrajectories[:, :, C_K]
 
-        conforms = np.all(
-            NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
-            NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
-            NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits) &
-            NumpyUtils.is_in_limits(curvature, np.array([-MAX_CURVATURE, MAX_CURVATURE])), axis=1)
+        # validates the following behavior for each trajectory:
+        # (1) applies negative jerk to reduce initial positive acceleration, if necessary
+        #     (initial jerk is calculated by subtracting the first two acceleration samples)
+        # (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
+        # (3) keeps the velocity under the desired velocity limit.
+        # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
+        conforms_desired = np.logical_or(
+            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity + EPS), axis=1),
+            (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
+        # check velocity and acceleration limits
+        # note: while we filter any trajectory that exceeds the velocity limit, we allow trajectories to break the
+        #       desired velocity limit, as long as they slowdown towards the desired velocity.
+        conforms_limits = np.all(NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
+                                 NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
+                                 NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
+
+        conforms = np.logical_and(conforms_limits, conforms_desired)
         return conforms
 
     @staticmethod
@@ -110,16 +123,28 @@ class KinematicUtils:
         return frenet_lateral_movement_is_feasible
 
     @staticmethod
-    def create_linear_profile_polynomials(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
+    def create_linear_profile_polynomial_pair(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
         """
         Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
         velocity). Those polynomials are degenerate to s(t)=v*t+x form
         :param frenet_state: the current frenet state to pull positions and velocities from
         :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
         """
-        poly_s = np.array([0, 0, 0, 0, frenet_state[FS_SV], frenet_state[FS_SX]])
+        poly_s, poly_d = KinematicUtils.create_linear_profile_polynomial_pairs(frenet_state[np.newaxis])
+        return poly_s[0], poly_d[0]
+
+    @staticmethod
+    def create_linear_profile_polynomial_pairs(frenet_states: FrenetStates2D) -> (np.ndarray, np.ndarray):
+        """
+        Given N frenet states, create two Nx6 matrices (s, d) of polynomials that assume constant velocity
+        (we keep the same momentary velocity). Those polynomials are degenerate to s(t)=v*t+x form
+        :param frenet_states: the current frenet states to pull positions and velocities from
+        :return: a tuple of Nx6 matrices (s(t), d(t)) polynomial coefficient arrays
+        """
+        # zero 4 highest coefficients of poly_s: from x^5 until x^2 (including)
+        poly_s = np.c_[np.zeros((frenet_states.shape[0], S2+1)), frenet_states[:, FS_SV], frenet_states[:, FS_SX]]
         # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
-        poly_d = np.zeros(QuinticPoly1D.num_coefs())
+        poly_d = np.zeros((frenet_states.shape[0], QuinticPoly1D.num_coefs()))
         return poly_s, poly_d
 
     @staticmethod
