@@ -55,70 +55,45 @@ class FilterForKinematics(ActionSpecFilter):
         for rel_lane in specs_by_rel_lane.keys():
             lane_specs = specs_by_rel_lane[rel_lane]
             specs_t = np.array([spec.t for spec in lane_specs])
+            pad_mode = np.array([spec.only_padding_mode for spec in lane_specs])
             goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
-
-            # don't test lateral acceleration beyond spec.t, so set 0 for time_samples > spec.t
-            # create 2D time samples: a line for each spec with non-zero size according to spec.t
-            time_samples_2d = np.tile(time_samples, len(lane_specs)).reshape(len(lane_specs), len(time_samples))
-            for i, spec_samples in enumerate(time_samples_2d):
-                spec_samples[(int(specs_t[i] / TRAJECTORY_TIME_RESOLUTION) + 1):] = 0
 
             frenet = behavioral_state.extended_lane_frames[rel_lane]  # the target GFF
             ego_fstate = behavioral_state.projected_ego_fstates[rel_lane]
             ego_fstates = np.tile(ego_fstate, len(lane_specs)).reshape((len(lane_specs), -1))
 
-            # calculate polynomial coefficients of the spec's Frenet trajectory for s axis
-            poly_coefs_s = np.zeros((len(lane_specs), QuinticPoly1D.num_coefs()))
-            poly_coefs_d = np.zeros((len(lane_specs), QuinticPoly1D.num_coefs()))
-            # use inverse of time constraints matrix to calculate polynomials for "non-padding-mode" actions
-            pad_mode = specs_t < TRAJECTORY_TIME_RESOLUTION
-            not_pad_mode = ~pad_mode
-            A_inv = QuinticPoly1D.inverse_time_constraints_tensor(specs_t[not_pad_mode])
-            poly_coefs_s[not_pad_mode] = QuinticPoly1D.zip_solve(A_inv, np.hstack((ego_fstates[not_pad_mode, :FS_DX],
-                                                                                   goal_fstates[not_pad_mode, :FS_DX])))
-            poly_coefs_d[not_pad_mode] = QuinticPoly1D.zip_solve(A_inv, np.hstack((ego_fstates[not_pad_mode, FS_DX:],
-                                                                                   goal_fstates[not_pad_mode, FS_DX:])))
-            # calculate polynomials for the padding-mode actions, such that at goal time the trajectories pass via
-            # the actions' goal
-            pad_mode_goals = goal_fstates[pad_mode]
-            poly_coefs_s[pad_mode] = np.c_[np.zeros((pad_mode_goals.shape[0], S1)), pad_mode_goals[:, FS_SV],
-                                           pad_mode_goals[:, FS_SX] - specs_t[pad_mode] * pad_mode_goals[:, FS_SV]]
+            # calculate polynomials
+            poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(specs_t, ego_fstates, goal_fstates, pad_mode)
 
             # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
-            ftrajectories_s = QuinticPoly1D.zip_polyval_with_derivatives(poly_coefs_s, time_samples_2d)
-            ftrajectories_d = QuinticPoly1D.zip_polyval_with_derivatives(poly_coefs_d, time_samples_2d)
+            ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_samples)
+            ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_samples)
 
             # calculate trajectory time indices for all spec.t
             spec_t_idxs = (specs_t / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
             spec_t_idxs[pad_mode] = 0
+
             # calculate trajectory time indices for t = max(spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
-            last_time_idxs = (np.maximum(specs_t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
+            last_pad_idxs = (np.maximum(specs_t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
+
             # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-            for i, (trajectory_s, trajectory_d) in enumerate(zip(ftrajectories_s, ftrajectories_d)):
+            for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
+                    zip(spec_t_idxs, last_pad_idxs, ftrajectories_s, ftrajectories_d, lane_specs):
                 # if spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, extrapolate trajectories between spec.t and
                 # MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-                if spec_t_idxs[i] < last_time_idxs[i]:
-                    times_beyond_spec = np.arange(spec_t_idxs[i], last_time_idxs[i]) * TRAJECTORY_TIME_RESOLUTION - specs_t[i]
-                    trajectory_s[spec_t_idxs[i]:last_time_idxs[i]] = np.c_[lane_specs[i].s + times_beyond_spec * lane_specs[i].v,
-                                                                           np.full(times_beyond_spec.shape, lane_specs[i].v),
-                                                                           np.zeros_like(times_beyond_spec)]
-                    trajectory_d[spec_t_idxs[i]:last_time_idxs[i]] = goal_fstates[i, FS_DX:]
+                if spec_t_idx < last_pad_idx:
+                    times_beyond_spec = np.arange(spec_t_idx, last_pad_idx) * TRAJECTORY_TIME_RESOLUTION - spec.t
+                    trajectory_s[spec_t_idx:last_pad_idx] = np.c_[spec.s + times_beyond_spec * spec.v,
+                                                                  np.full(times_beyond_spec.shape, spec.v),
+                                                                  np.zeros_like(times_beyond_spec)]
+                trajectory_s[last_pad_idx:] = 0
+                trajectory_d[spec_t_idx:] = 0
 
-            # assign zeros to the lateral movement of ftrajectories
-            ftrajectories = np.concatenate((ftrajectories_s, ftrajectories_d), axis=-1)
+            # convert Frenet trajectories to cartesian trajectories
+            ctrajectories = frenet.ftrajectories_to_ctrajectories(np.c_[ftrajectories_s, ftrajectories_d])
 
-            for i, trajectory in enumerate(ftrajectories):
-                # assign zeros to ftrajectories beyond last_time_idx (sx = EPS to enable projection on the GFF)
-                trajectory[last_time_idxs[i]:] = np.array([frenet.s_limits[0], 0, 0, 0, 0, 0])
-
-            # convert Frenet to cartesian trajectories TODO: use CTM when available
-            ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories)
-
-            return list(KinematicUtils.filter_by_cartesian_limits(ctrajectories, VELOCITY_LIMITS,
-                                                                  LON_ACC_LIMITS, LAT_ACC_LIMITS,
-                                                                  BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
-
-
+            return list(KinematicUtils.filter_by_cartesian_limits(
+                ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
@@ -139,19 +114,10 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         # represent initial and terminal boundary conditions (for s axis)
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
-        constraints_s = np.concatenate((initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX]), axis=1)
-        poly_coefs_s = np.empty(shape=(len(action_specs), QuinticPoly1D.num_coefs()), dtype=np.float)
-
         # create boolean arrays indicating whether the specs are in tracking mode
         padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
-        not_padding_mode = np.logical_not(padding_mode)
 
-        # extract terminal maneuver time and generate a matrix that is used to find jerk-optimal polynomial coefficients
-        if not_padding_mode.any():
-            # solve for s(t)
-            A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T[not_padding_mode]))
-            poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s[not_padding_mode])
-        poly_coefs_s[padding_mode], _ = KinematicUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
+        poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX], padding_mode)
 
         are_valid = []
         for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
