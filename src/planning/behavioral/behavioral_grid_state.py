@@ -128,9 +128,10 @@ class BehavioralGridState:
                                 pseudo_dynamic_objects.append(DynamicObject(obj_id = -dynamic_object.obj_id,
                                                                             timestamp = dynamic_object.timestamp,
                                                                             cartesian_state = dynamic_object.cartesian_state,
-                                                                            map_state = MapState(None, other_lane),
+                                                                            map_state = MapState(None, other_lane.e_i_lane_segment_id),
                                                                             size = dynamic_object.size,
                                                                             confidence = dynamic_object.confidence))
+
         return dynamic_objects + pseudo_dynamic_objects
 
     @staticmethod

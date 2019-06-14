@@ -50,7 +50,7 @@ def test_createMirrorObjects_laneSplit_carInOverlap(left_lane_split_scene_static
                                                   size=ObjectSize(1,1,1), confidence=1)
     all_objects = BehavioralGridState._create_mirror_objects([dyn_obj])
     mirror_objects = [obj for obj in all_objects if obj.obj_id == -10]
-    assert mirror_objects[0].map_state.lane_id.e_i_lane_segment_id == 22
+    assert mirror_objects[0].map_state.lane_id == 22
 
 def test_createMirrorObjects_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
     """
