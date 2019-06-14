@@ -273,8 +273,11 @@ class BeyondSpecStaticTrafficFlowControlFilter(ConstraintSpecFilter):
 class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
     """
     Checks if the speed limit will be exceeded.
+    This filter assumes that the STANDARD aggressiveness will be used, and only checks the points that are before
+    the worst case stopping distance.
+    The braking distances are calculated upon initialization and cached.
 
-    If the upcoming speed greater or equal than the current speed limit,
+    If the upcoming speeds are greater or equal than the target velocity or if the worst case braking distance is 0,
     this filter will raise true.
     """
 
@@ -291,6 +294,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         :return: tuple of (Frenet indicies, speed limits at those indicies)
         """
 
+        # get the lane the action_spec wants to drive in
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
         if action_spec.s >= target_lane_frenet.s_max:
             self._raise_false()
