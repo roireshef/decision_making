@@ -299,7 +299,8 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         max_braking_distance = self.distances[
             FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
 
-        if max_braking_distance <= 0:
+        # if max braking distance is 0, the action represents a stop, which always will not violate the speed limit
+        if max_braking_distance == 0:
             self._raise_true()
 
         max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
