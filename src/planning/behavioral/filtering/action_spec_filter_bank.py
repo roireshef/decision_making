@@ -312,6 +312,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         if max_braking_distance == 0:
             self._raise_true()
 
+        # look until the end of the lane or until the worst case braking distance, whichever is closer
         max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
 
         # handle cases where car is going very slowly
@@ -324,6 +325,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         points_s = target_lane_frenet.get_s_from_index_on_frame(
             np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
 
+        # create Frenet2D states for convert_to_segment_states
         beyond_spec_gff_states = np.array([[s, 0., 0., 0., 0., 0.] for s in points_s])
 
         # get lane ids of the beyond spec points
