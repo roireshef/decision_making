@@ -315,10 +315,6 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         # look until the end of the lane or until the worst case braking distance, whichever is closer
         max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
 
-        # handle cases where car is going very slowly
-        if max_relevant_s <= action_spec.s:
-            max_relevant_s = target_lane_frenet.s_max
-
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
         beyond_spec_range = target_lane_frenet.get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0] + 1
         # get s for all points in the range
