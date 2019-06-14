@@ -293,7 +293,6 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         :param action_spec:
         :return: tuple of (Frenet indicies, speed limits at those indicies)
         """
-
         # get the lane the action_spec wants to drive in
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
         if action_spec.s >= target_lane_frenet.s_max:
