@@ -340,15 +340,20 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         """
         if action_spec is None:
             self._raise_false()
+
+        # skip checking speed limits if the vehicle will be stopped
         if action_spec.v == 0:
             self._raise_true()
 
+        # get speed limits after the action_spec.s
         beyond_spec_idx, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
         # find points that require braking after spec
         slow_points = np.where(np.array(speed_limits) < action_spec.v)[0]
-        # edge case
+
+        # skip filtering if there are no points that require slowing down
         if len(slow_points) == 0:
             self._raise_true()
+
         return beyond_spec_idx[slow_points], speed_limits[slow_points]
 
     def _target_function(self, behavioral_state: BehavioralGridState,
