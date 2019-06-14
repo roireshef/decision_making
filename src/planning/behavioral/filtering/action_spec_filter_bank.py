@@ -315,7 +315,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         points_s = target_lane_frenet.get_s_from_index_on_frame(
             np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
 
-        beyond_spec_gff_states = np.array([[idx, 0., 0., 0., 0., 0.] for idx in points_s])
+        beyond_spec_gff_states = np.array([[s, 0., 0., 0., 0., 0.] for s in points_s])
 
         # get lane ids of the beyond spec points
         lane_ids, segment_states = target_lane_frenet.convert_to_segment_states(beyond_spec_gff_states)
