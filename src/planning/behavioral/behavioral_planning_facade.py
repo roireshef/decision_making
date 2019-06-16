@@ -42,6 +42,8 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
 
+from decision_making.test.utils.dm_profiler import DMProfiler
+
 
 class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
@@ -78,9 +80,13 @@ class BehavioralPlanningFacade(DmModule):
 
         try:
             start_time = time.time()
-            state = self._get_current_state()
 
-            scene_static = self._get_current_scene_static()
+            with DMProfiler(self.__class__.__name__ + '.get_state'):
+                state = self._get_current_state()
+
+            with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
+                scene_static = self._get_current_scene_static()
+
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
@@ -95,14 +101,16 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 updated_state = state
 
-            route_plan = self._get_current_route_plan()
+            with DMProfiler(self.__class__.__name__ + '.get_route_plan'):
+                route_plan = self._get_current_route_plan()
 
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
 
             self._publish_takeover(takeover_message)
 
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
+            with DMProfiler(self.__class__.__name__ + '.plan'):
+                trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
                                                                                                            route_plan)
 
             self._last_trajectory = samplable_trajectory

@@ -4,6 +4,7 @@ from logging import Logger
 from decision_making.src.infra.pubsub import PubSub
 import six
 import rte.python.profiler as prof
+from decision_making.test.utils.dm_profiler import DMProfiler
 
 
 @six.add_metaclass(ABCMeta)
@@ -61,7 +62,7 @@ class DmModule:
         Perform triggered action and write logging messages.
         """
         self.logger.debug("executing periodic action at module: " + self.__class__.__name__)
-        with prof.time_range(self.__class__.__name__ + ":periodic"):
+        with DMProfiler(self.__class__.__name__ + ".periodic"):
             self._periodic_action_impl()
         self.logger.debug("finished periodic action at module: " + self.__class__.__name__)
 
