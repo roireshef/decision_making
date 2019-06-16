@@ -10,6 +10,19 @@ def test_areDerivativesInLimits_firstDegreePolynomialNotInLimits_returnFalse():
 
     assert not is_in_limits
 
+def test_zipPolyvalWithDerivatives_equalsToPolyValWithDerivates():
+
+    poly_coefs = np.array([[0.1, 0.3], [0.2, 0.6]])
+    T_vals = np.array([[10, 8], [7, 6]])
+
+    results1 = Poly1D.polyval_with_derivatives(poly_coefs[0:1], T_vals[0])
+    results2 = Poly1D.polyval_with_derivatives(poly_coefs[1:2], T_vals[1])
+
+    results = Poly1D.zip_polyval_with_derivatives(poly_coefs, T_vals)
+    assert np.array_equal(np.concatenate((results1, results2)), results)
+
+
+
 
 def test_areDerivativesInLimits_firstDegreePolynomialInLimits_returnTrue():
     poly_coefs = np.array([[0.1, 0.3]])

@@ -3,7 +3,8 @@ from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRI
     LON_ACC_LIMITS, EPS
 from decision_making.src.global_constants import MAX_CURVATURE
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
+    FS_DX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -158,6 +159,39 @@ class KinematicUtils:
         return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV],
                          goal_frenet_state[FS_SV], 0, 0, 0, 0])
 
+    @staticmethod
+    def calc_poly_coefs(T: np.array, initial_fstates, terminal_fstates, padding_mode: np.array) -> [np.array, np.array]:
+        """
+        Given initial and end constraints for multiple actions and their time horizons, calculate polynomials,
+        describing s and optionally d profiles.
+        :param T: 1D array. Actions' time horizons
+        :param initial_fstates: 2D matrix Nx6 or Nx3. Initial constraints for s and optionally for d
+        :param terminal_fstates: e2D matrix Nx6 or Nx3. End constraints for s and optionally for d
+        :param padding_mode: 1D boolean array. True if an action is in padding mode (shorter than 0.1)
+        :return: 2D array of actions' polynomials for s and for d. If d is not given in the constraints, poly_d is None.
+        """
+        # allocate polynomials for s and optionally for d if d constraints are given
+        poly_coefs_s = np.empty(shape=(len(T), QuinticPoly1D.num_coefs()), dtype=np.float)
+        poly_coefs_d = np.zeros(shape=(len(T), QuinticPoly1D.num_coefs()), dtype=np.float) \
+            if initial_fstates.shape[1] > FS_DX else None
+
+        not_padding_mode = ~padding_mode
+        if not_padding_mode.any():
+            # generate a matrix that is used to find jerk-optimal polynomial coefficients
+            A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[not_padding_mode])
+
+            # solve for s
+            constraints_s = np.c_[(initial_fstates[not_padding_mode, :FS_DX], terminal_fstates[not_padding_mode, :FS_DX])]
+            poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+
+            # solve for d if the constraints are given also for d dimension
+            if poly_coefs_d is not None:
+                constraints_d = np.c_[(initial_fstates[not_padding_mode, FS_DX:], terminal_fstates[not_padding_mode, FS_DX:])]
+                poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+
+        # create linear polynomials for padding mode
+        poly_coefs_s[padding_mode], _ = KinematicUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
+        return poly_coefs_s, poly_coefs_d
 
 
 class BrakingDistances:
