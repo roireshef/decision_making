@@ -7,7 +7,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSubsegmen
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_GeneralizedFrenetSerretFrame import TsSYSGeneralizedFrenetSerretFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, MAX_HORIZON_DISTANCE
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.exceptions import OutOfSegmentFront
@@ -325,3 +325,30 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         delta_s = np.expand_dims((progress_in_points - O_idx) * ds, axis=len(s.shape))
 
         return O_idx, delta_s
+
+    def calc_smooth_curvatuer_segments(self, anchor_segment_id: int, anchor_segment_s: float) -> (np.array, int, float):
+
+        if not self.has_segment_id(anchor_segment_id) or \
+                (anchor_segment_id == self._segment_ids[0] and anchor_segment_s < self._segments_s_start[0]):
+            if len(self._segment_ids) > 1:
+                anchor_segment_id = self._segment_ids[-1]  # take the last segment
+                anchor_segment_s = 0.
+            else:  # GFF has only one long segment
+                anchor_segment_id = self._segment_ids[0]
+                anchor_segment_s = self._segments_s_start[0] + MAX_HORIZON_DISTANCE/2
+
+        anchor_fstate = np.array([anchor_segment_s, 0, 0, 0, 0, 0])
+        anchor_gff_fstate = self.convert_from_segment_state(anchor_fstate, anchor_segment_id)
+        anchor_point = self.get_closest_index_on_frame(anchor_gff_fstate[:(FS_SX+1)])[0][0]
+
+        K_SEGMENT_POINTS_NUM = 280
+
+        smooth_k = np.copy(self.k[:, 0])
+        for point_idx in range(anchor_point, 0, -K_SEGMENT_POINTS_NUM):
+            from_idx = max(point_idx - K_SEGMENT_POINTS_NUM, 0)
+            smooth_k[from_idx:point_idx] = np.max(np.abs(self.k[from_idx:point_idx, 0]))
+        for point_idx in range(anchor_point, self.k.shape[0], K_SEGMENT_POINTS_NUM):
+            till_idx = min(point_idx + K_SEGMENT_POINTS_NUM, self.k.shape[0])
+            smooth_k[point_idx:till_idx] = np.max(np.abs(self.k[point_idx:till_idx, 0]))
+
+        return smooth_k, anchor_segment_id, anchor_segment_s
