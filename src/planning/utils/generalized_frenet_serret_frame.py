@@ -40,7 +40,8 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
 
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
-    def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
+    def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray,
+                 k: np.ndarray, k_tag: np.ndarray, k_smooth: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
@@ -49,6 +50,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
+        self._k_smooth = k_smooth
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
@@ -328,14 +330,10 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     def calc_smooth_curvatuer_segments(self, anchor_segment_id: int, anchor_segment_s: float) -> (np.array, int, float):
 
-        if not self.has_segment_id(anchor_segment_id) or \
-                (anchor_segment_id == self._segment_ids[0] and anchor_segment_s < self._segments_s_start[0]):
-            if len(self._segment_ids) > 1:
-                anchor_segment_id = self._segment_ids[-1]  # take the last segment
-                anchor_segment_s = 0.
-            else:  # GFF has only one long segment
-                anchor_segment_id = self._segment_ids[0]
-                anchor_segment_s = self._segments_s_start[0] + MAX_HORIZON_DISTANCE/2
+        if anchor_segment_id == 0:  # if there is no anchor
+            # take the last GFF point
+            anchor_segment_id, fstate = self.convert_to_segment_state(np.array([self._segments_s_offsets[-1], 0,0,0,0,0]))
+            anchor_segment_s = fstate[FS_SX]
 
         anchor_fstate = np.array([anchor_segment_s, 0, 0, 0, 0, 0])
         anchor_gff_fstate = self.convert_from_segment_state(anchor_fstate, anchor_segment_id)
@@ -350,5 +348,10 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         for point_idx in range(anchor_point, self.k.shape[0], K_SEGMENT_POINTS_NUM):
             till_idx = min(point_idx + K_SEGMENT_POINTS_NUM, self.k.shape[0])
             smooth_k[point_idx:till_idx] = np.max(np.abs(self.k[point_idx:till_idx, 0]))
+
+        if not self.has_segment_id(anchor_segment_id) or \
+                (anchor_segment_id == self._segment_ids[0] and anchor_segment_s < self._segments_s_start[0]):
+            anchor_segment_id = self._segment_ids[-1]  # take the last segment
+            anchor_segment_s = 0.
 
         return smooth_k, anchor_segment_id, anchor_segment_s
