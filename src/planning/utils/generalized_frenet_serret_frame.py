@@ -7,7 +7,8 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSubsegmen
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_GeneralizedFrenetSerretFrame import TsSYSGeneralizedFrenetSerretFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, MAX_HORIZON_DISTANCE
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, MAX_HORIZON_DISTANCE, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.exceptions import OutOfSegmentFront
@@ -40,8 +41,7 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
 
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
-    def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray,
-                 k: np.ndarray, k_tag: np.ndarray, k_smooth: np.ndarray,
+    def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
@@ -50,7 +50,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
-        self._k_smooth = k_smooth
+        self._k_smooth = None
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
@@ -331,7 +331,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def calc_smooth_curvatuer_segments(self, anchor_segment_id: int, anchor_segment_s: float) -> (np.array, int, float):
 
         if anchor_segment_id == 0:  # if there is no anchor
-            # take the last GFF point
+            # take anchor to be the last GFF point
             anchor_segment_id, fstate = self.convert_to_segment_state(np.array([self._segments_s_offsets[-1], 0,0,0,0,0]))
             anchor_segment_s = fstate[FS_SX]
 
@@ -339,19 +339,22 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         anchor_gff_fstate = self.convert_from_segment_state(anchor_fstate, anchor_segment_id)
         anchor_point = self.get_closest_index_on_frame(anchor_gff_fstate[:(FS_SX+1)])[0][0]
 
-        K_SEGMENT_POINTS_NUM = 280
+        smooth_k_window_size = int(np.round(8 * BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED / self._ds[0]))
 
+        # calculate smoothed curvatures from the anchor backward
         smooth_k = np.copy(self.k[:, 0])
-        for point_idx in range(anchor_point, 0, -K_SEGMENT_POINTS_NUM):
-            from_idx = max(point_idx - K_SEGMENT_POINTS_NUM, 0)
+        for point_idx in range(anchor_point, 0, -smooth_k_window_size):
+            from_idx = max(point_idx - smooth_k_window_size, 0)
             smooth_k[from_idx:point_idx] = np.max(np.abs(self.k[from_idx:point_idx, 0]))
-        for point_idx in range(anchor_point, self.k.shape[0], K_SEGMENT_POINTS_NUM):
-            till_idx = min(point_idx + K_SEGMENT_POINTS_NUM, self.k.shape[0])
+
+        # calculate smoothed curvatures from the anchor forward
+        for point_idx in range(anchor_point, self.k.shape[0], smooth_k_window_size):
+            till_idx = min(point_idx + smooth_k_window_size, self.k.shape[0])
             smooth_k[point_idx:till_idx] = np.max(np.abs(self.k[point_idx:till_idx, 0]))
 
-        if not self.has_segment_id(anchor_segment_id) or \
-                (anchor_segment_id == self._segment_ids[0] and anchor_segment_s < self._segments_s_start[0]):
-            anchor_segment_id = self._segment_ids[-1]  # take the last segment
-            anchor_segment_s = 0.
+            # advance the anchor point forward
+            anchor_gff_s = self.get_s_from_index_on_frame(np.array([anchor_point]), np.array([0]))[0]
+            anchor_segment_id, fstate = self.convert_to_segment_state(np.array([anchor_gff_s, 0, 0, 0, 0, 0]))
+            anchor_segment_s = fstate[FS_SX]
 
         return smooth_k, anchor_segment_id, anchor_segment_s
