@@ -288,47 +288,38 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
     def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> (
     int, float):
         """
-        Finds speed limits in upcoming points
+        Finds speed limits of the lanes ahead
         :param behavioral_state
         :param action_spec:
-        :return: tuple of (Frenet indicies, speed limits at those indicies)
+        :return: tuple of (Frenet indicies of start points of lanes ahead, speed limits at those indicies)
         """
         # get the lane the action_spec wants to drive in
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
         if action_spec.s >= target_lane_frenet.s_max:
             self._raise_false()
 
-        # get the worst case braking distance from spec.v to 0
-        max_braking_distance = self.distances[
-            FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
+        # get all subsegments in current GFF and get the ones that contain points ahead of the action_spec.s
+        subsegments = target_lane_frenet.segments
+        subsegments_ahead = [subsegment for subsegment in subsegments if
+                             subsegment.e_i_SStart > action_spec.s
+                             or ((subsegment.e_i_SStart < action_spec.s + 1) and (subsegment.e_i_SEnd > action_spec.s + 1))]
 
-        # braking distance should never be negative
-        if max_braking_distance < 0:
-            self._raise_false()
+        # if there is only one lane segment, there will not be any speed limit changes
+        if len(subsegments) == 1:
+            self.raise_true()
+        # if no lane segments ahead, there will be no speed limit changes
+        if len(subsegments_ahead) == 0:
+            self.raise_true()
 
-        # if max braking distance is 0, the action represents a stop or a very slow maneuver,
-        # which will never violate the speed limit
-        if max_braking_distance == 0:
-            self._raise_true()
+        # get lane initial s points and lane ids from subsegments
+        # use action_spec.s + 1 instead of the lane's starting s
+        lanes_s_start_ahead = [max(subsegment.e_i_SStart, action_spec.s+1) for subsegment in subsegments_ahead]
+        lane_ids = [subsegment.e_i_SegmentID for subsegment in subsegments_ahead]
 
-        # look until the end of the lane or until the worst case braking distance, whichever is closer
-        max_relevant_s = min(action_spec.s + max_braking_distance, target_lane_frenet.s_max)
-
-        # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
-        beyond_spec_range = target_lane_frenet.get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0] + 1
-        # get s for all points in the range
-        points_s = target_lane_frenet.get_s_from_index_on_frame(
-            np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
-
-        # create Frenet2D states for convert_to_segment_states
-        beyond_spec_gff_states = np.array([[s, 0., 0., 0., 0., 0.] for s in points_s])
-
-        # get lane ids of the beyond spec points
-        lane_ids, segment_states = target_lane_frenet.convert_to_segment_states(beyond_spec_gff_states)
-
-        # find speed limits of beyond spec points (read as KPH from the map)
+        # find speed limits of points at the start of the lane (read as KPH from the map)
         speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed / KPH_MPS_CONVERSION_CONSTANT for lane_id in lane_ids]
-        return (np.array(range(beyond_spec_range[0], beyond_spec_range[1])), np.array(speed_limits))
+
+        return (np.array(lanes_s_start_ahead), np.array(speed_limits))
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
         """
