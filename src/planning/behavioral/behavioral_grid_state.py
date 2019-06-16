@@ -103,12 +103,16 @@ class BehavioralGridState:
                 corresponding extended_lane_frame
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
+
+        # filter out off map dynamic objects
+        on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
+
         # calculate objects' segment map_states
-        object_map_states = [obj.map_state for obj in dynamic_objects if not obj.off_map]
+        object_map_states = [obj.map_state for obj in on_map_dynamic_objects if not obj.off_map]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj = np.full(len(dynamic_objects), None)
+        rel_lanes_per_obj = np.full(len(on_map_dynamic_objects), None)
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
@@ -120,7 +124,7 @@ class BehavioralGridState:
             extended_lane_frames, projected_ego_fstates, object_map_states)
 
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
-                for i, obj in enumerate(dynamic_objects) if rel_lanes_per_obj[i] is not None]
+                for i, obj in enumerate(on_map_dynamic_objects) if rel_lanes_per_obj[i] is not None]
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
