@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
     ActionRecipe, RelativeLane, ActionType, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, \
     FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle, StaticTrafficFlowControlFilter, \
-    BeyondSpecStaticTrafficFlowControlFilter
+    BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as FilterRecipeIfNone
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -30,6 +30,35 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode, \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
     behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_oval_track
+
+
+#todo : rename
+def test_filter_FilterByVelocity(
+        behavioral_grid_state_with_objects_for_acceleration_towards_vehicle,
+        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
+    """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx """
+    logger = AV_Logger.get_logger()
+    predictor = RoadFollowingPredictor(logger)
+    filtering = RecipeFiltering(filters=[], logger=logger)
+    behavioral_grid_state_with_objects_for_acceleration_towards_vehicle.m
+
+    # only look at the same lane, front cell actions
+    actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
+
+    expected_filter_results = np.array([False, True, False], dtype=bool)
+    dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
+
+    action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
+                                                                   behavioral_grid_state_with_objects_for_acceleration_towards_vehicle)
+
+    action_spec_filter = ActionSpecFiltering(filters=[FilterForLaneSpeedLimits()], logger=logger)
+
+    filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
+                                                            behavioral_grid_state_with_objects_for_acceleration_towards_vehicle)
+
+    np.testing.assert_array_equal(filter_results, expected_filter_results)
+
+
 
 
 def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control,
@@ -81,6 +110,10 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
     assert actual == expected
 
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, route_plan_20_30
+
+
+
+
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)

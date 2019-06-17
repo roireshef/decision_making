@@ -29,6 +29,7 @@ class FilterIfNone(ActionSpecFilter):
         return [(action_spec and behavioral_state) is not None and ~np.isnan(action_spec.t) for action_spec in action_specs]
 
 
+@six.add_metaclass(ABCMeta)
 class TrajectoryBuildingActionSpecFilter(ActionSpecFilter):
 
     def build_trajectories(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState,
