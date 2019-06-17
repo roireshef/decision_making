@@ -298,6 +298,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
         if action_spec.s >= target_lane_frenet.s_max:
             self._raise_false()
 
+
         # get all subsegments in current GFF and get the ones that contain points ahead of the action_spec.s
         subsegments = target_lane_frenet.segments
         subsegments_ahead = [subsegment for subsegment in subsegments if
@@ -306,10 +307,10 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
 
         # if there is only one lane segment, there will not be any speed limit changes
         if len(subsegments) == 1:
-            self.raise_true()
+            self._raise_true()
         # if no lane segments ahead, there will be no speed limit changes
         if len(subsegments_ahead) == 0:
-            self.raise_true()
+            self._raise_true()
 
         # get lane initial s points and lane ids from subsegments
         # use action_spec.s + 1 instead of the lane's starting s
