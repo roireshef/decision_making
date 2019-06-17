@@ -178,7 +178,7 @@ class FilterForLaneSpeedLimits(TrajectoryBuildingActionSpecFilter):
         conforms_end_specs = [action_spec.v for action_spec in action_specs] <= lane_segment_velocity_limits[:, -1]
         lon_velocity = ctrajectories[:, :, C_V]
         conforms_trajectories = lon_velocity <= lane_segment_velocity_limits + EPS
-        return np.logical_and(conforms_end_specs, conforms_trajectories)
+        return np.logical_and(conforms_end_specs, conforms_trajectories.all(axis=-1))
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
