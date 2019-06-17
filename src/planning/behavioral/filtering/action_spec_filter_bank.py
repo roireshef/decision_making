@@ -394,7 +394,6 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         if action_spec.s >= target_lane_frenet.s_max:
             self._raise_false()
 
-
         # get all subsegments in current GFF and get the ones that contain points ahead of the action_spec.s
         subsegments = target_lane_frenet.segments
         subsegments_ahead = [subsegment for subsegment in subsegments if
@@ -410,10 +409,10 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
 
         # get lane initial s points and lane ids from subsegments ahead
         lanes_s_start_ahead = [subsegment.e_i_SStart for subsegment in subsegments_ahead]
-        lane_ids = [subsegment.e_i_SegmentID for subsegment in subsegments_ahead]
+        lane_ids_ahead = [subsegment.e_i_SegmentID for subsegment in subsegments_ahead]
 
         # find speed limits of points at the start of the lane (read as KPH from the map)
-        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed / KPH_MPS_CONVERSION_CONSTANT for lane_id in lane_ids]
+        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed / KPH_MPS_CONVERSION_CONSTANT for lane_id in lane_ids_ahead]
 
         return (np.array(lanes_s_start_ahead), np.array(speed_limits))
 
@@ -432,7 +431,7 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
             self._raise_true()
 
         # get speed limits after the action_spec.s
-        beyond_spec_idx, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
+        lane_s_start_ahead, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
         # find points that require braking after spec
         slow_points = np.where(np.array(speed_limits) < action_spec.v)[0]
 
@@ -440,5 +439,5 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         if len(slow_points) == 0:
             self._raise_true()
 
-        return beyond_spec_idx[slow_points], speed_limits[slow_points]
+        return lane_s_start_ahead[slow_points], speed_limits[slow_points]
 
