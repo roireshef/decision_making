@@ -33,14 +33,15 @@ class FilterIfNone(ActionSpecFilter):
 class TrajectoryBuildingActionSpecFilter(ActionSpecFilter):
 
     def build_trajectories(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState,
-                           build_lane_segment_velocities=False):
+                           build_lane_segment_velocities=False) -> (np.ndarray, np.ndarray):
         """
         Builds a baseline trajectory out of the action specs (terminal states)
 
         :param action_specs: list of action specs
         :param behavioral_state:
         :param build_lane_segment_velocities: Skip building the lane-segment-based velocities
-        :return:
+        :return: A tuple of (cartesian_trajectories, lane_based_velocity_limits) the latter is all zero
+        if build_lane_segment_velocities is False
         """
         # group all specs and their indices by the relative lanes
         specs_by_rel_lane = defaultdict(list)
@@ -52,6 +53,7 @@ class TrajectoryBuildingActionSpecFilter(ActionSpecFilter):
 
         time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
         ctrajectories = np.zeros((len(action_specs), len(time_samples), 6), dtype=float)
+        # velocity limits according to lane segments
         lane_segment_velocity_limits = np.zeros((len(action_specs), len(time_samples)), dtype=float)
         # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
         for rel_lane, lane_specs in specs_by_rel_lane.items():
