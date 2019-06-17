@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX
+from decision_making.src.planning.types import FS_DX, FS_SX, C_V
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -53,7 +53,6 @@ class FilterForKinematics(ActionSpecFilter):
 
         time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
         ctrajectories = np.zeros((len(action_specs), len(time_samples), 6), dtype=float)
-
         # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
         for rel_lane, lane_specs in specs_by_rel_lane.items():
             specs_t = np.array([spec.t for spec in lane_specs])
@@ -82,6 +81,8 @@ class FilterForKinematics(ActionSpecFilter):
         return list(KinematicUtils.filter_by_cartesian_limits(
             ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS,
             BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
+
+
 
     @staticmethod
     def pad_trajectories_beyond_spec(action_specs: List[ActionSpec], ftrajectories_s: np.array, ftrajectories_d: np.array,
@@ -121,6 +122,80 @@ class FilterForKinematics(ActionSpecFilter):
 
         # return full Frenet trajectories
         return np.c_[ftrajectories_s, ftrajectories_d]
+
+
+class FilterForLaneSpeedLimits(ActionSpecFilter):
+
+    @prof.ProfileFunction()
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        """
+        Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
+            - max longitudinal position (available in the reference frame)
+            - longitudinal velocity limits - both in Frenet (analytical) and Cartesian (by sampling)
+            - longitudinal acceleration limits - both in Frenet (analytical) and Cartesian (by sampling)
+            - lateral acceleration limits - in Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
+            conceptually "straightens" the road's shape.
+        :param action_specs: list of action specs
+        :param behavioral_state:
+        :return: boolean list per action spec: True if a spec passed the filter
+        """
+        # group all specs and their indices by the relative lanes
+        specs_by_rel_lane = defaultdict(list)
+        indices_by_rel_lane = defaultdict(list)
+        for i, spec in enumerate(action_specs):
+            if spec is not None:
+                specs_by_rel_lane[spec.relative_lane].append(spec)
+                indices_by_rel_lane[spec.relative_lane].append(i)
+
+        time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
+        ctrajectories = np.zeros((len(action_specs), len(time_samples), 6), dtype=float)
+        lane_segment_velocity_limits = np.zeros((len(action_specs), len(time_samples)), dtype=float)
+        # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
+        for rel_lane, lane_specs in specs_by_rel_lane.items():
+            specs_t = np.array([spec.t for spec in lane_specs])
+            pad_mode = np.array([spec.only_padding_mode for spec in lane_specs])
+            goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
+
+            frenet = behavioral_state.extended_lane_frames[rel_lane]  # the target GFF
+            ego_fstate = behavioral_state.projected_ego_fstates[rel_lane]
+            ego_fstates = np.tile(ego_fstate, len(lane_specs)).reshape((len(lane_specs), -1))
+
+            # calculate polynomials
+            poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(specs_t, ego_fstates, goal_fstates, pad_mode)
+
+            # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
+            ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_samples)
+            ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_samples)
+
+            # Pad (extrapolate) short trajectories from spec.t until minimal action time.
+            # Beyond the maximum between spec.t and minimal action time the Frenet trajectories are set to zero.
+            ftrajectories = FilterForKinematics.pad_trajectories_beyond_spec(
+                lane_specs, ftrajectories_s, ftrajectories_d, specs_t, pad_mode)
+
+            # convert Frenet trajectories to cartesian trajectories
+            ctrajectories[indices_by_rel_lane[rel_lane]] = frenet.ftrajectories_to_ctrajectories(ftrajectories)
+            lane_segment_velocity_limits[indices_by_rel_lane[rel_lane]] = FilterForKinematics.get_nominal_speeds(
+                ftrajectories_s, frenet)
+
+
+
+        conforms_end_specs = [action_spec.v for action_spec in action_specs] <= lane_segment_velocity_limits[:, -1]
+        lon_velocity = ctrajectories[:, :, C_V]
+        conforms_trajectories = lon_velocity <= lane_segment_velocity_limits + EPS
+        return np.logical_and(conforms_end_specs, conforms_trajectories)
+
+    @staticmethod
+    def get_nominal_speeds(ftrajectories_s: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+        """
+        :param ftrajectories_s: The frenet trajectories to which to calculate the nominal speeds (only s)
+        :return: A matrix of Trajectories x Time_samples x Max_limits
+        """
+        #patched_lane_ids = [13148163, 19670531, 58375172]
+        # get lane_the ids
+        lane_ids_list = frenet.convert_to_segment_states(ftrajectories_s)[0]
+        max_velocities = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
+                          for lane_id in np.unique(lane_ids_list)}
+        return np.vectorize(max_velocities.get)(lane_ids_list)
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
