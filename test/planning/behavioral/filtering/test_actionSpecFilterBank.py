@@ -95,6 +95,13 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
 ]))
+
+def dummy_get_lane(id):
+    class dummy_lane:
+        e_v_nominal_speed = 40/3.6
+    return dummy_lane()
+
+@patch('decision_making.src.utils.map_utils.MapUtils.get_lane', dummy_get_lane)
 def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_acceleration_towards_vehicle,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):

@@ -28,6 +28,20 @@ class FilterIfNone(ActionSpecFilter):
 
 
 class FilterForKinematics(ActionSpecFilter):
+
+    @staticmethod
+    def get_nominal_speeds(ftrajectories_s: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+        """
+        :param ftrajectories_s: The frenet trajectories to which to calculate the nominal speeds (only s)
+        :return: A matrix of Trajectories x Time_samples x Max_limits
+        """
+        # get lane_the ids
+        lane_ids_list = frenet.convert_to_segment_states(ftrajectories_s)[0]
+        max_velocities = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
+                          for lane_id in np.unique(lane_ids_list)}
+        return np.vectorize(max_velocities.get)(lane_ids_list)
+
+
     @prof.ProfileFunction()
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
@@ -51,7 +65,7 @@ class FilterForKinematics(ActionSpecFilter):
 
         time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
         ctrajectories = np.zeros((len(action_specs), len(time_samples), 6), dtype=float)
-
+        lane_segment_velocity_limits = np.zeros((len(action_specs), len(time_samples)), dtype=float)
         # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
         for rel_lane, lane_specs in specs_by_rel_lane.items():
             specs_t = np.array([spec.t for spec in lane_specs])
@@ -76,9 +90,13 @@ class FilterForKinematics(ActionSpecFilter):
 
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = frenet.ftrajectories_to_ctrajectories(ftrajectories)
+            lane_segment_velocity_limits[indices_by_rel_lane[rel_lane]] = FilterForKinematics.get_nominal_speeds(
+                ftrajectories_s, frenet)
 
         return list(KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, lane_segment_velocity_limits))
+
+
 
     @staticmethod
     def pad_trajectories_beyond_spec(action_specs: List[ActionSpec], ftrajectories_s: np.array, ftrajectories_d: np.array,

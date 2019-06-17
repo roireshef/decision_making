@@ -42,7 +42,7 @@ class KinematicUtils:
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
                                    lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
-                                   desired_velocity: float) -> np.ndarray:
+                                   desired_velocity: np.ndarray) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -50,7 +50,8 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
-        :param desired_velocity: desired longitudinal speed [m/sec]
+        :param desired_velocity: desired longitudinal speed [m/sec] as a matrix calculated per trajectory and according
+         to the velocity limit of the lane segment
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
