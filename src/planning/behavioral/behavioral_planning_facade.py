@@ -79,9 +79,14 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
             state = self._get_current_state()
+            patched_lane_ids = [13148163, 19670531, 58375172]
+            if state.ego_state.map_state.lane_id in patched_lane_ids:
+                print(f' ** state in patched lane_id = {state.ego_state.map_state.lane_id}')
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
+            for lane in patched_lane_ids:
+                MapUtils.get_lane(lane).e_v_nominal_speed = 5
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with

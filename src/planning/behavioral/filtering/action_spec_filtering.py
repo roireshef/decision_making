@@ -51,6 +51,7 @@ class ActionSpecFiltering:
 
             # a mask only on the valid action specs
             current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
+            print(f'{action_spec_filter.__class__.__name__}: {current_mask}')
 
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask

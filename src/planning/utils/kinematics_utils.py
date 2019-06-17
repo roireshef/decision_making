@@ -2,13 +2,14 @@ import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     LON_ACC_LIMITS, EPS
 from decision_making.src.global_constants import MAX_CURVATURE
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
     FS_DX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
+from typing import List
 
 
 class KinematicUtils:
@@ -42,7 +43,7 @@ class KinematicUtils:
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
                                    lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
-                                   desired_velocity: np.ndarray) -> np.ndarray:
+                                   desired_velocity: float) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -50,8 +51,7 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
-        :param desired_velocity: desired longitudinal speed [m/sec] as a matrix calculated per trajectory and according
-         to the velocity limit of the lane segment
+        :param desired_velocity: desired longitudinal speed [m/sec]
         :return: A boolean numpy array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
@@ -66,7 +66,7 @@ class KinematicUtils:
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_desired = np.logical_or(
             np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= desired_velocity + EPS), axis=1),
-            (lon_acceleration[:, 0] > lon_acceleration[:, 1]))
+            (lon_acceleration[:, 0] > lon_acceleration[:, 1])),
 
         # check velocity and acceleration limits
         # note: while we filter any trajectory that exceeds the velocity limit, we allow trajectories to break the
