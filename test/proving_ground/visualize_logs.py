@@ -56,7 +56,11 @@ def plot_dynamics(log_file_path: str):
             break
 
         if '_scene_dynamic_callback' in text:
-            state_str = text.split('Publishing State ')[1]
+            split_str = text.split('Publishing State ')
+            if len(split_str) < 2:
+                cnt += 1
+                continue
+            state_str = split_str[1]
             try:
                 state_dict = ast.literal_eval(state_str)
             except ValueError as e:
@@ -78,8 +82,12 @@ def plot_dynamics(log_file_path: str):
                 euclid_dist.append(0.0)
             else:
                 other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
-                other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
-                other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
+                if dyn_obj_list[0]['_cached_map_state'] is not None:
+                    other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
+                    other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
+                else:
+                    other_sv.append(0)
+                    other_sx.append(0)
                 ego_cx_cy = np.array(state_dict['ego_state']['_cached_cartesian_state']['array'][C_X: C_Y + 1])
                 other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
                 euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
