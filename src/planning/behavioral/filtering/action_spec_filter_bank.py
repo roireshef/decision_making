@@ -367,7 +367,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
             self._raise_true()
         return beyond_spec_s[slow_points], points_velocity_limits[slow_points]
 
-class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
+class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
     """
     Checks if the speed limit will be exceeded.
     This filter assumes that the STANDARD aggressiveness will be used, and only checks the points that are before
@@ -379,8 +379,7 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
     """
 
     def __init__(self):
-        super(BeyondSpecSpeedLimitFilter, self).__init__(extend_short_action_specs=True)
-        self.distances = BrakingDistances.create_braking_distances(aggresiveness_level=AggressivenessLevel.STANDARD.value)
+        super(BeyondSpecSpeedLimitFilter, self).__init__()
 
     def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> (
     int, float):
@@ -443,37 +442,3 @@ class BeyondSpecSpeedLimitFilter(ConstraintSpecFilter):
 
         return beyond_spec_idx[slow_points], speed_limits[slow_points]
 
-    def _target_function(self, behavioral_state: BehavioralGridState,
-                         action_spec: ActionSpec, points: any):
-        """
-        Returns braking distances required by lower speed limits
-        :param behavioral_state:
-        :param action_spec:
-        :param points:
-        :return: braking distances needed to slow down enough for the speed limits
-        """
-        _, speed_limits = points
-        brake_dist = self.distances[FILTER_V_0_GRID.get_index(action_spec.v), :]
-        return brake_dist[FILTER_V_T_GRID.get_indices(speed_limits)]
-
-    def _constraint_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: any):
-        """
-        Returns distances to points that have a slower speed limit
-        :param behavioral_state:
-        :param action_spec:
-        :param points:
-        :return: distances from current position to lower speed limit areas
-        """
-        slow_points_idx, _ = points
-        frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
-        dist_to_points = frenet.get_s_from_index_on_frame(slow_points_idx, delta_s=0) - action_spec.s
-        return dist_to_points
-
-    def _condition(self, target_values, constraints_values) -> bool:
-        """
-        Checks that there is enough distance to slow down for speed limit
-        :param target_values:
-        :param constraints_values:
-        :return:
-        """
-        return np.all(target_values < constraints_values)
