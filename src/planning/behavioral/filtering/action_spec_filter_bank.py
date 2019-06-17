@@ -77,9 +77,6 @@ class FilterForKinematics(ActionSpecFilter):
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = frenet.ftrajectories_to_ctrajectories(ftrajectories)
 
-            # nominal_points_idxs, _ = frenet.get_closest_index_on_frame(ftrajectories[..., FS_SX])
-            # ctrajectories[..., C_K] = behavioral_state.smooth_k[nominal_points_idxs]
-
         return list(KinematicUtils.filter_by_cartesian_limits(
             ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
 
@@ -325,8 +322,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
     def __init__(self):
         super().__init__()
 
-    def _get_velocity_limits_of_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
-                                       frenet_frame: GeneralizedFrenetSerretFrame) -> \
+    def _get_velocity_limits_of_points(self, action_spec: ActionSpec, frenet_frame: GeneralizedFrenetSerretFrame) -> \
             [np.array, np.array]:
         """
         Returns s and velocity limits of the points that needs to slow down
@@ -344,7 +340,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get s for all points in the range
         points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
         # get velocity limits for all points in the range
-        curvatures = np.maximum(np.abs(behavioral_state.smooth_k[beyond_spec_range[0]:beyond_spec_range[1]]), EPS)
+        curvatures = np.maximum(np.abs(frenet_frame._k_smooth[beyond_spec_range[0]:beyond_spec_range[1]]), EPS)
         points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
         return points_s, points_velocity_limits
 
@@ -359,8 +355,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
             # When spec velocity is 0, there is no problem to "brake" beyond spec. In this case the filter returns True.
             self._raise_true()
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        beyond_spec_s, points_velocity_limits = self._get_velocity_limits_of_points(behavioral_state, action_spec,
-                                                                                    target_lane_frenet)
+        beyond_spec_s, points_velocity_limits = self._get_velocity_limits_of_points(action_spec, target_lane_frenet)
         slow_points = np.where(points_velocity_limits < action_spec.v)[0]  # points that require braking after spec
         # set edge case
         if len(slow_points) == 0:

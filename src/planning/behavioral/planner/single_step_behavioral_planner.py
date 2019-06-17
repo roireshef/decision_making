@@ -97,10 +97,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
-        behavioral_state.smooth_k, self.anchor_segment_id, self.anchor_segment_s = \
-            behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE].calc_smooth_curvatuer_segments(
-                self.anchor_segment_id, self.anchor_segment_s)
-
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 

@@ -57,7 +57,6 @@ class BehavioralGridState:
         self.ego_state = ego_state
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
-        self.smooth_k = None
 
     @classmethod
     @prof.ProfileFunction()
