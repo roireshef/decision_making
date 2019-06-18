@@ -230,46 +230,6 @@ def state_with_objects_for_filtering_exact_tracking_mode():
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
-@pytest.fixture(scope='function')
-def state_with_segment_limits():
-
-    scene_static_with_limits = scene_static_pg_split()
-    SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
-
-    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_v_nominal_speed = 10
-    SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
-
-    road_id = 20
-
-    # Stub of occupancy grid
-    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-
-    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
-
-    # Ego state
-    ego_lane_lon = EGO_LANE_LON
-    ego_vel = 10
-    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
-
-    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
-
-    # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
-    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
-    obj_vel = 11
-
-    dynamic_objects: List[DynamicObject] = list()
-    obj_id = 1
-
-    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
-    dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
-                                                    size=car_size, confidence=1.)
-
-    dynamic_objects.append(dynamic_object)
-
-    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
@@ -391,6 +351,7 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 
+
 @pytest.fixture(scope='function')
 def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
@@ -441,6 +402,56 @@ def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
                                                 route_plan_20_30, None)
 
+@pytest.fixture(scope='function')
+def state_with_segment_limits():
+
+    scene_static_with_limits = scene_static_pg_split()
+    SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
+
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_v_nominal_speed = 10
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_v_nominal_speed = 25
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[6].e_v_nominal_speed = 15
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[9].e_v_nominal_speed = 5
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
+
+    road_id = 20
+
+    # Stub of occupancy gridFilterForLaneSpeedLimits
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    # Ego state
+    ego_lane_lon = EGO_LANE_LON
+    ego_vel = 10
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+
+    # Generate objects at the following locations:
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
+    obj_vel = 11
+
+    dynamic_objects: List[DynamicObject] = list()
+    obj_id = 1
+
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
+    dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
+                                                    size=car_size, confidence=1.)
+
+    dynamic_objects.append(dynamic_object)
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+@pytest.fixture(scope='function')
+def behavioral_grid_state_with_segments_limits(state_with_segment_limits: State, route_plan_20_30: RoutePlan):
+    yield BehavioralGridState.create_from_state(state_with_segment_limits,
+                                                route_plan_20_30, None)
+
 
 @pytest.fixture(scope='function')
 def follow_vehicle_recipes_towards_front_cells():
@@ -455,4 +466,5 @@ def follow_lane_recipes():
     yield [StaticActionRecipe(RelativeLane.SAME_LANE, velocity, agg)
            for velocity in velocity_grid
            for agg in AggressivenessLevel]
+
 
