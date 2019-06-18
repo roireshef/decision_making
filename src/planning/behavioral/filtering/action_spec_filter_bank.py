@@ -391,8 +391,6 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         """
         # get the lane the action_spec wants to drive in
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
-        if action_spec.s >= target_lane_frenet.s_max:
-            self._raise_false()
 
         # get all subsegments in current GFF and get the ones that contain points ahead of the action_spec.s
         subsegments = target_lane_frenet.segments
@@ -400,9 +398,6 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
                              subsegment.e_i_SStart > action_spec.s]
 
 
-        # if there is only one lane segment, there will not be any speed limit changes
-        if len(subsegments) == 1:
-            self._raise_true()
         # if no lane segments ahead, there will be no speed limit changes
         if len(subsegments_ahead) == 0:
             self._raise_true()
@@ -423,8 +418,6 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         :param action_spec:
         :return: points that require braking after the spec
         """
-        if action_spec is None:
-            self._raise_false()
 
         # skip checking speed limits if the vehicle will be stopped
         if action_spec.v == 0:
