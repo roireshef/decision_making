@@ -64,20 +64,22 @@ class ActionSpecTrajectoryBuilder:
             ctrajectories[indices_by_rel_lane[rel_lane]] = frenet.ftrajectories_to_ctrajectories(ftrajectories)
             if build_lane_segment_velocities:
                 lane_segment_velocity_limits[indices_by_rel_lane[rel_lane]] = ActionSpecTrajectoryBuilder.\
-                    get_nominal_speeds(ftrajectories, frenet)
-            return ctrajectories, lane_segment_velocity_limits
+                    get_nominal_lane_speed_limits(ftrajectories, frenet)
+        return ctrajectories, lane_segment_velocity_limits
 
 
     @staticmethod
-    def get_nominal_speeds(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+    def get_nominal_lane_speed_limits(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
         :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
-        :return: A matrix of Trajectories x Time_samples x Max_limits
+        :return: A matrix of (Trajectories x Time_samples) of lane-based maximal limits (e_v_nominal_speed).
         """
         # get lane_the ids
         lane_ids_list = frenet.convert_to_segment_states(ftrajectories)[0]
         max_velocities = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
                           for lane_id in np.unique(lane_ids_list)}
+        # creates an ndarray with the same shape as of `lane_ids_list`,
+        # where each element is replaced by the maximal speed limit (according to lane)
         return np.vectorize(max_velocities.get)(lane_ids_list)
 
     @staticmethod
