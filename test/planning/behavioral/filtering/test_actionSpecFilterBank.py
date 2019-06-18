@@ -301,11 +301,6 @@ def test_filter_aggressiveFollowScenario_allActionsAreInvalid(
 def test_filter_LaneSpeedLimits_filterResultsMatchExpecte(
         behavioral_grid_state_with_segments_limits,
         follow_lane_recipes: List[StaticActionRecipe]):
-    """
-    # actions [9, 12, 15] are None after specify
-    # actions [6-17] are static, aiming to higher velocity - which hits the front vehicle
-    # actions 7, 8 are safe and can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
-    """
 
     logger = AV_Logger.get_logger()
 
