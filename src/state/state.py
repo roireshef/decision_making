@@ -198,21 +198,21 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         """
         return cls(obj_id, timestamp, None, map_state, size, confidence, off_map)
 
-    def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None, off_map=False):
-        # type: (CartesianExtendedState, Optional[float], Optional[bool]) -> DynamicObject
+    def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
+        # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
         return self.__class__.create_from_cartesian_state(self.obj_id,
                                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
-                                                          self.size, self.confidence, off_map)
+                                                          self.size, self.confidence, self.off_map)
 
-    def clone_from_map_state(self, map_state, timestamp_in_sec=None, off_map=False):
-        # type: (MapState, Optional[float], Optional[bool]) -> DynamicObject
+    def clone_from_map_state(self, map_state, timestamp_in_sec=None):
+        # type: (MapState, Optional[float]) -> DynamicObject
         """clones self while overriding map_state and optionally timestamp"""
         return self.create_from_map_state(self.obj_id,
                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
-                                          self.size, self.confidence, off_map)
+                                          self.size, self.confidence, self.off_map)
 
     def serialize(self):
         # type: () -> TsSYSDynamicObject

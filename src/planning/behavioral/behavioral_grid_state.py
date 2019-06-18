@@ -108,7 +108,7 @@ class BehavioralGridState:
         on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
 
         # calculate objects' segment map_states
-        object_map_states = [obj.map_state for obj in on_map_dynamic_objects if not obj.off_map]
+        object_map_states = [obj.map_state for obj in on_map_dynamic_objects]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
