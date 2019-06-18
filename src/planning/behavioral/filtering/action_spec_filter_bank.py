@@ -64,7 +64,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         """
         ctrajectories, lane_segment_velocity_limits = ActionSpecTrajectoryBuilder.build_trajectories(action_specs,
                                                                                                      behavioral_state,
-                                                                                                     get_lane_segment_velocities=True)
+                                                                                                     get_trajectory_lane_speed_limits=True)
         lon_velocity = ctrajectories[:, :, C_V]
         conforms_trajectories = lon_velocity <= lane_segment_velocity_limits + EPS
         return list(np.all(conforms_trajectories, axis=-1))
