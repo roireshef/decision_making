@@ -29,7 +29,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     state_with_objects_for_filtering_almost_tracking_mode, \
     behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode, \
     behavioral_grid_state_with_segments_limits, \
-    state_with_segment_limits, \
+    state_for_testing_lanes_speed_limits_violations, \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
     behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_oval_track
 
@@ -298,16 +298,38 @@ def test_filter_aggressiveFollowScenario_allActionsAreInvalid(
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
 ]))
-def test_filter_LaneSpeedLimits_filterResultsMatchExpecte(
+def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimits_filterResultsMatchExpected(
         behavioral_grid_state_with_segments_limits,
         follow_lane_recipes: List[StaticActionRecipe]):
 
     logger = AV_Logger.get_logger()
+    # The scene_static that is being used, is in accordance to whatever happens in behavioral_grid_state_
+    # with_segments_limits fixture
+    scene_static_with_limits = SceneStaticModel.get_instance().get_scene_static()
+    # The following are 4 consecutive lane segments with varying speed limits (ego starts at the end of [0])
+    # These are the s-values that correspond to lane transitions on the GFF:
+    # [0.0, 100.84134201631973, 220.48438762415998, 343.9575891327402, 466.0989153990629]
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_v_nominal_speed = 25
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_v_nominal_speed = 25
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[6].e_v_nominal_speed = 15
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[9].e_v_nominal_speed = 25
+    SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
 
     filtering = RecipeFiltering(filters=[], logger=logger)
+    # note: first lane segment speed limit is almost irrelevant because we start at the end of this segment
+    expected_filter_results = np.array([True, True, True,   # v_T=0 (Calm, Standard, Aggressive)  - All Pass (not arriving at [9])
+                                        True, True, True,   # v_T=6 (Calm, Standard, Aggressive)  - All Pass (not arriving at [9])
+                                        True, True, True,   # v_T=12 (Calm, Standard, Aggressive) - All Pass (not arriving at [9])
+                                        False,              # This one (calm) supposed to end at the third ([6]) lane segment with v_T=18>15
+                                        True, True,         # (std,agg) v_T=18 - Pass (not arriving at [6])
+                                        False,              # (calm) action_spec is None
+                                        False,              # (std.) This one supposed to end at the third ([6]) lane segment with v_T=24>15
+                                        True,               # (agg.) v_T=24  - Pass (not arriving at [6])
+                                        False,              # (calm) action_spec is None
+                                        False,              # (std.) This one supposed to end at the fourth ([9]) lane segment with v_T=30>15
+                                        False               # (agg.) This one supposed to end at the third ([6]) lane segment with v_T=30>15
+                                        ], dtype=bool)
 
-    expected_filter_results = np.array([True, True, True, True, True, True, True, True, True,
-                                        False, True, True, False, False, True, False, False, False], dtype=bool)
     static_action_space = StaticActionSpace(logger, filtering=filtering)
 
     action_specs = static_action_space.specify_goals(follow_lane_recipes,
