@@ -107,17 +107,17 @@ def test_prepareVisualizationMsg_withObjects_returnsValidMsg(state):
     assert len(msg.data.as_actors_predictions) == len(state.dynamic_objects)
 
 
-# def test_prepareVisualizationMsg_withoutObjects_returnsValidMsg(state):
-#     route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
-#     frenet = FrenetSerret2DFrame.fit(route_points)
-#     gff = GeneralizedFrenetSerretFrame.build([frenet], [FrenetSubSegment(1, 0, frenet.s_max)])
+def test_prepareVisualizationMsg_withoutObjects_returnsValidMsg(state):
+    route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
+    frenet = FrenetSerret2DFrame.fit(route_points)
+    gff = GeneralizedFrenetSerretFrame.build([frenet], [FrenetSubSegment(1, 0, frenet.s_max)])
 
-#     ctrajectories = np.array([[[1, 2, 3, 4, 5, 6]]])
-#     planning_horizon = 0.1
+    ctrajectories = np.array([[[1, 2, 3, 4, 5, 6]]])
+    planning_horizon = 0.1
 
-#     state.dynamic_objects = []
+    state.dynamic_objects = []
 
-#     predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
-#     msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
+    predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
+    msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
 
     assert len(msg.data.as_actors_predictions) == len(state.dynamic_objects)
