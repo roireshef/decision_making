@@ -323,6 +323,5 @@ def test_filter_LaneSpeedLimits_filterResultsMatchExpecte(
     filter_results = action_spec_filter.filter_action_specs(action_specs,
                                                             behavioral_grid_state_with_segments_limits)
 
-    # TODO: action 8 is True because FilterForSafetyTowardsTargetVehicle doesn't check the padding after a short horizon
     np.testing.assert_array_equal(filter_results, expected_filter_results)
 
