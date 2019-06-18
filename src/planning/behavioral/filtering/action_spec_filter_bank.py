@@ -63,8 +63,8 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         :return: boolean list per action spec: True if a spec passed the filter
         """
         ctrajectories, lane_segment_velocity_limits = ActionSpecTrajectoryBuilder.build_trajectories(action_specs,
-                                                                                                      behavioral_state,
-                                                                                                      build_lane_segment_velocities=True)
+                                                                                                     behavioral_state,
+                                                                                                     get_lane_segment_velocities=True)
         lon_velocity = ctrajectories[:, :, C_V]
         conforms_trajectories = lon_velocity <= lane_segment_velocity_limits + EPS
         return list(np.all(conforms_trajectories, axis=-1))
