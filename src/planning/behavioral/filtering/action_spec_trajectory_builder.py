@@ -16,13 +16,13 @@ class ActionSpecTrajectoryBuilder:
 
     @staticmethod
     def build_trajectories(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState,
-                           build_lane_segment_velocities=False) -> (np.ndarray, np.ndarray):
+                           get_lane_segment_velocities=False) -> (np.ndarray, np.ndarray):
         """
         Builds a baseline trajectory out of the action specs (terminal states)
 
         :param action_specs: list of action specs
         :param behavioral_state:
-        :param build_lane_segment_velocities: Skip building the lane-segment-based velocities
+        :param get_lane_segment_velocities: Skip building the lane-segment-based velocities
         :return: A tuple of (cartesian_trajectories, lane_based_velocity_limits) the latter is all zero
         if build_lane_segment_velocities is False
         """
@@ -62,14 +62,14 @@ class ActionSpecTrajectoryBuilder:
 
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = frenet.ftrajectories_to_ctrajectories(ftrajectories)
-            if build_lane_segment_velocities:
+            if get_lane_segment_velocities:
                 lane_segment_velocity_limits[indices_by_rel_lane[rel_lane]] = ActionSpecTrajectoryBuilder.\
-                    get_nominal_lane_speed_limits(ftrajectories, frenet)
+                    create_trajectory_lane_speed_limits(ftrajectories, frenet)
         return ctrajectories, lane_segment_velocity_limits
 
 
     @staticmethod
-    def get_nominal_lane_speed_limits(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+    def create_trajectory_lane_speed_limits(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
         :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
         :return: A matrix of (Trajectories x Time_samples) of lane-based maximal limits (e_v_nominal_speed).
