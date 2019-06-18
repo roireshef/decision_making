@@ -67,7 +67,6 @@ class ActionSpecTrajectoryBuilder:
                     create_trajectory_lane_speed_limits(ftrajectories, frenet)
         return ctrajectories, lane_segment_velocity_limits
 
-
     @staticmethod
     def create_trajectory_lane_speed_limits(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
