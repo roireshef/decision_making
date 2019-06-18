@@ -8,7 +8,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, T_S_STEPS, T_S_OFFSET_MIN, T_S_OFFSET_MAX
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, T_S_STEPS, T_S_OFFSET_MIN, T_S_OFFSET_MAX, TRAJECTORY_NUM_POINTS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -57,6 +57,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         T_s_grid = np.linspace(T_S_OFFSET_MIN, T_S_OFFSET_MAX, T_S_STEPS) + T_target_horizon \
             if is_target_ahead else np.array([T_target_horizon])
+
         sx_range = goal_frenet_state[FS_SX] + goal_frenet_state[FS_SV] * (T_s_grid - T_target_horizon)
         dx_range = np.linspace(DX_OFFSET_MIN + goal_frenet_state[FS_DX], DX_OFFSET_MAX + goal_frenet_state[FS_DX],
                                DX_STEPS)
@@ -100,6 +101,7 @@ class WerlingPlanner(TrajectoryPlanner):
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories)
             poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
             T_s_vals = np.array([planning_horizon])
+            T_d_vals = np.array([planning_horizon])
             poly_s, poly_d = poly_coefs_s[np.newaxis], poly_coefs_d[np.newaxis]
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
@@ -110,7 +112,7 @@ class WerlingPlanner(TrajectoryPlanner):
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
                                                                              cost_params.lat_acceleration_limits,
-                                                                             cost_params.desired_velocity)
+                                                                             cost_params.desired_velocity, True)
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
         ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
@@ -129,8 +131,9 @@ class WerlingPlanner(TrajectoryPlanner):
         global_time_samples = total_planning_time_points + state.ego_state.timestamp_in_sec
         filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories[cartesian_filtered_indices], state,
-                               goal_frenet_state, cost_params, global_time_samples,
-                               T_target_horizon, T_s_vals, self._predictor, self.dt, reference_route,
+                               goal_frenet_state, cost_params, global_time_samples, T_target_horizon,
+                               T_s_vals[cartesian_filtered_indices], T_d_vals[cartesian_filtered_indices],
+                               self._predictor, self.dt, reference_route,
                                poly_s[cartesian_filtered_indices], poly_d[cartesian_filtered_indices])
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
@@ -172,8 +175,9 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      T_target_horizon: float, T_s_vals: np.array, predictor: EgoAwarePredictor, dt: float,
-                      reference_route: FrenetSerret2DFrame, poly_coefs_s: np.array, poly_coefs_d: np.array) -> np.ndarray:
+                      T_target_horizon: float, T_s_vals: np.array, T_d_vals: np.array, predictor: EgoAwarePredictor,
+                      dt: float, reference_route: FrenetSerret2DFrame, poly_coefs_s: np.array, poly_coefs_d: np.array) \
+            -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -185,6 +189,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param T_target_horizon: original longitudinal planning time
         :param T_s_vals: array of T_s values per trajectory
+        :param T_d_vals: array of T_d values per trajectory
         :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :param dt: time step of ctrajectories
         :param reference_route: the reference route (GFF) of TP
@@ -194,12 +199,15 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         ''' deviation from goal cost '''
         # calculate trajectory end-point in Frenet coordinates
-        end_fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, np.array([T_target_horizon]))
-        end_fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, np.array([T_target_horizon]))
+        # calculate Frenet position at time T_target_horizon for all trajectories
+        end_fstates_s = np.full(len(T_s_vals), goal_in_frenet[FS_SX])
+        end_fstates_s[T_target_horizon < T_s_vals] = \
+            QuinticPoly1D.polyval_with_derivatives(poly_coefs_s[T_target_horizon < T_s_vals], np.array([T_target_horizon]))[:, 0, 0]
+        end_fstates_d = QuinticPoly1D.zip_polyval_with_derivatives(poly_coefs_d, T_d_vals[:, np.newaxis])[:, 0, 0]
 
         # calculate distance from trajectory end-point to the goal
-        dist_from_goal_s = end_fstates_s[:, 0, 0] - goal_in_frenet[FS_SX]
-        dist_from_goal_d = end_fstates_d[:, 0, 0] - goal_in_frenet[FS_DX]
+        dist_from_goal_s = end_fstates_s - goal_in_frenet[FS_SX]
+        dist_from_goal_d = end_fstates_d - goal_in_frenet[FS_DX]
         dist_from_goal = np.sqrt(dist_from_goal_s ** 2 + (params.dist_from_goal_lat_factor * dist_from_goal_d) ** 2)
 
         dist_from_goal_costs = Math.clipped_sigmoid(dist_from_goal - params.dist_from_goal_cost.offset,
@@ -211,7 +219,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                          reference_route)
         # zero point-wise costs in the artificially padded regions
         for i, costs in enumerate(pointwise_costs):
-            effective_len = int(T_s_vals[i] / dt)
+            effective_len = max(int(T_s_vals[i] / dt) + 1, TRAJECTORY_NUM_POINTS)
             costs[effective_len:] = 0
 
         total_pointwise_costs = np.sum(pointwise_costs, axis=(1, 2))
@@ -219,9 +227,11 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # TODO: remove it
         lowest_cost_idx = np.argmin(total_costs)
-        if dist_from_goal[lowest_cost_idx] > EPS:
-            print('dist_from_goal_s=%s dist_from_goal_d=%s pointwise=%s; goal_v=%.3f' %
-                  (dist_from_goal_s, dist_from_goal_d, total_pointwise_costs, goal_in_frenet[FS_SV]))
+        if dist_from_goal[lowest_cost_idx] > 0.0001:
+            print('*** Chosen T = %f, T_horizon = %f, T_s_vals = %s' %
+                  (T_s_vals[lowest_cost_idx], T_target_horizon, np.unique(T_s_vals)))
+        else:
+            print('T_horizon = %f, T_s_vals = %s' % (T_target_horizon, np.unique(T_s_vals)))
 
         return total_costs
 
@@ -289,9 +299,10 @@ class WerlingPlanner(TrajectoryPlanner):
         horizons_d = np.empty(shape=0)
         poly_s = np.empty(shape=(0, 6))
         poly_d = np.empty(shape=(0, 6))
-        max_time_samples_s = int(T_s_grid[-1] / dt) + 1
-        solutions_s = np.empty(shape=(0, max_time_samples_s, 3))
-        solutions_d = np.empty(shape=(0, max_time_samples_s, 3))
+        max_time_samples = int((max(T_s_grid[-1], T_trajectory_end_horizon) + EPS) / dt) + 1
+        max_time = max_time_samples * dt
+        solutions_s = np.empty(shape=(0, max_time_samples, 3))
+        solutions_d = np.empty(shape=(0, max_time_samples, 3))
         predictor = RoadFollowingPredictor(Logger("Werling"))
 
         for T_s_idx, T_s in enumerate(T_s_grid):
@@ -310,21 +321,16 @@ class WerlingPlanner(TrajectoryPlanner):
 
             # trajectory was planned up to a certain time, the rest should be padded with constant
             # velocity prediction starting from the end constraint of s, rather than from the last trajectory point
-            if T_s < T_trajectory_end_horizon:  # add padding
-                time_samples = np.arange(Math.ceil_to_step(T_s, dt) - T_s, T_trajectory_end_horizon - T_s + EPS, dt)
+            if T_s < max_time:  # add padding
+                time_samples = np.arange(Math.ceil_to_step(T_s + EPS, dt), max_time - EPS, dt) - T_s
                 extrapolated_fstates_s = predictor.predict_1d_frenet_states(end_constraint_s, time_samples)
                 partial_solutions_s = np.concatenate((partial_solutions_s, extrapolated_fstates_s), axis=1)
-
-            # Extrapolate longitudinal solutions (dimension s) to the size of the maximal T_s_grid
-            time_samples = np.arange(1, max_time_samples_s - partial_solutions_s.shape[1] + EPS) * dt
-            solutions_extrapolation_s = predictor.predict_1d_frenet_states(partial_solutions_s[:, -1, :], time_samples)
-            partial_solutions_s = np.concatenate((partial_solutions_s, solutions_extrapolation_s), axis=1)
 
             # append polynomials, trajectories and time-horizons to the dimensions s buffers
             poly_s = np.vstack((poly_s, partial_poly_s))
             # print('%s %s' % (solutions_s.shape.__str__(), partial_solutions_s.shape.__str__()))
             solutions_s = np.concatenate((solutions_s, partial_solutions_s), axis=0)
-            horizons_s = np.append(horizons_s, np.repeat(T_trajectory_end_horizon, len(constraints_s)))
+            horizons_s = np.append(horizons_s, np.repeat(T_s, len(constraints_s)))
 
         # Iterate over different time-horizons for dimension d
         for T_d in T_d_vals:
@@ -336,11 +342,11 @@ class WerlingPlanner(TrajectoryPlanner):
             # generate the trajectories for the polynomials of dimension d - within the horizon T_d
             partial_solutions_d = QuinticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
 
-            # Expand lateral solutions (dimension d) to the size of the maximal longitudinal T_s_grid
-            # with its final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
+            # Expand lateral solutions (dimension d) to the size of the maximal longitudinal T_s_grid with its
+            # final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
             solutions_extrapolation_d = WerlingUtils.repeat_1d_states(
                 fstates=partial_solutions_d[:, -1, :],
-                repeats=max_time_samples_s - time_samples_d.size,
+                repeats=max_time_samples - time_samples_d.size,
                 override_values=np.zeros(3),
                 override_mask=np.array([0, 1, 1])
             )
@@ -395,7 +401,7 @@ class WerlingPlanner(TrajectoryPlanner):
         if not NumpyUtils.is_in_limits(lat_acc, cost_params.lat_acceleration_limits).all(axis=1).any():
             # if all trajectories violate lat_acc limits, get range of nominal points around the "worst" timestamp
             lat_acc_traj_s = ftrajectories[lat_acc_traj_idx, lat_acc_t_idx-5:lat_acc_t_idx+5, FS_SX]
-            init_idx = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s[0]]))[0][0]
+            init_idx = reference_route.get_closest_index_on_frame(lat_acc_traj_s[0:1])[0][0]
             final_idx = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s[-1]]))[0][0]
         raise CartesianLimitsViolated("No valid trajectories. "
                                       "timestamp_in_sec: %f, time horizon: %f, "
@@ -414,7 +420,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                        np.max(np.min(ctrajectories[:, :, C_A], axis=1)),
                                        np.min(np.max(ctrajectories[:, :, C_A], axis=1)),
                                        NumpyUtils.str_log(cost_params.lon_acceleration_limits),
-                                       np.min(lat_acc), np.max(lat_acc),
+                                       np.max(np.min(lat_acc, axis=1)), np.min(np.max(lat_acc, axis=1)),
                                        NumpyUtils.str_log(cost_params.lat_acceleration_limits), len(ctrajectories),
                                        NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
                                        goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],

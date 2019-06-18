@@ -50,8 +50,8 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being very far from road shoulders (so we don't
                                             # penalize on that).
 
-LON_JERK_COST_WEIGHT = 0.0                  # cost of longitudinal jerk
-LAT_JERK_COST_WEIGHT = 0.0                  # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 0.1                  # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 0.1                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
@@ -91,7 +91,7 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 # Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
 # safety checks accordingly
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 0.5
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
@@ -171,10 +171,10 @@ SPLINE_POINT_DEVIATION = 0.0001
 # [sec] Time-Resolution for planning
 WERLING_TIME_RESOLUTION = 0.1
 
-# [m] Range for grid search in werling planner (long. planning time)
+# [m] Range for grid search in Werling planner (long. planning time)
 T_S_OFFSET_MIN, T_S_OFFSET_MAX = 0, 4
 
-# [m] Range for grid search in werling planner (lat. position)
+# [m] Range for grid search in Werling planner (lat. position)
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 
 # Linspace number of steps in the constraints parameters grid-search
