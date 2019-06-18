@@ -268,7 +268,7 @@ class EgoState(DynamicObject):
                    , dyn_obj._cached_cartesian_state
                    , dyn_obj._cached_map_state
                    , dyn_obj.size
-                   , dyn_obj.confidence, False)
+                   , dyn_obj.confidence, dyn_obj.off_map)
 
 
 class State(PUBSUB_MSG_IMPL):
