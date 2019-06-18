@@ -16,13 +16,13 @@ class ActionSpecTrajectoryBuilder:
 
     @staticmethod
     def build_trajectories(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState,
-                           get_lane_segment_velocities=False) -> (np.ndarray, np.ndarray):
+                           get_trajectory_lane_speed_limits=False) -> (np.ndarray, np.ndarray):
         """
         Builds a baseline trajectory out of the action specs (terminal states)
 
         :param action_specs: list of action specs
         :param behavioral_state:
-        :param get_lane_segment_velocities: Skip building the lane-segment-based velocities
+        :param get_trajectory_lane_speed_limits: Indicating whether to skip "building" the lane-segment-based velocities
         :return: A tuple of (cartesian_trajectories, lane_based_velocity_limits) the latter is all zero
         if build_lane_segment_velocities is False
         """
@@ -62,7 +62,7 @@ class ActionSpecTrajectoryBuilder:
 
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = frenet.ftrajectories_to_ctrajectories(ftrajectories)
-            if get_lane_segment_velocities:
+            if get_trajectory_lane_speed_limits:
                 lane_segment_velocity_limits[indices_by_rel_lane[rel_lane]] = ActionSpecTrajectoryBuilder.\
                     create_trajectory_lane_speed_limits(ftrajectories, frenet)
         return ctrajectories, lane_segment_velocity_limits
