@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
     ActionRecipe, RelativeLane, ActionType, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, \
     FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle, StaticTrafficFlowControlFilter, \
-    BeyondSpecStaticTrafficFlowControlFilter
+    BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as FilterRecipeIfNone
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -28,6 +28,8 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, \
     state_with_objects_for_filtering_almost_tracking_mode, \
     behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode, \
+    behavioral_grid_state_with_segments_limits, \
+    state_with_segment_limits, \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
     behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_oval_track
 
@@ -282,3 +284,45 @@ def test_filter_aggressiveFollowScenario_allActionsAreInvalid(
                                                             behavioral_grid_state_with_objects_for_filtering_too_aggressive)
 
     np.testing.assert_array_equal(filter_results, expected_filter_results)
+
+
+@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
+@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
+@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
+@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LAT_ACC_LIMITS', np.array([-4.0, 4.0]))
+@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
+@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
+@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_ACTION_T_LIMITS', np.array([0, 15]))
+@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_JERK_S_JERK_D_TIME_WEIGHTS', np.array([
+    [12, 0.15, 0.1],
+    [2, 0.15, 0.1],
+    [0.01, 0.15, 0.1]
+]))
+def test_filter_LaneSpeedLimits_filterResultsMatchExpecte(
+        behavioral_grid_state_with_segments_limits,
+        follow_lane_recipes: List[StaticActionRecipe]):
+    """
+    # actions [9, 12, 15] are None after specify
+    # actions [6-17] are static, aiming to higher velocity - which hits the front vehicle
+    # actions 7, 8 are safe and can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
+    """
+
+    logger = AV_Logger.get_logger()
+
+    filtering = RecipeFiltering(filters=[], logger=logger)
+
+    expected_filter_results = np.array([True, True, True, True, True, True, False, True, True,
+                                        False, False, False, False, False, False, False, False, False], dtype=bool)
+    static_action_space = StaticActionSpace(logger, filtering=filtering)
+
+    action_specs = static_action_space.specify_goals(follow_lane_recipes,
+                                                     behavioral_grid_state_with_segments_limits)
+
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForLaneSpeedLimits()], logger=logger)
+
+    filter_results = action_spec_filter.filter_action_specs(action_specs,
+                                                            behavioral_grid_state_with_segments_limits)
+
+    # TODO: action 8 is True because FilterForSafetyTowardsTargetVehicle doesn't check the padding after a short horizon
+    np.testing.assert_array_equal(filter_results, expected_filter_results)
+
