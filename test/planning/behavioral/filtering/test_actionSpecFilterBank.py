@@ -311,8 +311,8 @@ def test_filter_LaneSpeedLimits_filterResultsMatchExpecte(
 
     filtering = RecipeFiltering(filters=[], logger=logger)
 
-    expected_filter_results = np.array([True, True, True, True, True, True, False, True, True,
-                                        False, False, False, False, False, False, False, False, False], dtype=bool)
+    expected_filter_results = np.array([True, True, True, True, True, True, True, True, True,
+                                        False, True, True, False, False, True, False, False, False], dtype=bool)
     static_action_space = StaticActionSpace(logger, filtering=filtering)
 
     action_specs = static_action_space.specify_goals(follow_lane_recipes,
