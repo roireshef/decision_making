@@ -173,8 +173,7 @@ class BehavioralGridState:
         # adds mirror objects to any dynamic object which is on the intersection
         overloaded_dynamic_objects = BehavioralGridState._create_mirror_objects(dynamic_objects)
 
-        object_map_states = [obj.map_state for obj in overloaded_dynamic_objects]
-        objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
+        objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
         rel_lanes_per_obj = np.full(len(overloaded_dynamic_objects), None)
@@ -187,6 +186,8 @@ class BehavioralGridState:
         # setting the missing map_states to pseudo-objects
         BehavioralGridState._lazy_set_map_states(overloaded_dynamic_objects, extended_lane_frames,
                                                  rel_lanes_per_obj)
+
+        object_map_states = [obj.map_state for obj in overloaded_dynamic_objects if obj.map_state.lane_fstate is not None]
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
