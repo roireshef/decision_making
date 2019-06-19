@@ -19,22 +19,25 @@ def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorroundin
     assert len(behavioral_state.road_occupancy_grid) == len(state_with_sorrounding_objects.dynamic_objects)
 
 
-def test_createFromState_6objectsAroundEgo_Ignor2OffMapObjects(state_with_surrounding_objects_and_off_map_objects, route_plan_20_30):
+def test_createFromState_eightObjectsAroundEgo_IgnoreThreeOffMapObjects(state_with_surrounding_objects_and_off_map_objects,
+                                                                        route_plan_20_30):
     """
     Off map objects are located at ego's right lane.
-    validate that 5 objects around ego create 5 grid cells in the behavioral state in multi-road map, while ignoring off
-    map objects.
+    validate that 8 objects around ego create 5 grid cells in the behavioral state in multi-road map, while ignoring 3
+    off map objects.
     (a cell is created only if it contains at least one on-map object, off map objects are marked with an off-map flag)
     """
     logger = AV_Logger.get_logger()
-    behavioral_state = BehavioralGridState.create_from_state(state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, logger)
-    on_map_objects = [obj for obj in state_with_surrounding_objects_and_off_map_objects.dynamic_objects if not obj.off_map]
+    behavioral_state = BehavioralGridState.create_from_state(
+        state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, logger)
+    on_map_objects = [obj for obj in state_with_surrounding_objects_and_off_map_objects.dynamic_objects
+                      if not obj.off_map]
     assert len(behavioral_state.road_occupancy_grid) == len(on_map_objects)
 
     for rel_lane, rel_lon in behavioral_state.road_occupancy_grid:
         assert rel_lane != RelativeLane.RIGHT_LANE
-        dynamic_objects = behavioral_state.road_occupancy_grid[(rel_lane, rel_lon)]
-        assert np.all([not obj.dynamic_object.off_map for obj in dynamic_objects])
+        dynamic_objects_on_grid = behavioral_state.road_occupancy_grid[(rel_lane, rel_lon)]
+        assert np.all([not obj.dynamic_object.off_map for obj in dynamic_objects_on_grid])
 
 
 
