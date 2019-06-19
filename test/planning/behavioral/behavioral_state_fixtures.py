@@ -149,7 +149,7 @@ def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_surrounding_off_map_objects(route_plan_20_30: RoutePlan):
+def state_with_surrounding_objects_and_off_map_objects(route_plan_20_30: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -189,10 +189,8 @@ def state_with_surrounding_off_map_objects(route_plan_20_30: RoutePlan):
             map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_ids[i])
             dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                             size=car_size, confidence=1., off_map=False)
-            if rel_lane == RelativeLane.SAME_LANE:
-                dynamic_object.off_map = True
-            else:
-                dynamic_object.off_map = False
+            # all the objects in the right lane are actually located off map
+            dynamic_object.off_map = rel_lane == RelativeLane.RIGHT_LANE
             dynamic_objects.append(dynamic_object)
             obj_id += 1
 
