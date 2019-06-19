@@ -8,7 +8,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, T_S_STEPS, T_S_OFFSET_MIN, T_S_OFFSET_MAX, TRAJECTORY_NUM_POINTS
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, TS_STEPS, T_S_OFFSET_MIN, T_S_OFFSET_MAX, TRAJECTORY_NUM_POINTS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -55,7 +55,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
-        T_s_grid = np.linspace(T_S_OFFSET_MIN, T_S_OFFSET_MAX, T_S_STEPS) + T_target_horizon \
+        T_s_grid = np.linspace(T_S_OFFSET_MIN, T_S_OFFSET_MAX, TS_STEPS) + T_target_horizon \
             if is_target_ahead else np.array([T_target_horizon])
 
         sx_range = goal_frenet_state[FS_SX] + goal_frenet_state[FS_SV] * (T_s_grid - T_target_horizon)

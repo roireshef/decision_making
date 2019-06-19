@@ -20,7 +20,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 PLANNING_LOOKAHEAD_DIST = 100.0
 
 # [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 500
+MAX_HORIZON_DISTANCE = 400
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
@@ -68,7 +68,7 @@ VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([0.0, 20.0])
+BP_ACTION_T_LIMITS = np.array([0.0, 15.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -179,11 +179,11 @@ T_S_OFFSET_MIN, T_S_OFFSET_MAX = 0, 4
 # [m] Range for grid search in Werling planner (lat. position)
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 
-# Linspace number of steps in the constraints parameters grid-search
-T_S_STEPS, DX_STEPS = 3, 9
+# Linspace number of lateral steps in the constraints parameters grid-search
+DX_STEPS = 9
 
-# Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
-TD_STEPS = 5
+# Number of steps in longitudinal and lateral horizon planning times
+TS_STEPS, TD_STEPS = 3, 5
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3
