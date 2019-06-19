@@ -1,6 +1,5 @@
 import time
 
-from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 import numpy as np
 import traceback
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN

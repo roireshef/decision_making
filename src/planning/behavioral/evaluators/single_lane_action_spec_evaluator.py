@@ -1,4 +1,3 @@
-from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
