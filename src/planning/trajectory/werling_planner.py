@@ -208,15 +208,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         total_pointwise_costs = np.sum(pointwise_costs, axis=(1, 2))
         total_costs = total_pointwise_costs + dist_from_goal_costs + dist_from_T_target_horizon_costs
-
-        # TODO: remove it
-        lowest_cost_idx = np.argmin(total_costs)
-        if dist_from_goal[lowest_cost_idx] > 0.1:
-            print('*** Chosen T = %f, T_horizon = %f, T_s_vals = %s' %
-                  (T_s_vals[lowest_cost_idx], T_target_horizon, np.unique(T_s_vals)))
-        else:
-            print('T_horizon = %f, T_s_vals = %s' % (T_target_horizon, np.unique(T_s_vals)))
-
         return total_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations

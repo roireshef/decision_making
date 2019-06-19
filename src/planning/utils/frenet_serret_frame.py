@@ -81,8 +81,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
                                                                              preserve_step_size=False,
                                                                              spline_order=spline_order)
 
-        s_max = effective_ds * len(spline_points)
-        T, N, k, k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, s_max, effective_ds, splines)
+        full_length = effective_ds * len(spline_points)  # full_length = s_max + effective_ds
+        T, N, k, k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, full_length, effective_ds, splines)
         return cls(spline_points, T, N, k, k_tag, effective_ds)
 
     @property
