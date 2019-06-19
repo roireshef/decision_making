@@ -30,15 +30,15 @@ from rte.python.logger.AV_logger import AV_Logger
 
 
 @patch('decision_making.src.planning.trajectory.werling_planner.TD_STEPS', 5)
-@patch('decision_making.src.planning.trajectory.werling_planner.SX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.T_S_STEPS', 3)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_STEPS', 5)
-@patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MIN', -8)
-@patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MAX', 0)
+@patch('decision_making.src.planning.trajectory.werling_planner.T_S_OFFSET_MIN', 0)
+@patch('decision_making.src.planning.trajectory.werling_planner.T_S_OFFSET_MAX', 4)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MIN', -1.6)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MAX', 1.6)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
-    reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
+    reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=15, k=1, step=1, lat=1, offset=-.5))
 
     v0 = 5
     vT = 5

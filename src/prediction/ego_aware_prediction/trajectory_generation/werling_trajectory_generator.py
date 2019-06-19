@@ -1,4 +1,5 @@
 import numpy as np
+from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
@@ -38,14 +39,13 @@ class WerlingTrajectoryGenerator(TrajectoryGenerator):
                                                da=predicted_maneuver_spec.final_state[FS_DA])
 
         # solve problem in Frenet-frame
-        ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconst_0=fconstraints_init,
-                                                                                 fconst_t=fconstraints_final,
-                                                                                 T_s=predicted_maneuver_spec.T_s,
-                                                                                 T_d_vals=np.array(
-                                                                                     [predicted_maneuver_spec.T_d]),
-                                                                                 dt=np.minimum(
-                                                                                     predicted_maneuver_spec.T_d,
-                                                                                     predicted_maneuver_spec.T_s))
+        ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(
+            fconst_0=fconstraints_init,
+            fconst_t=fconstraints_final,
+            T_s_grid=np.array([predicted_maneuver_spec.T_s]),
+            T_d_grid=np.array([predicted_maneuver_spec.T_d]),
+            dt=WERLING_TIME_RESOLUTION,
+            T_trajectory_end_horizon=predicted_maneuver_spec.T_s)
 
         poly_s = poly_coefs[0, S5:D5]
         poly_d = poly_coefs[0, D5:]

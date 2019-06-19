@@ -42,7 +42,7 @@ class KinematicUtils:
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
                                    lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
-                                   desired_velocity: float, log: bool=False) -> np.ndarray:
+                                   desired_velocity: float) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -73,10 +73,6 @@ class KinematicUtils:
         conforms_limits = np.all(NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
                                  NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
                                  NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
-
-        if log:
-            print('vel=%s  acc=%s' % (np.all(NumpyUtils.is_in_limits(lon_velocity, velocity_limits), axis=1).astype(int),
-                                      np.all(NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits), axis=1).astype(int)))
 
         conforms = np.logical_and(conforms_limits, conforms_desired)
         return conforms

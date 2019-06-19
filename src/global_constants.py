@@ -35,23 +35,25 @@ OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects
 DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
-DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+DEVIATION_TO_SHOULDER_COST = 100            # cost of deviation to shoulders (sigmoid)
 SHOULDER_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of going out-of-shoulder
 SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
-DEVIATION_FROM_ROAD_COST = 1.0 * 1e3        # cost of deviation from road (sigmoid)
+DEVIATION_FROM_ROAD_COST = 1000             # cost of deviation from road (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3       # ratio between lateral and longitudinal deviation costs from the goal
-DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation from the goal
+DEVIATION_FROM_TARGET_HORIZON_TIME_COST = 200  # cost of positive deviation from target horizon time
+                                            # if T_s <= T_target_horizon, then cost = 0)
+
+DEVIATION_FROM_GOAL_COST = 750              # cost of longitudinal deviation from the goal
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
 LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being very far from road shoulders (so we don't
                                             # penalize on that).
 
-LON_JERK_COST_WEIGHT = 0.1                  # cost of longitudinal jerk
-LAT_JERK_COST_WEIGHT = 0.1                  # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
@@ -181,7 +183,7 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 T_S_STEPS, DX_STEPS = 3, 9
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
-TD_STEPS = 1
+TD_STEPS = 5
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3
