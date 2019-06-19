@@ -149,6 +149,57 @@ def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
+def state_with_surrounding_off_map_objects(route_plan_20_30: RoutePlan):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+
+    road_segment_id = 20
+
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    # Ego state
+    ego_lane_lon = EGO_LANE_LON
+    obj_vel = ego_vel = 10
+    ego_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[1]
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+
+    dynamic_objects: List[DynamicObject] = list()
+    obj_id = 1
+    # Generate objects at the following locations:
+    for rel_lane in RelativeLane:
+        # calculate objects' lane_ids and longitudes: 20 m behind, parallel and 20 m ahead of ego on the relative lane
+        parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
+            if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
+        prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
+        next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20,
+                                                      route_plan_road_ids=route_plan_20_30.s_Data.a_i_road_segment_ids)
+        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].e_i_SEnd]
+        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].e_i_SegmentID]
+        for i, obj_lane_lon in enumerate(obj_lane_lons):
+
+            if obj_lane_lon == ego_lane_lon and rel_lane == RelativeLane.SAME_LANE:
+                # Don't create an object where the ego is
+                continue
+
+            map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_ids[i])
+            dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
+                                                            size=car_size, confidence=1., off_map=False)
+            if rel_lane == RelativeLane.SAME_LANE:
+                dynamic_object.off_map = True
+            else:
+                dynamic_object.off_map = False
+            dynamic_objects.append(dynamic_object)
+            obj_id += 1
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
 def state_with_objects_for_acceleration_towards_vehicle():
     # loads a scene dynamic where the vehicle is driving in its desired velocity towards another vehicle
     SceneStaticModel.get_instance().set_scene_static(scene_static_accel_towards_vehicle())
