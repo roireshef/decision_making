@@ -138,9 +138,6 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                            for cell in relative_cells]
         T = np.array([spec.t for spec in action_specs])
 
-        dynamic = [isinstance(spec.recipe, DynamicActionRecipe) for spec in action_specs]
-        aggressiveness = [spec.recipe.aggressiveness for spec in action_specs]
-
         # represent initial and terminal boundary conditions (for s axis)
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
@@ -150,7 +147,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX], padding_mode)
 
         are_valid = []
-        for poly_s, t, cell, target, dyn, aggr in zip(poly_coefs_s, T, relative_cells, target_vehicles, dynamic, aggressiveness):
+        for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
             if target is None:
                 are_valid.append(True)
                 continue
@@ -166,8 +163,6 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
                                                              np.array([0, t]))
-            if not is_safe and dyn:
-                print('filtered: Safety at time %.3f: %s' % (behavioral_state.ego_state.timestamp_in_sec, aggr))
 
             are_valid.append(is_safe)
 
