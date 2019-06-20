@@ -7,6 +7,7 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 EPS = np.finfo(np.float32).eps
 TRUE_COST = 1.0
 FALSE_COST = 0.0
+KPH_MPS_CONVERSION_CONSTANT = 3.6
 
 # Communication Layer
 
