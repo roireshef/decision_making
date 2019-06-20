@@ -158,9 +158,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
             # for each GFF point i in lane segment seg, k_max[i] is the maximal curvature among points of seg
-            #k_max = np.concatenate((k_max, np.full(end_ind-start_ind, np.max(np.abs(frame.k[start_ind:end_ind, 0])))))
+            #k_max = np.concatenate((k_max, np.full(end_ind-start_ind, np.max(np.abs(frame.k[:, 0])))))
             ds = np.concatenate((ds, np.full(frame.points.shape[0], segments_ds[i])))
-            k_full = np.vstack((k_full, frame.k[:, :]))
+            k_full = np.vstack((k_full, frame.k))
             segments_num_points_so_far[i] = points.shape[0]
 
         start_ind = 0
