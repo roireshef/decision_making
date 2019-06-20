@@ -33,7 +33,7 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
     close_state = EgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
-                                                                             exact_desired_state[C_YAW], exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0)
+                                                                             exact_desired_state[C_YAW], exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0, False)
 
     assert LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                      facade.logger,
@@ -57,7 +57,7 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
     close_state = EgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
                                                                              exact_desired_state[C_YAW],
-                                                                             exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0)
+                                                                             exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0, False)
 
     assert not LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                          facade.logger,

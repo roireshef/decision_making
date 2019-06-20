@@ -58,16 +58,17 @@ def test_werlingPlanner_toyScenario_noException():
     obs = list([
         DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950 * 10e6,
                                                   cartesian_state=np.array([pos1[0], pos1[1], yaw1, 0, 0, 0]),
-                                                  size=ObjectSize(1.5, 0.5, 0), confidence=1.0),
+                                                  size=ObjectSize(1.5, 0.5, 0), confidence=1.0, off_map=False),
         DynamicObject.create_from_cartesian_state(obj_id=1, timestamp=950 * 10e6,
                                                   cartesian_state=np.array([pos2[0], pos2[1], yaw2, 0, 0, 0]),
-                                                  size=ObjectSize(1.5, 0.5, 0), confidence=1.0)
+                                                  size=ObjectSize(1.5, 0.5, 0), confidence=1.0, off_map=False)
     ])
 
     # set ego starting longitude > 0 in order to prevent the starting point to be outside the reference route
     ego = EgoState.create_from_cartesian_state(obj_id=-1, timestamp=1000 * 10e6,
                                                cartesian_state=np.array([LON_MARGIN_FROM_EGO, 0, 0, v0, 0.0, 0.0]),
-                                               size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT), confidence=1.0)
+                                               size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT), confidence=1.0,
+                                               off_map=False)
 
     state = State(is_sampled=False, occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
