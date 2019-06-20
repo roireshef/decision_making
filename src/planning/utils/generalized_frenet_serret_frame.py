@@ -7,8 +7,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSubsegmen
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_GeneralizedFrenetSerretFrame import TsSYSGeneralizedFrenetSerretFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, MAX_HORIZON_DISTANCE, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, LAT_ACC_LIMITS
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.exceptions import OutOfSegmentFront
@@ -158,21 +157,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
             # for each GFF point i in lane segment seg, k_max[i] is the maximal curvature among points of seg
-            #k_max = np.concatenate((k_max, np.full(end_ind-start_ind, np.max(np.abs(frame.k[:, 0])))))
-            ds = np.concatenate((ds, np.full(frame.points.shape[0], segments_ds[i])))
-            k_full = np.vstack((k_full, frame.k))
+            k_max = np.concatenate((k_max, np.full(end_ind-start_ind, np.max(np.abs(frame.k[:, 0])))))
             segments_num_points_so_far[i] = points.shape[0]
-
-        start_ind = 0
-        while start_ind < len(k):
-            acum_max_k = np.maximum.accumulate(np.abs(k_full[start_ind:, 0]))
-            velocity_limits = np.minimum(np.sqrt(LAT_ACC_LIMITS[1] / acum_max_k),
-                            np.array([BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED]*len(acum_max_k)))
-            reaching_time = np.cumsum(np.divide(ds[start_ind:], velocity_limits))
-            reached_point = np.argmin(reaching_time <= 15) - 1 if np.argmin(reaching_time <= 15) > 0 else 0
-            k_max = np.concatenate((k_max, np.full(reached_point, acum_max_k[reached_point])))
-            start_ind = start_ind + reached_point + 1
-
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
         # for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
