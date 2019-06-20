@@ -86,7 +86,7 @@ class WerlingPlanner(TrajectoryPlanner):
             lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T_target_horizon, self.dt)
 
             # create a grid on T_d (lateral movement time-grid)
-            T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s_grid, lower_bound_T_d)
+            T_d_grid = WerlingPlanner._create_lat_horizon_grid(lower_bound_T_d, T_s_grid[-1], T_target_horizon)
 
             # solve problem in frenet-frame
             ftrajectories_optimization, poly_coefs, horizons = WerlingPlanner._solve_optimization(
@@ -226,21 +226,19 @@ class WerlingPlanner(TrajectoryPlanner):
         return min(max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt), T_s)
 
     @staticmethod
-    def _create_lat_horizon_grid(T_s_grid: np.array, T_d_low_bound: float) -> np.ndarray:
+    def _create_lat_horizon_grid(T_d_low_bound: float, T_d_high_bound: float, T_target_horizon: float) -> np.ndarray:
         """
         Receives the lower bound of the lateral time horizon T_d_low_bound and the longitudinal time horizons array
         T_s_grid and returns a grid of possible lateral planning time values.
-        If TD_STEPS > len(T_s_grid), then return concatenation between low T_d values (T_d < T_s_grid[0]) with T_s_grid.
-        Otherwise return the lower sub-array of T_s_grid.
-        :param T_s_grid: 1D array of longitudinal trajectory durations (sec.), relative to ego.
-        :param T_d_low_bound: lower bound on lateral trajectory duration (sec.), relative to ego. Higher bound is Ts.
+        One of the T_d values will be T_target_horizon.
+        :param T_d_low_bound: lower bound on lateral trajectory duration (sec.), relative to ego.
+        :param T_d_high_bound: higher bound on lateral trajectory duration (sec.), relative to ego.
         :return: numpy array (1D) of the possible lateral planning horizons
         """
-        if TD_STEPS > len(T_s_grid):
-            lower_T_d_grid = np.flip(np.linspace(T_s_grid[0], T_d_low_bound, TD_STEPS - len(T_s_grid) + 1), axis=0)
-            T_d_grid = np.concatenate((lower_T_d_grid, T_s_grid[1:]))
-        else:
-            T_d_grid = T_s_grid[:TD_STEPS]
+        T_d_grid = np.linspace(T_d_low_bound, T_d_high_bound, TD_STEPS)
+        # One of the T_d values should be T_target_horizon, to ensure on one hand moderate lateral acceleration, and
+        # on the other hand existence of trajectory with T_s = T_target_horizon, since T_d <= T_s.
+        T_d_grid[np.argmin(np.abs(T_d_grid - T_target_horizon))] = T_target_horizon
         return T_d_grid
 
     @staticmethod
