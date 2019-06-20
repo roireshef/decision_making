@@ -78,10 +78,10 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-1.5, 1.5])
+LAT_ACC_LIMITS = np.array([-2, 2])
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 0.9
@@ -174,7 +174,7 @@ SPLINE_POINT_DEVIATION = 0.0001
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in Werling planner (long. planning time)
-T_S_OFFSET_MIN, T_S_OFFSET_MAX = 0, 4
+TS_OFFSET_MIN, TS_OFFSET_MAX = 0, 4
 
 # [m] Range for grid search in Werling planner (lat. position)
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
