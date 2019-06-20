@@ -133,10 +133,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         T = np.empty(shape=[0, 2])
         N = np.empty(shape=[0, 2])
         k = np.empty(shape=[0, 1])
-        k_full = np.empty(shape=[0, 1])
         k_tag = np.empty(shape=[0, 1])
         k_max = np.empty(shape=[0])
-        ds = np.empty(shape=[0])
 
         for i in range(len(frenet_frames)):
             frame = frenet_frames[i]
