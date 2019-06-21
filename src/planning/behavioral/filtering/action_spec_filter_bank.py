@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_ACTION_T_LIMITS, \
-    TRAJECTORY_TIME_RESOLUTION, EPS, KPH_MPS_CONVERSION_CONSTANT
+    TRAJECTORY_TIME_RESOLUTION, EPS
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, BP_LAT_ACC_STRICT_COEF
@@ -406,8 +406,8 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         lanes_s_start_ahead = [subsegment.e_i_SStart for subsegment in subsegments_ahead]
         lane_ids_ahead = [subsegment.e_i_SegmentID for subsegment in subsegments_ahead]
 
-        # find speed limits of points at the start of the lane (read as KPH from the map)
-        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed / KPH_MPS_CONVERSION_CONSTANT for lane_id in lane_ids_ahead]
+        # find speed limits of points at the start of the lane (should be in mps)
+        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids_ahead]
 
         return (np.array(lanes_s_start_ahead), np.array(speed_limits))
 

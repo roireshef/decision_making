@@ -91,12 +91,12 @@ def test_BeyondSpecSpeedLimitFilter_SlowLaneAhead(behavioral_grid_state_with_tra
 
     # put some slow speed limits into scene_static
     for i in range(scene_static_pg_split.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments):
-        scene_static_pg_split.s_Data.s_SceneStaticBase.as_scene_lane_segments[-i].e_v_nominal_speed = 25 # in kph
+        scene_static_pg_split.s_Data.s_SceneStaticBase.as_scene_lane_segments[-i].e_v_nominal_speed = 10
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     filter = BeyondSpecSpeedLimitFilter()
-    t, v, s, d = 10, 50/3.5, ego_location + 5, 0
+    t, v, s, d = 10, 25, ego_location + 5, 0
     action_specs = [
         ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
