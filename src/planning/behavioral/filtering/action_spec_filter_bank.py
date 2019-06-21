@@ -76,9 +76,11 @@ class FilterForKinematics(ActionSpecFilter):
 
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = frenet.ftrajectories_to_ctrajectories(ftrajectories)
+            points_idxs, _ = frenet.get_closest_index_on_frame(ftrajectories[..., FS_SX])
+            ctrajectories[..., C_K] = frenet._k_max[points_idxs]
 
         return list(KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
 
     @staticmethod
     def pad_trajectories_beyond_spec(action_specs: List[ActionSpec], ftrajectories_s: np.array, ftrajectories_d: np.array,
@@ -340,7 +342,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get s for all points in the range
         points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
         # get velocity limits for all points in the range
-        curvatures = np.maximum(np.abs(frenet_frame._k_smooth[beyond_spec_range[0]:beyond_spec_range[1]]), EPS)
+        curvatures = np.maximum(np.abs(frenet_frame._k_max[beyond_spec_range[0]:beyond_spec_range[1]]), EPS)
         points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
         return points_s, points_velocity_limits
 

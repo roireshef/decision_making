@@ -7,7 +7,8 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSubsegmen
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_GeneralizedFrenetSerretFrame import TsSYSGeneralizedFrenetSerretFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, LAT_ACC_LIMITS, EPS, BP_ACTION_T_LIMITS, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.exceptions import OutOfSegmentFront
@@ -41,7 +42,7 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray,
-                 k: np.ndarray, k_tag: np.ndarray, k_smooth,
+                 k: np.ndarray, k_tag: np.ndarray, k_max,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
@@ -50,7 +51,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
-        self._k_smooth = k_smooth
+        self._k_max = k_max
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
@@ -154,8 +155,24 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             N = np.vstack((N, frame.N[start_ind:end_ind, :]))
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
+
+            # if the segment is loo long, divide the segment to pieces and calculate maximal k for each piece
+            # segment_k = np.abs(frame.k[:, 0])
+            # # max_velocity is the minimum between lane's nominal_speed and max velocity by the segment's curvature
+            # max_velocity = min(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
+            #                    np.sqrt(LAT_ACC_LIMITS[1] / max(EPS, np.max(segment_k))))
+            # # calculate the size (in points) of one piece based on the max_velocity
+            # piece_num_points = int(max_velocity * BP_ACTION_T_LIMITS[1] / segments_ds[i])
+            # # calculate maximal k for each piece
+            # full_segment_k = np.concatenate((segment_k, np.zeros(piece_num_points - len(segment_k) % piece_num_points)))
+            # k_max_per_piece = np.max(full_segment_k.reshape(-1, piece_num_points), axis=1)
+            # # duplicate maximal k of a piece to all points of the piece
+            # segment_k_max = np.repeat(k_max_per_piece, piece_num_points)[start_ind:end_ind]
+            # k_max = np.concatenate((k_max, segment_k_max))
+
             # for each GFF point i in lane segment seg, k_max[i] is the maximal curvature among points of seg
-            k_max = np.concatenate((k_max, np.full(end_ind-start_ind, np.max(np.abs(frame.k[:, 0])))))
+            k_max = np.concatenate((k_max, np.full(end_ind - start_ind, np.max(np.abs(frame.k[:, 0])))))
+
             segments_num_points_so_far[i] = points.shape[0]
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
