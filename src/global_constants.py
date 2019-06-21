@@ -42,7 +42,7 @@ SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-sho
 DEVIATION_FROM_ROAD_COST = 1000             # cost of deviation from road (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_TARGET_HORIZON_TIME_COST = 200  # cost of positive deviation from target horizon time
+DEVIATION_FROM_TARGET_HORIZON_TIME_COST = 100  # cost of positive deviation from target horizon time
                                             # if T_s <= T_target_horizon, then cost = 0)
 
 DEVIATION_FROM_GOAL_COST = 750              # cost of longitudinal deviation from the goal
@@ -177,10 +177,10 @@ WERLING_TIME_RESOLUTION = 0.1
 TS_OFFSET_MIN, TS_OFFSET_MAX = 0, 4
 
 # [m] Range for grid search in Werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
+DX_OFFSET_MIN, DX_OFFSET_MAX = -1.5, 1.5
 
 # Linspace number of lateral steps in the constraints parameters grid-search
-DX_STEPS = 9
+DX_STEPS = 7
 
 # Number of steps in longitudinal and lateral horizon planning times
 TS_STEPS, TD_STEPS = 3, 5
