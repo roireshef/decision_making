@@ -243,6 +243,7 @@ class MapUtils:
         :return: list of downstream lanes ids
         """
         downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
+        # TODO: temporary fix for MS2 demo. remove it with lane split feature merge
         return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity
                 if connectivity.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION]
 
