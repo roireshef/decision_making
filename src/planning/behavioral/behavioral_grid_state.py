@@ -147,7 +147,7 @@ class BehavioralGridState:
         :return:
         """
         for i, dynamic_object in enumerate(dynamic_objects):
-            if dynamic_object.map_state.lane_fstate is None and rel_lanes_per_obj[i] is not None:
+            if dynamic_object.map_state.lane_fstate is None:
                 dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
                     cstate_to_fstate(dynamic_object.cartesian_state)
                 dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
@@ -183,18 +183,25 @@ class BehavioralGridState:
             relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
             rel_lanes_per_obj[relevant_objects] = rel_lane
 
-        # setting the missing map_states to pseudo-objects
-        BehavioralGridState._lazy_set_map_states(overloaded_dynamic_objects, extended_lane_frames,
-                                                 rel_lanes_per_obj)
+        # filter relevant objects
+        relevant_dynamic_objects = [overloaded_dynamic_objects[i] for i in range(len(overloaded_dynamic_objects))
+                                    if rel_lanes_per_obj[i] is not None]
 
-        object_map_states = [obj.map_state for obj in overloaded_dynamic_objects if obj.map_state.lane_fstate is not None]
+        relevant_dynamic_objects_lane = [rel_lane for rel_lane in rel_lanes_per_obj if rel_lane is not None]
+
+        # setting the missing map_states to pseudo-objects
+        BehavioralGridState._lazy_set_map_states(relevant_dynamic_objects, extended_lane_frames,
+                                                 relevant_dynamic_objects_lane)
+
+        object_map_states = [obj.map_state for obj in relevant_dynamic_objects]
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
             extended_lane_frames, projected_ego_fstates, object_map_states)
 
-        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
-                for i, obj in enumerate(overloaded_dynamic_objects) if rel_lanes_per_obj[i] is not None]
+        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], relevant_dynamic_objects_lane[i])
+                for i, obj in enumerate(relevant_dynamic_objects)]
+
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
