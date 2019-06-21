@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, KPH_MPS_CONVERSION_CONSTANT
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
@@ -75,7 +75,7 @@ class ActionSpecTrajectoryBuilder:
         """
         # get lane_the ids
         lane_ids_list = frenet.convert_to_segment_states(ftrajectories)[0]
-        max_velocities = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed / KPH_MPS_CONVERSION_CONSTANT
+        max_velocities = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
                           for lane_id in np.unique(lane_ids_list)}
         # creates an ndarray with the same shape as of `lane_ids_list`,
         # where each element is replaced by the maximal speed limit (according to lane)
