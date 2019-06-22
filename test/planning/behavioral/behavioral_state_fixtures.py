@@ -422,7 +422,7 @@ def state_for_testing_lanes_speed_limits_violations():
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
@@ -435,7 +435,7 @@ def state_for_testing_lanes_speed_limits_violations():
 
     map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
     dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
-                                                    size=car_size, confidence=1.)
+                                                    size=car_size, confidence=1., off_map=False)
 
     dynamic_objects.append(dynamic_object)
 
