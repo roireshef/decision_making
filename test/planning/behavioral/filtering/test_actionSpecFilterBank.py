@@ -88,7 +88,7 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LAT_ACC_LIMITS', np.array([-4.0, 4.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED', 40 / 3.6)
+@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.FilterForLaneSpeedLimits._pointwise_nominal_speed', lambda *args : 40 / 3.6)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_ACTION_T_LIMITS', np.array([0, 15]))
@@ -115,7 +115,7 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
                                                                    behavioral_grid_state_with_objects_for_acceleration_towards_vehicle)
 
-    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForKinematics()], logger=logger)
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForKinematics(), FilterForLaneSpeedLimits()], logger=logger)
 
     filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
                                                             behavioral_grid_state_with_objects_for_acceleration_towards_vehicle)
