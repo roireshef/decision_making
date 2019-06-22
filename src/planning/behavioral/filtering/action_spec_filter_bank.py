@@ -2,16 +2,16 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, EPS
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, EPS, BP_ACTION_T_LIMITS, \
+    TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition
+    RelativeLongitudinalPosition, RelativeLane
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
-from decision_making.src.planning.behavioral.filtering.action_spec_trajectory_builder import ActionSpecTrajectoryBuilder
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.types import FS_DX, FS_SX, C_V
 from decision_making.src.planning.types import LAT_CELL
@@ -40,15 +40,13 @@ class FilterForKinematics(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean list per action spec: True if a spec passed the filter
         """
-        ctrajectories, _ = ActionSpecTrajectoryBuilder.build_trajectories(action_specs, behavioral_state)
+        _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
         return list(KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS,
-            BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED))
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS))
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
-
     @prof.ProfileFunction()
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
@@ -62,12 +60,33 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean list per action spec: True if a spec passed the filter
         """
-        ctrajectories, lane_segment_velocity_limits = ActionSpecTrajectoryBuilder.build_trajectories(action_specs,
-                                                                                                     behavioral_state,
-                                                                                                     get_trajectory_lane_speed_limits=True)
-        lon_velocity = ctrajectories[:, :, C_V]
-        conforms_trajectories = lon_velocity <= lane_segment_velocity_limits + EPS
-        return list(np.all(conforms_trajectories, axis=-1))
+        ftrajectories, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
+
+        specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
+
+        num_points = ftrajectories.shape[1]
+        nominal_speeds = np.empty((len(action_specs), num_points), dtype=np.float)
+        for relative_lane, lane_frame in behavioral_state.extended_lane_frames.items():
+            if len(indices_by_rel_lane[relative_lane]) > 0:
+                nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
+                    ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
+
+        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds))
+
+    @staticmethod
+    def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+        """
+        :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
+        :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
+        """
+
+        # get lane_the ids
+        lane_ids_matrix = frenet.convert_to_segment_states(ftrajectories)[0]
+        lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
+                                 for lane_id in np.unique(lane_ids_matrix)}
+        # creates an ndarray with the same shape as of `lane_ids_list`,
+        # where each element is replaced by the maximal speed limit (according to lane)
+        return np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
@@ -88,6 +107,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         # represent initial and terminal boundary conditions (for s axis)
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+
         # create boolean arrays indicating whether the specs are in tracking mode
         padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
 
@@ -122,7 +142,6 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
     Currently treats every 'StaticTrafficFlowControl' as a stop event.
 
     """
-
     @staticmethod
     def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
         """
