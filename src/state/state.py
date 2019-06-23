@@ -78,9 +78,10 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     _cached_map_state = MapState
     size = ObjectSize
     confidence = float
+    off_map = bool
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
-        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float) -> None
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map):
+        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool) -> None
         """
         Data object that hold
         :param obj_id: object id
@@ -89,6 +90,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param map_state: localization in a map-object's frame (road,segment,lane)
         :param size: class ObjectSize
         :param confidence: of object's existence
+        :param off_map: indicates if the vehicle is off the map
         """
         self.obj_id = obj_id
         self.timestamp = timestamp
@@ -96,6 +98,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self._cached_map_state = map_state
         self.size = copy.copy(size)
         self.confidence = confidence
+        self.off_map = off_map
 
     @property
     def x(self):
@@ -167,8 +170,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return DynamicObject.ticks_to_sec(self.timestamp)
 
     @classmethod
-    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
-        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> DynamicObject
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float, bool) -> DynamicObject
         """
         Constructor that gets only cartesian-state (without map-state)
         :param obj_id: object id
@@ -176,12 +179,14 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param cartesian_state: localization relative to map's cartesian origin frame
         :param size: class ObjectSize
         :param confidence: of object's existence
+        :param off_map: indicates if the vehicle is off the map
+
         """
-        return cls(obj_id, timestamp, cartesian_state, None, size, confidence)
+        return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map)
 
     @classmethod
-    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
-        # type: (int, int, MapState, ObjectSize, float) -> DynamicObject
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map):
+        # type: (int, int, MapState, ObjectSize, float, bool) -> DynamicObject
         """
         Constructor that gets only map-state (without cartesian-state)
         :param obj_id: object id
@@ -189,8 +194,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param map_state: localization in a map-object's frame (road,segment,lane)
         :param size: class ObjectSize
         :param confidence: of object's existence
+        :param off_map: is the vehicle is off the map
         """
-        return cls(obj_id, timestamp, None, map_state, size, confidence)
+        return cls(obj_id, timestamp, None, map_state, size, confidence, off_map)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
@@ -198,7 +204,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self.__class__.create_from_cartesian_state(self.obj_id,
                                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
-                                                          self.size, self.confidence)
+                                                          self.size, self.confidence, self.off_map)
 
     def clone_from_map_state(self, map_state, timestamp_in_sec=None):
         # type: (MapState, Optional[float]) -> DynamicObject
@@ -206,7 +212,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self.create_from_map_state(self.obj_id,
                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
-                                          self.size, self.confidence)
+                                          self.size, self.confidence, self.off_map)
 
     def serialize(self):
         # type: () -> TsSYSDynamicObject
@@ -217,6 +223,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         pubsub_msg.s_CachedMapState = self._cached_map_state.serialize()
         pubsub_msg.s_Size = self.size.serialize()
         pubsub_msg.e_r_Confidence = self.confidence
+        pubsub_msg.e_b_offMap = self.off_map
         return pubsub_msg
 
     @classmethod
@@ -226,12 +233,12 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                    , pubsubMsg.a_e_CachedCartesianState
                    , MapState.deserialize(pubsubMsg.s_CachedMapState) if pubsubMsg.s_CachedMapState.e_i_LaneID > 0 else None
                    , ObjectSize.deserialize(pubsubMsg.s_Size)
-                   , pubsubMsg.e_r_Confidence)
+                   , pubsubMsg.e_r_Confidence, pubsubMsg.e_b_offMap)
 
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> EgoState
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, bool) -> EgoState
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -242,9 +249,10 @@ class EgoState(DynamicObject):
         :param map_state: localization in a map-object's frame (road,segment,lane)
         :param size: class ObjectSize
         :param confidence: of object's existence
+        :param off_map: indicates if the object is off map
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
-                                             map_state=map_state, size=size, confidence=confidence)
+                                             map_state=map_state, size=size, confidence=confidence, off_map=off_map)
 
     def serialize(self):
         # type: () -> TsSYSEgoState
@@ -260,7 +268,7 @@ class EgoState(DynamicObject):
                    , dyn_obj._cached_cartesian_state
                    , dyn_obj._cached_map_state
                    , dyn_obj.size
-                   , dyn_obj.confidence)
+                   , dyn_obj.confidence, dyn_obj.off_map)
 
 
 class State(PUBSUB_MSG_IMPL):

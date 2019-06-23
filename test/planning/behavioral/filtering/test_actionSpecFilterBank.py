@@ -310,10 +310,10 @@ def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimits_filterResul
     # The following are 4 consecutive lane segments with varying speed limits (ego starts at the end of [0])
     # These are the s-values that correspond to lane transitions on the GFF:
     # [0.0, 100.84134201631973, 220.48438762415998, 343.9575891327402, 466.0989153990629]
-    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_v_nominal_speed = 25 * KPH_MPS_CONVERSION_CONSTANT
-    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_v_nominal_speed = 25 * KPH_MPS_CONVERSION_CONSTANT
-    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[6].e_v_nominal_speed = 15 * KPH_MPS_CONVERSION_CONSTANT
-    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[9].e_v_nominal_speed = 25 * KPH_MPS_CONVERSION_CONSTANT
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_v_nominal_speed = 25
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_v_nominal_speed = 25
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[6].e_v_nominal_speed = 15
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[9].e_v_nominal_speed = 25
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
 
     filtering = RecipeFiltering(filters=[], logger=logger)
