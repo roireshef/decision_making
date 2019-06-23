@@ -15,7 +15,7 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
-
+from decision_making.src.messages.scene_static_enums import ManeuverType
 
 class MapUtils:
 
@@ -243,7 +243,9 @@ class MapUtils:
         :return: list of downstream lanes ids
         """
         downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
-        return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity]
+        # TODO: temporary fix for MS2 demo. remove it with lane split feature merge
+        return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity
+                if connectivity.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION]
 
     @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
@@ -380,8 +382,8 @@ class MapUtils:
                                                   "downstream_lanes %s, next_road_segment_id_on_plan %d" %
                                                   (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
             if len(downstream_lanes_ids_on_plan) > 1:
-                raise AmbiguousNavigationPlan("More than 1 downstream lanes according to the nav. plan %s,"
-                                              "downstream_lanes_ids_on_plan %s" %
+                raise AmbiguousNavigationPlan("More than 1 downstream lanes with STRAIGHT CONNECTION type according %s,"
+                                              " to the nav. plan downstream_lanes_ids_on_plan %s" %
                                               (route_plan_road_ids, downstream_lanes_ids_on_plan))
 
             current_lane_id = downstream_lanes_ids_on_plan[0]

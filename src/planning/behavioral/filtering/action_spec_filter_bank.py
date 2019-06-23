@@ -18,6 +18,8 @@ from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+from typing import List
 from typing import List, Union, Any
 
 
@@ -330,3 +332,71 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         if len(slow_points) == 0:
             self._raise_true()
         return beyond_spec_s[slow_points], points_velocity_limits[slow_points]
+
+class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
+    """
+    Checks if the speed limit will be exceeded.
+    This filter assumes that the STANDARD aggressiveness will be used, and only checks the points that are before
+    the worst case stopping distance.
+    The braking distances are calculated upon initialization and cached.
+
+    If the upcoming speeds are greater or equal than the target velocity or if the worst case braking distance is 0,
+    this filter will raise true.
+    """
+
+    def __init__(self):
+        super(BeyondSpecSpeedLimitFilter, self).__init__()
+
+    def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> (
+    int, float):
+        """
+        Finds speed limits of the lanes ahead
+        :param behavioral_state
+        :param action_spec:
+        :return: tuple of (Frenet indicies of start points of lanes ahead, speed limits at those indicies)
+        """
+        # get the lane the action_spec wants to drive in
+        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
+
+        # get all subsegments in current GFF and get the ones that contain points ahead of the action_spec.s
+        subsegments = target_lane_frenet.segments
+        subsegments_ahead = [subsegment for subsegment in subsegments if
+                             subsegment.e_i_SStart > action_spec.s]
+
+
+        # if no lane segments ahead, there will be no speed limit changes
+        if len(subsegments_ahead) == 0:
+            self._raise_true()
+
+        # get lane initial s points and lane ids from subsegments ahead
+        lanes_s_start_ahead = [subsegment.e_i_SStart for subsegment in subsegments_ahead]
+        lane_ids_ahead = [subsegment.e_i_SegmentID for subsegment in subsegments_ahead]
+
+        # find speed limits of points at the start of the lane (should be in mps)
+        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids_ahead]
+
+        return (np.array(lanes_s_start_ahead), np.array(speed_limits))
+
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
+        """
+        Find points with speed limit slower than the spec velocity
+        :param behavioral_state:
+        :param action_spec:
+        :return: points that require braking after the spec
+        """
+
+        # skip checking speed limits if the vehicle will be stopped
+        if action_spec.v == 0:
+            self._raise_true()
+
+        # get speed limits after the action_spec.s
+        lane_s_start_ahead, speed_limits = self._get_upcoming_speed_limits(behavioral_state, action_spec)
+        # find points that require braking after spec
+        slow_points = np.where(np.array(speed_limits) < action_spec.v)[0]
+
+        # skip filtering if there are no points that require slowing down
+        if len(slow_points) == 0:
+            self._raise_true()
+
+        return lane_s_start_ahead[slow_points], speed_limits[slow_points]
+
