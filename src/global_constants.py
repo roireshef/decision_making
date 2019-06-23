@@ -80,7 +80,7 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-1.5, 1.5])
+LAT_ACC_LIMITS = np.array([-2, 2])
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 0.9
