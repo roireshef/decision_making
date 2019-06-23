@@ -45,7 +45,7 @@ ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going o
 DEVIATION_FROM_TARGET_HORIZON_TIME_COST = 100  # cost of positive deviation from target horizon time
                                             # if T_s <= T_target_horizon, then cost = 0)
 
-DEVIATION_FROM_GOAL_COST = 750              # cost of longitudinal deviation from the goal
+DEVIATION_FROM_GOAL_COST = 50               # cost of longitudinal deviation from the goal
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 

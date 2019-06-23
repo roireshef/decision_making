@@ -12,14 +12,15 @@ import pytest
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TRAJECTORY_TIME_RESOLUTION
+    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TRAJECTORY_TIME_RESOLUTION, \
+    EPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
-    CartesianExtendedState, CartesianTrajectory, C_A
+    CartesianExtendedState, CartesianTrajectory, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
@@ -139,6 +140,7 @@ def test_werlingPlanner_localizationNoise_noException():
     ext = 4  # [m] extension for route_points to prevent out-of-range Frenet-Seret projection
     curvature = 0.2
     ego_size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
+    ego_s = ext
 
     # Create reference route (normal and extended). The extension is intended to prevent projection on frenet overflow
     route_points, ext_route_points = \
@@ -149,40 +151,25 @@ def test_werlingPlanner_localizationNoise_noException():
     v0 = 5
     vT = 5
     Ts = 2
-    goal_s = v0 * Ts
+    goal_s = ego_s + v0 * Ts
 
-    lon_noise = [-3, -2, -1, 0, 1, 2, 3]
-    lat_noise = [0, 0.5, 1]
+    lon_noise = np.arange(-3, 3 + EPS)
+    lat_noise = np.array([0, 0.5, 1])
 
     predictor = RoadFollowingPredictor(logger)
 
-    goal_fstate = np.array([ext + goal_s, vT, 0, 0, 0, 0])
+    goal_fstate = np.array([goal_s, vT, 0, 0, 0, 0])
     goal_cstate = frenet.fstate_to_cstate(goal_fstate)
     goal_map_state = MapState(goal_fstate, MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0])
 
-    # pos1 = np.array([57, -.5])
-    # yaw1 = 0
-    # pos2 = np.array([61, 1.5])
-    # yaw2 = np.pi / 4
-    #
-    # obs = list([
-    #     DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950 * 10e6,
-    #                                               cartesian_state=np.array([pos1[0], pos1[1], yaw1, 0, 0, 0]),
-    #                                               size=ObjectSize(1.5, 0.5, 0), confidence=1.0, off_map=False),
-    #     DynamicObject.create_from_cartesian_state(obj_id=1, timestamp=950 * 10e6,
-    #                                               cartesian_state=np.array([pos2[0], pos2[1], yaw2, 0, 0, 0]),
-    #                                               size=ObjectSize(1.5, 0.5, 0), confidence=1.0, off_map=False)
-    # ])
-
-    # set ego starting longitude > 0 in order to prevent the starting point to be outside the reference route
-
     cost_params = CostBasedBehavioralPlanner._generate_cost_params(goal_map_state, ego_size)
 
+    # loop over different longitudinal and lateral shifts of ego and verify that TP grid succeeds to create trajectory
     np.set_printoptions(suppress=True)
     print('\n')
     for delta_s in lon_noise:
         for delta_d in lat_noise:
-            ego_fstate = np.array([ext + delta_s, v0, 0., delta_d, 0., 0.])
+            ego_fstate = np.array([ego_s + delta_s, v0, 0., delta_d, 0., 0.])
             ego_cstate = frenet.fstate_to_cstate(ego_fstate)
             ego = EgoState.create_from_cartesian_state(obj_id=-1, timestamp=1000 * 10e6,
                                                        cartesian_state=ego_cstate,
@@ -196,11 +183,15 @@ def test_werlingPlanner_localizationNoise_noException():
                                                            T_target_horizon=Ts, T_trajectory_end_horizon=Ts,
                                                            cost_params=cost_params)
 
+            # print table of output trajectories parameters: terminal point, T_s, T_d, min/max velocity and acceleration
             last_fstate = samplable.sample_frenet(ego.timestamp_in_sec + np.array([samplable.T]))[0]
             ctrajectory = samplable.sample(ego.timestamp_in_sec + np.arange(0, samplable.T, TRAJECTORY_TIME_RESOLUTION))
-            print('noise (%.1f, %.1f): T_s=%.2f T_d=%.2f, terminal=%s, vel=[%.2f %.2f] acc=[%.2f %.2f]' %
+            lat_acc = ctrajectory[:, C_K] * np.square(ctrajectory[:, C_V])
+            jerks = TrajectoryPlannerCosts.compute_jerk_costs(ctrajectory[np.newaxis], cost_params, TRAJECTORY_TIME_RESOLUTION)[0]
+            print('noise (%.1f, %.1f): T_s=%.2f T_d=%.2f, terminal=%s, vel=[%.2f %.2f] acc=[%.2f %.2f] lat_acc=%.2f jerk=%.2f' %
                   (delta_s, delta_d, samplable.T, samplable.T_d, last_fstate[[FP_SX, FS_DX]],
-                   np.min(ctrajectory[:, C_V]), np.max(ctrajectory[:, C_V]), np.min(ctrajectory[:, C_A]), np.max(ctrajectory[:, C_A])))
+                   np.min(ctrajectory[:, C_V]), np.max(ctrajectory[:, C_V]), np.min(ctrajectory[:, C_A]), np.max(ctrajectory[:, C_A]),
+                   np.max(np.abs(lat_acc)), np.max(jerks)))
 
 
 # remove this skip if you want to run the test

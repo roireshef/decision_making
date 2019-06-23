@@ -55,6 +55,12 @@ class WerlingPlanner(TrajectoryPlanner):
 
         is_target_ahead = T_target_horizon > self.dt and goal_frenet_state[FS_SX] > ego_frenet_state[FS_SX]
 
+        # TP creates 3D grid of terminal states for the following parameters:
+        #   T_s (lon. planning time). Currently the values of T_s >= T_target_horizon.
+        #   T_d (lat. planning time). T_d <= T_s.
+        #   DX (lat. offset from the goal)
+        # Given T_s, the longitudinal deviation from the goal is: T_s_offset * target_velocity.
+
         T_s_grid = np.linspace(TS_OFFSET_MIN, TS_OFFSET_MAX, TS_STEPS) + T_target_horizon \
             if is_target_ahead else np.array([T_target_horizon])
 
@@ -191,9 +197,9 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         ''' deviation from goal cost '''
         # calculate distances from trajectory end-point to the goal
-        dist_from_goal = np.abs(ftrajectories[:, -1, FS_DX] - goal_in_frenet[FS_DX])
-        dist_from_goal_costs = Math.clipped_sigmoid(dist_from_goal - params.dist_from_goal_cost.offset,
-                                                    params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
+        # since all trajectories arrive longitudinally to the goal, longitudinal_dist_from_goal = 0
+        lateral_dist_from_goal = np.abs(ftrajectories[:, -1, FS_DX] - goal_in_frenet[FS_DX])
+        dist_from_goal_costs = params.dist_from_goal_cost.w * lateral_dist_from_goal ** 2
 
         # calculate deviation cost from the target horizon time (negative deviation has zero cost)
         dist_from_T_target_horizon_costs = np.maximum(0, T_s_vals - T_target_horizon) * params.dist_from_target_horizon_time_cost
@@ -234,6 +240,7 @@ class WerlingPlanner(TrajectoryPlanner):
         One of the T_d values will be T_target_horizon.
         :param T_d_low_bound: lower bound on lateral trajectory duration (sec.), relative to ego.
         :param T_d_high_bound: higher bound on lateral trajectory duration (sec.), relative to ego.
+        :param T_target_horizon: original target horizon time
         :return: numpy array (1D) of the possible lateral planning horizons
         """
         T_d_grid = np.linspace(T_d_low_bound, T_d_high_bound, TD_STEPS)
@@ -280,6 +287,7 @@ class WerlingPlanner(TrajectoryPlanner):
         horizons_d = np.empty(shape=0)
         poly_s = np.empty(shape=(0, 6))
         poly_d = np.empty(shape=(0, 6))
+        # we pad shorter trajectories, such that they will be of the same length as the longest trajectory
         max_time_samples = int((max(T_s_grid[-1], T_trajectory_end_horizon) + EPS) / dt) + 1
         max_time = max_time_samples * dt
         solutions_s = np.empty(shape=(0, max_time_samples, 3))
