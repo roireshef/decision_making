@@ -148,8 +148,8 @@ def test_werlingPlanner_localizationNoise_noException():
 
     frenet = FrenetSerret2DFrame.fit(ext_route_points[:, :2])
 
-    v0 = 5
-    vT = 5
+    v0 = 20
+    vT = 20
     Ts = 2
     goal_s = ego_s + v0 * Ts
 
@@ -188,8 +188,9 @@ def test_werlingPlanner_localizationNoise_noException():
             ctrajectory = samplable.sample(ego.timestamp_in_sec + np.arange(0, samplable.T, TRAJECTORY_TIME_RESOLUTION))
             lat_acc = ctrajectory[:, C_K] * np.square(ctrajectory[:, C_V])
             jerks = TrajectoryPlannerCosts.compute_jerk_costs(ctrajectory[np.newaxis], cost_params, TRAJECTORY_TIME_RESOLUTION)[0]
-            print('noise (%.1f, %.1f): T_s=%.2f T_d=%.2f, terminal=%s, vel=[%.2f %.2f] acc=[%.2f %.2f] lat_acc=%.2f jerk=%.2f' %
-                  (delta_s, delta_d, samplable.T, samplable.T_d, last_fstate[[FP_SX, FS_DX]],
+            print('noise (%.1f, %.1f): T_s=%.2f T_d=%.2f, terminal=[%.1f, %.1f], '
+                  'vel=[%.2f %.2f] acc=[%.2f %.2f] lat_acc=%.2f jerk=%.2f' %
+                  (delta_s, delta_d, samplable.T, samplable.T_d, last_fstate[FP_SX] - ego_s, last_fstate[FS_DX],
                    np.min(ctrajectory[:, C_V]), np.max(ctrajectory[:, C_V]), np.min(ctrajectory[:, C_A]), np.max(ctrajectory[:, C_A]),
                    np.max(np.abs(lat_acc)), np.max(jerks)))
 
