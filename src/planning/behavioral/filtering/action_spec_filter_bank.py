@@ -82,7 +82,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
         """
 
-        # get lane_the ids
+        # get the lane ids
         lane_ids_matrix = frenet.convert_to_segment_states(ftrajectories)[0]
         lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
                                  for lane_id in np.unique(lane_ids_matrix)}
