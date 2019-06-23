@@ -170,20 +170,11 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
 
             # for short actions check safety also beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-            # if is_safe and t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON and spec.v > target_fstate[FS_SV]:
-            #     linear_ego_poly_s = np.array([0, 0, 0, 0, spec.v, spec.s - spec.v * t])
-            #     is_safe = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin, SAFETY_HEADWAY,
-            #                                                      np.array([t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON]))
-            #     if 12 < behavioral_state.ego_state.timestamp_in_sec < 15:
-            #         dist = target.dynamic_object.map_state.lane_fstate[0] - behavioral_state.ego_state.map_state.lane_fstate[0]
-            #         ego_v = behavioral_state.ego_state.map_state.lane_fstate[1]
-            #         print('IF: is_safe = %s, spec=%s, dist=%f, ego_v=%f' % (is_safe, spec, dist, ego_v))
-
-            # if 12 < behavioral_state.ego_state.timestamp_in_sec < 15 and isinstance(spec.recipe, StaticActionRecipe):
-            #     dist = target.dynamic_object.map_state.lane_fstate[0] - behavioral_state.ego_state.map_state.lane_fstate[0]
-            #     ego_v = behavioral_state.ego_state.map_state.lane_fstate[1]
-            #     print('safe = %s, spec = %s, dist=%f ego_v=%f' % (is_safe, spec, dist, ego_v))
-
+            if is_safe and t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON and spec.v > target_fstate[FS_SV]:
+                # build ego polynomial with constant velocity spec.v, such that at time spec.t it will be in spec.s
+                linear_ego_poly_s = np.array([0, 0, 0, 0, spec.v, spec.s - spec.v * t])
+                is_safe = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                                                                 np.array([t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON]))
             are_valid.append(is_safe)
 
         return are_valid
