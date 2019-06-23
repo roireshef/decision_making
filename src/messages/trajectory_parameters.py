@@ -52,7 +52,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     right_shoulder_cost = SigmoidFunctionParams
     left_road_cost = SigmoidFunctionParams
     right_road_cost = SigmoidFunctionParams
-    dist_from_goal_cost = SigmoidFunctionParams
+    dist_from_goal_cost = float
     dist_from_target_horizon_time_cost = float
     lon_jerk_cost_weight = float
     lat_jerk_cost_weight = float
@@ -84,7 +84,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param left_road_cost: defines the sigmoid cost of the left-side of the road
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
-        :param dist_from_goal_cost: cost of distance from the target is a sigmoid.
+        :param dist_from_goal_cost: cost of squared distance from the target
         :param dist_from_target_horizon_time_cost: Weight of deviation from the target horizon time.
         :param lon_jerk_cost_weight: longitudinal jerk cost
         :param lat_jerk_cost_weight: lateral jerk cost
@@ -122,7 +122,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         pubsub_msg.s_RightShoulderCost = self.right_shoulder_cost.serialize()
         pubsub_msg.s_LeftRoadCost = self.left_road_cost.serialize()
         pubsub_msg.s_RightRoadCost = self.right_road_cost.serialize()
-        pubsub_msg.s_DistanceFromGoalCost = self.dist_from_goal_cost.serialize()
+        pubsub_msg.s_DistanceFromGoalCost = self.dist_from_goal_cost
         pubsub_msg.e_l_DistFromTargetHorizonTimeCost = self.dist_from_target_horizon_time_cost
         pubsub_msg.e_Wt_LonJerkCostWeight = self.lon_jerk_cost_weight
         pubsub_msg.e_Wt_LatJerkCostWeight = self.lat_jerk_cost_weight
@@ -144,7 +144,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                    , SigmoidFunctionParams.deserialize(pubsubMsg.s_RightShoulderCost)
                    , SigmoidFunctionParams.deserialize(pubsubMsg.s_LeftRoadCost)
                    , SigmoidFunctionParams.deserialize(pubsubMsg.s_RightRoadCost)
-                   , SigmoidFunctionParams.deserialize(pubsubMsg.s_DistanceFromGoalCost)
+                   , pubsubMsg.s_DistanceFromGoalCost
                    , pubsubMsg.e_l_DistFromTargetHorizonTimeCost
                    , pubsubMsg.e_Wt_LonJerkCostWeight
                    , pubsubMsg.e_Wt_LatJerkCostWeight

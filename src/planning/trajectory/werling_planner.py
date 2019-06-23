@@ -199,7 +199,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # calculate distances from trajectory end-point to the goal
         # since all trajectories arrive longitudinally to the goal, longitudinal_dist_from_goal = 0
         lateral_dist_from_goal = np.abs(ftrajectories[:, -1, FS_DX] - goal_in_frenet[FS_DX])
-        dist_from_goal_costs = params.dist_from_goal_cost.w * lateral_dist_from_goal ** 2
+        dist_from_goal_costs = params.dist_from_goal_cost * np.square(lateral_dist_from_goal)
 
         # calculate deviation cost from the target horizon time (negative deviation has zero cost)
         dist_from_T_target_horizon_costs = np.maximum(0, T_s_vals - T_target_horizon) * params.dist_from_target_horizon_time_cost
