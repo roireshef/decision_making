@@ -1,4 +1,4 @@
-
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
 from decision_making.src.state.map_state import MapState
@@ -126,6 +126,77 @@ def test_werlingPlanner_toyScenario_noException():
     # WerlingVisualizer.plot_route(p1, route_points)
     # plt.show()
     # fig.clear()
+
+
+def test_werlingPlanner_localizationNoise_noException():
+    logger = AV_Logger.get_logger('test_werlingPlanner_localizationNoise_noException')
+
+    road_id = 1
+    lane_width = 3.6
+    num_lanes = 2
+    reference_route_latitude = lane_width / 2
+    lng = 300  # [m] route_points length
+    ext = 4  # [m] extension for route_points to prevent out-of-range Frenet-Seret projection
+    curvature = 0.2
+    ego_size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
+
+    # Create reference route (normal and extended). The extension is intended to prevent projection on frenet overflow
+    route_points, ext_route_points = \
+        create_route_for_test_werlingPlanner(road_id, num_lanes, lane_width, reference_route_latitude, lng, ext, curvature)
+
+    frenet = FrenetSerret2DFrame.fit(ext_route_points[:, :2])
+
+    v0 = 5
+    vT = 5
+    Ts = 2
+    goal_s = v0 * Ts
+
+    lon_noise = [-3, -2, -1, 0, 1, 2, 3]
+    lat_noise = [0, 0.5, 1]
+
+    predictor = RoadFollowingPredictor(logger)
+
+    goal_fstate = np.array([goal_s, vT, 0, 0, 0, 0])
+    goal_cstate = frenet.fstate_to_cstate(goal_fstate)
+    goal_map_state = MapState(goal_fstate, MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0])
+
+    # pos1 = np.array([57, -.5])
+    # yaw1 = 0
+    # pos2 = np.array([61, 1.5])
+    # yaw2 = np.pi / 4
+    #
+    # obs = list([
+    #     DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950 * 10e6,
+    #                                               cartesian_state=np.array([pos1[0], pos1[1], yaw1, 0, 0, 0]),
+    #                                               size=ObjectSize(1.5, 0.5, 0), confidence=1.0, off_map=False),
+    #     DynamicObject.create_from_cartesian_state(obj_id=1, timestamp=950 * 10e6,
+    #                                               cartesian_state=np.array([pos2[0], pos2[1], yaw2, 0, 0, 0]),
+    #                                               size=ObjectSize(1.5, 0.5, 0), confidence=1.0, off_map=False)
+    # ])
+
+    # set ego starting longitude > 0 in order to prevent the starting point to be outside the reference route
+
+    cost_params = CostBasedBehavioralPlanner._generate_cost_params(goal_map_state, ego_size)
+
+    for delta_s in lon_noise:
+        for delta_d in lat_noise:
+            ego_fstate = np.array([ext + delta_s, v0, 0., delta_d, 0., 0.])
+            ego_cstate = frenet.fstate_to_cstate(ego_fstate)
+            ego = EgoState.create_from_cartesian_state(obj_id=-1, timestamp=1000 * 10e6,
+                                                       cartesian_state=ego_cstate,
+                                                       size=ego_size, confidence=1.0, off_map=False)
+
+            state = State(is_sampled=False, occupancy_state=None, dynamic_objects=[], ego_state=ego)
+
+            planner = WerlingPlanner(logger, predictor)
+
+            samplable, ctrajectories, costs = planner.plan(state=state, reference_route=frenet, goal=goal_cstate,
+                                                           T_target_horizon=Ts, T_trajectory_end_horizon=Ts,
+                                                           cost_params=cost_params)
+
+            last_fstate = samplable.sample_frenet(ego.timestamp_in_sec + np.array([samplable.T]))[0]
+            print('samplable delta_s=%f delta_d=%f: T_s=%f T_d=%f last_fstate=%s' %
+                  (delta_s, delta_d, samplable.T, samplable.T_d, NumpyUtils.str_log(last_fstate)))
 
 
 # remove this skip if you want to run the test

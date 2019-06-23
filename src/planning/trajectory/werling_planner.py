@@ -134,13 +134,14 @@ class WerlingPlanner(TrajectoryPlanner):
 
         if is_target_ahead:  # Actual werling planning has occurred because T_s > 0.1 and the target is ahead of us
             # TODO: what if future sampling from poly_s will result with negative velocity (uncorrected for negative velocity)?
+            best_trajectory_idx = cartesian_filtered_indices[sorted_filtered_idxs[0]]
             samplable_trajectory = SamplableWerlingTrajectory(
                 timestamp_in_sec=state.ego_state.timestamp_in_sec,
-                T_s=T_target_horizon,
-                T_d=T_d_vals[cartesian_filtered_indices[sorted_filtered_idxs[0]]],
+                T_s=T_s_vals[best_trajectory_idx],
+                T_d=T_d_vals[best_trajectory_idx],
                 frenet_frame=reference_route,
-                poly_s_coefs=poly_coefs[cartesian_filtered_indices[sorted_filtered_idxs[0]]][:6],
-                poly_d_coefs=poly_coefs[cartesian_filtered_indices[sorted_filtered_idxs[0]]][6:],
+                poly_s_coefs=poly_coefs[best_trajectory_idx][:6],
+                poly_d_coefs=poly_coefs[best_trajectory_idx][6:],
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
@@ -380,9 +381,11 @@ class WerlingPlanner(TrajectoryPlanner):
         init_idx = final_idx = 0
         if not NumpyUtils.is_in_limits(lat_acc, cost_params.lat_acceleration_limits).all(axis=1).any():
             # if all trajectories violate lat_acc limits, get range of nominal points around the "worst" timestamp
-            lat_acc_traj_s = ftrajectories[lat_acc_traj_idx, lat_acc_t_idx-5:lat_acc_t_idx+5, FS_SX]
-            init_idx = reference_route.get_closest_index_on_frame(lat_acc_traj_s[0:1])[0][0]
-            final_idx = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s[-1]]))[0][0]
+            lat_acc_traj_s = ftrajectories[lat_acc_traj_idx, lat_acc_t_idx, FS_SX]
+            nominal_idxs = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s]))[0]
+            if len(nominal_idxs) > 0:
+                init_idx = nominal_idxs[0] - 5
+                final_idx = nominal_idxs[0] + 5
         raise CartesianLimitsViolated("No valid trajectories. "
                                       "timestamp_in_sec: %f, time horizon: %f, "
                                       "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"

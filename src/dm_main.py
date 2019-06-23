@@ -26,6 +26,7 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
 from os import getpid
+from os import environ
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
@@ -105,6 +106,9 @@ def main():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (DM main) registered signal handler', getpid())
     catch_interrupt_signals()
+
+    environ['OMP_NUM_THREADS'] = '1'
+    environ['MKL_NUM_THREADS'] = '1'
 
     modules_list = \
         [
