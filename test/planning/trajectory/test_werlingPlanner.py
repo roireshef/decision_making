@@ -12,14 +12,14 @@ import pytest
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
-    CartesianExtendedState, CartesianTrajectory
+    CartesianExtendedState, CartesianTrajectory, C_A
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
@@ -156,7 +156,7 @@ def test_werlingPlanner_localizationNoise_noException():
 
     predictor = RoadFollowingPredictor(logger)
 
-    goal_fstate = np.array([goal_s, vT, 0, 0, 0, 0])
+    goal_fstate = np.array([ext + goal_s, vT, 0, 0, 0, 0])
     goal_cstate = frenet.fstate_to_cstate(goal_fstate)
     goal_map_state = MapState(goal_fstate, MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0])
 
@@ -178,6 +178,8 @@ def test_werlingPlanner_localizationNoise_noException():
 
     cost_params = CostBasedBehavioralPlanner._generate_cost_params(goal_map_state, ego_size)
 
+    np.set_printoptions(suppress=True)
+    print('\n')
     for delta_s in lon_noise:
         for delta_d in lat_noise:
             ego_fstate = np.array([ext + delta_s, v0, 0., delta_d, 0., 0.])
@@ -190,13 +192,15 @@ def test_werlingPlanner_localizationNoise_noException():
 
             planner = WerlingPlanner(logger, predictor)
 
-            samplable, ctrajectories, costs = planner.plan(state=state, reference_route=frenet, goal=goal_cstate,
+            samplable, _, costs = planner.plan(state=state, reference_route=frenet, goal=goal_cstate,
                                                            T_target_horizon=Ts, T_trajectory_end_horizon=Ts,
                                                            cost_params=cost_params)
 
             last_fstate = samplable.sample_frenet(ego.timestamp_in_sec + np.array([samplable.T]))[0]
-            print('samplable delta_s=%f delta_d=%f: T_s=%f T_d=%f last_fstate=%s' %
-                  (delta_s, delta_d, samplable.T, samplable.T_d, NumpyUtils.str_log(last_fstate)))
+            ctrajectory = samplable.sample(ego.timestamp_in_sec + np.arange(0, samplable.T, TRAJECTORY_TIME_RESOLUTION))
+            print('noise (%.1f, %.1f): T_s=%.2f T_d=%.2f, terminal=%s, vel=[%.2f %.2f] acc=[%.2f %.2f]' %
+                  (delta_s, delta_d, samplable.T, samplable.T_d, last_fstate[[FP_SX, FS_DX]],
+                   np.min(ctrajectory[:, C_V]), np.max(ctrajectory[:, C_V]), np.min(ctrajectory[:, C_A]), np.max(ctrajectory[:, C_A])))
 
 
 # remove this skip if you want to run the test
