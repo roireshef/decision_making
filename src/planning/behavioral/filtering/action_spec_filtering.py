@@ -92,8 +92,7 @@ class ActionSpecFilter:
 
     @staticmethod
     def _pad_trajectories_beyond_spec(action_specs: List[ActionSpec], ftrajectories_s: np.array,
-                                      ftrajectories_d: np.array,
-                                      T: np.array, in_padding_mode: np.array) -> np.array:
+                                      ftrajectories_d: np.array, T: np.array, in_padding_mode: np.array) -> np.array:
         """
         Given action specs and their Frenet trajectories, pad (extrapolate) short trajectories from spec.t until
         minimal action time. Beyond the maximum between spec.t and minimal action time Frenet trajectories are set to
