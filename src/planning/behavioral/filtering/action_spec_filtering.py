@@ -9,7 +9,7 @@ from logging import Logger
 from typing import List
 from typing import Optional
 
-from decision_making.src.planning.types import CRT_LEN
+from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
@@ -61,7 +61,7 @@ class ActionSpecFilter:
 
         time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
         ctrajectories = np.empty((len(action_specs), len(time_samples), CRT_LEN), dtype=np.float)
-        ftrajectories = np.empty((len(action_specs), len(time_samples), CRT_LEN), dtype=np.float)
+        ftrajectories = np.empty((len(action_specs), len(time_samples), FS_2D_LEN), dtype=np.float)
 
         # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
         for rel_lane, lane_specs in specs_by_rel_lane.items():
