@@ -56,7 +56,7 @@ class KinematicUtils:
         """
 
         lon_acceleration = ctrajectories[:, :, C_A]
-        lon_jerk = np.hstack((np.zeros((lon_acceleration.shape[0], 1)), np.diff(lon_acceleration)))/TRAJECTORY_TIME_RESOLUTION
+        lon_jerk = np.gradient(lon_acceleration, axis=1)/TRAJECTORY_TIME_RESOLUTION
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
 
@@ -165,7 +165,6 @@ class KinematicUtils:
         """
         return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV],
                          goal_frenet_state[FS_SV], 0, 0, 0, 0])
-
 
 
 class BrakingDistances:
