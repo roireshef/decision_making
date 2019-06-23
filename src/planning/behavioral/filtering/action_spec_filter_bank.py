@@ -1,12 +1,14 @@
+from collections import defaultdict
+
 import six
 from abc import ABCMeta, abstractmethod
-from collections import defaultdict
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-from decision_making.src.global_constants import EPS, TRAJECTORY_TIME_RESOLUTION, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, BP_ACTION_T_LIMITS, BP_LAT_ACC_STRICT_COEF
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_ACTION_T_LIMITS, \
+    TRAJECTORY_TIME_RESOLUTION, EPS
+from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
+    FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, BP_LAT_ACC_STRICT_COEF
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition
