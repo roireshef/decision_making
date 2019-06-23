@@ -11,11 +11,11 @@ from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, BP_LAT_ACC_STRICT_COEF
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition
+    RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -146,9 +146,15 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX], padding_mode)
 
+        # if 12 < behavioral_state.ego_state.timestamp_in_sec < 15:
+        #     print('Time %f' % behavioral_state.ego_state.timestamp_in_sec)
+
         are_valid = []
-        for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
+        for poly_s, t, cell, target, spec in zip(poly_coefs_s, T, relative_cells, target_vehicles, action_specs):
             if target is None:
+                # if 12 < behavioral_state.ego_state.timestamp_in_sec < 15 and isinstance(spec.recipe, StaticActionRecipe):
+                #     dist = target.dynamic_object.map_state.lane_fstate[0] - behavioral_state.ego_state.map_state.lane_fstate[0]
+                #     print('target is None, spec = %s, dist=%f' % (spec, dist))
                 are_valid.append(True)
                 continue
 
@@ -161,8 +167,22 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                      behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # validate distance keeping (on frenet longitudinal axis)
-            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
-                                                             np.array([0, t]))
+            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, t]))
+
+            # for short actions check safety also beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+            # if is_safe and t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON and spec.v > target_fstate[FS_SV]:
+            #     linear_ego_poly_s = np.array([0, 0, 0, 0, spec.v, spec.s - spec.v * t])
+            #     is_safe = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+            #                                                      np.array([t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON]))
+            #     if 12 < behavioral_state.ego_state.timestamp_in_sec < 15:
+            #         dist = target.dynamic_object.map_state.lane_fstate[0] - behavioral_state.ego_state.map_state.lane_fstate[0]
+            #         ego_v = behavioral_state.ego_state.map_state.lane_fstate[1]
+            #         print('IF: is_safe = %s, spec=%s, dist=%f, ego_v=%f' % (is_safe, spec, dist, ego_v))
+
+            # if 12 < behavioral_state.ego_state.timestamp_in_sec < 15 and isinstance(spec.recipe, StaticActionRecipe):
+            #     dist = target.dynamic_object.map_state.lane_fstate[0] - behavioral_state.ego_state.map_state.lane_fstate[0]
+            #     ego_v = behavioral_state.ego_state.map_state.lane_fstate[1]
+            #     print('safe = %s, spec = %s, dist=%f ego_v=%f' % (is_safe, spec, dist, ego_v))
 
             are_valid.append(is_safe)
 
