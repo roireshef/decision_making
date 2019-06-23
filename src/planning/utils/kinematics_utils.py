@@ -83,7 +83,7 @@ class KinematicUtils:
         conforms_desired = np.logical_or(
             np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= nominal_velocity + EPS), axis=1),
             np.logical_and(lon_acceleration[:, 0] > lon_acceleration[:, 1],
-                           lon_velocity[:, -1] <= nominal_velocity[: -1] + NEGLIGIBLE_VELOCITY))
+                           lon_velocity[:, -1] <= nominal_velocity[:, -1] + NEGLIGIBLE_VELOCITY))
 
         return conforms_desired
 
