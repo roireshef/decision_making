@@ -136,6 +136,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         k = np.empty(shape=[0, 1])
         k_tag = np.empty(shape=[0, 1])
         k_max = np.empty(shape=[0])
+        pieces = np.empty(shape=[0, 2])
 
         for i in range(len(frenet_frames)):
             frame = frenet_frames[i]
@@ -146,7 +147,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                 # TODO: figure out how to solve it better!!
                 assert segments_s_end[i] - frame.s_max < 0.01, 'frenet frame of segment %s has problems with s_max' % \
                                                                 sub_segments[i].e_i_SegmentID
-                end_ind = frame.points.shape[0] - 1
+                end_ind = frame.points.shape[0] - 1  # the last point coincides with first point of the next segment
             else:
                 end_ind = int(np.ceil(segments_s_end[i] / segments_ds[i])) + 1
 
@@ -156,24 +157,36 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
 
-            # # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
-            # segment_k = np.abs(frame.k[:, 0])
-            # # max_velocity is the minimum between lane's nominal_speed and max velocity by the segment's curvature
-            # max_velocity = min(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
-            #                    np.sqrt(LAT_ACC_LIMITS[1] / max(EPS, np.max(segment_k))))
-            # # calculate the size (in points) of one piece based on the max_velocity
-            # piece_num_points = int(max_velocity * BP_ACTION_T_LIMITS[1] / segments_ds[i])
-            # # calculate maximal k for each piece
-            # full_segment_k = np.concatenate((segment_k, np.zeros(piece_num_points - len(segment_k) % piece_num_points)))
-            # k_max_per_piece = np.max(full_segment_k.reshape(-1, piece_num_points), axis=1)
-            # # duplicate maximal k of a piece to all points of the piece
-            # segment_k_max = np.repeat(k_max_per_piece, piece_num_points)[start_ind:end_ind]
-            # k_max = np.concatenate((k_max, segment_k_max))
+            # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
+            segment_k = np.abs(frame.k[:, 0])
+            # max_velocity is the minimum between lane's nominal_speed and max velocity by the segment's curvature
+            max_velocity = min(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
+                               np.sqrt(LAT_ACC_LIMITS[1] / max(EPS, np.max(segment_k))))
+            # calculate the size (in points) of one piece based on the max_velocity
+            piece_num_points = int(max_velocity * BP_ACTION_T_LIMITS[1] / segments_ds[i])
+            # calculate maximal k for each piece
+            full_segment_k = np.concatenate((segment_k, np.zeros(piece_num_points - len(segment_k) % piece_num_points)))
+            k_max_per_piece = np.max(full_segment_k.reshape(-1, piece_num_points), axis=1)
+            # duplicate maximal k of a piece to all points of the piece
+            segment_k_max = np.repeat(k_max_per_piece, piece_num_points)[start_ind:end_ind]
+            k_max = np.concatenate((k_max, segment_k_max))
+
+            # pieces contains two columns: piece_size and k_max
+            pieces_sizes = np.full(k_max_per_piece.shape, piece_num_points)
+            pieces_sizes[-1] = len(segment_k) % piece_num_points  # the last piece of the segment is smaller
+            pieces = np.vstack((pieces, np.c_[pieces_sizes, k_max_per_piece]))
+
+            # if len(segment_k) > piece_num_points:
+            #     print('lane id=%d: points=%d piece_num_points=%d' % (segments_id[i], len(segment_k), piece_num_points))
 
             # for each GFF point i in lane segment seg, k_max[i] is the maximal curvature among points of seg
-            k_max = np.concatenate((k_max, np.full(end_ind - start_ind, np.max(np.abs(frame.k[:, 0])))))
+            # k_max = np.concatenate((k_max, np.full(end_ind - start_ind, np.max(np.abs(frame.k[:, 0])))))
 
             segments_num_points_so_far[i] = points.shape[0]
+
+        # for i, piece in enumerate(pieces[:-1]):
+        #     if i > 0 and piece[0] < small_piece_size and piece[1] < pieces[i-1, 1] and piece[1] < pieces[i+1, 1]:
+        #         k_max[]
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
         # for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
