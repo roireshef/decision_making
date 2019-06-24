@@ -110,7 +110,7 @@ class StateModule(DmModule):
         """
 
         timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
-        occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
+        occupancy_state = OccupancyState(0, np.array([0], dtype=np.float64), np.array([0], dtype=np.float64))
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
                                  lane_id=scene_dynamic.s_Data.s_host_localization.e_i_lane_segment_id)
         ego_state = EgoState(obj_id=0,

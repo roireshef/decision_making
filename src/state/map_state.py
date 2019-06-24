@@ -3,7 +3,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_MapState import
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, ROAD_SHOULDERS_WIDTH
 from decision_making.src.planning.types import FrenetState2D, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
-
+import numpy as np
 
 class MapState(PUBSUB_MSG_IMPL):
     lane_fstate = FrenetState2D
@@ -25,7 +25,7 @@ class MapState(PUBSUB_MSG_IMPL):
 
     def serialize(self)-> TsSYSMapState:
         pubsub_msg = TsSYSMapState()
-        pubsub_msg.a_LaneFState = self.lane_fstate
+        pubsub_msg.a_LaneFState = np.asarray(self.lane_fstate, dtype=np.float64)
         pubsub_msg.e_i_LaneID = self.lane_id
         return pubsub_msg
 

@@ -151,7 +151,7 @@ class TrajectoryPlanningFacade(DmModule):
         trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
                         stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                        num=TRAJECTORY_NUM_POINTS) + timestamp)
+                        num=TRAJECTORY_NUM_POINTS, dtype=np.float32) + timestamp)
         self._last_trajectory = samplable_trajectory
 
         # publish results to the lower DM level (Control)

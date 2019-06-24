@@ -213,7 +213,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSDynamicObject()
         pubsub_msg.e_i_ObjectID = self.obj_id
         pubsub_msg.e_Cnt_Timestamp = self.timestamp
-        pubsub_msg.a_e_CachedCartesianState = self.cartesian_state
+        pubsub_msg.a_e_CachedCartesianState = np.asarray(self.cartesian_state, dtype=np.float64)
         pubsub_msg.s_CachedMapState = self._cached_map_state.serialize()
         pubsub_msg.s_Size = self.size.serialize()
         pubsub_msg.e_r_Confidence = self.confidence

@@ -327,6 +327,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         return DataRoutePlan(e_b_is_valid=valid,
                              e_Cnt_num_road_segments=num_road_segments,
-                             a_i_road_segment_ids=np.array(road_segment_ids),
-                             a_Cnt_num_lane_segments=np.array(num_lane_segments),
+                             a_i_road_segment_ids=np.array(road_segment_ids, dtype=np.uint64),
+                             a_Cnt_num_lane_segments=np.array(num_lane_segments, dtype=np.uint8),
                              as_route_plan_lane_segments=self.get_route_plan_lane_segments())
