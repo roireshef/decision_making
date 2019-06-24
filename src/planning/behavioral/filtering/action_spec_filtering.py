@@ -9,7 +9,7 @@ from logging import Logger
 from typing import List
 from typing import Optional
 
-from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN
+from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, FS_SX, C_K
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
@@ -88,6 +88,8 @@ class ActionSpecFilter:
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = lane_frenet.ftrajectories_to_ctrajectories(
                 ftrajectories[indices_by_rel_lane[rel_lane]])
+            points_idxs, _ = lane_frenet.get_closest_index_on_frame(ftrajectories[..., FS_SX])
+            ctrajectories[..., C_K] = lane_frenet._k_max[points_idxs]
 
         return ftrajectories, ctrajectories
 

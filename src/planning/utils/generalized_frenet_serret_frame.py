@@ -156,7 +156,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
 
-            # if the segment is loo long, divide the segment to pieces and calculate maximal k for each piece
+            # # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
             # segment_k = np.abs(frame.k[:, 0])
             # # max_velocity is the minimum between lane's nominal_speed and max velocity by the segment's curvature
             # max_velocity = min(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
