@@ -34,7 +34,7 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
 
         pubsub_msg.s_Timestamp = self.s_Timestamp.serialize()
         pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
-        pubsub_msg.a_TrajectoryWaypoints = self.a_TrajectoryWaypoints
+        pubsub_msg.a_TrajectoryWaypoints = np.ndarray.astype(self.a_TrajectoryWaypoints, dtype=np.float32, copy=False)
         pubsub_msg.e_Cnt_NumValidTrajectoryWaypoints = self.e_Cnt_NumValidTrajectoryWaypoints
 
         return pubsub_msg

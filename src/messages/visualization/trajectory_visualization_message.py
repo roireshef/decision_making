@@ -27,7 +27,7 @@ class PredictionsVisualization(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_i_ObjectID = self.object_id
         pubsub_msg.e_Cnt_NumOfPredictions = self.predictions.shape[0]
-        pubsub_msg.a_Predictions = self.predictions
+        pubsub_msg.a_Predictions = np.ndarray.astype(self.predictions, dtype=np.float32, copy=False)
 
         return pubsub_msg
 
@@ -56,13 +56,13 @@ class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_Cnt_NumOfPointsInTrajectory = self.trajectories.shape[1]
         pubsub_msg.e_Cnt_NumOfTrajectories = self.trajectories.shape[0]
-        pubsub_msg.a_Trajectories = self.trajectories
+        pubsub_msg.a_Trajectories = np.ndarray.astype(self.trajectories, dtype=np.float32, copy=False)
 
         pubsub_msg.e_Cnt_NumOfActors = len(self.as_actors_predictions)
         for i in range(pubsub_msg.e_Cnt_NumOfActors):
             pubsub_msg.as_ActorsPredictions[i] = self.as_actors_predictions[i].serialize()
 
-        pubsub_msg.a_e_RecipeDescription = self.recipe_description
+        pubsub_msg.a_e_RecipeDescription = np.fromstring(self.recipe_description, dtype=np.uint8)
 
         return pubsub_msg
 
