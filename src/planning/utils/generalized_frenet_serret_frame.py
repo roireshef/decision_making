@@ -119,7 +119,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segments_id = np.array([sub_seg.e_i_SegmentID for sub_seg in sub_segments])
         segments_s_start = np.array([sub_seg.e_i_SStart for sub_seg in sub_segments])
         segments_s_end = np.array([sub_seg.e_i_SEnd for sub_seg in sub_segments])
-        segments_ds = np.array([frame.ds for frame in frenet_frames])
+        segments_ds = np.array([frame.ds for frame in frenet_frames], dtype=np.float64)
         segments_num_points_so_far = np.zeros(shape=[len(sub_segments)], dtype=int)
 
         # The accumulated longitudinal progress on the generalized frenet frame for each segment,
