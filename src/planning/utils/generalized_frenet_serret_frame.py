@@ -1,3 +1,4 @@
+from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 
 import numpy as np
@@ -151,30 +152,26 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             else:
                 end_ind = int(np.ceil(segments_s_end[i] / segments_ds[i])) + 1
 
+            # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
+            segment_k = np.abs(frame.k[:-1, 0])
+            # calculate the size (in points) of one piece based on the velocity limit
+            piece_num_points = int(MapUtils.get_lane(segments_id[i]).e_v_nominal_speed * BP_ACTION_T_LIMITS[1] / segments_ds[i])
+            # calculate maximal k for each piece
+            full_segment_k = np.concatenate((segment_k, np.zeros(piece_num_points - len(segment_k) % piece_num_points)))
+            k_max_per_piece = np.max(full_segment_k.reshape(-1, piece_num_points), axis=1)
+
+            # pieces contains 2 columns: s offset, k_max
+            piece_length = piece_num_points * segments_ds[i]
+            pieces_sizes = np.full(k_max_per_piece.shape, piece_length)
+            pieces_sizes[-1] = frame.s_max % piece_length  # the last piece of the segment is smaller
+            offsets_s = segments_s_offsets[i] + np.maximum(0, np.insert(np.cumsum(pieces_sizes[:-1]), 0, 0) - start_ind)
+            pieces = np.vstack((pieces, np.c_[offsets_s, k_max_per_piece]))
+
             points = np.vstack((points, frame.points[start_ind:end_ind, :]))
             T = np.vstack((T, frame.T[start_ind:end_ind, :]))
             N = np.vstack((N, frame.N[start_ind:end_ind, :]))
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
-
-            # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
-            segment_k = np.abs(frame.k[:, 0])
-            # max_velocity is the minimum between lane's nominal_speed and max velocity by the segment's curvature
-            max_velocity = min(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
-                               np.sqrt(LAT_ACC_LIMITS[1] / max(EPS, np.max(segment_k))))
-            # calculate the size (in points) of one piece based on the max_velocity
-            piece_num_points = int(max_velocity * BP_ACTION_T_LIMITS[1] / segments_ds[i])
-            # calculate maximal k for each piece
-            full_segment_k = np.concatenate((segment_k, np.zeros(piece_num_points - len(segment_k) % piece_num_points)))
-            k_max_per_piece = np.max(full_segment_k.reshape(-1, piece_num_points), axis=1)
-            # duplicate maximal k of a piece to all points of the piece
-            segment_k_max = np.repeat(k_max_per_piece, piece_num_points)[start_ind:end_ind]
-            k_max = np.concatenate((k_max, segment_k_max))
-
-            # pieces contains two columns: piece_size and k_max
-            pieces_sizes = np.full(k_max_per_piece.shape, piece_num_points)
-            pieces_sizes[-1] = len(segment_k) % piece_num_points  # the last piece of the segment is smaller
-            pieces = np.vstack((pieces, np.c_[pieces_sizes, k_max_per_piece]))
 
             # if len(segment_k) > piece_num_points:
             #     print('lane id=%d: points=%d piece_num_points=%d' % (segments_id[i], len(segment_k), piece_num_points))
@@ -184,9 +181,10 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
             segments_num_points_so_far[i] = points.shape[0]
 
-        # for i, piece in enumerate(pieces[:-1]):
-        #     if i > 0 and piece[0] < small_piece_size and piece[1] < pieces[i-1, 1] and piece[1] < pieces[i+1, 1]:
-        #         k_max[]
+        for i, piece in enumerate(pieces[:-1]):
+            neighbors_min_k = min(pieces[i-1, 1], pieces[i+1, 1])
+            if i > 0 and pieces[i+1, 0] - piece[0] < small_piece_size and piece[1] < neighbors_min_k:
+                piece[1] = neighbors_min_k
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
         # for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
