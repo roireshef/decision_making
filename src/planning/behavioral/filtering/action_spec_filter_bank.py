@@ -77,7 +77,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                                  frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
         Calculate point-wise maximal velocity for the given trajectories according to two criteria:
-            1. nominal speed per lane segment (from the map)
+            1. speed limit per lane segment (from the map)
             2. curvature with strict lateral acceleration limit
         :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
         :param ctrajectories: The cartesian trajectories to which to calculate the nominal speeds
@@ -90,11 +90,11 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                                  for lane_id in np.unique(lane_ids_matrix)}
         # creates an ndarray with the same shape as of `lane_ids_list`,
         # where each element is replaced by the maximal speed limit (according to lane)
-        vel_limit_by_nominal_speed = np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
+        vel_limit_of_lane = np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
         # calculate point-wise maximal velocity according to the curvature and the lateral acceleration limit
         # TODO: instead of C_K use k_max segments
         vel_limit_by_curvature = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / np.maximum(EPS, np.abs(ctrajectories[..., C_K])))
-        return np.minimum(vel_limit_by_nominal_speed, vel_limit_by_curvature)
+        return np.minimum(vel_limit_of_lane, vel_limit_by_curvature)
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
