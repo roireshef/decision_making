@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
+from generation_pubsub.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from scipy.interpolate.fitpack2 import UnivariateSpline
 

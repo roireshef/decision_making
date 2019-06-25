@@ -1,10 +1,10 @@
 import copy
 import numpy as np
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicObject import TsSYSDynamicObject
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_EgoState import TsSYSEgoState
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectSize import TsSYSObjectSize
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_OccupancyState import TsSYSOccupancyState
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_State import TsSYSState
+from generation_pubsub.Rte_Types.python.sub_structures.TsSYS_DynamicObject import TsSYSDynamicObject
+from generation_pubsub.Rte_Types.python.sub_structures.TsSYS_EgoState import TsSYSEgoState
+from generation_pubsub.Rte_Types.python.sub_structures.TsSYS_ObjectSize import TsSYSObjectSize
+from generation_pubsub.Rte_Types.python.sub_structures.TsSYS_OccupancyState import TsSYSOccupancyState
+from generation_pubsub.Rte_Types.python.sub_structures.TsSYS_State import TsSYSState
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
