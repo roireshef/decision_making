@@ -2,24 +2,21 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, EPS, BP_ACTION_T_LIMITS, \
-    TRAJECTORY_TIME_RESOLUTION
+from decision_making.src.global_constants import EPS
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, RelativeLane
+    RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, C_V
+from decision_making.src.planning.types import FS_DX, FS_SX, C_K
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from typing import List
 from typing import List, Union, Any
 
 
@@ -44,8 +41,7 @@ class FilterForKinematics(ActionSpecFilter):
         """
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
-        return list(KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS))
+        return list(KinematicUtils.filter_by_cartesian_limits(ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS))
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
@@ -69,16 +65,22 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         num_points = ftrajectories.shape[1]
         nominal_speeds = np.empty((len(action_specs), num_points), dtype=np.float)
         for relative_lane, lane_frame in behavioral_state.extended_lane_frames.items():
-            if len(indices_by_rel_lane[relative_lane]) > 0:
-                nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
-                    ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
+            idxs_per_lane = indices_by_rel_lane[relative_lane]
+            if len(idxs_per_lane) > 0:
+                nominal_speeds[idxs_per_lane] = self._pointwise_nominal_speed(
+                    ftrajectories[idxs_per_lane], ctrajectories[idxs_per_lane], lane_frame)
 
         return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds))
 
     @staticmethod
-    def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+    def _pointwise_nominal_speed(ftrajectories: np.ndarray, ctrajectories: np.ndarray,
+                                 frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
+        Calculate point-wise maximal velocity for the given trajectories according to two criteria:
+            1. nominal speed per lane segment (from the map)
+            2. curvature with strict lateral acceleration limit
         :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
+        :param ctrajectories: The cartesian trajectories to which to calculate the nominal speeds
         :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
         """
 
@@ -88,7 +90,9 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                                  for lane_id in np.unique(lane_ids_matrix)}
         # creates an ndarray with the same shape as of `lane_ids_list`,
         # where each element is replaced by the maximal speed limit (according to lane)
-        return np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
+        vel_limit_by_nominal_speed = np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
+        vel_limit_by_curvature = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / np.maximum(EPS, np.abs(ctrajectories[..., C_K])))
+        return np.minimum(vel_limit_by_nominal_speed, vel_limit_by_curvature)
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
