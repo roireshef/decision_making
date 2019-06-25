@@ -184,10 +184,19 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
             segments_num_points_so_far[i] = points.shape[0]
 
-        for i, piece in enumerate(pieces[:-1]):
-            neighbors_min_k = min(pieces[i-1, 1], pieces[i+1, 1])
-            if i > 0 and pieces[i+1, 0] - piece[0] < small_piece_size and piece[1] < neighbors_min_k:
-                piece[1] = neighbors_min_k
+        # delete too short pieces
+        for i, piece in enumerate(pieces):
+            if piece[0] is None:
+                continue
+            next_piece = pieces[i+1] if i < len(pieces) - 1 else None
+            prev_piece = pieces[i-1] if i > 0 else None
+            small_piece = (next_piece[0] - piece[0] < small_piece_size) if next_piece is not None else segments_s_offsets[-1]
+            if small_piece:
+                if prev_piece is not None and piece[1] < prev_piece[1]:  # if this piece is faster than the previous one
+                    pieces[i, 0] = None  # unify with the previous piece
+                elif next_piece is not None and piece[1] < next_piece[1]:  # if this piece is faster than the next one
+                    piece[1] = next_piece[1]  # unify with the next piece
+                    pieces[i+1, 0] = None
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
         # for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
