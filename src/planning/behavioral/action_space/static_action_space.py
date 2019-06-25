@@ -44,6 +44,7 @@ class StaticActionSpace(ActionSpace):
         # pick ego initial fstates projected on all target frenet_frames
         relative_lanes = np.array([recipe.relative_lane for recipe in action_recipes])
         projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
+        s_max_array = np.array([behavioral_state.extended_lane_frames[lane].s_max for lane in relative_lanes])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
@@ -86,7 +87,7 @@ class StaticActionSpace(ActionSpace):
 
         # lane center has latitude = 0, i.e. spec.d = 0
         action_specs = [ActionSpec(t, vt, st, 0, recipe)
-                        if ~np.isnan(t) else None
-                        for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
+                        if ~np.isnan(t) and st <= s_max else None
+                        for recipe, t, vt, st, s_max in zip(action_recipes, T, v_T, target_s, s_max_array)]
 
         return action_specs
