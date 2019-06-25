@@ -152,26 +152,29 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             else:
                 end_ind = int(np.ceil(segments_s_end[i] / segments_ds[i])) + 1
 
-            # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
-            segment_k = np.abs(frame.k[:-1, 0])
-            # calculate the size (in points) of one piece based on the velocity limit
-            piece_num_points = int(MapUtils.get_lane(segments_id[i]).e_v_nominal_speed * BP_ACTION_T_LIMITS[1] / segments_ds[i])
-            # calculate maximal k for each piece
-            full_segment_k = np.concatenate((segment_k, np.zeros(piece_num_points - len(segment_k) % piece_num_points)))
-            k_max_per_piece = np.max(full_segment_k.reshape(-1, piece_num_points), axis=1)
-
-            # pieces contains 2 columns: s offset, k_max
-            piece_length = piece_num_points * segments_ds[i]
-            pieces_sizes = np.full(k_max_per_piece.shape, piece_length)
-            pieces_sizes[-1] = frame.s_max % piece_length  # the last piece of the segment is smaller
-            offsets_s = segments_s_offsets[i] + np.maximum(0, np.insert(np.cumsum(pieces_sizes[:-1]), 0, 0) - start_ind)
-            pieces = np.vstack((pieces, np.c_[offsets_s, k_max_per_piece]))
-
             points = np.vstack((points, frame.points[start_ind:end_ind, :]))
             T = np.vstack((T, frame.T[start_ind:end_ind, :]))
             N = np.vstack((N, frame.N[start_ind:end_ind, :]))
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
+
+            # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
+            segment_k = np.abs(frame.k[:-1, 0])
+            segment_size = len(segment_k)
+            # calculate the size (in points) of one piece based on the velocity limit
+            desired_piece_size = int(MapUtils.get_lane(segments_id[i]).e_v_nominal_speed * BP_ACTION_T_LIMITS[1] / segments_ds[i])
+            pieces_num = max(1, int(np.round(segment_size / desired_piece_size)))
+            piece_size = int(np.round(segment_size / pieces_num))
+            # calculate maximal k for each piece
+            full_segment_k = np.concatenate((segment_k, np.zeros(piece_size - segment_size % piece_size)))
+            k_max_per_piece = np.max(full_segment_k.reshape(-1, piece_size), axis=1)
+            if k_max_per_piece.size > pieces_num:  # then truncate k_max_per_piece to the size of pieces_num
+                k_max_per_piece[pieces_num-1] = np.max(k_max_per_piece[pieces_num-1:])
+                k_max_per_piece = k_max_per_piece[:pieces_num]
+
+            # pieces contains 2 columns: s_offset, k_max
+            offsets_s = segments_s_offsets[i] + np.arange(0, segment_size, piece_size)[:pieces_num] * segments_ds[i] - start_ind
+            pieces = np.vstack((pieces, np.c_[offsets_s, k_max_per_piece]))
 
             # if len(segment_k) > piece_num_points:
             #     print('lane id=%d: points=%d piece_num_points=%d' % (segments_id[i], len(segment_k), piece_num_points))
