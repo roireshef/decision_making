@@ -54,7 +54,7 @@ LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 75/2.23694  # TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
 
 # [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
 # we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
@@ -77,10 +77,10 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-2.5, 2.5])
+LAT_ACC_LIMITS = np.array([-2, 2])
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 0.9
