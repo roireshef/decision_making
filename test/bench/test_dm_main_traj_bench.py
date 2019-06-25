@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from decision_making.paths import Paths
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.test.bench import dm_main_trajectory_bench
 
 test_fixed_trajectory_file = Paths.get_resource_absolute_path_filename(
@@ -40,7 +39,7 @@ test_fixed_trajectory_file = Paths.get_resource_absolute_path_filename(
 #     dm_main_process.start()
 #     time.sleep(2)
 #
-#     pubsub.publish(PERCEIVED_SELF_LOCALIZATION_LCM, localization_msg)
+#     pubsub.publish(PERCEIVED_SELF_LOCALIZATION, localization_msg)
 #     time.sleep(2)
 #     dm_main_process.terminate()
 #

@@ -2,20 +2,19 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
-
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    state_with_sorrounding_objects, NAVIGATION_PLAN
 from rte.python.logger.AV_logger import AV_Logger
 
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
+    state_with_sorrounding_objects, route_plan_20_30
 
-def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects):
+def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects, route_plan_20_30):
     """
     validate that 8 objects around ego create 8 grid cells in the behavioral state in multi-road map
     (a cell is created only if it contains at least one object)
     """
     logger = AV_Logger.get_logger()
 
-    behavioral_state = BehavioralGridState.create_from_state(state_with_sorrounding_objects, NAVIGATION_PLAN, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state_with_sorrounding_objects, route_plan_20_30, logger)
 
     assert len(behavioral_state.road_occupancy_grid) == len(state_with_sorrounding_objects.dynamic_objects)
 

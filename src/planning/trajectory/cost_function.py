@@ -1,16 +1,17 @@
 import numpy as np
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST, EPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
-    FrenetTrajectories2D, FS_DX
+    FrenetTrajectories2D, FS_DX, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math_utils import Math
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.utils.geometry_utils import CartesianFrame
 
 
 class TrajectoryPlannerCosts:
@@ -61,23 +62,28 @@ class TrajectoryPlannerCosts:
         """
         # Filter close objects
         close_objects = [obs for obs in state.dynamic_objects
-                   if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
+                         if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
 
         with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(close_objects), ctrajectories.shape)):
             if len(close_objects) == 0:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
             # calculate objects' map_state
-            # TODO: consider using map_state_on_host_lane
             objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
-                                                 for obj in close_objects if obj.cartesian_state is not None])
+                                                 for obj in close_objects])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
-            objects_predicted_ftrajectories = predictor.predict_frenet_states(
+            objects_predicted_ftrajectories = predictor.predict_2d_frenet_states(
                 objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
-            objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
+            # find all valid predictions: predicted states of objects outside the reference_route limits
+            valid_predictions = NumpyUtils.is_in_limits(objects_predicted_ftrajectories[:, :, FS_SX], reference_route.s_limits)
+            # move all invalid predictions to be far enough from ego, but inside the reference_route limits
+            objects_predicted_ftrajectories[np.logical_not(valid_predictions), FS_SX] = reference_route.s_max - EPS
+
+            # convert the predictions from Frenet to cartesian trajectories
+            objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
             ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
@@ -93,7 +99,7 @@ class TrajectoryPlannerCosts:
 
             # multiply dimensional flipped-logistic costs, so that big values are where the two dimensions have
             # negative distance, i.e. collision
-            per_point_cost = per_dimension_cost.prod(axis=-1)
+            per_point_cost = per_dimension_cost.prod(axis=-1) * valid_predictions.astype(float)
 
             per_trajectory_point_cost = params.obstacle_cost_x.w * np.sum(per_point_cost, axis=1)
 
@@ -164,7 +170,7 @@ class TrajectoryPlannerCosts:
         :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
         """
         lon_jerks, lat_jerks = Jerk.compute_jerks(ctrajectories, dt)
-        jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
+        jerk_costs = params.lon_jerk_cost_weight * lon_jerks + params.lat_jerk_cost_weight * lat_jerks
         return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
 

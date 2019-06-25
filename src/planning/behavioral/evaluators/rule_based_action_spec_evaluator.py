@@ -5,7 +5,7 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
-    SPECIFICATION_MARGIN_TIME_DELAY, LON_ACC_LIMITS
+    SPECIFICATION_HEADWAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, SemanticGridCell
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     RelativeLongitudinalPosition
@@ -136,9 +136,9 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
             back_fpoint = lane_frenet.cpoint_to_fpoint(np.array([back_object.x, back_object.y]))
             dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
             if behavioral_state.ego_state.velocity > back_object.velocity:
-                safe_dist_behind_ego = back_object.velocity * SPECIFICATION_MARGIN_TIME_DELAY
+                safe_dist_behind_ego = back_object.velocity * SPECIFICATION_HEADWAY
             else:
-                safe_dist_behind_ego = back_object.velocity * SPECIFICATION_MARGIN_TIME_DELAY + \
+                safe_dist_behind_ego = back_object.velocity * SPECIFICATION_HEADWAY + \
                                        back_object.velocity ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
                                        behavioral_state.ego_state.velocity ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
         return dist_to_back_obj, safe_dist_behind_ego
@@ -153,6 +153,6 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         """
         action_ind = [i for i, recipe in enumerate(action_recipes)
                       if recipe.relative_lane == cell[LAT_CELL]
-                      and recipe.action_type==ActionType.FOLLOW_LANE
+                      and recipe.action_type == ActionType.FOLLOW_LANE
                       and recipes_mask[i]]
         return action_ind[-1] if len(action_ind) > 0 else None

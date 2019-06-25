@@ -4,9 +4,11 @@ from decision_making.src.global_constants import TRAJECTORY_CURVE_SPLINE_FIT_ORD
 from decision_making.src.planning.types import C_A, C_V, C_K, FP_SX, FS_SX, FS_DX, FS_DV, FS_SV, FS_DA, FS_SA, FP_DX, \
     C_YAW
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.planning.trajectory.utils import RouteFixture
-from mapping.src.service.map_service import MapService
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.utils.geometry_utils import CartesianFrame
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_no_split
 
 
 def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
@@ -161,12 +163,16 @@ def test_projectCartesianPoint_fivePointsProjection_accurate():
     np.testing.assert_array_less(s_error, ACCURACY_TH, 'FrenetSerret2DFrame._project_cartesian_points is not accurate')
 
 
-def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
+def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough(scene_static_pg_no_split):
+
     POSITION_ACCURACY_TH = 1e-1  # up to 10 [cm] error in euclidean distance
 
     upsampling_factor_for_test = 4
 
-    route_points = MapService.get_instance().get_road(20)._points
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
+    road_segment_id = MapUtils.get_road_segment_ids()[0]
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
+    route_points = MapUtils.get_lane_frenet_frame(lane_id).points
 
     # "Train" points: assumed to be sampled sufficiently dense (according to ROAD_MAP_REQUIRED_RES)
     _, route_points_upsampled_to_required_res, _ = \
