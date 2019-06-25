@@ -364,9 +364,11 @@ class WerlingPlanner(TrajectoryPlanner):
         init_idx = final_idx = 0
         if not NumpyUtils.is_in_limits(lat_acc, cost_params.lat_acceleration_limits).all(axis=1).any():
             # if all trajectories violate lat_acc limits, get range of nominal points around the "worst" timestamp
-            lat_acc_traj_s = ftrajectories[lat_acc_traj_idx, lat_acc_t_idx-5:lat_acc_t_idx+5, FS_SX]
-            init_idx = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s[0]]))[0][0]
-            final_idx = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s[-1]]))[0][0]
+            lat_acc_traj_s = ftrajectories[lat_acc_traj_idx, lat_acc_t_idx, FS_SX]
+            nominal_idxs = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s]))[0]
+            if len(nominal_idxs) > 0:
+                init_idx = nominal_idxs[0] - 5
+                final_idx = nominal_idxs[0] + 5
         raise CartesianLimitsViolated("No valid trajectories. "
                                       "timestamp_in_sec: %f, time horizon: %f, "
                                       "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
@@ -384,7 +386,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                        np.max(np.min(ctrajectories[:, :, C_A], axis=1)),
                                        np.min(np.max(ctrajectories[:, :, C_A], axis=1)),
                                        NumpyUtils.str_log(cost_params.lon_acceleration_limits),
-                                       np.min(lat_acc), np.max(lat_acc),
+                                       np.max(np.min(lat_acc, axis=1)), np.min(np.max(lat_acc, axis=1)),
                                        NumpyUtils.str_log(cost_params.lat_acceleration_limits), len(ctrajectories),
                                        NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
                                        goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
