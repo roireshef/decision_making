@@ -1,6 +1,7 @@
 import numpy as np
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, \
+    IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
@@ -16,6 +17,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
 from decision_making.src.messages.scene_static_enums import ManeuverType
+
 
 class MapUtils:
 
@@ -100,7 +102,8 @@ class MapUtils:
         elif relative_lane == RelativeLane.LEFT_LANE:
             adj_lanes = lane.as_left_adjacent_lanes
         else:
-            raise ValueError('Relative lane must be either right or left')
+            raise ValueError('Relative lane must be either right or left: lane_id %d, relative_lane %s' %
+                             (lane_id, relative_lane))
         return [adj_lane.e_i_lane_segment_id for adj_lane in adj_lanes]
 
     @staticmethod
@@ -268,7 +271,7 @@ class MapUtils:
         try:
             MapUtils._get_upstream_lanes_from_distance(lane_id, 0, backward_dist)
             return True
-        except UpstreamLaneNotFound:
+        except UpstreamLaneNotFound('upstream lane for %d not found for distance %f' % (lane_id, backward_dist)):
             return False
 
     @staticmethod
@@ -308,8 +311,6 @@ class MapUtils:
         # create GFF
         gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
         return gff
-
-
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
@@ -412,8 +413,7 @@ class MapUtils:
             if len(prev_lane_ids) == 0:
                 # TODO: the lane can actually have no upstream; should we continue with the existing path instead of
                 #   raising exception, if total_dist > TBD
-                raise UpstreamLaneNotFound(
-                    "MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % (prev_lane_id))
+                raise UpstreamLaneNotFound("MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % prev_lane_id)
             # TODO: how to choose between multiple upstreams if all of them belong to route plan road segment
             prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
@@ -432,8 +432,9 @@ class MapUtils:
         lanes = [lane for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
-            raise LaneNotFound('lane {0} not found'.format(lane_id))
-        assert len(lanes) == 1
+            raise LaneNotFound('lane %d not found' % lane_id)
+        if len(lanes) > 1:
+            raise IDAppearsMoreThanOnce('lane %d appears more than once' % lane_id)
         return lanes[0]
 
     @staticmethod
@@ -448,8 +449,9 @@ class MapUtils:
         lanes = [lane for lane in scene_static_lane_geo.s_Data.s_SceneStaticGeometry.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
-            raise LaneNotFound('lane %d not found' % lane_id)
-        assert len(lanes) == 1
+            raise LaneNotFound('lane %d not found in lane geometry' % lane_id)
+        if len(lanes) > 1:
+            raise IDAppearsMoreThanOnce('lane %d appears more than once in lane geometry' % lane_id)
         return lanes[0]
 
     @staticmethod
@@ -465,11 +467,9 @@ class MapUtils:
                          road_segment.e_i_road_segment_id == road_id]
         if len(road_segments) == 0:
             raise RoadNotFound('road %d not found' % road_id)
-        assert len(road_segments) == 1
+        if len(road_segments) > 1:
+            raise IDAppearsMoreThanOnce('road %d appears more than once' % road_id)
         return road_segments[0]
-
-
-
 
     @staticmethod
     def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> np.array:
@@ -490,6 +490,3 @@ class MapUtils:
         frenet_states = np.zeros((len(stations_s_coordinates), 6))
         frenet_states[:, FS_SX] = sorted(stations_s_coordinates)
         return lane_frenet.convert_from_segment_states(frenet_states, lane_ids)[:, FS_SX]
-
-
-
