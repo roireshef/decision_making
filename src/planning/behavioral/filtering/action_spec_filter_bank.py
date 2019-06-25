@@ -81,6 +81,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
             2. curvature with strict lateral acceleration limit
         :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
         :param ctrajectories: The cartesian trajectories to which to calculate the nominal speeds
+        :param frenet: current GFF. The given ftrajectories are relative to this GFF.
         :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
         """
 
