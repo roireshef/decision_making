@@ -1,3 +1,5 @@
+from itertools import filterfalse
+
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 
@@ -137,7 +139,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         k = np.empty(shape=[0, 1])
         k_tag = np.empty(shape=[0, 1])
         k_max = np.empty(shape=[0])
-        pieces = np.empty(shape=[0, 2])
+        pieces = np.empty(shape=[0, 3])
 
         for i in range(len(frenet_frames)):
             frame = frenet_frames[i]
@@ -172,9 +174,11 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                 k_max_per_piece[pieces_num-1] = np.max(k_max_per_piece[pieces_num-1:])
                 k_max_per_piece = k_max_per_piece[:pieces_num]
 
-            # pieces contains 2 columns: s_offset, k_max
-            offsets_s = segments_s_offsets[i] + np.arange(0, segment_size, piece_size)[:pieces_num] * segments_ds[i] - start_ind
-            pieces = np.vstack((pieces, np.c_[offsets_s, k_max_per_piece]))
+            # pieces contains 3 columns: s_offset, k_max, length
+            all_sizes_but_last = np.full(pieces_num - 1, piece_size)
+            piece_lengths = np.concatenate((all_sizes_but_last, [segment_size - np.sum(all_sizes_but_last)])) * segments_ds[i]
+            offsets_s = np.insert(np.cumsum(piece_lengths[:-1]), 0, 0) + segments_s_offsets[i] - start_ind
+            pieces = np.vstack((pieces, np.c_[offsets_s, k_max_per_piece, piece_lengths]))
 
             # if len(segment_k) > piece_num_points:
             #     print('lane id=%d: points=%d piece_num_points=%d' % (segments_id[i], len(segment_k), piece_num_points))
@@ -185,18 +189,27 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             segments_num_points_so_far[i] = points.shape[0]
 
         # delete too short pieces
-        for i, piece in enumerate(pieces[:-1]):
-            if piece[0] is None or pieces[i+1, 0] - piece[0] > small_piece_size:
-                continue
-            next_piece = pieces[i+1]
-            prev_piece = pieces[i-1] if i > 0 else None
-            if prev_piece is not None and piece[1] < prev_piece[1]:  # if this piece is faster than the previous one
-                pieces[i, 0] = None  # unify with the previous piece
-            elif next_piece is not None and piece[1] < next_piece[1]:  # if this piece is faster than the next one
-                piece[1] = next_piece[1]  # unify with the next piece
-                pieces[i+1, 0] = None
-            else:
+        while True:
+            pieces_changed = False
+            for i, piece in enumerate(pieces[:-1]):
+                if piece[0] is None or piece[2] > small_piece_size:
+                    continue
+                pieces_changed = True
+                next_piece = pieces[i+1]
+                prev_piece = pieces[i-1] if i > 0 else None
+                if prev_piece is not None and piece[1] < prev_piece[1]:  # if this piece is faster than the previous one
+                    piece[0] = None  # unify with the previous piece
+                elif next_piece is not None and piece[1] < next_piece[1]:  # if this piece is faster than the next one
+                    piece[1] = next_piece[1]  # unify with the next piece
+                    pieces[i+1, 0] = None
+                else:
+                    prev_cost = (piece[1] - prev_piece[1]) * prev_piece[2] if prev_piece is not None else np.inf
+                    next_cost = (piece[1] - next_piece[1]) * next_piece[2] if next_piece is not None else np.inf
 
+            if pieces_changed:
+                pieces = list(filterfalse(lambda piece: piece[0] is not None, pieces))
+            else:
+                break
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
         # for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
