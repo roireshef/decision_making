@@ -59,16 +59,16 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         _, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
 
         num_points = self._ftrajectories.shape[1]
-        nominal_speeds = np.empty((len(action_specs), num_points), dtype=np.float)
+        pointwise_speed_limit = np.empty((len(action_specs), num_points), dtype=np.float)
         for relative_lane, lane_frame in behavioral_state.extended_lane_frames.items():
             idxs_per_lane = indices_by_rel_lane[relative_lane]
             if len(idxs_per_lane) > 0:
-                nominal_speeds[idxs_per_lane] = self._pointwise_nominal_speed(self._ftrajectories[idxs_per_lane], lane_frame)
-
-        return list(KinematicUtils.flexible_filter_by_velocity(self._ctrajectories, nominal_speeds))
+                pointwise_speed_limit[idxs_per_lane] = self._pointwise_speed_limit(self._ftrajectories[idxs_per_lane],
+                                                                                   lane_frame)
+        return list(KinematicUtils.flexible_filter_by_velocity(self._ctrajectories, pointwise_speed_limit))
 
     @staticmethod
-    def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+    def _pointwise_speed_limit(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
         Calculate point-wise maximal velocity for the given trajectories according to speed limit per lane segment
         (from the map)
@@ -99,11 +99,11 @@ class FilterForCurvature(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean list per action spec: True if a spec passed the filter
         """
-        nominal_speeds = self._pointwise_nominal_speed(self._ctrajectories)
-        return list(KinematicUtils.flexible_filter_by_velocity(self._ctrajectories, nominal_speeds))
+        pointwise_speed_limit = self._pointwise_speed_limit(self._ctrajectories)
+        return list(KinematicUtils.flexible_filter_by_velocity(self._ctrajectories, pointwise_speed_limit))
 
     @staticmethod
-    def _pointwise_nominal_speed(ctrajectories: np.ndarray) -> np.ndarray:
+    def _pointwise_speed_limit(ctrajectories: np.ndarray) -> np.ndarray:
         """
         Calculate point-wise maximal velocity for the given trajectories according to the curvature and more strict
         lateral acceleration limit
