@@ -39,9 +39,7 @@ class FilterForKinematics(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean list per action spec: True if a spec passed the filter
         """
-        _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
-
-        return list(KinematicUtils.filter_by_cartesian_limits(ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS))
+        return list(KinematicUtils.filter_by_cartesian_limits(self._ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS))
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
@@ -58,44 +56,63 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean list per action spec: True if a spec passed the filter
         """
-        ftrajectories, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
+        _, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
 
-        specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
-
-        num_points = ftrajectories.shape[1]
+        num_points = self._ftrajectories.shape[1]
         nominal_speeds = np.empty((len(action_specs), num_points), dtype=np.float)
         for relative_lane, lane_frame in behavioral_state.extended_lane_frames.items():
             idxs_per_lane = indices_by_rel_lane[relative_lane]
             if len(idxs_per_lane) > 0:
-                nominal_speeds[idxs_per_lane] = self._pointwise_nominal_speed(
-                    ftrajectories[idxs_per_lane], ctrajectories[idxs_per_lane], lane_frame)
+                nominal_speeds[idxs_per_lane] = self._pointwise_nominal_speed(self._ftrajectories[idxs_per_lane], lane_frame)
 
-        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds))
+        return list(KinematicUtils.flexible_filter_by_velocity(self._ctrajectories, nominal_speeds))
 
     @staticmethod
-    def _pointwise_nominal_speed(ftrajectories: np.ndarray, ctrajectories: np.ndarray,
-                                 frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+    def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
-        Calculate point-wise maximal velocity for the given trajectories according to two criteria:
-            1. speed limit per lane segment (from the map)
-            2. curvature with strict lateral acceleration limit
+        Calculate point-wise maximal velocity for the given trajectories according to speed limit per lane segment
+        (from the map)
         :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
-        :param ctrajectories: The cartesian trajectories to which to calculate the nominal speeds
         :param frenet: current GFF. The given ftrajectories are relative to this GFF.
         :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
         """
-
         # get the lane ids
         lane_ids_matrix = frenet.convert_to_segment_states(ftrajectories)[0]
         lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
                                  for lane_id in np.unique(lane_ids_matrix)}
         # creates an ndarray with the same shape as of `lane_ids_list`,
         # where each element is replaced by the maximal speed limit (according to lane)
-        vel_limit_of_lane = np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
-        # calculate point-wise maximal velocity according to the curvature and the lateral acceleration limit
+        return np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
+
+
+class FilterForCurvature(ActionSpecFilter):
+    @prof.ProfileFunction()
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        """
+        Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
+            - max longitudinal position (available in the reference frame)
+            - longitudinal velocity limits - both in Frenet (analytical) and Cartesian (by sampling)
+            - longitudinal acceleration limits - both in Frenet (analytical) and Cartesian (by sampling)
+            - lateral acceleration limits - in Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
+            conceptually "straightens" the road's shape.
+        :param action_specs: list of action specs
+        :param behavioral_state:
+        :return: boolean list per action spec: True if a spec passed the filter
+        """
+        nominal_speeds = self._pointwise_nominal_speed(self._ctrajectories)
+        return list(KinematicUtils.flexible_filter_by_velocity(self._ctrajectories, nominal_speeds))
+
+    @staticmethod
+    def _pointwise_nominal_speed(ctrajectories: np.ndarray) -> np.ndarray:
+        """
+        Calculate point-wise maximal velocity for the given trajectories according to the curvature and more strict
+        lateral acceleration limit
+        :param ctrajectories: The cartesian trajectories to which to calculate the nominal speeds
+        :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
+        """
+        # calculate point-wise maximal velocity according to the curvature and the strict lateral acceleration limit
         # TODO: instead of C_K use k_max segments
-        vel_limit_by_curvature = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / np.maximum(EPS, np.abs(ctrajectories[..., C_K])))
-        return np.minimum(vel_limit_of_lane, vel_limit_by_curvature)
+        return np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / np.maximum(EPS, np.abs(ctrajectories[..., C_K])))
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
@@ -340,6 +357,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
             self._raise_true()
         return beyond_spec_s[slow_points], points_velocity_limits[slow_points]
 
+
 class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
     """
     Checks if the speed limit will be exceeded.
@@ -354,8 +372,8 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
     def __init__(self):
         super(BeyondSpecSpeedLimitFilter, self).__init__()
 
-    def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> (
-    int, float):
+    def _get_upcoming_speed_limits(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> \
+            (np.array, np.array):
         """
         Finds speed limits of the lanes ahead
         :param behavioral_state
@@ -367,9 +385,7 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
 
         # get all subsegments in current GFF and get the ones that contain points ahead of the action_spec.s
         subsegments = target_lane_frenet.segments
-        subsegments_ahead = [subsegment for subsegment in subsegments if
-                             subsegment.e_i_SStart > action_spec.s]
-
+        subsegments_ahead = [subsegment for subsegment in subsegments if subsegment.e_i_SStart > action_spec.s]
 
         # if no lane segments ahead, there will be no speed limit changes
         if len(subsegments_ahead) == 0:
@@ -382,7 +398,7 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         # find speed limits of points at the start of the lane (should be in mps)
         speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids_ahead]
 
-        return (np.array(lanes_s_start_ahead), np.array(speed_limits))
+        return np.array(lanes_s_start_ahead), np.array(speed_limits)
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
         """

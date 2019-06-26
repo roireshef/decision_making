@@ -782,6 +782,7 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
                    SceneStaticGeometry.deserialize(pubsubMsg.s_SceneStaticGeometry),
                    NavigationPlan.deserialize(pubsubMsg.s_NavigationPlan))
 
+
 class SceneStatic(PUBSUB_MSG_IMPL):
     s_Header = Header
     s_Data = DataSceneStatic

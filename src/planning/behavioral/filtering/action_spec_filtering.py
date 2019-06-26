@@ -6,21 +6,29 @@ import numpy as np
 import six
 from abc import ABCMeta, abstractmethod
 from logging import Logger
-from typing import List
+from typing import List, Dict
 from typing import Optional
 
-from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN
-import rte.python.profiler as prof
+from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, CartesianExtendedTrajectories, FrenetTrajectories2D
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLane
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
 @six.add_metaclass(ABCMeta)
 class ActionSpecFilter:
+
+    def __init__(self):
+        self._ftrajectories = None
+        self._ctrajectories = None
+
+    def set_trajectories(self, ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories):
+        self._ftrajectories = ftrajectories
+        self._ctrajectories = ctrajectories
+
     """
     Base class for filter implementations that act on ActionSpec and returns a boolean value that corresponds to
     whether the ActionSpec satisfies the constraint in the filter. All filters have to get as input ActionSpec
@@ -31,7 +39,7 @@ class ActionSpecFilter:
         pass
 
     @staticmethod
-    def _group_by_lane(action_specs: List[ActionSpec]):
+    def _group_by_lane(action_specs: List[ActionSpec]) -> [Dict[RelativeLane, List[ActionSpec]], Dict[RelativeLane, List[int]]]:
         """
         takes a list of action specs and groups them (and their indices) into the 3 corresponding lanes
         :param action_specs: an ordered list of action specs
@@ -48,7 +56,7 @@ class ActionSpecFilter:
         return specs_by_rel_lane, indices_by_rel_lane
 
     @staticmethod
-    def _build_trajectories(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> (np.ndarray, np.ndarray):
+    def build_trajectories(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> (np.ndarray, np.ndarray):
         """
         Builds a baseline trajectory out of the action specs (terminal states)
         :param action_specs: an ordered list of action specs
@@ -152,9 +160,16 @@ class ActionSpecFiltering:
         :return: A boolean List , True where the respective action_spec is valid and false where it is filtered
         """
         mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
+
+        # build Frenet & Cartesian trajectories for all (non-None) action specs
+        ftrajectories, ctrajectories = ActionSpecFilter.build_trajectories(action_specs, behavioral_state)
+
         for action_spec_filter in self._filters:
             if ~np.any(mask):
                 break
+
+            # set pre-computed trajectories to the current filter
+            action_spec_filter.set_trajectories(ftrajectories[mask], ctrajectories[mask])
 
             # list of only valid action specs
             valid_action_specs = list(compress(action_specs, mask))
@@ -164,15 +179,5 @@ class ActionSpecFiltering:
 
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
-        return mask.tolist()
 
-    @prof.ProfileFunction()
-    def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
-        """
-        Filters an 'ActionSpec's based on the state of ego and nearby vehicles (BehavioralGridState).
-        :param action_spec: An object representing the specified actions to be considered
-        :param behavioral_state: semantic behavioral state, containing the semantic grid
-        :return: A boolean , True where the action_spec is valid and false where it is filtered
-        """
-        return self.filter_action_specs([action_spec], behavioral_state)[0]
-
+        return list(mask)
