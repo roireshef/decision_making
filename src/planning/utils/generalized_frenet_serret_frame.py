@@ -160,7 +160,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
             # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
             frame_k_pieces = GeneralizedFrenetSerretFrame._divide_segment_to_curvature_pieces(
-                frame, segments_s_offsets[i] - start_ind)
+                frame, segments_s_offsets[i] - segments_s_start[i])
             k_pieces = np.vstack((k_pieces, frame_k_pieces))
 
         # merge too short pieces with their neighbors
@@ -393,25 +393,22 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         # delete too short pieces
         prev_piece_idx = 0
-        for i, piece in enumerate(k_pieces):
-            if i == 0 or piece[2] > 5 * piece[1]:  # don't delete the first piece or long piece: > 5 seconds
-                prev_piece_idx = i  # prev_piece is always long
+        for i, piece in enumerate(k_pieces[:-1]):
+            if i == 0 or piece[2] > 5 * piece[1]:  # don't delete first, last piece or long piece: > 5 seconds
+                prev_piece_idx = i
                 continue
-            next_piece = k_pieces[i + 1] if i < len(k_pieces) - 1 else None
+            next_piece = k_pieces[i + 1]
             prev_piece = k_pieces[prev_piece_idx]
-            if next_piece is not None and piece[1] >= max(prev_piece[1], next_piece[1]):
-                # if this piece is faster than both neighbors, then the faster neighbor swallows this piece
-                swallow_idx = prev_piece_idx if prev_piece[1] > next_piece[1] else i + 1
-            elif piece[1] >= prev_piece[1]:  # if this piece is faster than the previous one but slower than the next
+            if piece[1] < min(prev_piece[1], next_piece[1]):  # don't delete piece that is slower than both neighbors
+                prev_piece_idx = i
+                continue
+            if piece[1] < next_piece[1]:  # if this piece is faster than the previous one but slower than the next
                 swallow_idx = prev_piece_idx
-            elif next_piece is not None and piece[1] >= next_piece[1]:  # if this piece is faster than the next one
+            elif piece[1] < prev_piece[1]:  # if this piece is faster than the next one but slower than the previous
                 swallow_idx = i + 1
-            else:  # this piece is slower than its neighbors, so choose a neighbor to slow by cost
-                prev_cost = prev_piece[2] * (prev_piece[1] - piece[1])
-                next_cost = next_piece[2] * (next_piece[1] - piece[1]) if next_piece is not None else np.inf
-                swallow_idx = prev_piece_idx if prev_cost < next_cost else i + 1  # choose a neighbor by cost
-                k_pieces[swallow_idx, 1] = piece[1]  # slow down the chosen neighbor
-            k_pieces[swallow_idx, 2] += piece[2]  # increase the neighbor's length
+            else:  # this piece is faster than both neighbors, then the faster neighbor swallows this piece
+                swallow_idx = prev_piece_idx if prev_piece[1] > next_piece[1] else i + 1
+            k_pieces[swallow_idx, 2] += piece[2]  # increase the next's length
             if swallow_idx > i:
                 k_pieces[swallow_idx, 0] = piece[0]  # update s_offset of the next piece
             k_pieces[i, 2] = 0  # delete the current short piece
