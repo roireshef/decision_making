@@ -15,4 +15,4 @@ ADD_CUSTOM_COMMAND(OUTPUT link_dir
                     )
 ADD_CUSTOM_TARGET(decision_making DEPENDS link_dir)
 
-add_dependencies(decision_making GROUP-common_data rtePython CtmPython)
+add_dependencies(decision_making GROUP-common_data GROUP-rte)
