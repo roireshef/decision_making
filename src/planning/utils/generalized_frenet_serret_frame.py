@@ -1,6 +1,3 @@
-from itertools import filterfalse
-
-from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 
 import numpy as np
@@ -11,7 +8,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_GeneralizedFren
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, LAT_ACC_LIMITS, EPS, BP_ACTION_T_LIMITS, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    VELOCITY_LIMITS
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.exceptions import OutOfSegmentFront
@@ -45,7 +42,7 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray,
-                 k: np.ndarray, k_tag: np.ndarray, k_max,
+                 k: np.ndarray, k_tag: np.ndarray, k_pieces,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
@@ -54,7 +51,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
-        self._k_max = k_max
+        self.k_pieces = k_pieces
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
@@ -138,8 +135,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         N = np.empty(shape=[0, 2])
         k = np.empty(shape=[0, 1])
         k_tag = np.empty(shape=[0, 1])
-        k_max = np.empty(shape=[0])
-        pieces = np.empty(shape=[0, 3])
+        k_pieces = np.empty(shape=[0, 3])
 
         for i in range(len(frenet_frames)):
             frame = frenet_frames[i]
@@ -160,63 +156,63 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             k = np.vstack((k, frame.k[start_ind:end_ind, :]))
             k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
 
+            segments_num_points_so_far[i] = points.shape[0]
+
             # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
             segment_k = np.abs(frame.k[:-1, 0])
             segment_size = len(segment_k)
             # calculate the size (in points) of one piece based on the velocity limit
-            desired_piece_size = int(MapUtils.get_lane(segments_id[i]).e_v_nominal_speed * BP_ACTION_T_LIMITS[1] / segments_ds[i])
+            vel_limit = min(VELOCITY_LIMITS[1], np.sqrt(LAT_ACC_LIMITS[1]/np.mean(segment_k)))
+            desired_piece_size = int(vel_limit * 10 / segments_ds[i])  # desired piece size: 10 seconds
             pieces_num = max(1, int(np.round(segment_size / desired_piece_size)))
             piece_size = int(np.round(segment_size / pieces_num))
             # calculate maximal k for each piece
-            full_segment_k = np.concatenate((segment_k, np.zeros(piece_size - segment_size % piece_size)))
-            k_max_per_piece = np.max(full_segment_k.reshape(-1, piece_size), axis=1)
-            if k_max_per_piece.size > pieces_num:  # then truncate k_max_per_piece to the size of pieces_num
-                k_max_per_piece[pieces_num-1] = np.max(k_max_per_piece[pieces_num-1:])
-                k_max_per_piece = k_max_per_piece[:pieces_num]
+            if pieces_num * piece_size > segment_size:
+                full_pieces = np.concatenate((segment_k, np.zeros(pieces_num * piece_size - segment_size)))
+                k_max_per_piece = np.max(full_pieces.reshape(-1, piece_size), axis=1)
+            else:  # the last segment is longer, deal with it separately
+                full_pieces = segment_k[:((pieces_num - 1) * piece_size)]
+                k_max_per_piece = np.concatenate((np.max(full_pieces.reshape(-1, piece_size), axis=1),
+                                                  [np.max(segment_k[((pieces_num - 1) * piece_size):])]))
 
-            # pieces contains 3 columns: s_offset, k_max, length
+            # pieces contains 3 columns: s_offset, vel_limit, length
             all_sizes_but_last = np.full(pieces_num - 1, piece_size)
             piece_lengths = np.concatenate((all_sizes_but_last, [segment_size - np.sum(all_sizes_but_last)])) * segments_ds[i]
             offsets_s = np.insert(np.cumsum(piece_lengths[:-1]), 0, 0) + segments_s_offsets[i] - start_ind
-            pieces = np.vstack((pieces, np.c_[offsets_s, k_max_per_piece, piece_lengths]))
-
-            # if len(segment_k) > piece_num_points:
-            #     print('lane id=%d: points=%d piece_num_points=%d' % (segments_id[i], len(segment_k), piece_num_points))
-
-            # for each GFF point i in lane segment seg, k_max[i] is the maximal curvature among points of seg
-            # k_max = np.concatenate((k_max, np.full(end_ind - start_ind, np.max(np.abs(frame.k[:, 0])))))
-
-            segments_num_points_so_far[i] = points.shape[0]
+            vel_limits = np.minimum(np.sqrt(LAT_ACC_LIMITS[1] / np.maximum(EPS, k_max_per_piece)), VELOCITY_LIMITS[1])
+            k_pieces = np.vstack((k_pieces, np.c_[offsets_s, vel_limits, piece_lengths]))
 
         # delete too short pieces
-        while True:
-            pieces_changed = False
-            for i, piece in enumerate(pieces[:-1]):
-                if piece[0] is None or piece[2] > small_piece_size:
-                    continue
-                pieces_changed = True
-                next_piece = pieces[i+1]
-                prev_piece = pieces[i-1] if i > 0 else None
-                if prev_piece is not None and piece[1] < prev_piece[1]:  # if this piece is faster than the previous one
-                    piece[0] = None  # unify with the previous piece
-                elif next_piece is not None and piece[1] < next_piece[1]:  # if this piece is faster than the next one
-                    piece[1] = next_piece[1]  # unify with the next piece
-                    pieces[i+1, 0] = None
-                else:
-                    prev_cost = (piece[1] - prev_piece[1]) * prev_piece[2] if prev_piece is not None else np.inf
-                    next_cost = (piece[1] - next_piece[1]) * next_piece[2] if next_piece is not None else np.inf
+        prev_piece_idx = None
+        for i, piece in enumerate(k_pieces):
+            if len(k_pieces) == 1 or piece[2] > 5 * piece[1]:  # if the current piece is long: > 5 seconds
+                prev_piece_idx = i  # prev_piece is always long
+                continue
+            next_piece = k_pieces[i + 1] if i < len(k_pieces) - 1 else None
+            prev_piece = k_pieces[prev_piece_idx] if prev_piece_idx is not None else None
+            if prev_piece is not None and piece[1] >= prev_piece[1]:  # if this piece is faster than the previous one
+                updated_idx = prev_piece_idx
+            elif next_piece is not None and piece[1] >= next_piece[1]:  # if this piece is faster than the next one
+                updated_idx = i + 1
+            else:  # this piece is slower than its neighbors, so choose a neighbor to slow by cost
+                prev_cost = prev_piece[2] * (prev_piece[1] - piece[1]) if prev_piece is not None else np.inf
+                next_cost = next_piece[2] * (next_piece[1] - piece[1]) if next_piece is not None else np.inf
+                updated_idx = prev_piece_idx if prev_cost < next_cost else i + 1  # choose a neighbor by cost
+                k_pieces[updated_idx, 1] = piece[1]  # slow down the chosen neighbor
+            k_pieces[updated_idx, 2] += piece[2]  # increase the neighbor's length
+            if updated_idx > i:
+                k_pieces[updated_idx, 0] = piece[0]  # update s_offset of the next piece
+            k_pieces[i, 2] = 0  # delete the current short piece
 
-            if pieces_changed:
-                pieces = list(filterfalse(lambda piece: piece[0] is not None, pieces))
-            else:
-                break
+        # delete empty pieces and remove the last column 'length'
+        k_pieces = k_pieces[k_pieces[:, 2] > 0, :2]
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
         # for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
         # plus the number of points taken from subsegment #1.
         segments_point_offset = np.insert(segments_num_points_so_far, 0, 0., axis=0)
 
-        return cls(points, T, N, k, k_tag, k_max, segments_id, segments_s_start, segments_s_offsets, segments_ds,
+        return cls(points, T, N, k, k_tag, k_pieces, segments_id, segments_s_start, segments_s_offsets, segments_ds,
                    segments_point_offset)
 
     def has_segment_id(self, segment_id: int) -> bool:
@@ -238,7 +234,6 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             return np.array([], dtype=bool)
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
         return np.isin(segment_ids, self._segment_ids)
-
 
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: NumpyIndicesArray) -> FrenetStates2D:
         """
@@ -383,3 +378,14 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         delta_s = np.expand_dims((progress_in_points - O_idx) * ds, axis=len(s.shape))
 
         return O_idx, delta_s
+
+    def get_k_piece_idxs_from_s(self, s_values: np.ndarray):
+        """
+        for each longitudinal progress on the curve, s, return the index of the k_piece it belonged to
+        from self.k_pieces (the index of the frame it was on before the concatenation into a generalized frenet frame)
+        :param s_values: an np.array object containing longitudinal progresses on the generalized frenet curve.
+        :return: the indices of the respective k_pieces
+        """
+        segments_idxs = np.searchsorted(self.k_pieces[:, 0], s_values) - 1
+        segments_idxs[s_values == 0] = 0
+        return segments_idxs

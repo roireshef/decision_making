@@ -41,8 +41,7 @@ class FilterForKinematics(ActionSpecFilter):
         """
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
-        return list(KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS))
+        return list(KinematicUtils.filter_by_cartesian_limits(ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS))
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
@@ -78,7 +77,6 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
         :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
         """
-
         # get the lane ids
         lane_ids_matrix = frenet.convert_to_segment_states(ftrajectories)[0]
         lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
@@ -86,6 +84,46 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         # creates an ndarray with the same shape as of `lane_ids_list`,
         # where each element is replaced by the maximal speed limit (according to lane)
         return np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
+
+
+class FilterForCurvature(ActionSpecFilter):
+    @prof.ProfileFunction()
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        """
+        Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
+            - max longitudinal position (available in the reference frame)
+            - longitudinal velocity limits - both in Frenet (analytical) and Cartesian (by sampling)
+            - longitudinal acceleration limits - both in Frenet (analytical) and Cartesian (by sampling)
+            - lateral acceleration limits - in Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
+            conceptually "straightens" the road's shape.
+        :param action_specs: list of action specs
+        :param behavioral_state:
+        :return: boolean list per action spec: True if a spec passed the filter
+        """
+        ftrajectories, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
+
+        specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
+
+        num_points = ftrajectories.shape[1]
+        pointwise_speed_limit = np.empty((len(action_specs), num_points), dtype=np.float)
+        for relative_lane, lane_frame in behavioral_state.extended_lane_frames.items():
+            lane_idxs = indices_by_rel_lane[relative_lane]
+            if len(lane_idxs) > 0:
+                pointwise_speed_limit[lane_idxs] = self._pointwise_speed_limit(ftrajectories[lane_idxs], lane_frame)
+
+        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, pointwise_speed_limit))
+
+    @staticmethod
+    def _pointwise_speed_limit(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+        """
+        Calculate point-wise maximal velocity for the given trajectories according to the curvature and more strict
+        lateral acceleration limit
+        :param ftrajectories: The Frenet trajectories to which to calculate the speed limits
+        :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
+        """
+        # calculate point-wise maximal velocity according to frenet.k_pieces
+        k_pieces_idxs = frenet.get_k_piece_idxs_from_s(ftrajectories[..., FS_SX])
+        return np.sqrt(BP_LAT_ACC_STRICT_COEF) * frenet.k_pieces[k_pieces_idxs, 1]
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
@@ -303,13 +341,9 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
         # beyond_spec_range[0] must be BEYOND spec.s because the actual distances from spec.s to the
         # selected points have to be positive.
-        beyond_spec_range = frenet_frame.get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0] + 1
-        # get s for all points in the range
-        points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
-        # get velocity limits for all points in the range
-        curvatures = np.maximum(np.abs(frenet_frame._k_max[beyond_spec_range[0]:beyond_spec_range[1]]), EPS)
-        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
-        return points_s, points_velocity_limits
+        beyond_spec_range = frenet_frame.get_k_piece_idxs_from_s(np.array([action_spec.s, max_relevant_s])) + 1
+        relevant_k_pieces = frenet_frame.k_pieces[range(beyond_spec_range[0], beyond_spec_range[1])]
+        return relevant_k_pieces[:, 0], relevant_k_pieces[:, 1]
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
         """

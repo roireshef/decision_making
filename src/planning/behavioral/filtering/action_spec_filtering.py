@@ -88,8 +88,6 @@ class ActionSpecFilter:
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = lane_frenet.ftrajectories_to_ctrajectories(
                 ftrajectories[indices_by_rel_lane[rel_lane]])
-            points_idxs, _ = lane_frenet.get_closest_index_on_frame(ftrajectories[..., FS_SX])
-            ctrajectories[..., C_K] = lane_frenet._k_max[points_idxs]
 
         return ftrajectories, ctrajectories
 

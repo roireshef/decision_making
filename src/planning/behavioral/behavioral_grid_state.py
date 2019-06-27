@@ -6,7 +6,8 @@ from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE, \
+    BACK_HORIZON_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
@@ -187,7 +188,7 @@ class BehavioralGridState:
         ego_lane_id = state.ego_state.map_state.lane_id
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
         # create generalized_frames for the nearest lanes
-        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
+        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - BACK_HORIZON_DISTANCE
 
         # TODO: remove this hack when all unit-tests have enough margin backward
         # if there is no long enough road behind ego, set ref_route_start = 0
