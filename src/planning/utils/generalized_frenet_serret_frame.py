@@ -159,53 +159,12 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             segments_num_points_so_far[i] = points.shape[0]
 
             # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
-            segment_k = np.abs(frame.k[:-1, 0])
-            segment_size = len(segment_k)
-            # calculate the size (in points) of one piece based on the velocity limit
-            vel_limit = min(VELOCITY_LIMITS[1], np.sqrt(LAT_ACC_LIMITS[1]/np.mean(segment_k)))
-            desired_piece_size = int(vel_limit * 10 / segments_ds[i])  # desired piece size: 10 seconds
-            pieces_num = max(1, int(np.round(segment_size / desired_piece_size)))
-            piece_size = int(np.round(segment_size / pieces_num))
-            # calculate maximal k for each piece
-            if pieces_num * piece_size > segment_size:
-                full_pieces = np.concatenate((segment_k, np.zeros(pieces_num * piece_size - segment_size)))
-                k_max_per_piece = np.max(full_pieces.reshape(-1, piece_size), axis=1)
-            else:  # the last segment is longer, deal with it separately
-                full_pieces = segment_k[:((pieces_num - 1) * piece_size)]
-                k_max_per_piece = np.concatenate((np.max(full_pieces.reshape(-1, piece_size), axis=1),
-                                                  [np.max(segment_k[((pieces_num - 1) * piece_size):])]))
+            frame_k_pieces = GeneralizedFrenetSerretFrame._divide_segment_to_curvature_pieces(
+                frame, segments_s_offsets[i] - start_ind)
+            k_pieces = np.vstack((k_pieces, frame_k_pieces))
 
-            # pieces contains 3 columns: s_offset, vel_limit, length
-            all_sizes_but_last = np.full(pieces_num - 1, piece_size)
-            piece_lengths = np.concatenate((all_sizes_but_last, [segment_size - np.sum(all_sizes_but_last)])) * segments_ds[i]
-            offsets_s = np.insert(np.cumsum(piece_lengths[:-1]), 0, 0) + segments_s_offsets[i] - start_ind
-            vel_limits = np.minimum(np.sqrt(LAT_ACC_LIMITS[1] / np.maximum(EPS, k_max_per_piece)), VELOCITY_LIMITS[1])
-            k_pieces = np.vstack((k_pieces, np.c_[offsets_s, vel_limits, piece_lengths]))
-
-        # delete too short pieces
-        prev_piece_idx = None
-        for i, piece in enumerate(k_pieces):
-            if len(k_pieces) == 1 or piece[2] > 5 * piece[1]:  # if the current piece is long: > 5 seconds
-                prev_piece_idx = i  # prev_piece is always long
-                continue
-            next_piece = k_pieces[i + 1] if i < len(k_pieces) - 1 else None
-            prev_piece = k_pieces[prev_piece_idx] if prev_piece_idx is not None else None
-            if prev_piece is not None and piece[1] >= prev_piece[1]:  # if this piece is faster than the previous one
-                updated_idx = prev_piece_idx
-            elif next_piece is not None and piece[1] >= next_piece[1]:  # if this piece is faster than the next one
-                updated_idx = i + 1
-            else:  # this piece is slower than its neighbors, so choose a neighbor to slow by cost
-                prev_cost = prev_piece[2] * (prev_piece[1] - piece[1]) if prev_piece is not None else np.inf
-                next_cost = next_piece[2] * (next_piece[1] - piece[1]) if next_piece is not None else np.inf
-                updated_idx = prev_piece_idx if prev_cost < next_cost else i + 1  # choose a neighbor by cost
-                k_pieces[updated_idx, 1] = piece[1]  # slow down the chosen neighbor
-            k_pieces[updated_idx, 2] += piece[2]  # increase the neighbor's length
-            if updated_idx > i:
-                k_pieces[updated_idx, 0] = piece[0]  # update s_offset of the next piece
-            k_pieces[i, 2] = 0  # delete the current short piece
-
-        # delete empty pieces and remove the last column 'length'
-        k_pieces = k_pieces[k_pieces[:, 2] > 0, :2]
+        # merge too short pieces with their neighbors
+        k_pieces = GeneralizedFrenetSerretFrame._remove_short_pieces(k_pieces)
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
         # for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
@@ -389,3 +348,73 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segments_idxs = np.searchsorted(self.k_pieces[:, 0], s_values) - 1
         segments_idxs[s_values == 0] = 0
         return segments_idxs
+
+    @staticmethod
+    def _divide_segment_to_curvature_pieces(frame: FrenetSerret2DFrame, segment_s_offset: float):
+        """
+        Divide lane segment to curvature pieces of nearly equal length, whose length depends on the mean curvature
+        of the lane segment. Velocity limit of each piece is based on the MAXIMAL curvature of the piece.
+        :param frame: original Frenet frame from the map
+        :param segment_s_offset: s offset of the full lane segment's starting point relatively to the GFF
+        :return: 2D array Nx3 of curvature pieces. The columns: s_offsets, vel_limits, pieces_lengths.
+        """
+        segment_ds = frame.ds
+        # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
+        segment_k = np.abs(frame.k[:-1, 0])
+        segment_size = len(segment_k)
+        # calculate the size (in points) of one piece based on the velocity limit
+        vel_limit = min(VELOCITY_LIMITS[1], np.sqrt(LAT_ACC_LIMITS[1] / np.mean(segment_k)))
+        desired_piece_size = int(vel_limit * 10 / segment_ds)  # desired piece size: 10 seconds
+        pieces_num = max(1, int(np.round(segment_size / desired_piece_size)))
+        piece_size = int(np.round(segment_size / pieces_num))
+        # calculate maximal k for each piece
+        if pieces_num * piece_size > segment_size:
+            full_pieces = np.concatenate((segment_k, np.zeros(pieces_num * piece_size - segment_size)))
+            k_max_per_piece = np.max(full_pieces.reshape(-1, piece_size), axis=1)
+        else:  # the last segment is longer, deal with it separately
+            full_pieces = segment_k[:((pieces_num - 1) * piece_size)]
+            k_max_per_piece = np.concatenate((np.max(full_pieces.reshape(-1, piece_size), axis=1),
+                                              [np.max(segment_k[((pieces_num - 1) * piece_size):])]))
+
+        # pieces contains 3 columns: s_offset, vel_limit, length
+        all_sizes_but_last = np.full(pieces_num - 1, piece_size)
+        piece_lengths = np.concatenate((all_sizes_but_last, [segment_size - np.sum(all_sizes_but_last)])) * segment_ds
+        offsets_s = np.insert(np.cumsum(piece_lengths[:-1]), 0, 0) + segment_s_offset
+        vel_limits = np.minimum(np.sqrt(LAT_ACC_LIMITS[1] / np.maximum(EPS, k_max_per_piece)), VELOCITY_LIMITS[1])
+        return np.c_[offsets_s, vel_limits, piece_lengths]
+
+    @staticmethod
+    def _remove_short_pieces(k_pieces: np.array) -> np.array:
+        """
+        Delete too short curvature pieces by merging them with their neighbors, such that velocity limits of the
+        neighbors may decrease.
+        :param k_pieces: 2D array Nx3 original curvature pieces. The columns: s_offsets, vel_limits, pieces_lengths.
+        :return: 2D array Mx3, where M < N: curvature pieces after removing the short pieces
+        """
+        # delete too short pieces
+        prev_piece_idx = 0
+        for i, piece in enumerate(k_pieces):
+            if i == 0 or piece[2] > 5 * piece[1]:  # don't delete the first piece or long piece: > 5 seconds
+                prev_piece_idx = i  # prev_piece is always long
+                continue
+            next_piece = k_pieces[i + 1] if i < len(k_pieces) - 1 else None
+            prev_piece = k_pieces[prev_piece_idx]
+            if next_piece is not None and piece[1] >= max(prev_piece[1], next_piece[1]):
+                # if this piece is faster than both neighbors, then the faster neighbor swallows this piece
+                swallow_idx = prev_piece_idx if prev_piece[1] > next_piece[1] else i + 1
+            elif piece[1] >= prev_piece[1]:  # if this piece is faster than the previous one but slower than the next
+                swallow_idx = prev_piece_idx
+            elif next_piece is not None and piece[1] >= next_piece[1]:  # if this piece is faster than the next one
+                swallow_idx = i + 1
+            else:  # this piece is slower than its neighbors, so choose a neighbor to slow by cost
+                prev_cost = prev_piece[2] * (prev_piece[1] - piece[1])
+                next_cost = next_piece[2] * (next_piece[1] - piece[1]) if next_piece is not None else np.inf
+                swallow_idx = prev_piece_idx if prev_cost < next_cost else i + 1  # choose a neighbor by cost
+                k_pieces[swallow_idx, 1] = piece[1]  # slow down the chosen neighbor
+            k_pieces[swallow_idx, 2] += piece[2]  # increase the neighbor's length
+            if swallow_idx > i:
+                k_pieces[swallow_idx, 0] = piece[0]  # update s_offset of the next piece
+            k_pieces[i, 2] = 0  # delete the current short piece
+
+        # delete empty pieces and remove the last column 'length'
+        return k_pieces[k_pieces[:, 2] > 0, :2]

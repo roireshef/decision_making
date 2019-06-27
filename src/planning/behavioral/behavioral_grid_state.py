@@ -6,8 +6,7 @@ from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE, \
-    BACK_HORIZON_DISTANCE
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
@@ -188,15 +187,10 @@ class BehavioralGridState:
         ego_lane_id = state.ego_state.map_state.lane_id
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
         # create generalized_frames for the nearest lanes
-        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - BACK_HORIZON_DISTANCE
-
-        # TODO: remove this hack when all unit-tests have enough margin backward
-        # if there is no long enough road behind ego, set ref_route_start = 0
-        ref_route_start = suggested_ref_route_start \
-            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
-            else 0
-
+        ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
         frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
+
+        # print('ego_map_state %s' % (state.ego_state.map_state))
 
         # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}

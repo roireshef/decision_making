@@ -45,6 +45,9 @@ class FilterForKinematics(ActionSpecFilter):
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
+    # TODO: consider to unify two filters: lane speed limit with curvature (including beyond), since they work identically
+    # TODO: k_pieces of curvature may contain also the lane speed limits as minimum between them
+
     @prof.ProfileFunction()
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """

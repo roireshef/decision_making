@@ -112,21 +112,21 @@ class ActionSpecFilter:
         spec_t_idxs[in_padding_mode] = 0
 
         # calculate trajectory time indices for t = max(spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
-        last_pad_idxs = (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(
-            int) + 1
+        last_pad_idxs = np.maximum(spec_t_idxs, int(MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON / TRAJECTORY_TIME_RESOLUTION) + 1)
 
         # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
         for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
                 zip(spec_t_idxs, last_pad_idxs, ftrajectories_s, ftrajectories_d, action_specs):
-            # if spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, pad ftrajectories_s from spec.t to
-            # MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-            if spec_t_idx < last_pad_idx:
-                times_beyond_spec = np.arange(spec_t_idx, last_pad_idx) * TRAJECTORY_TIME_RESOLUTION - spec.t
-                trajectory_s[spec_t_idx:last_pad_idx] = np.c_[spec.s + times_beyond_spec * spec.v,
-                                                              np.full(times_beyond_spec.shape, spec.v),
-                                                              np.zeros_like(times_beyond_spec)]
-            trajectory_s[last_pad_idx:] = 0
-            trajectory_d[spec_t_idx:] = 0
+            # If spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, pad ftrajectories_s from spec.t to
+            # MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON.
+            # Otherwise add a single trajectory point beyond spec.t in order to prevent missing the region
+            # between the last trajectory point and the action's goal.
+            times_beyond_spec = np.arange(spec_t_idx, last_pad_idx + 1) * TRAJECTORY_TIME_RESOLUTION - spec.t
+            trajectory_s[spec_t_idx:(last_pad_idx + 1)] = np.c_[spec.s + times_beyond_spec * spec.v,
+                                                                np.full(times_beyond_spec.shape, spec.v),
+                                                                np.zeros_like(times_beyond_spec)]
+            trajectory_s[(last_pad_idx + 1):] = 0
+            trajectory_d[(spec_t_idx + 1):] = 0
 
         # return full Frenet trajectories
         return np.c_[ftrajectories_s, ftrajectories_d]
