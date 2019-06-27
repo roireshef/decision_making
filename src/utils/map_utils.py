@@ -294,44 +294,6 @@ class MapUtils:
         return gff
 
     @staticmethod
-    @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound)
-    @prof.ProfileFunction()
-    def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
-                                   route_plan: RoutePlan) -> GeneralizedFrenetSerretFrame:
-        """
-        Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
-        (may be negative).
-        When some lane ends, it automatically continues to the next lane, according to the navigation plan.
-        :param lane_id: starting lane_id
-        :param starting_lon: starting longitude (may be negative) [m]
-        :param lookahead_dist: lookahead distance for the output frame [m]
-        :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: generalized Frenet frame for the given route part
-        """
-        # find the starting point
-        route_plan_road_segment_ids = route_plan.s_Data.a_i_road_segment_ids
-        if starting_lon <= 0:  # the starting point is behind lane_id
-            lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
-            init_lane_id = lane_ids[-1]
-            # add road ids from behind the ego vehicle to the route_plan road segment list:
-            ego_road_id = MapUtils.get_road_segment_id_from_lane_id(lane_id)
-            ego_road_index = np.argwhere(route_plan_road_segment_ids == ego_road_id)[0][0]
-            route_plan_road_segment_ids = route_plan_road_segment_ids[ego_road_index:]
-            for lane_seg_id in lane_ids[1:]:
-                road_seg_id = MapUtils.get_road_segment_id_from_lane_id(lane_seg_id)
-                route_plan_road_segment_ids = np.insert(route_plan_road_segment_ids, 0, road_seg_id)
-        else:  # the starting point is within or after lane_id
-            init_lane_id, init_lon = lane_id, starting_lon
-
-        # get the full lanes path
-        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, route_plan_road_segment_ids)
-        # create sub-segments for GFF
-        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
-        # create GFF
-        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
-        return gff
-
-    @staticmethod
     def _get_frenet_starting_point(lane_id, starting_lon):
         # find the starting point
         if starting_lon <= 0:  # the starting point is behind lane_id

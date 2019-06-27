@@ -86,10 +86,10 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static_pg_spl
     assert dist_to_right == dist_to_left
 
 
-def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(
-        scene_static_pg_split):
+def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(
+        scene_static_pg_split, route_plan_20_30):
     """
-    test method get_lookahead_frenet_frame:
+    test method get_lookahead_frenet_frame_by_cost:
         the current map has only one road segment;
         the frame starts and ends on arbitrary points.
     verify that final length, offset of GFF and conversion of an arbitrary point are accurate
@@ -105,8 +105,7 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
-    gff = MapUtils.get_lookahead_frenet_frame(lane_id, starting_lon, lookahead_dist,
-                                              create_route_plan_msg(np.array(road_ids)))
+    gff = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id, starting_lon, lookahead_dist, route_plan_20_30)
 
     # validate the length of the obtained frenet frame
     assert abs(gff.s_max - lookahead_dist) < SMALL_DISTANCE_ERROR
