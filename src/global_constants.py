@@ -218,7 +218,7 @@ LANE_END_COST_IND = 1
 # Config parameter for what the vehicle should do at a lane split
 # If set to True, the vehicle will follow the lane that is added at the split.
 # If set to False, the vehicle will continue straight in the same lane.
-TAKE_SPLIT = True
+TAKE_SPLIT = False
 
 # Config parameter for what the vehicle should do if a lane splits to the left and right
 # If set to True, the vehicle will follow the split on the right.
