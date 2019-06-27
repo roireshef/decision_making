@@ -39,7 +39,7 @@ class MapUtils:
         """
         lane = MapUtils.get_lane(lane_id)
         if lane is None:
-            raise LaneNotFound('lane %d cannot be found' % lane_id)
+            raise LaneNotFound('MapUtils error: lane %d cannot be found' % lane_id)
         return lane.e_i_road_segment_id
 
     @staticmethod
@@ -102,8 +102,8 @@ class MapUtils:
         elif relative_lane == RelativeLane.LEFT_LANE:
             adj_lanes = lane.as_left_adjacent_lanes
         else:
-            raise ValueError('Relative lane must be either right or left: lane_id %d, relative_lane %s' %
-                             (lane_id, relative_lane))
+            raise ValueError('MapUtils error: Relative lane must be either right or left: lane_id %d, relative_lane %s'
+                             % (lane_id, relative_lane))
         return [adj_lane.e_i_lane_segment_id for adj_lane in adj_lanes]
 
     @staticmethod
@@ -333,7 +333,7 @@ class MapUtils:
         try:
             initial_road_idx_on_plan = np.where(route_plan_road_ids == initial_road_segment_id)[0][0]
         except IndexError:
-            raise RoadNotFound("Road ID {} is not in not found in the route plan road segment list"
+            raise RoadNotFound("MapUtils error: Road ID {} is not in not found in the route plan road segment list"
                                .format(initial_road_segment_id))
 
         cumulative_distance = 0.
@@ -358,7 +358,7 @@ class MapUtils:
 
             next_road_idx_on_plan = current_road_idx_on_plan + 1
             if next_road_idx_on_plan > len(route_plan_road_ids) - 1:
-                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
+                raise NavigationPlanTooShort("MapUtils error: Cannot progress further on plan %s (leftover: %s [m]); "
                                              "current_segment_end_s=%f lookahead_distance=%f" %
                                              (route_plan_road_ids, lookahead_distance - cumulative_distance,
                                               current_segment_end_s, lookahead_distance))
@@ -369,8 +369,8 @@ class MapUtils:
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
             # TODO: what if lane is deadend or it is the last road segment in the nav. plan (destination reached)
             if len(downstream_lanes_ids) == 0:
-                raise DownstreamLaneNotFound(
-                    "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
+                raise DownstreamLaneNotFound("MapUtils error: _advance_on_plan: Downstream lane not found "
+                                             "for lane_id=%d" % (current_lane_id))
 
             # collect downstream lanes, whose road_segment_id is next_road_segment_id_on_plan
             downstream_lanes_ids_on_plan = \
@@ -379,12 +379,12 @@ class MapUtils:
 
             # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
             if len(downstream_lanes_ids_on_plan) == 0:
-                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
-                                                  "downstream_lanes %s, next_road_segment_id_on_plan %d" %
+                raise NavigationPlanDoesNotFitMap("MapUtils error: Any downstream lane is not in the navigation plan: "
+                                                  "current lane %d, downstream_lanes %s, next_road_segment_on_plan %d" %
                                                   (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
             if len(downstream_lanes_ids_on_plan) > 1:
-                raise AmbiguousNavigationPlan("More than 1 downstream lanes with STRAIGHT CONNECTION type according %s,"
-                                              " to the nav. plan downstream_lanes_ids_on_plan %s" %
+                raise AmbiguousNavigationPlan("MapUtils error: More than 1 downstream lanes with STRAIGHT CONNECTION "
+                                              "type according %s, to the nav. plan downstream_lanes_ids_on_plan %s" %
                                               (route_plan_road_ids, downstream_lanes_ids_on_plan))
 
             current_lane_id = downstream_lanes_ids_on_plan[0]
@@ -413,7 +413,8 @@ class MapUtils:
             if len(prev_lane_ids) == 0:
                 # TODO: the lane can actually have no upstream; should we continue with the existing path instead of
                 #   raising exception, if total_dist > TBD
-                raise UpstreamLaneNotFound("MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % prev_lane_id)
+                raise UpstreamLaneNotFound("MapUtils error: _get_upstream_lanes_from_distance: Upstream lane not "
+                                           "found for lane_id=%d" % prev_lane_id)
             # TODO: how to choose between multiple upstreams if all of them belong to route plan road segment
             prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
@@ -432,9 +433,9 @@ class MapUtils:
         lanes = [lane for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
-            raise LaneNotFound('lane %d not found' % lane_id)
+            raise LaneNotFound('MapUtils error: lane %d not found' % lane_id)
         if len(lanes) > 1:
-            raise IDAppearsMoreThanOnce('lane %d appears more than once' % lane_id)
+            raise IDAppearsMoreThanOnce('MapUtils error: lane %d appears more than once' % lane_id)
         return lanes[0]
 
     @staticmethod
@@ -449,9 +450,9 @@ class MapUtils:
         lanes = [lane for lane in scene_static_lane_geo.s_Data.s_SceneStaticGeometry.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
-            raise LaneNotFound('lane %d not found in lane geometry' % lane_id)
+            raise LaneNotFound('MapUtils error: lane %d not found in lane geometry' % lane_id)
         if len(lanes) > 1:
-            raise IDAppearsMoreThanOnce('lane %d appears more than once in lane geometry' % lane_id)
+            raise IDAppearsMoreThanOnce('MapUtils error: lane %d appears more than once in lane geometry' % lane_id)
         return lanes[0]
 
     @staticmethod
@@ -466,9 +467,9 @@ class MapUtils:
         road_segments = [road_segment for road_segment in scene_static.s_Data.s_SceneStaticBase.as_scene_road_segment if
                          road_segment.e_i_road_segment_id == road_id]
         if len(road_segments) == 0:
-            raise RoadNotFound('road %d not found' % road_id)
+            raise RoadNotFound('MapUtils error: road %d not found' % road_id)
         if len(road_segments) > 1:
-            raise IDAppearsMoreThanOnce('road %d appears more than once' % road_id)
+            raise IDAppearsMoreThanOnce('MapUtils error: road %d appears more than once' % road_id)
         return road_segments[0]
 
     @staticmethod
