@@ -372,6 +372,9 @@ class MapUtils:
         # pull next road segment from the navigation plan, then look for the downstream lane segments on this road segment.
         next_road_segment_id_on_plan = route_plan.s_Data.a_i_road_segment_ids[next_road_idx_on_plan]
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
+        # TODO: what if lane is deadend or it is the last road segment in the nav. plan (destination reached)
+        if len(downstream_lanes_ids) == 0:
+            raise DownstreamLaneNotFound("Downstream lane not found for lane_id=%d" % (current_lane_id))
 
         # collect downstream lanes, whose road_segment_id is next_road_segment_id_on_plan
         downstream_lanes_ids_on_plan = \
@@ -390,8 +393,6 @@ class MapUtils:
             minimal_lane_id = min(downstream_lanes_ids_on_plan, key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
         except KeyError:
             raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
-        except ValueError:
-            raise DownstreamLaneNotFound(f"No downstream lane found for lane id {current_lane_id}")
         return minimal_lane_id
 
     @staticmethod
