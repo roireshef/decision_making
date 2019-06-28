@@ -82,6 +82,8 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
 
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, route_plan_20_30
 
+
+@patch('decision_making.test.planning.behavioral.behavioral_state_fixtures.TAKE_SPLIT', False)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
