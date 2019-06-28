@@ -1,7 +1,6 @@
 import numpy as np
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, \
-    LaneCostNotFound
+    UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
@@ -365,87 +364,6 @@ class MapUtils:
         return minimal_lane_id
 
     @staticmethod
-    @raises(RoadNotFound, DownstreamLaneNotFound)
-    @prof.ProfileFunction()
-    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         route_plan_road_ids: np.ndarray) -> List[FrenetSubSegment]:
-        """
-        Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
-        further according to <navigation_plan>, and finally return a configuration of lane-subsegments.
-        If <desired_lon> is more than the distance to end of the plan, a LongitudeOutOfRoad exception is thrown.
-        :param initial_lane_id: the initial lane_id (the vehicle is current on)
-        :param initial_s: initial longitude along <initial_lane_id>
-        :param lookahead_distance: the desired distance of lookahead in [m].
-        :param route_plan_road_ids: the relevant navigation plan to iterate over its road IDs.
-        :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
-        """
-        initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
-        # TODO: what will happen if there is a lane split ahead for left/right lanes and the doenstream road is not part of the nav. plan
-
-        try:
-            initial_road_idx_on_plan = np.where(route_plan_road_ids == initial_road_segment_id)[0][0]
-        except IndexError:
-            raise RoadNotFound("Road ID {} is not in not found in the route plan road segment list"
-                               .format(initial_road_segment_id))
-
-        cumulative_distance = 0.
-        lane_subsegments = []
-
-        current_road_idx_on_plan = initial_road_idx_on_plan
-        current_lane_id = initial_lane_id
-        current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
-        while True:
-            current_lane_length = MapUtils.get_lane_length(current_lane_id)  # a lane's s_max
-
-            # distance to travel on current lane: distance to end of lane, or shorter if reached <lookahead distance>
-            current_segment_end_s = min(current_lane_length,
-                                        current_segment_start_s + lookahead_distance - cumulative_distance)
-
-            # add subsegment to the list and add traveled distance to <cumulative_distance> sum
-            lane_subsegments.append(FrenetSubSegment(current_lane_id, current_segment_start_s, current_segment_end_s))
-            cumulative_distance += current_segment_end_s - current_segment_start_s
-
-            if cumulative_distance > lookahead_distance - EPS:
-                break
-
-            next_road_idx_on_plan = current_road_idx_on_plan + 1
-            if next_road_idx_on_plan > len(route_plan_road_ids) - 1:
-                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
-                                             "current_segment_end_s=%f lookahead_distance=%f" %
-                                             (route_plan_road_ids, lookahead_distance - cumulative_distance,
-                                              current_segment_end_s, lookahead_distance))
-
-            # pull next road segment from the navigation plan, then look for the downstream lane segment on this
-            # road segment. This assumes a single correct downstream segment.
-            next_road_segment_id_on_plan = route_plan_road_ids[next_road_idx_on_plan]
-            downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
-            # TODO: what if lane is deadend or it is the last road segment in the nav. plan (destination reached)
-            if len(downstream_lanes_ids) == 0:
-                raise DownstreamLaneNotFound(
-                    "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
-
-            # collect downstream lanes, whose road_segment_id is next_road_segment_id_on_plan
-            downstream_lanes_ids_on_plan = \
-                [lid for lid in downstream_lanes_ids
-                 if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
-
-            # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
-            if len(downstream_lanes_ids_on_plan) == 0:
-                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
-                                                  "downstream_lanes %s, next_road_segment_id_on_plan %d" %
-                                                  (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
-            if len(downstream_lanes_ids_on_plan) > 1:
-                raise AmbiguousNavigationPlan("More than 1 downstream lanes according to the nav. plan %s,"
-                                              "downstream_lanes_ids_on_plan %s" %
-                                              (route_plan_road_ids, downstream_lanes_ids_on_plan))
-
-            current_lane_id = downstream_lanes_ids_on_plan[0]
-            current_segment_start_s = 0
-            current_road_idx_on_plan = next_road_idx_on_plan
-
-        return lane_subsegments
-
-    @staticmethod
     @raises(UpstreamLaneNotFound)
     def _get_upstream_lanes_from_distance(starting_lane_id: int, starting_lon: float, backward_dist: float) -> \
             (List[int], float):
@@ -466,7 +384,7 @@ class MapUtils:
                 # TODO: the lane can actually have no upstream; should we continue with the existing path instead of
                 #   raising exception, if total_dist > TBD
                 raise UpstreamLaneNotFound(
-                    "MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % (prev_lane_id))
+                    "MapUtils._advance_by_cost: Upstream lane not found for lane_id=%d" % (prev_lane_id))
             # TODO: how to choose between multiple upstreams if all of them belong to route plan road segment
             prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
