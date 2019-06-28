@@ -260,11 +260,6 @@ def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static_p
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     road_segment_ids = MapUtils.get_road_segment_ids()
 
-    # Give all lane segments first ordinal end cost of 0
-    lane_cost_dict = {
-        201:0, 211:0, 221:0, 231:0, 241:0, 251:0, 261:0, 271:0, 281:0, 291:0
-    }
-
     current_ordinal = 1
     # test lookahead distance until the end of the map: verify no exception is thrown
     cumulative_distance = 0
