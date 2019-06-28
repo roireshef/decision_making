@@ -304,7 +304,7 @@ class MapUtils:
         return init_lane_id, init_lon
 
     @staticmethod
-    @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound)
+    @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                          route_plan: RoutePlan) -> List[FrenetSubSegment]:
         """
@@ -318,6 +318,15 @@ class MapUtils:
         # :param lane_cost_list: dictionary of key lane ID to value end cost of traversing lane
         :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
         """
+        initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
+        # TODO: what will happen if there is a lane split ahead for left/right lanes and the doenstream road is not part of the nav. plan
+
+        try:
+            current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
+        except IndexError:
+            raise RoadNotFound("Road ID {} is not in not found in the route plan road segment list"
+                               .format(initial_road_segment_id))
+
         cumulative_distance = 0.
         lane_subsegments = []
 
@@ -337,14 +346,22 @@ class MapUtils:
             if cumulative_distance > lookahead_distance - EPS:
                 break
 
-            current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan)
+            next_road_idx_on_plan = current_road_idx_on_plan + 1
+            if next_road_idx_on_plan > len(route_plan.s_Data.a_i_road_segment_ids) - 1:
+                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
+                                             "current_segment_end_s=%f lookahead_distance=%f" %
+                                             (route_plan.s_Data.a_i_road_segment_ids, lookahead_distance - cumulative_distance,
+                                              current_segment_end_s, lookahead_distance))
+
+            current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan)
             current_segment_start_s = 0
+            current_road_idx_on_plan = next_road_idx_on_plan
 
         return lane_subsegments
 
     @staticmethod
-    @raises(DownstreamLaneNotFound, LaneCostNotFound)
-    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan) -> int:
+    @raises(DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanDoesNotFitMap)
+    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int) -> int:
         """
         Currently assumes that Lookahead spreads only current lane segment and the next lane segment(!)
 
@@ -352,12 +369,25 @@ class MapUtils:
         # :param lane_cost_dict: dictionary of key lane ID to value end cost of traversing lane
         :return: ID of the lane with the minimal costs
         """
-        route_plan_costs = route_plan.to_costs_dict()
+        # pull next road segment from the navigation plan, then look for the downstream lane segments on this road segment.
+        next_road_segment_id_on_plan = route_plan.s_Data.a_i_road_segment_ids[next_road_idx_on_plan]
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
+
+        # collect downstream lanes, whose road_segment_id is next_road_segment_id_on_plan
+        downstream_lanes_ids_on_plan = \
+            [lid for lid in downstream_lanes_ids
+                if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
+
+        # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
+        if len(downstream_lanes_ids_on_plan) == 0:
+            raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
+                                                "downstream_lanes %s, next_road_segment_id_on_plan %d" %
+                                                (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
+
+        route_plan_costs = route_plan.to_costs_dict()
         try:
             #TODO: what if multiple downstream lanes have same cost
-            minimal_lane_id = min([downstream_lane_id for downstream_lane_id in downstream_lanes_ids],
-                                  key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
+            minimal_lane_id = min(downstream_lanes_ids_on_plan, key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
         except KeyError:
             raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
         except ValueError:
