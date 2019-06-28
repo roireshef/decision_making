@@ -4,6 +4,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     route_plan_20_30
 from decision_making.test.planning.custom_fixtures import route_plan_1_2
 from unittest.mock import patch
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 
 import numpy as np
 
@@ -122,9 +123,9 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
-def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static_pg_split):
+def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_on_plan
+    test the method _advance_by_cost
         validate that total length of output sub segments == lookahead_dist;
     """
 
@@ -135,8 +136,7 @@ def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     starting_lon = 20.
     lookahead_dist = 500.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                             create_route_plan_msg(np.array(road_ids)).s_Data.a_i_road_segment_ids)
+    sub_segments = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)
     assert len(sub_segments) == 5
     for seg in sub_segments:
         assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
@@ -144,9 +144,9 @@ def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     assert np.isclose(tot_length, lookahead_dist)
 
 
-def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException(scene_static_pg_split):
+def test_advanceByCost_navPlanDoesNotFitMap_relevantException(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_on_plan
+    test the method _advance_by_cost
         add additional segment to nav_plan that does not exist on the map; validate getting the relevant exception
     """
 
@@ -159,38 +159,33 @@ def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException(scene_static_pg_sp
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
     wrong_road_segment_id = 1234
     nav_plan_length = 8
+
+    # Modify route plan for this test case
+    route_plan = route_plan_20_30
+    route_plan.s_Data.e_Cnt_num_road_segments = nav_plan_length + 1
+    route_plan.s_Data.a_i_road_segment_ids = np.array(route_plan.s_Data.a_i_road_segment_ids[:nav_plan_length].tolist() +
+                                                      [wrong_road_segment_id])
+    route_plan.s_Data.a_Cnt_num_lane_segments = route_plan.s_Data.a_Cnt_num_lane_segments[:(nav_plan_length + 1)]
+    route_plan.s_Data.as_route_plan_lane_segments = route_plan.s_Data.as_route_plan_lane_segments[:(nav_plan_length + 1)]
+
+    lane_number = 1
+
+    for lane_segment in route_plan.s_Data.as_route_plan_lane_segments[-1]:
+        lane_segment.e_i_lane_segment_id = wrong_road_segment_id + lane_number
+        lane_number += 1
+
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
     # validate getting the relevant exception
     try:
-        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                  create_route_plan_msg(
-                                      np.array(road_segment_ids[:nav_plan_length] + [wrong_road_segment_id])).s_Data.a_i_road_segment_ids)
+        MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
         assert False
     except NavigationPlanDoesNotFitMap:
         assert True
 
 
-def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static_pg_split):
+def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_on_plan
-        run lookahead_dist from the beginning until end of the map
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    current_ordinal = 1
-    # test lookahead distance until the end of the map: verify no exception is thrown
-    cumulative_distance = 0
-    for road_id in road_segment_ids:
-        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
-        cumulative_distance += MapUtils.get_lane_length(lane_id)
-    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance,
-                                             create_route_plan_msg(np.array(road_segment_ids)).s_Data.a_i_road_segment_ids)
-    assert len(sub_segments) == len(road_segment_ids)
-
-def test_advanceOnPlan_navPlanTooShort_validateRelevantException(scene_static_pg_split):
-    """
-    test the method _advance_on_plan
+    test the method _advance_by_cost
         test exception for too short nav plan; validate the relevant exception
     """
 
@@ -202,18 +197,25 @@ def test_advanceOnPlan_navPlanTooShort_validateRelevantException(scene_static_pg
     lookahead_dist = 500.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
     nav_plan_length = 7
+
+    # Modify route plan for this test case
+    route_plan = route_plan_20_30
+    route_plan.s_Data.e_Cnt_num_road_segments = nav_plan_length
+    route_plan.s_Data.a_i_road_segment_ids = route_plan.s_Data.a_i_road_segment_ids[:nav_plan_length]
+    route_plan.s_Data.a_Cnt_num_lane_segments = route_plan.s_Data.a_Cnt_num_lane_segments[:nav_plan_length]
+    route_plan.s_Data.as_route_plan_lane_segments = route_plan.s_Data.as_route_plan_lane_segments[:nav_plan_length]
+
     # test the case when the navigation plan is too short; validate the relevant exception
     try:
-        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                  create_route_plan_msg(np.array(road_segment_ids[:nav_plan_length])).s_Data.a_i_road_segment_ids)
+        MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
         assert False
     except NavigationPlanTooShort:
         assert True
 
 
-def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static_pg_split):
+def test_advanceByCost_lookAheadDistLongerThanMap_validateException(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_on_plan
+    test the method _advance_by_cost
         test exception for too short map but nav_plan is long enough; validate the relevant exception
     """
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
@@ -222,13 +224,28 @@ def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static
     current_ordinal = 1
     starting_lon = 20.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
-    wrong_road_id = 1234
+    wrong_road_segment_id = 1234
     lookadhead_dist = 1000
+
+    # Modify route plan for this test case
+    route_plan = route_plan_20_30
+    route_plan.s_Data.e_Cnt_num_road_segments += 1
+    route_plan.s_Data.a_i_road_segment_ids = np.append(route_plan.s_Data.a_i_road_segment_ids, wrong_road_segment_id)
+    route_plan.s_Data.a_Cnt_num_lane_segments = np.append(route_plan.s_Data.a_Cnt_num_lane_segments,
+                                                          route_plan.s_Data.a_Cnt_num_lane_segments[-1])
+
+    lane_segments = []
+
+    for lane_number in [1, 2, 3]:
+        lane_segments.append(RoutePlanLaneSegment(e_i_lane_segment_id=wrong_road_segment_id + lane_number,
+                                                  e_cst_lane_occupancy_cost=0.0,
+                                                  e_cst_lane_end_cost=0.0))
+
+    route_plan.s_Data.as_route_plan_lane_segments.append(lane_segments)
+
     # test the case when the map is too short; validate the relevant exception
     try:
-        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=lookadhead_dist,
-                                  route_plan_road_ids=create_route_plan_msg(
-                                      np.array(road_segment_ids + [wrong_road_id])).s_Data.a_i_road_segment_ids)
+        MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookadhead_dist, route_plan)
         assert False
     except DownstreamLaneNotFound:
         assert True
