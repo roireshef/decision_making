@@ -88,6 +88,18 @@ class DownstreamLaneNotFound(MappingException):
     pass
 
 
+class NavigationPlanTooShort(MappingException):
+    pass
+
+
+class NavigationPlanDoesNotFitMap(MappingException):
+    pass
+
+
+class AmbiguousNavigationPlan(MappingException):
+    pass
+
+
 class RoadNotFound(MappingException):
     pass
 

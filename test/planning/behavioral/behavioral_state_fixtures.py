@@ -24,6 +24,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
+NAVIGATION_PLAN = np.array(range(20, 30))
 
 
 @pytest.fixture(scope='function')
@@ -209,7 +210,8 @@ def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
         parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
-        next_sub_segments = MapUtils._advance_by_cost(parallel_lane_id, ego_lane_lon, 20, route_plan_20_30)
+        next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20,
+                                                      route_plan_road_ids=route_plan_20_30.s_Data.a_i_road_segment_ids)
         obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].e_i_SEnd]
         obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].e_i_SegmentID]
 
@@ -259,7 +261,8 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 20, route_plan_20_30)
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20,
+                                                  route_plan_road_ids=route_plan_20_30.s_Data.a_i_road_segment_ids)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 10.2
@@ -333,7 +336,7 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 3.8, route_plan_20_30)
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, route_plan_20_30.s_Data.a_i_road_segment_ids)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
@@ -351,7 +354,7 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_traffic_control(route_plan_20_30: RoutePlan):
+def state_with_traffic_control():
 
     scene_static_with_traffic = scene_static_pg_split()
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
@@ -376,7 +379,7 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 3.8, route_plan_20_30)
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
@@ -414,7 +417,7 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 58, route_plan_20_30)
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, route_plan_20_30.s_Data.a_i_road_segment_ids)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 30
