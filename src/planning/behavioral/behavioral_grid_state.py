@@ -112,6 +112,7 @@ class BehavioralGridState:
                 obj_lane = MapUtils.get_lane(obj_lane_id)
                 # Only project if there is one upstream lane that has multiple downstreams
                 if obj_lane.e_Cnt_upstream_lane_count == 1:
+                    # TODO: what if the upstream lane is not part of the base horizon behind the ego - change the logic to find overlap area
                     upstreamLane = MapUtils.get_lane(obj_lane.as_upstream_lanes[0].e_i_lane_segment_id)
                     if upstreamLane.e_Cnt_downstream_lane_count > 1:
                         downstreamLanes = [MapUtils.get_lane(downstream_lane.e_i_lane_segment_id)
