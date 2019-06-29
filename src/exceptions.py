@@ -96,10 +96,6 @@ class NavigationPlanDoesNotFitMap(MappingException):
     pass
 
 
-class AmbiguousNavigationPlan(MappingException):
-    pass
-
-
 class RoadNotFound(MappingException):
     pass
 
