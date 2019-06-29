@@ -54,7 +54,6 @@ def testable_scene_static_mock():
     # frame_origin = [32, 34]
     return SceneStaticUtils.create_scene_static_from_points(road_segment_ids=[1, 2],
                                                             num_lanes=NUM_LANES,
-
                                                             lane_width=LANE_WIDTH,
                                                             points_of_roads=road_coordinates)
 
