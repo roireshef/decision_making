@@ -59,9 +59,9 @@ class ActionSpecFilter:
         # group all specs and their indices by the relative lanes
         specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
 
-        # Calculate time of the first trajectory point relatively to ego time, such that all sampling times in
-        # the GLOBAL time system will be multiples of 0.1 sec. Motivation: to preserve Bellman between BP frames,
-        # trajectories should be sampled in the same times, regardless ego time.
+        # Choose sampling times of the trajectories, such that they are aligned to the GLOBAL time:
+        # multiples of 0.1 sec. Motivation: to preserve Bellman between BP frames, trajectories should be
+        # sampled in the same times, regardless ego time.
         first_sample_time = TRAJECTORY_TIME_RESOLUTION - behavioral_state.ego_state.timestamp_in_sec % TRAJECTORY_TIME_RESOLUTION
         time_samples = np.arange(first_sample_time, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
 

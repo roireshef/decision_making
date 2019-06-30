@@ -5,7 +5,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
-    ActionSpec, RelativeLane
+    ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -33,8 +33,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                  value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
                          predictor, logger)
-        self.anchor_segment_id = 0
-        self.anchor_segment_s = 0.
 
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                       recipes_mask: List[bool], route_plan: RoutePlan) -> (int, ActionSpec):
