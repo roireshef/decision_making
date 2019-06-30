@@ -309,8 +309,6 @@ class MapUtils:
         gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
         return gff
 
-
-
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
     @prof.ProfileFunction()
