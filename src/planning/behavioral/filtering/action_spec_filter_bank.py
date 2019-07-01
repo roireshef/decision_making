@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -338,6 +338,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
             self._raise_true()
         return beyond_spec_s[slow_points], points_velocity_limits[slow_points]
 
+
 class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
     """
     Checks if the speed limit will be exceeded.
@@ -365,9 +366,7 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
 
         # get all subsegments in current GFF and get the ones that contain points ahead of the action_spec.s
         subsegments = target_lane_frenet.segments
-        subsegments_ahead = [subsegment for subsegment in subsegments if
-                             subsegment.e_i_SStart > action_spec.s]
-
+        subsegments_ahead = [subsegment for subsegment in subsegments if subsegment.e_i_SStart > action_spec.s]
 
         # if no lane segments ahead, there will be no speed limit changes
         if len(subsegments_ahead) == 0:
