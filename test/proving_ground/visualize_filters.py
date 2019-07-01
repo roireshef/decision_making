@@ -23,10 +23,11 @@ def plot_filters_map(log_file_path: str):
     f = plt.figure(1)
     colors_num = len(DEFAULT_ACTION_SPEC_FILTERING._filters) + 1
     map_idx_to_color = np.array([4, 6, 2, 0, 8, 7, 5, 1, 3]) / colors_num
+    gray_color = np.array([0.75, 0.75, 0.75])
 
     patches = []
     for idx, filter in enumerate(DEFAULT_ACTION_SPEC_FILTERING._filters + ['Passed']):
-        color = plt.cm.hsv(map_idx_to_color[idx])
+        color = plt.cm.hsv(map_idx_to_color[idx]) if idx > 0 else gray_color
         patches.append(mpatches.Patch(color=color, label=filter.__str__()))
     plt.legend(handles=patches)
 
@@ -50,11 +51,15 @@ def plot_filters_map(log_file_path: str):
         if 'Filtering_map' in text:
             colon_str = text.split('timestamp_in_sec ')[1].split(':')
             timestamp = float(colon_str[0])
-            filters_result = list(map(int, colon_str[1].replace('array([', '').replace('])', '').split(', ')))
+            filters_result = np.array(list(map(int, colon_str[1].replace('array([', '').replace('])', '').split(', '))))
             # filtering_map.append((timestamp, filters_result))
             colors = plt.cm.hsv(map_idx_to_color[filters_result])
             plt.scatter(np.full(len(filters_result), timestamp), np.array(range(len(filters_result))),
-                        c=colors, linewidths=0)
+                        c=colors, linestyle='None')
+            # draw None actions with gray color which is not part of the color palette
+            none_actions = np.where(filters_result == 0)[0]
+            plt.scatter(np.full(len(none_actions), timestamp), none_actions,
+                        c=np.tile(gray_color, len(none_actions)).reshape(-1, 3), linestyle='None')
 
     plt.xlabel('time [s]')
     plt.ylabel('action')
