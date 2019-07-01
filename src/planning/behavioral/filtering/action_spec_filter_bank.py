@@ -18,19 +18,18 @@ from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from typing import List
 from typing import List, Union, Any
 
 
 class FilterIfNone(ActionSpecFilter):
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [(action_spec and behavioral_state) is not None and ~np.isnan(action_spec.t) for action_spec in action_specs]
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> np.array:
+        return np.array([(action_spec and behavioral_state) is not None and ~np.isnan(action_spec.t)
+                         for action_spec in action_specs])
 
 
 class FilterForKinematics(ActionSpecFilter):
     @prof.ProfileFunction()
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> np.array:
         """
         Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
             - max longitudinal position (available in the reference frame)
@@ -40,17 +39,17 @@ class FilterForKinematics(ActionSpecFilter):
             conceptually "straightens" the road's shape.
         :param action_specs: list of action specs
         :param behavioral_state:
-        :return: boolean list per action spec: True if a spec passed the filter
+        :return: boolean array per action spec: True if a spec passed the filter
         """
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
-        return list(KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS))
+        return KinematicUtils.filter_by_cartesian_limits(
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
     @prof.ProfileFunction()
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> np.array:
         """
         Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
             - max longitudinal position (available in the reference frame)
@@ -60,7 +59,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
             conceptually "straightens" the road's shape.
         :param action_specs: list of action specs
         :param behavioral_state:
-        :return: boolean list per action spec: True if a spec passed the filter
+        :return: boolean array per action spec: True if a spec passed the filter
         """
         ftrajectories, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
@@ -73,7 +72,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                 nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
                     ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
 
-        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds))
+        return KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds)
 
     @staticmethod
     def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
@@ -158,9 +157,9 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
 
         return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
-                for action_spec in action_specs]
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> np.array:
+        return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
+                         for action_spec in action_specs])
 
 
 @six.add_metaclass(ABCMeta)
@@ -332,6 +331,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         if len(slow_points) == 0:
             self._raise_true()
         return beyond_spec_s[slow_points], points_velocity_limits[slow_points]
+
 
 class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
     """

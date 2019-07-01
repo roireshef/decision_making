@@ -122,7 +122,7 @@ class ConstraintSpecFilter(ActionSpecFilter):
                 ActionSpec(spec.t, spec.v,  spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
                 for spec in action_specs]
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> np.array:
         """
         The filter function
         No need to implement this method in your subclass
@@ -139,5 +139,5 @@ class ConstraintSpecFilter(ActionSpecFilter):
             except ConstraintFilterHaltWithValue as e:
                 mask_value = e.value
             mask.append(mask_value)
-        return mask
+        return np.array(mask)
 
