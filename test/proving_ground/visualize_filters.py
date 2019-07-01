@@ -1,8 +1,16 @@
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import numpy as np
 
 from decision_making.paths import Paths
-from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.data_objects import ActionType
+from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING, \
+    DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_DYNAMIC_RECIPE_FILTERING
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from rte.python.logger.AV_logger import AV_Logger
 
 
 def plot_filters_map(log_file_path: str):
@@ -13,14 +21,26 @@ def plot_filters_map(log_file_path: str):
     """
     file = open(log_file_path, 'r')
     f = plt.figure(1)
-    plt.rcParams['image.cmap'] = 'jet'
     colors_num = len(DEFAULT_ACTION_SPEC_FILTERING._filters) + 1
+    map_idx_to_color = np.array([4, 6, 2, 0, 8, 7, 5, 1, 3]) / colors_num
 
+    patches = []
     for idx, filter in enumerate(DEFAULT_ACTION_SPEC_FILTERING._filters + ['Passed']):
-        r = idx/colors_num
-        color = plt.cm.hsv(r)
-        plt.scatter(x=[9.5], y=[idx*8], c=np.array([color]), linewidths=0)
-        plt.text(9.6, idx*8, filter.__str__())
+        color = plt.cm.hsv(map_idx_to_color[idx])
+        patches.append(mpatches.Patch(color=color, label=filter.__str__()))
+    plt.legend(handles=patches)
+
+    logger = AV_Logger.get_logger("Filters_visualizer")
+    predictor = RoadFollowingPredictor(logger)
+    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+                                                 DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+    action_recipes = action_space.recipes
+    y_values = [(recipe.action_type.__str__().split('_')[1][:4], recipe.relative_lane.__str__().split('.')[1][:4],
+                 recipe.aggressiveness.__str__().split('.')[1][:4],
+                 '%.1f' % recipe.velocity if recipe.action_type == ActionType.FOLLOW_LANE else '')
+                for recipe in action_recipes]
+    y_axis = np.arange(len(action_recipes))
+    plt.yticks(y_axis, y_values)
 
     while True:
         text = file.readline()
@@ -32,7 +52,7 @@ def plot_filters_map(log_file_path: str):
             timestamp = float(colon_str[0])
             filters_result = list(map(int, colon_str[1].replace('array([', '').replace('])', '').split(', ')))
             # filtering_map.append((timestamp, filters_result))
-            colors = plt.cm.hsv(np.array(filters_result)/colors_num)
+            colors = plt.cm.hsv(map_idx_to_color[filters_result])
             plt.scatter(np.full(len(filters_result), timestamp), np.array(range(len(filters_result))),
                         c=colors, linewidths=0)
 
