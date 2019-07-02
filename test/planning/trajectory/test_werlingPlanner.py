@@ -130,8 +130,13 @@ def test_werlingPlanner_toyScenario_noException():
 
 
 def test_werlingPlanner_localizationNoise_noException():
+    """
+    Test a resilience of TP grid to localization errors.
+    Build a short (2 sec) action with constant velocity and then move the goal both longitudinally and laterally.
+    Verify that TP succeeds to create trajectory in all cases. In addition for each shift print the obtained
+    min/max velocity, acceleration and jerk.
+    """
     logger = AV_Logger.get_logger('test_werlingPlanner_localizationNoise_noException')
-
     road_id = 1
     lane_width = 3.6
     num_lanes = 2
