@@ -205,10 +205,11 @@ class BehavioralGridState:
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, route_plan=route_plan)
             except MappingException as e:
+                e.message = "MapUtils error: " + e.message
                 if rel_lane != RelativeLane.SAME_LANE:
                     logger.warning(e)
                 else:  # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
-                    raise e
+                    raise
 
         return extended_lane_frames
 
