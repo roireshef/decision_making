@@ -109,12 +109,13 @@ class WerlingPlanner(TrajectoryPlanner):
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
 
+        # TODO: desired velocity is dynamically changing when transitioning between road/lane segments
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
-                                                                             cost_params.lat_acceleration_limits,
-                                                                             cost_params.desired_velocity)
+                                                                             cost_params.lat_acceleration_limits)
+
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
         ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
