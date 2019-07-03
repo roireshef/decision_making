@@ -42,10 +42,10 @@ SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-sho
 DEVIATION_FROM_ROAD_COST = 1000             # cost of deviation from road (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_TARGET_HORIZON_TIME_COST = 100  # cost of positive deviation from target horizon time
+DEVIATION_FROM_TARGET_HORIZON_TIME_COST = 1  # cost of positive deviation from target horizon time
                                             # if T_s <= T_target_horizon, then cost = 0)
 
-DEVIATION_FROM_GOAL_COST = 50               # cost of squared lateral deviation from the goal
+DEVIATION_FROM_GOAL_COST = 200              # cost of squared lateral deviation from the goal
 
 LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being very far from road shoulders (so we don't
                                             # penalize on that).
@@ -77,7 +77,7 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-5.5, 2.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-2, 2])

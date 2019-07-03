@@ -48,7 +48,6 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
-        :param desired_velocity: desired longitudinal speed [m/sec]
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
