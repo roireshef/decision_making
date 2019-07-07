@@ -6,7 +6,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DF
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, NEGLIGIBLE_VELOCITY
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
@@ -163,6 +163,10 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         d_v = ftrajectories[:, :, FS_DV]
         d_a = ftrajectories[:, :, FS_DA]
 
+        # s_v=0 is a singular case which is treated inside NumpyUtils.div(a,b), but in case of s_v close to 0, the
+        # division is not stable
+        s_v[np.isclose(s_v, 0, atol=NEGLIGIBLE_VELOCITY)] = 0
+
         a_r, T_r, N_r, k_r, k_r_tag = self._taylor_interp(s_x)
         theta_r = np.arctan2(T_r[..., C_Y], T_r[..., C_X])
 
@@ -291,7 +295,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         s_approx = np.add(O_idx, delta_s) * self.ds
         return s_approx
 
-    def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
+    def get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
         a value in the range [0, ds] representing the projection on this closest point.
@@ -368,7 +372,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
             "Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max)
 
-        O_idx, delta_s = self._get_closest_index_on_frame(s)
+        O_idx, delta_s = self.get_closest_index_on_frame(s)
 
         a_s = self.O[O_idx] + \
               delta_s * self.T[O_idx] + \

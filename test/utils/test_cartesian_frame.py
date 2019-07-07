@@ -5,6 +5,7 @@ from decision_making.src.utils.geometry_utils import CartesianFrame
 
 ACCURACY_DECIMAL = np.log10(EPS)
 
+
 def test_convertGlobalToRelativeFrame_vecOnlyTranslation_successful():
     global_pos = np.array([2, 1])
     global_yaw = 1
@@ -17,6 +18,7 @@ def test_convertGlobalToRelativeFrame_vecOnlyTranslation_successful():
     expected_relative_yaw = 1.0
     np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
     np.testing.assert_almost_equal(relative_yaw, expected_relative_yaw, decimal=ACCURACY_DECIMAL)
+
 
 def test_convertGlobalToRelativeFrame_vecWithFortyFiveDegRotation_successful():
     global_pos = np.array([2, 1])
@@ -57,6 +59,20 @@ def test_convertGlobalToRelativeFrame_matrixWithFortyFiveDegRotation_successful(
     expected_relative_yaw = np.pi / 4
     np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
     np.testing.assert_almost_equal(relative_yaw, expected_relative_yaw, decimal=ACCURACY_DECIMAL)
+
+
+def test_convertGlobalToRelativeFrame_smallLateralError_successful():
+    actual_pos = np.array([915.9, -27.5])
+    expected_pos = np.array([915.6, -26.9])
+    expected_yaw = -1.12
+
+    errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(
+        global_pos=actual_pos,
+        global_yaw=0.0,
+        frame_position=expected_pos,
+        frame_orientation=expected_yaw
+    )
+    assert abs(errors_in_expected_frame[1]) < 0.01
 
 
 def test_convertRelativeToGlobalFrame_vecOnlyTranslation_successful():

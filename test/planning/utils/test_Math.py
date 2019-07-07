@@ -1,5 +1,5 @@
 import numpy as np
-from decision_making.src.planning.utils.math_utils import Math, DIVISION_FLOATING_ACCURACY
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
 
@@ -40,28 +40,60 @@ def test_findRealRootsInLimits_compareFoundRootsWithNumpyRoots_rootsShouldBeTheS
         assert np.isclose(real_roots1_in_limits, real_roots2_in_limits).all()
 
 
-def test_div_floats_rightAnswer():
-    assert Math.div(1, 2) - 0 < DIVISION_FLOATING_ACCURACY
-    assert Math.div(2, 1) - 2 < DIVISION_FLOATING_ACCURACY
-    assert Math.div(2, 0.3) - 6 < DIVISION_FLOATING_ACCURACY
-    assert Math.div(2.1, 0.3) - 7 < DIVISION_FLOATING_ACCURACY
+def test_floorToStep_compareFloatSeriesWithExpected_Accurate():
 
-def test_div_numpyArrays_rightAnswer():
-    np.testing.assert_array_almost_equal(Math.div(np.array([1, 2, 3]), np.array([0.1, 0.2, 0.3])),
-                                         np.array([10, 10, 10]),
-                                         decimal=-1 * np.log10(DIVISION_FLOATING_ACCURACY))
+    step = 0.1
+    floats = np.array([-3.01, -3.59, -2.3, -0.15, 0.15, 1.6, 1.52, 1.19])
+    expected_floored_results = np.array([-3.1, -3.6, -2.3, -0.2, 0.1, 1.6, 1.5, 1.1])
+
+    floored_results = Math.floor_to_step(floats, step)
+    np.testing.assert_array_equal(expected_floored_results, floored_results)
 
 
-def test_mod_floats_rightAnswer():
-    assert Math.mod(1.0, 2.0) - 1.0 < DIVISION_FLOATING_ACCURACY
-    assert Math.mod(2.0, 1.0) - 0.0 < DIVISION_FLOATING_ACCURACY
-    assert Math.mod(2.0, 0.3) - 0.2 < DIVISION_FLOATING_ACCURACY
-    assert Math.mod(2.1, 0.3) - 0.0 < DIVISION_FLOATING_ACCURACY
+def test_floorToStep_compareFloatSeriesWithNumpyRoundWithStepOne_Accurate():
+    step = 1
+    floats = np.array([-3.01, -3.59, -2.3, -0.125, 0.125, 1.6, 1.52, 1.19])
+    expected_floored_results = np.floor(floats)
 
-def test_mod_numpyArrays_rightAnswer():
-    np.testing.assert_array_almost_equal(Math.mod(np.array([1.0, 2.0, 3.0]), np.array([0.1, 0.2, 0.3])),
-                                         np.array([0.0, 0.0, 0.0]),
-                                         decimal=-1 * np.log10(DIVISION_FLOATING_ACCURACY))
-    np.testing.assert_array_almost_equal(Math.mod(np.array([1.0, 2.0, 3.5]), np.array([0.1, 0.2, 0.3])),
-                                         np.array([0.0, 0.0, 0.2]),
-                                         decimal=-1 * np.log10(DIVISION_FLOATING_ACCURACY))
+    rounded_results = Math.floor_to_step(floats, step)
+    np.testing.assert_array_equal(expected_floored_results, rounded_results)
+
+
+def test_ceilToStep_compareFloatSeriesWithExpected_Accurate():
+
+    step = 0.1
+    floats = np.array([-3.01, -3.59, -2.3, -0.15, 0.15, 1.6, 1.52, 1.19])
+    expected_ceiled_results = np.array([-3.0, -3.5, -2.3, -0.1, 0.2, 1.6, 1.6, 1.2])
+
+    ceiled_results = Math.ceil_to_step(floats, step)
+    np.testing.assert_array_equal(expected_ceiled_results, ceiled_results)
+
+
+def test_ceilToStep_compareFloatSeriesWithNumpyRoundWithStepOne_Accurate():
+
+    step = 1
+    floats = np.array([-3.01, -3.59, -2.3, -0.125, 0.125, 1.6, 1.52, 1.19])
+    expected_rounded_results = np.ceil(floats)
+
+    rounded_results = Math.ceil_to_step(floats, step)
+    np.testing.assert_array_equal(expected_rounded_results, rounded_results)
+
+
+def test_roundToStep_compareFloatSeriesWithExpected_Accurate():
+
+    step = 0.1
+    floats = np.array([-3.01, -3.59, -2.3, -0.125, 0.125, 1.6, 1.52, 1.19])
+    expected_rounded_results = np.array([-3.0, -3.6, -2.3, -0.1, 0.1, 1.6, 1.5, 1.2])
+
+    rounded_results = Math.round_to_step(floats, step)
+    np.testing.assert_array_equal(expected_rounded_results, rounded_results)
+
+
+def test_roundToStep_compareFloatSeriesWithNumpyRoundWithStepOne_Accurate():
+
+    step = 1
+    floats = np.array([-3.01, -3.59, -2.3, -0.125, 0.125, 1.6, 1.52, 1.19])
+    expected_rounded_results = np.round(floats)
+
+    rounded_results = Math.round_to_step(floats, step)
+    np.testing.assert_array_equal(expected_rounded_results, rounded_results)

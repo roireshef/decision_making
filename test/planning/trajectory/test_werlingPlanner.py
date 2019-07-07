@@ -1,10 +1,10 @@
-import time
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -12,14 +12,14 @@ import pytest
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH
+    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
-from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState, \
-    CartesianTrajectory
+from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
+    CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
@@ -28,8 +28,14 @@ from decision_making.test.planning.trajectory.utils import RouteFixture, Plottab
 from decision_making.src.utils.geometry_utils import CartesianFrame
 from rte.python.logger.AV_logger import AV_Logger
 
-mock_td_steps = 5
 
+@patch('decision_making.src.planning.trajectory.werling_planner.TD_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MIN', -8)
+@patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MAX', 0)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MIN', -1.6)
+@patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MAX', 1.6)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
@@ -79,14 +85,13 @@ def test_werlingPlanner_toyScenario_noException():
                                        lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                        velocity_limits=VELOCITY_LIMITS,
                                        lon_acceleration_limits=LON_ACC_LIMITS,
-                                       lat_acceleration_limits=LAT_ACC_LIMITS)
+                                       lat_acceleration_limits=LAT_ACC_LIMITS,
+                                       desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
 
     planner = WerlingPlanner(logger, predictor)
 
-    start_time = time.time()
-
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route, goal=goal,
-                                                      time_horizon=Ts, cost_params=cost_params)
+                                                   T_target_horizon=Ts, T_trajectory_end_horizon=Ts, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
 
@@ -121,6 +126,7 @@ def test_werlingPlanner_toyScenario_noException():
     # plt.show()
     # fig.clear()
 
+
 # remove this skip if you want to run the test
 @pytest.mark.skip(reason="takes too long.")
 def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
@@ -154,14 +160,14 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             curvature = 0.2
 
         if test_idx < 40:  # test safety vs deviations vs goal, and consistency for small changes
-            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx % 20)*0.2])])
+            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx % 20) * 0.2])])
             goal_latitude = lane_width / 2
         else:  # test jerk vs. goal
             obs_poses = np.array([])
             goal_latitude = reference_route_latitude = start_ego_lat = lane_width / 2
             v0 = 8
             vT = 8
-            T = 2*lng/(v0+vT + (test_idx-40))
+            T = 2 * lng / (v0 + vT + (test_idx - 40))
 
         # Create reference route (normal and extended). The extension is intended to prevent
         # overflow of projection on the ref route
@@ -179,8 +185,8 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         # run Werling planner
         planner = WerlingPlanner(logger, predictor)
-        _, ctrajectories, costs = planner.plan(state=state, reference_route=frenet, goal=goal, time_horizon=T,
-                                               cost_params=cost_params)
+        _, ctrajectories, costs = planner.plan(state=state, reference_route=frenet,
+                                               goal=goal, T_target_horizon=T, cost_params=cost_params)
 
         time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + \
                        state.ego_state.timestamp_in_sec
@@ -212,7 +218,7 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
     :param lng: [m] length of the reference route
     :param ext: [m] extension of the reference route (in two sides)
     :param curvature: curvature of the reference route
-    :return: route_points (reference route), ext_route_points (extended reference route), the created SceneStatic
+    :return: route_points (reference route), ext_route_points (extended reference route)
     """
     step = 0.2
     route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
@@ -383,7 +389,7 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
             p.plot(range_x, np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')
             range_y = np.arange(min_cost_y - ego.size.width / 2, min_cost_y + ego.size.width / 2 + 0.01)
             p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1), range_y, '*w')
-            p.plot(np.repeat(np.array([ ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1), range_y, '*w')
+            p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1), range_y, '*w')
 
     d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
     WerlingVisualizer.plot_route(p2, np.c_[
@@ -418,6 +424,7 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
         timestamp_in_sec=10.0,
         T_s=1.5,
         T_d=1.0,
+        T_extended=1.5,
         frenet_frame=frenet,
         poly_s_coefs=np.array([-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),
         poly_d_coefs=np.array([-1.44408865e+01, 3.62482582e+01, -2.42818417e+01, -3.62145365e-02, 1.03423064e-02, 5.01250837e-01])
@@ -433,8 +440,8 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
 
 
 def test_computeJerk_simpleTrajectory():
-    p1 :CartesianExtendedState = np.array([0, 0, 0, 1, 0, 0.1])
-    p2 :CartesianExtendedState = np.array([0, 0, 0, 2, 1, 0.1])
+    p1: CartesianExtendedState = np.array([0, 0, 0, 1, 0, 0.1])
+    p2: CartesianExtendedState = np.array([0, 0, 0, 2, 1, 0.1])
     ctrajectory: CartesianTrajectory = np.array([p1, p2])
     lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctrajectory]), 0.1)
     assert np.isclose(lon_jerks[0][0], 10) and np.isclose(lat_jerks[0][0], 0.9)

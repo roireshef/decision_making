@@ -1,7 +1,4 @@
-from decision_making.src.planning.navigation.default_config import NAVIGATION_PLAN_OVAL_TRACK
 from os import getpid
-
-import numpy as np
 
 from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization, DEFAULT_MAP_FILE
@@ -12,8 +9,6 @@ from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_Y
@@ -22,13 +17,10 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.state.state_module import StateModule
 from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
-from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
 from decision_making.test.utils_for_tests import Utils
-from os import getpid
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
-
 
 
 class DmMockInitialization:
@@ -73,18 +65,14 @@ class DmMockInitialization:
         return trajectory_planning_module
 
 
-def main(fixed_trajectory_file: str = None, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN_OVAL_TRACK):
+def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.
     """
     modules_list = \
         [
-            DmProcess(lambda: DmInitialization.create_navigation_planner(nav_plan),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
-
-            DmProcess(lambda: DmMockInitialization.create_state_module(),
+            DmProcess(lambda: DmMockInitialization.create_state_module(map_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 

@@ -59,12 +59,12 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     velocity_limits = Limits
     lon_acceleration_limits = Limits
     lat_acceleration_limits = Limits
-
+    desired_velocity = float
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
                  lon_jerk_cost_weight, lat_jerk_cost_weight,
-                 velocity_limits, lon_acceleration_limits, lat_acceleration_limits):
-        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits)->None
+                 velocity_limits, lon_acceleration_limits, lat_acceleration_limits, desired_velocity):
+        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits, int)->None
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -91,6 +91,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
+        :param desired_velocity : The longitudinal velocity the vehicle should aim for [m/sec]
         """
         self.obstacle_cost_x = obstacle_cost_x
         self.obstacle_cost_y = obstacle_cost_y
@@ -107,6 +108,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         self.velocity_limits = velocity_limits
         self.lon_acceleration_limits = lon_acceleration_limits
         self.lat_acceleration_limits = lat_acceleration_limits
+        self.desired_velocity = desired_velocity
 
     def serialize(self):
         # type: ()-> TsSYSTrajectoryCostParams
@@ -127,6 +129,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         pubsub_msg.e_v_VelocityLimits = self.velocity_limits
         pubsub_msg.e_a_LonAccelerationLimits = self.lon_acceleration_limits
         pubsub_msg.e_a_LatAccelerationLimits = self.lat_acceleration_limits
+        pubsub_msg.e_v_DesiredVelocity = self.desired_velocity
 
         return pubsub_msg
 
@@ -147,7 +150,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                    , pubsubMsg.e_Wt_LatJerkCostWeight
                    , pubsubMsg.e_v_VelocityLimits
                    , pubsubMsg.e_a_LonAccelerationLimits
-                   , pubsubMsg.e_a_LatAccelerationLimits)
+                   , pubsubMsg.e_a_LatAccelerationLimits
+                   , pubsubMsg.e_v_DesiredVelocity)
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
@@ -156,24 +160,30 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     reference_route = GeneralizedFrenetSerretFrame
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
-    time = int
-    bp_time = float
+    target_time = float
+    bp_time = int
 
-    def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, int, float)->None
+    def __init__(self, strategy, reference_route, target_state, cost_params, target_time, trajectory_end_time, bp_time):
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float, float, int)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)
         :param target_state: the vector-representation of the target state to plan ego motion towards
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
-        :param time: trajectory planning time-frame
+        :param target_time: the absolute timestamp in [sec] that represent the time of arrival to the terminal boundary
+        condition (TP optimization problem will end in this time)
+        :param trajectory_end_time: the timestamp in [sec] in which the actual trajectory will end (including padding
+        done in TP, which is a consequence of Control's requirement to have a long enough trajectory, i.e. according to
+        MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
+        :param bp_time: absolute time of the state that BP planned on.
         """
         self.reference_route = reference_route
         self.target_state = target_state
         self.cost_params = cost_params
         self.strategy = strategy
-        self.time = time
+        self.target_time = target_time
+        self.trajectory_end_time = trajectory_end_time
         self.bp_time = bp_time
 
     def __str__(self):
@@ -194,7 +204,8 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         pubsub_msg.a_TargetState = self.target_state
         pubsub_msg.s_CostParams = self.cost_params.serialize()
 
-        pubsub_msg.e_t_Time = self.time
+        pubsub_msg.e_t_TargetTime = self.target_time
+        pubsub_msg.e_t_TrajectoryEndTime = self.trajectory_end_time
         pubsub_msg.e_Cnt_BPTime = self.bp_time
 
         return pubsub_msg
@@ -206,5 +217,6 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
                    , GeneralizedFrenetSerretFrame.deserialize(pubsubMsg.s_ReferenceRoute)
                    , pubsubMsg.a_TargetState
                    , TrajectoryCostParams.deserialize(pubsubMsg.s_CostParams)
-                   , pubsubMsg.e_t_Time
+                   , pubsubMsg.e_t_TargetTime
+                   , pubsubMsg.e_t_TrajectoryEndTime
                    , pubsubMsg.e_Cnt_BPTime)

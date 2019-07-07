@@ -12,6 +12,7 @@ from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, F
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.exceptions import OutOfSegmentFront
 from decision_making.src.utils.geometry_utils import Euclidean
+import rte.python.profiler as prof
 
 
 class FrenetSubSegment(PUBSUB_MSG_IMPL):
@@ -40,10 +41,10 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
-                 segments_id: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
+                 segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
-        self._segments_id = segments_id
+        self._segment_ids = segment_ids
         self._segments_s_start = segments_s_start
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
@@ -56,7 +57,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         pubsub_msg.s_N = SerializationUtils.serialize_non_typed_array(self.N)
         pubsub_msg.s_K = SerializationUtils.serialize_non_typed_array(self.k)
         pubsub_msg.s_KTag = SerializationUtils.serialize_non_typed_array(self.k_tag)
-        pubsub_msg.s_SegmentsID = SerializationUtils.serialize_non_typed_int_array(self._segments_id)
+        pubsub_msg.s_SegmentsID = SerializationUtils.serialize_non_typed_int_array(self._segment_ids)
         pubsub_msg.s_SegmentsSStart = SerializationUtils.serialize_non_typed_array(self._segments_s_start)
         pubsub_msg.s_SegmentsSOffsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         pubsub_msg.s_SegmentsDS = SerializationUtils.serialize_non_typed_array(self._segments_ds)
@@ -82,15 +83,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         :return: List of frenet sub segments with the starting and ending s in the GFF that correspond to that segment
         """
-        # self._segments_s_offsets is of length len(self._segments_id) + 1, the first len(self._segments_id) correspond
+        # self._segments_s_offsets is of length len(self._segment_ids) + 1, the first len(self._segment_ids) correspond
         # to the initial s of every segment and the last len(self._segments_id) correspond to the final s of every
         # segment
         segments_start = self._segments_s_offsets[:-1]
         segments_end = self._segments_s_offsets[1:]
-        return [FrenetSubSegment(segment_id=self._segments_id[idx],
+        return [FrenetSubSegment(segment_id=self._segment_ids[idx],
                                  s_start=segments_start[idx],
                                  s_end=segments_end[idx])
-                for idx in range(len(self._segments_id))]
+                for idx in range(len(self._segment_ids))]
 
     @property
     def ds(self):
@@ -104,6 +105,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         return self._segments_s_offsets[-1]
 
     @classmethod
+    @prof.ProfileFunction()
     def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
         """
         Create a generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
@@ -163,19 +165,24 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """see has_segment_ids"""
         return self.has_segment_ids(np.array([segment_id]))[0]
 
+    @property
+    def segment_ids(self):
+        return self._segment_ids
+
     def has_segment_ids(self, segment_ids: np.array) -> np.array:
         """
         returns boolean value indicating if segment id(s) is part of this generalized frame.
         :param segment_ids:
         :return: boolean multi-dimensional array of the same size of <segment_ids> that has True whenever segment_ids[.]
-        exists in self._segments_id
+        exists in self._segment_ids
         """
         if len(segment_ids) == 0:
             return np.array([], dtype=bool)
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
-        return np.isin(segment_ids, self._segments_id)
+        return np.isin(segment_ids, self._segment_ids)
 
-    def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
+
+    def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: NumpyIndicesArray) -> FrenetStates2D:
         """
         Converts frenet_states on a frenet_frame to frenet_states on the generalized frenet frame.
         :param frenet_states: frenet_states on another frenet_frame which was part in building the generalized frenet frame.
@@ -201,7 +208,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         generalized frenet frame.
         :return: a frenet state on the generalized frenet frame.
         """
-        return self.convert_from_segment_states(frenet_state[np.newaxis, ...], [segment_id])[0]
+        return self.convert_from_segment_states(frenet_state[np.newaxis, ...], np.array([segment_id]))[0]
 
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
         """
@@ -221,7 +228,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         new_frenet_states[..., FS_SX] -= s_offset
         # For points that belong to the first subsegment, the frame bias (initial s) have to be added
         new_frenet_states[..., FS_SX] += s_start
-        return self._segments_id[segment_idxs], new_frenet_states
+        return self._segment_ids[segment_idxs], new_frenet_states
 
     def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
         """
@@ -238,7 +245,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :param segment_ids:
         :return:
         """
-        return npi.indices(self._segments_id, segment_ids)
+        return npi.indices(self._segment_ids, segment_ids)
 
     def _get_segment_idxs_from_s(self, s_values: np.ndarray):
         """
@@ -262,22 +269,32 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
         # given the fractional index of the point (O_idx+delta_s), find which segment it belongs to based
         # on the points offset of each segment
+        return self.get_s_from_index_on_frame(O_idx, delta_s)
+
+    def get_s_from_index_on_frame(self, O_idx: np.ndarray, delta_s: np.ndarray):
+        """
+        given fractional index of the point (O_idx+delta_s), find which segment it belongs to based on
+        the points offset of each segment
+        :param O_idx: tensor of segment index per point in <points>,
+        :param delta_s: tensor of progress of projection of each point in <points> on its relevant segment
+        :return: approximate s value on the frame that will be created using self.O
+        """
         segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(O_idx, delta_s)) - 1
         # get ds of every point based on the ds of the segment
         ds = self._segments_ds[segment_idx_per_point]
 
         # calculate the offset of the first segment starting relative to the first GFF point
         # subtract this offset from s_approx for the points on the first segment (in other segments this offset is 0)
-        initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
-        intra_point_offsets = initial_intra_point_offset * (segment_idx_per_point == 0).astype(np.int)
+        intra_point_offsets = np.zeros_like(ds)
+        intra_point_offsets[segment_idx_per_point == 0] = self._segments_s_start[0] % self._segments_ds[0]
         # The approximate longitudinal progress is the longitudinal offset of the segment plus the in-segment-index
         # times the segment ds.
-        s_approx = self._segments_s_offsets[segment_idx_per_point] + \
-                   (((O_idx - self._segments_point_offset[segment_idx_per_point]) + delta_s) * ds) - intra_point_offsets
+        s_approx = self._segments_s_offsets[segment_idx_per_point] - intra_point_offsets + \
+                   (O_idx + delta_s - self._segments_point_offset[segment_idx_per_point]) * ds
 
         return s_approx
 
-    def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
+    def get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
         a value in the range [0, ds] representing the projection on this closest point.
@@ -293,16 +310,18 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         s_in_segment = s - self._segments_s_offsets[segment_idxs]
         # get the points offset of the segment that each longitudinal value resides in.
         segment_points_offset = self._segments_point_offset[segment_idxs]
+
+        # generally, the first GFF point lays outside the GFF, since GFF's origin does not coincide with any map point
+        # for all points on the first segment get offset of the GFF origin from the first GFF point
+        intra_point_offsets = np.zeros_like(s)
+        intra_point_offsets[segment_idxs == 0] = self._segments_s_start[0] % self._segments_ds[0]
+
         # get the progress in index units (progress_in_points is a "floating-point index")
-        progress_in_points = np.divide(s_in_segment, ds) + segment_points_offset
+        progress_in_points = np.divide(s_in_segment + intra_point_offsets, ds) + segment_points_offset
+
         # calculate and return the integer and fractional parts of the index
         O_idx = np.round(progress_in_points).astype(np.int)
 
-        # calculate the offset of the first segment starting relative to the first GFF point
-        # add this offset to delta_s for the points on the first segment (in other segments this offset is 0)
-        initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
-        intra_point_offsets = initial_intra_point_offset * (segment_idxs == 0).astype(np.int)
-
-        delta_s = np.expand_dims((progress_in_points - O_idx) * ds + intra_point_offsets, axis=len(s.shape))
+        delta_s = np.expand_dims((progress_in_points - O_idx) * ds, axis=len(s.shape))
 
         return O_idx, delta_s

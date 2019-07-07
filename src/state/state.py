@@ -290,7 +290,8 @@ class State(PUBSUB_MSG_IMPL):
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
         """
-        return State(is_sampled if is_sampled is not None else self.is_sampled, occupancy_state or self.occupancy_state,
+        return State(is_sampled if is_sampled is not None else self.is_sampled,
+                     occupancy_state or self.occupancy_state,
                      dynamic_objects if dynamic_objects is not None else self.dynamic_objects,
                      ego_state or self.ego_state)
 

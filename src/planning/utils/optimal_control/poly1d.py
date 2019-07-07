@@ -3,7 +3,6 @@ from typing import Union
 
 import numpy as np
 
-from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.types import Limits
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -19,8 +18,18 @@ class Poly1D:
     @abstractmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
         """
-        Given the quartic polynomial setting, this function returns A as a tensor with the first dimension iterating
+        Given polynomial setting, this function returns A as a tensor with the first dimension iterating
         over different values of T (time-horizon) provided in <terminal_times>
+        :param terminal_times: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), self.num_coefs(), self.num_coefs()]
+        """
+        pass
+
+    @staticmethod
+    def inverse_time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+        """
+        Given polynomial setting, this function returns array of inverse matrices of time constraints tensors
+        with the first dimension iterating over different values of T (time-horizon) provided in <terminal_times>
         :param terminal_times: 1D numpy array of different values for T
         :return: 3D numpy array of shape [len(terminal_times), self.num_coefs(), self.num_coefs()]
         """
@@ -71,7 +80,7 @@ class Poly1D:
           1. position (evaluation of the polynomial)
           2. velocity (evaluation of the 1st derivative of the polynomial)
           2. acceleration (evaluation of the 2st derivative of the polynomial)
-        :param poly_coefs: 2d numpy array [MxL] of the quartic (position) polynomials coefficients, where
+        :param poly_coefs: 2d numpy array [MxL] of the (position) polynomials coefficients, where
          each row out of the M is a different polynomial and contains L coefficients
         :param time_samples: 1d numpy array [K] of the time stamps for the evaluation of the polynomials
         :return: 3d numpy array [M,K,3] with the following dimensions:
@@ -88,6 +97,31 @@ class Poly1D:
 
         return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
 
+    @staticmethod
+    def zip_polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
+        """
+        For n-th position polynomial and k-th element in n-th row of time-samples matrix (where n runs on all
+        polynomials), it generates 3 values:
+          1. position (evaluation of the polynomial)
+          2. velocity (evaluation of the 1st derivative of the polynomial)
+          3. acceleration (evaluation of the 2st derivative of the polynomial)
+        :param poly_coefs: 2d numpy array [NxL] of the (position) polynomials coefficients, where
+         each row out of the N is a different polynomial and contains L coefficients
+        :param time_samples: 2d numpy array [NxK] of the time stamps for the evaluation of the polynomials
+        :return: 3d numpy array [N,K,3] with the following dimensions:
+            [position value, velocity value, acceleration value]
+        """
+        # compute the coefficients of the polynom's 1st derivative (m=1)
+        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
+        # compute the coefficients of the polynom's 2nd derivative (m=2)
+        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
+
+        x_vals = Math.zip_polyval2d(poly_coefs, time_samples)
+        x_dot_vals = Math.zip_polyval2d(poly_dot_coefs, time_samples)
+        x_dotdot_vals = Math.zip_polyval2d(poly_dotdot_coefs, time_samples)
+
+        return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+
     @classmethod
     def time_constraints_matrix(cls, T: float) -> np.ndarray:
         """
@@ -101,25 +135,33 @@ class Poly1D:
     @staticmethod
     def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
         """
-                Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
-                polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
-                False otherwise
-                :param degree:
-                :param poly_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
-                :param T_vals: 1D numpy array of planning-times [N]
-                :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
-                :return: 1D numpy array of booleans where True means the restrictions are met.
-                """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
+        False otherwise
+        :param degree:
+        :param poly_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
         # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
-        jerk_poly = Math.polyder2d(poly_coefs, m=degree+1)
-        acc_poly = Math.polyder2d(poly_coefs, m=degree)
-        # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't
-        # have extrema in range).
+        poly_der = Math.polyder2d(poly_coefs, m=degree+1)
+        poly = Math.polyder2d(poly_coefs, m=degree)
+
+        # TODO: implement tests for those cases
+        if poly_der.shape[-1] == 0:  # No derivative - polynomial is constant
+            if poly.shape[-1] == 0:  # Also polynomial is zero (null)
+                return NumpyUtils.is_in_limits(np.full((poly.shape[0], 1), 0), limits)
+            else:
+                return NumpyUtils.is_in_limits(poly[:, 0], limits)
+        elif poly_der.shape[-1] == 1:  # 1st order derivative is constant - Polynomial is a*x+b
+            # No need to test for t=0 (assuming it's valid), only t=T
+            return NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits)
 
         #  Find roots of jerk_poly (nan for complex or negative roots).
-        acc_suspected_points = Math.find_real_roots_in_limits(jerk_poly, value_limits=np.array([0, np.inf]))
-        acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
+        acc_suspected_points = Math.find_real_roots_in_limits(poly_der, value_limits=np.array([0, np.inf]))
+        acc_suspected_values = Math.zip_polyval2d(poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range and are they non-complex
         is_suspected_point_in_time_range = (acc_suspected_points <= T_vals[:, np.newaxis])
@@ -128,8 +170,7 @@ class Poly1D:
         is_suspected_value_in_limits = NumpyUtils.is_almost_in_limits(acc_suspected_values, limits)
 
         # for all non-complex extrema points that are inside the time range, verify their values are in [a_min, a_max]
-        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits),
-                      axis=1)
+        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1)
 
     @classmethod
     def are_accelerations_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:
@@ -179,7 +220,7 @@ class QuarticPoly1D(Poly1D):
         return 5
 
     @staticmethod
-    def is_tracking_mode(v_0: float, v_T: np.array, a_0: float) -> np.array:
+    def is_tracking_mode(v_0: np.array, v_T: np.array, a_0: np.array) -> np.array:
         """
         Checks if agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         zero.
@@ -189,8 +230,7 @@ class QuarticPoly1D(Poly1D):
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.isclose(v_0, v_T, atol=1e-3, rtol=0) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(
-            v_T.shape, False)
+        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0), np.isclose(a_0, 0.0, atol=1e-3, rtol=0))
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
@@ -221,6 +261,17 @@ class QuarticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
+
+    @staticmethod
+    def inverse_time_constraints_tensor(T: np.ndarray) -> np.ndarray:
+        zeros = np.zeros_like(T)
+        tensor = np.array([
+            [1 + zeros, zeros, zeros, zeros, zeros],
+            [zeros, 1 + zeros, zeros, zeros, zeros],
+            [zeros, zeros, 0.5 + zeros, zeros, zeros],
+            [zeros, -1/T**2, -2/(3*T), 1/T**2, -1/(3*T)],
+            [zeros, 1/(2*T**3), 1/(4*T**2), -1/(2*T**3), 1/(4*T**2)]])
+        return np.transpose(tensor, (2, 0, 1))
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
@@ -313,6 +364,24 @@ class QuarticPoly1D(Poly1D):
                           - 2*T * (2 * T * a_0 + 3 * v_0 - 3 * v_T)]) / T ** 3
         return coefs
 
+    @staticmethod
+    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
+        """
+        Given a set of quartic actions, i.e. arrays of v_0, v_T, a_0 and T (all arrays of the same size), calculate
+        coefficients for longitudinal polynomial profile for each action.
+        :param a_0: array of initial accelerations
+        :param v_0: array of initial velocities
+        :param v_T: array of target velocities
+        :param T: [sec] array of action times
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        return np.c_[
+            (0.25 * T * a_0 + 0.5 * v_0 - 0.5 * v_T) / T ** 3,
+            (-0.666666666666667 * T * a_0 - 1.0 * v_0 + 1.0 * v_T) / T ** 2,
+            0.5 * a_0,
+            v_0,
+            np.zeros_like(v_0)]
+
 
 class QuinticPoly1D(Poly1D):
     """
@@ -340,7 +409,8 @@ class QuinticPoly1D(Poly1D):
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0), np.isclose(s_0, T_m*v_0, atol=1e-3, rtol=0)) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(v_T.shape, False)
+        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
+                              np.isclose(s_0, T_m*v_0, atol=1e-3, rtol=0)) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(v_T.shape, False)
 
     @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
@@ -358,6 +428,18 @@ class QuinticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
+
+    @staticmethod
+    def inverse_time_constraints_tensor(T: np.ndarray) -> np.ndarray:
+        zeros = np.zeros_like(T)
+        tensor = np.array([
+            [1 + zeros, zeros, zeros, zeros, zeros, zeros],
+            [zeros, 1 + zeros, zeros, zeros, zeros, zeros],
+            [zeros, zeros, 0.5 + zeros, zeros, zeros, zeros],
+            [-10 / T ** 3, -6 / T ** 2, -3 / (2 * T), 10 / T ** 3, -4 / T ** 2, 1 / (2 * T)],
+            [15 / T ** 4, 8 / T ** 3, 3 / (2 * T ** 2), -15 / T ** 4, 7 / T ** 3, -1 / T ** 2],
+            [-6 / T ** 5, -3 / T ** 4, -1 / (2 * T ** 3), 6 / T ** 5, -3 / T ** 4, 1 / (2 * T ** 3)]])
+        return np.transpose(tensor, (2, 0, 1))
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):

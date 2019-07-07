@@ -1,2 +1,3 @@
-PG.p                Proving Ground Map, which includes a segment of road 20 (Ayalon) of length 1.2 km
-PG_split.p          The same as PG.p, but split into 10 downstream road segments
+PG.pkl                Proving Ground Map, which includes a segment of road 20 (Ayalon) of length 1.2 km
+PG_split.pkl          The same as PG.p, but split into 10 downstream road segments
+accel_static_state.pkl Oval track, from the accleration towards slowing vehicle scenario
