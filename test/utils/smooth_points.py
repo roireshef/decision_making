@@ -77,14 +77,16 @@ class SmoothMapPoints:
 
         # fit points by splines in the interval between split and merge;
         # to improve the fitting of too high curvature split, extend the interval by split_extention from two sides
+        ext_split_point_idx = split_point_idx - split_extention
+        ext_merge_point_idx = merge_point_idx + split_extention
         frenet, prefix, suffix = SmoothMapPoints.fit_split_points_to_main_lane(
-            all_orig_points, split_point_idx - split_extention, merge_point_idx + split_extention, desired_vel)
+            all_orig_points, ext_split_point_idx, ext_merge_point_idx, desired_vel)
 
-        split_orig_points = all_orig_points[split_point_idx:merge_point_idx]
+        split_orig_points = all_orig_points[ext_split_point_idx:ext_merge_point_idx]
         # save the smoothed points in files: divide all Frenet points to lane segments according to the original seams
         SmoothMapPoints.save_points_to_files(path + 'smooth/', file_names, seams, split_orig_points, frenet)
 
-        SmoothMapPoints.draw_graphs(split_orig_points, original_k[split_point_idx:merge_point_idx], frenet, prefix, suffix)
+        SmoothMapPoints.draw_graphs(split_orig_points, original_k[ext_split_point_idx:ext_merge_point_idx], frenet, prefix, suffix)
 
     @staticmethod
     def project_points_on_frenet(cpoints: CartesianPath2D, frenet: FrenetSerret2DFrame) -> np.array:
