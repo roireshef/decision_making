@@ -164,7 +164,7 @@ ROAD_SHOULDERS_WIDTH = 1.5
 # Amount of error in fitting points to map curve, smaller means using more spline polynomials for the fit (and smaller
 # error). This factor is the maximum mean square error (per point) allowed. For example, 0.0001 mean that the
 # max. standard deviation is 1 [cm] so the max. squared standard deviation is 10e-4.
-SPLINE_POINT_DEVIATION = 0.005
+SPLINE_POINT_DEVIATION = 0.0001
 
 
 # Werling Planner #

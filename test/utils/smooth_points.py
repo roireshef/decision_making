@@ -33,7 +33,7 @@ def straight_connection(dir: str):
         original_k = np.concatenate((original_k, k))
 
     # smooth all points together
-    frenet = FrenetSerret2DFrame.fit(all_points)
+    frenet = FrenetSerret2DFrame.fit(all_points, point_deviation=0.005)
 
     # save the smoothed points in files
     # divide all Frenet points to lane segments according to the original seams

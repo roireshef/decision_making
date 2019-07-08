@@ -215,6 +215,51 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough(scene_stat
     # fig.clear()
 
 
+def test_fitFrenet_useAnchors_errorsInAnchorsAreLowEnough(scene_static_pg_no_split):
+
+    POSITION_ACCURACY_TH = 1e-1  # up to 10 [cm] error in euclidean distance
+    ANCHOR_POSITION_ACCURACY_TH = 1e-2  # up to 1 [cm] error in euclidean distance
+
+    upsampling_factor_for_test = 4
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
+    road_segment_id = MapUtils.get_road_segment_ids()[0]
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
+    route_points = MapUtils.get_lane_frenet_frame(lane_id).points
+
+    # "Train" points: assumed to be sampled sufficiently dense (according to ROAD_MAP_REQUIRED_RES)
+    _, route_points_upsampled_to_required_res, _ = \
+        CartesianFrame.resample_curve(curve=route_points,
+                                      step_size=ROAD_MAP_REQUIRED_RES,
+                                      preserve_step_size=False,
+                                      spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER)
+
+    # "Test" points: upsampling of the train points, used for accuracy testing
+    _, test_points, _ = CartesianFrame.resample_curve(curve=route_points,
+                                                      step_size=ROAD_MAP_REQUIRED_RES/upsampling_factor_for_test,
+                                                      preserve_step_size=False,
+                                                      spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER)
+
+    frenet = FrenetSerret2DFrame.fit(route_points_upsampled_to_required_res,
+                                     prefix_anchor=route_points_upsampled_to_required_res[0][np.newaxis],
+                                     suffix_anchor=route_points_upsampled_to_required_res[-1][np.newaxis])
+
+    # project the original route points unto the fitted curve - last point can be outside the curve
+    # (due to length estimation)
+    test_points = test_points[1:-1]
+    fprojections = frenet.cpoints_to_fpoints(test_points)
+    fprojections[:, FP_DX] = 0
+
+    new_test_points = frenet.fpoints_to_cpoints(fprojections)
+
+    position_errors = np.linalg.norm(test_points - new_test_points, axis=1)
+
+    np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
+    np.testing.assert_array_less(np.array([position_errors[0], position_errors[-1]]), ANCHOR_POSITION_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
+
+
 def test_ctrajectoryToFtrajectoryToCtrajectory_zeroVelocityTwoWayConversion_accuratePoseAndVelocity():
     POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
     VEL_ACCURACY_TH = 1e-3  # up to 1 [mm/sec] error in velocity
