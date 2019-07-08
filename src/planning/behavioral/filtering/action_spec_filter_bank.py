@@ -112,9 +112,6 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX], padding_mode)
 
-        # if 12 < behavioral_state.ego_state.timestamp_in_sec < 15:
-        #     print('Time %f' % behavioral_state.ego_state.timestamp_in_sec)
-
         are_valid = []
         for poly_s, t, cell, target, spec in zip(poly_coefs_s, T, relative_cells, target_vehicles, action_specs):
             if target is None:
