@@ -379,12 +379,12 @@ class MapUtils:
 
             # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
             if len(downstream_lanes_ids_on_plan) == 0:
-                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: "
-                                                  "current lane %d, downstream_lanes %s, next_road_segment_on_plan %d" %
+                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current lane: %d,"
+                                                  " downstream_lanes: %s, next_road_segment_on_plan: %d" %
                                                   (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
             if len(downstream_lanes_ids_on_plan) > 1:
                 raise AmbiguousNavigationPlan("More than 1 downstream lanes with STRAIGHT CONNECTION "
-                                              "type according %s, to the nav. plan downstream_lanes_ids_on_plan %s" %
+                                              "type according %s, to the nav. plan downstream_lanes_ids_on_plan: %s" %
                                               (route_plan_road_ids, downstream_lanes_ids_on_plan))
 
             current_lane_id = downstream_lanes_ids_on_plan[0]
