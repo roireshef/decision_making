@@ -6,7 +6,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DF
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, NEGLIGIBLE_VELOCITY
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, NEGLIGIBLE_VELOCITY, SPLINE_POINT_DEVIATION
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
@@ -67,7 +67,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     @classmethod
     def fit(cls, spline_points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
-            spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER):
+            spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER, point_deviation=SPLINE_POINT_DEVIATION,
+            prefix_anchor=None, suffix_anchor=None):
         """
         Given a set of <x,y> points (in Cartesian frame) that represent a curve, this class method will fit a spline to
         them, then will sample a equi-distant discrete set of points along this spline, and extract all relevant
@@ -76,10 +77,20 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         :param spline_points: a set of points in some "global" cartesian frame
         :param ds: a resolution parameter - the desired distance between each two consecutive points after re-sampling
         :param spline_order: spline order for fitting and re-sampling the original points
+        :param point_deviation: amount of error in fitting points to map curve (see global_constants.SPLINE_POINT_DEVIATION)
+        :param prefix_anchor: 2D array of points. Normally, prefix_anchor contains a suffix of the upstream lane points.
+            It's intended to reach full continuity between the upstream lane segment and this lane.
+            Last prefix point should coincide with first curve point.
+        :param suffix_anchor: 2D array of points. Normally, suffix_anchor contains a prefix of the downstream lane
+            points. It's intended to reach full continuity between this lane and the downstream lane segment.
+            First suffix point should coincide with last curve point.
         """
         splines, spline_points, effective_ds = CartesianFrame.resample_curve(curve=spline_points, step_size=ds,
                                                                              preserve_step_size=False,
-                                                                             spline_order=spline_order)
+                                                                             spline_order=spline_order,
+                                                                             point_deviation=point_deviation,
+                                                                             prefix_anchor=prefix_anchor,
+                                                                             suffix_anchor=suffix_anchor)
 
         s_max = effective_ds * len(spline_points)
         T, N, k, k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, s_max, effective_ds, splines)

@@ -142,9 +142,10 @@ class CartesianFrame:
         return np.concatenate((xy_points, theta_col, k_col, k_tag_col), axis=1)
 
     @staticmethod
-    def resample_curve(curve, arbitrary_curve_sampling_points=None,step_size= None, desired_curve_len=None,
-                       preserve_step_size=False,spline_order=1):
-        # type: (np.ndarray,Union[None, np.array],Union[None, float],Union[None, float],bool,int) -> (UnivariateSpline , np.ndarray, Union[float, None])
+    def resample_curve(curve, arbitrary_curve_sampling_points=None, step_size=None, desired_curve_len=None,
+                       preserve_step_size=False, spline_order=1, point_deviation=SPLINE_POINT_DEVIATION,
+                       prefix_anchor=None, suffix_anchor=None):
+        # type: (np.ndarray, Union[None, np.array], Union[None, float],Union[None, float], bool, int, float, np.array, np.array) -> (UnivariateSpline , np.ndarray, Union[float, None])
         """
         Takes a discrete set of points [x, y] and perform interpolation (with a constant step size). \n
         Note: user may specify a desired final curve length. If she doesn't, it uses the total distance travelled over a
@@ -158,6 +159,13 @@ class CartesianFrame:
         trimmed to its nearest multiply. If False - once desired_curve_len is not a multiply of step_size, the step_size
         is efficiently "stretched" to preserve the exact given desired_curve_len.
         :param spline_order: order of spline fit (1<=spline_order<=5)
+        :param point_deviation: amount of error in fitting points to map curve (see global_constants.SPLINE_POINT_DEVIATION)
+        :param prefix_anchor: 2D array of points. Normally, prefix_anchor contains a suffix of the upstream lane points.
+            It's intended to reach full continuity between the upstream lane segment and this lane.
+            Last prefix point should coincide with first curve point.
+        :param suffix_anchor: 2D array of points. Normally, suffix_anchor contains a prefix of the downstream lane
+            points. It's intended to reach full continuity between this lane and the downstream lane segment.
+            First suffix point should coincide with last curve point.
         :return: (the spline object, the resampled curve numpy array Nx2, the effective step size [m])
         """
 
@@ -168,23 +176,45 @@ class CartesianFrame:
             raise Exception('resample_curve must get either step_size or arbitrary_curve_sampling_points, '
                             'but none of them was provided.')
 
+        anchored_curve = curve
+        prefix_len = 0
+        point_weights = None
+
+        # concatenate anchors to the curve and build weights vector such that the anchors get very large weight
+        if prefix_anchor is not None or suffix_anchor is not None:
+            # verify that the last prefix and first suffix points coincide with the curve edge points
+            if prefix_anchor is not None and prefix_anchor.shape[0] > 0:
+                assert np.equal(prefix_anchor[-1], curve[0]).all(), "last prefix point should coincide with first curve point"
+            else:
+                prefix_anchor = np.empty((0, 2))
+            if suffix_anchor is not None and suffix_anchor.shape[0] > 0:
+                assert np.equal(suffix_anchor[0], curve[-1]).all(), "first suffix point should coincide with last curve point"
+            else:
+                suffix_anchor = np.empty((0, 2))
+            # concatenate anchors to the curve
+            anchored_curve = np.concatenate((prefix_anchor[:-1], curve, suffix_anchor[1:]), axis=0)
+            prefix_size, suffix_size = prefix_anchor.shape[0], suffix_anchor.shape[0]
+            curve_size = anchored_curve.shape[0] - prefix_size - suffix_size
+            prefix_len = np.sum(np.linalg.norm(np.diff(prefix_anchor, axis=0), axis=1))
+            # calculate point-wise weights for spline fitting, the extrapolated points (anchors) have much higher weight
+            point_weights = np.concatenate((100 * np.ones(prefix_size), np.ones(curve_size), 100 * np.ones(suffix_size)))
+
         # accumulated distance travelled on the original curve (linear fit over the discrete points)
-        org_s = np.concatenate(([.0], np.cumsum(np.linalg.norm(np.diff(curve[:, :2], axis=0), axis=1))))
+        orig_s = np.concatenate(([.0], np.cumsum(np.linalg.norm(np.diff(anchored_curve, axis=0), axis=1))))
 
         # if desired curve length is not specified, use the total distance travelled over curve (via linear fit)
         if desired_curve_len is None:
-            desired_curve_len = org_s[-1]
+            desired_curve_len = np.sum(np.linalg.norm(np.diff(curve, axis=0), axis=1))
 
         # this method does not support extrapolation
         if arbitrary_curve_sampling_points is not None:
-            if np.max(arbitrary_curve_sampling_points) > org_s[-1]:
-                raise ValueError(
-                    'max cell of arbitrary_curve_sampling_points ({}) is greater than the accumulated actual arc length ({})'
-                        .format(np.max(arbitrary_curve_sampling_points), org_s[-1]))
+            if np.max(arbitrary_curve_sampling_points) > orig_s[-1]:
+                raise ValueError('max cell of arbitrary_curve_sampling_points ({}) is greater than the accumulated '
+                                 'actual arc length ({})'.format(np.max(arbitrary_curve_sampling_points), orig_s[-1]))
         else:
-            if desired_curve_len - org_s[-1] > np.finfo(np.float32).eps:
+            if desired_curve_len - orig_s[-1] > np.finfo(np.float32).eps:
                 raise ValueError('desired_curve_len ({}) is greater than the accumulated actual arc length ({})'
-                                 .format(desired_curve_len, org_s[-1]))
+                                 .format(desired_curve_len, orig_s[-1]))
 
         # the newly sampled accumulated distance travelled (used for interpolation)
         if arbitrary_curve_sampling_points is None:
@@ -206,10 +236,12 @@ class CartesianFrame:
         # spline approx. for each of the dimensions in curve over samples from 'desired_curve_sampling_points'
         resampled_curve = np.zeros(shape=[len(desired_curve_sampling_points), curve.shape[1]])
         splines = []
-        smooth_factor = 0 if (spline_order == 1) else SPLINE_POINT_DEVIATION
+        smooth_factor = 0 if (spline_order == 1) else point_deviation
+
         for col in range(curve.shape[1]):
-            spline = interp.UnivariateSpline(org_s, curve[:, col], k=spline_order, s=smooth_factor*curve.shape[0])
-            resampled_curve[:, col] = spline(desired_curve_sampling_points)
+            spline = interp.UnivariateSpline(orig_s, anchored_curve[:, col], k=spline_order,
+                                             s=smooth_factor*curve.shape[0], w=point_weights)
+            resampled_curve[:, col] = spline(prefix_len + desired_curve_sampling_points)
             splines.append(spline)
 
         return splines, resampled_curve, effective_step_size
