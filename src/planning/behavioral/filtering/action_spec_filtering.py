@@ -168,7 +168,9 @@ class ActionSpecFiltering:
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
 
-            # mark actions that survived the current filter
+            # When an action survives the current filter, the appropriate cell of filtering_map advances to the next
+            # filter. This way it stores the index of the first filter on which it failed.
+            # Update cells of actions that survived the current filter.
             filtering_map[mask] = filter_idx + 1
 
         self.logger.debug('\nFiltering_map at timestamp_in_sec %f: %s' %
