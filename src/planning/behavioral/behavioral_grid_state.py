@@ -119,8 +119,7 @@ class BehavioralGridState:
                                            for downstream_lane in upstreamLane.as_downstream_lanes]
 
                         # Check if all downstream lanes are in the same road segment, otherwise it is a fork instead of a split
-                        if all(downstreamLane.e_i_road_segment_id == downstreamLanes[0].e_i_road_segment_id
-                               for downstreamLane in downstreamLanes):
+                        if len(set([downstreamLane.e_i_road_segment_id for downstreamLane in downstreamLanes])) == 1:
                             # Get overlapping lanes and create pseudo objects in those lanes
                             other_lanes = [lane for lane in upstreamLane.as_downstream_lanes
                                            if lane.e_i_lane_segment_id != obj_lane_id]
