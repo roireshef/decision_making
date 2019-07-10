@@ -147,10 +147,10 @@ class BehavioralGridState:
         """
         for i, dynamic_object in enumerate(dynamic_objects):
             if dynamic_object.map_state.lane_fstate is None:
-                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
+                obj_fstate_on_GFF = extended_lane_frames[rel_lanes_per_obj[i]]. \
                     cstate_to_fstate(dynamic_object.cartesian_state)
                 dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
-                    convert_to_segment_state(dynamic_object.map_state.lane_fstate)[1]
+                    convert_to_segment_state(obj_fstate_on_GFF)[1]
 
     @staticmethod
     @prof.ProfileFunction()
