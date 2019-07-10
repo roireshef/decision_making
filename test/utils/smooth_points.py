@@ -42,19 +42,12 @@ class SmoothMapPoints:
         relevant_points = all_orig_points[split_point_idx:merge_point_idx+1]
 
         # To preserve Frenet frames continuity and differentiability between the split lane and its upstream lane
-        # segment belonging to the main Frenet frame, we perform spline fitting with small overlap between these two
-        # segments. Similarly, to preserve Frenet frames continuity and differentiability between the merged lane and
-        # its downstream lane segment belonging to the main Frenet frame, we perform spline fitting with small overlap
-        # between these two segments.
+        # (or merge with its downstream) segment belonging to the main Frenet frame, we perform spline fitting with
+        # small overlap between these two segments.
         anchor_size = 10  # in points
-
-        # add prefix and suffix anchors to preserve continuity of the main lane with split/merge lanes
-        # last prefix point coincides with first curve point
-        prefix_anchor = all_orig_points[split_point_idx - anchor_size:split_point_idx+1] \
-            if split_lane_id is not None else None
-        # first suffix point coincides with last curve point
-        suffix_anchor = all_orig_points[merge_point_idx:merge_point_idx + anchor_size] \
-            if merge_lane_id is not None else None
+        # last prefix point coincides with first curve point, first suffix point coincides with last curve point
+        prefix_anchor = all_orig_points[split_point_idx - anchor_size:split_point_idx+1] if split_lane_id is not None else None
+        suffix_anchor = all_orig_points[merge_point_idx:merge_point_idx + anchor_size] if merge_lane_id is not None else None
 
         # fit points by splines; adjust points deviation according to the desired velocity
         velocities_list = [desired_velocities[lane_id] for lane_id in relevant_lane_ids] \
