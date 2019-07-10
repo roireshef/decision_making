@@ -183,10 +183,12 @@ class BehavioralGridState:
             rel_lanes_per_obj[relevant_objects] = rel_lane
 
         # filter relevant objects
-        relevant_dynamic_objects = [overloaded_dynamic_objects[i] for i in range(len(overloaded_dynamic_objects))
-                                    if rel_lanes_per_obj[i] is not None]
+        relevant_dynamic_objects_lane, relevant_dynamic_objects = \
+            [list(l) for l in zip(*[(rel_lane, obj) for rel_lane, obj in \
+            zip(rel_lanes_per_obj, overloaded_dynamic_objects) if rel_lane is not None])] \
+            or ([], [])
 
-        relevant_dynamic_objects_lane = [rel_lane for rel_lane in rel_lanes_per_obj if rel_lane is not None]
+
 
         # setting the missing map_states to pseudo-objects
         BehavioralGridState._lazy_set_map_states(relevant_dynamic_objects, extended_lane_frames,
