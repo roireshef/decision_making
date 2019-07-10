@@ -31,36 +31,35 @@ class SmoothMapPoints:
         """
         # Read from files all points and curvatures. The split points are located between first_split_lane and
         # last_split_lane (including). The rest of the points belong to the main lane.
-        all_orig_points, original_k, seams, lane_ids = SmoothMapPoints.read_points_from_files(path=path)
+        orig_points, orig_k, all_seams, all_lane_ids = SmoothMapPoints.read_points_from_files(path=path)
 
-        # if split or merge lanes are given, calculate split/merge points and relevant lane_ids
-        split_lane_idx = np.where(lane_ids == split_lane_id)[0][0] if split_lane_id is not None else 0
-        merge_lane_idx = np.where(lane_ids == merge_lane_id)[0][0] if merge_lane_id is not None else len(lane_ids) - 1
-        relevant_lane_ids = lane_ids[split_lane_idx:merge_lane_idx+1]
-        split_point_idx = seams[split_lane_idx - 1] if split_lane_idx > 0 else 0
-        merge_point_idx = seams[merge_lane_idx]
-        relevant_points = all_orig_points[split_point_idx:merge_point_idx+1]
+        # if split or merge lanes are given, calculate split/merge points and relevant lane_ids, seams and velocities
+        split_lane_idx = np.where(all_lane_ids == split_lane_id)[0][0] if split_lane_id is not None else 0
+        merge_lane_idx = np.where(all_lane_ids == merge_lane_id)[0][0] if merge_lane_id is not None else len(all_lane_ids) - 1
+        split_point_idx = all_seams[split_lane_idx - 1] if split_lane_idx > 0 else 0
+        merge_point_idx = all_seams[merge_lane_idx]
+        points = orig_points[split_point_idx:merge_point_idx+1]
+        lane_ids, seams = all_lane_ids[split_lane_idx:merge_lane_idx+1], all_seams[split_lane_idx:merge_lane_idx+1] - split_point_idx
+        velocities = [desired_velocities[lane_id] for lane_id in lane_ids] if type(desired_velocities) is dict else \
+            [desired_velocities] * len(lane_ids)
 
         # To preserve Frenet frames continuity and differentiability between the split lane and its upstream lane
         # (or merge with its downstream) segment belonging to the main Frenet frame, we perform spline fitting with
-        # small overlap between these two segments.
+        # small overlap between these segments.
         anchor_size = 10  # in points
         # last prefix point coincides with first curve point, first suffix point coincides with last curve point
-        prefix_anchor = all_orig_points[split_point_idx - anchor_size:split_point_idx+1] if split_lane_id is not None else None
-        suffix_anchor = all_orig_points[merge_point_idx:merge_point_idx + anchor_size] if merge_lane_id is not None else None
+        prefix_anchor = orig_points[split_point_idx - anchor_size:split_point_idx+1] if split_lane_id is not None else None
+        suffix_anchor = orig_points[merge_point_idx:merge_point_idx + anchor_size] if merge_lane_id is not None else None
 
         # fit points by splines; adjust points deviation according to the desired velocity
-        velocities_list = [desired_velocities[lane_id] for lane_id in relevant_lane_ids] \
-            if type(desired_velocities) is dict else [desired_velocities] * len(relevant_lane_ids)
-        frenet, frenet_seams = SmoothMapPoints.fit_points_according_to_velocity(
-            relevant_points, prefix_anchor, suffix_anchor, seams[split_lane_idx:merge_lane_idx+1] - split_point_idx,
-            velocities_list)
+        frenet, frenet_seams = SmoothMapPoints.fit_points_according_to_velocity(points, prefix_anchor, suffix_anchor,
+                                                                                seams, velocities)
 
         # save the smoothed points in files: divide all Frenet points to lane segments according to the original seams
-        split_orig_k = original_k[split_point_idx:merge_point_idx]
-        SmoothMapPoints.save_points_to_files(path + 'smooth/', relevant_lane_ids, frenet_seams, frenet)
+        split_orig_k = orig_k[split_point_idx:merge_point_idx]
+        SmoothMapPoints.save_points_to_files(path + 'smooth/', lane_ids, frenet_seams, frenet)
         # draw graphs
-        SmoothMapPoints.draw_graphs(relevant_points, split_orig_k, frenet, prefix_anchor, suffix_anchor)
+        SmoothMapPoints.draw_graphs(points, split_orig_k, frenet, prefix_anchor, suffix_anchor)
 
     @staticmethod
     def project_points_on_frenet(cpoints: CartesianPath2D, frenet: FrenetSerret2DFrame) -> np.array:
