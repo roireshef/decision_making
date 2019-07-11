@@ -62,21 +62,6 @@ class SmoothMapPoints:
         SmoothMapPoints.draw_graphs(points, split_orig_k, frenet, prefix_anchor, suffix_anchor)
 
     @staticmethod
-    def project_points_on_frenet(cpoints: CartesianPath2D, frenet: FrenetSerret2DFrame) -> np.array:
-        """
-        Convert a large array of cartesian points to Frenet points. Perform the conversion by parts, since memory
-        consumption is proportional to points_num^2.
-        :param cpoints: array of 2D cartesian points
-        :param frenet: Frenet frame
-        :return: array of converted Frenet points
-        """
-        conversion_block_size = 100
-        fpoints = np.empty((0, 2))
-        for i in range(0, cpoints.shape[0], conversion_block_size):
-            fpoints = np.concatenate((fpoints, frenet.cpoints_to_fpoints(cpoints[i:i + conversion_block_size])), axis=0)
-        return fpoints
-
-    @staticmethod
     def read_points_from_files(path: str) -> [np.array, np.array, np.array, np.array]:
         """
         Read from files all points and curvatures.
@@ -178,6 +163,21 @@ class SmoothMapPoints:
             prev_seam = seam
 
     @staticmethod
+    def project_points_on_frenet(cpoints: CartesianPath2D, frenet: FrenetSerret2DFrame) -> np.array:
+        """
+        Convert a large array of cartesian points to Frenet points. Perform the conversion by parts, since memory
+        consumption is proportional to points_num^2.
+        :param cpoints: array of 2D cartesian points
+        :param frenet: Frenet frame
+        :return: array of converted Frenet points
+        """
+        conversion_block_size = 100
+        fpoints = np.empty((0, 2))
+        for i in range(0, cpoints.shape[0], conversion_block_size):
+            fpoints = np.concatenate((fpoints, frenet.cpoints_to_fpoints(cpoints[i:i + conversion_block_size])), axis=0)
+        return fpoints
+
+    @staticmethod
     def draw_graphs(orig_points: np.array, original_k: np.array, frenet: FrenetSerret2DFrame,
                     prefix: np.array = None, suffix: np.array = None):
         """
@@ -211,10 +211,10 @@ class SmoothMapPoints:
         p.show()
 
 
-# SmoothMapPoints.smooth_points(path="/home/MZ8CJ6/temp/Clinton/", desired_velocities=14)
-
-SmoothMapPoints.smooth_points(path="/home/MZ8CJ6/temp/Clinton/right/",
-                              desired_velocities=13.333,         # m/sec
-                              split_lane_id=103296514,    # first lane after the split
-                              merge_lane_id=103297538    # last lane before the merge
-                              )
+SmoothMapPoints.smooth_points(path="/home/MZ8CJ6/temp/Clinton/", desired_velocities=14)
+#
+# SmoothMapPoints.smooth_points(path="/home/MZ8CJ6/temp/Clinton/right/",
+#                               desired_velocities=13.333,  # m/sec
+#                               split_lane_id=103296514,    # first lane after the split
+#                               merge_lane_id=103297538     # last lane before the merge
+#                               )
