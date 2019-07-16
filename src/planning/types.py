@@ -80,6 +80,10 @@ FrenetTrajectories1D = np.ndarray
 # frenet-frame 1D state: [x, x-dot, x-dotdot]
 FS_X, FS_V, FS_A, = 0, 1, 2
 FS_1D_LEN = 3
+FS_2D_LEN = 6
+
+
+CRT_LEN = 6
 
 
 # [s,d] Polynomials

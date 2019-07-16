@@ -15,7 +15,7 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
-
+from decision_making.src.messages.scene_static_enums import ManeuverType
 
 class MapUtils:
 
@@ -243,7 +243,9 @@ class MapUtils:
         :return: list of downstream lanes ids
         """
         downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
-        return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity]
+        # TODO: temporary fix for MS2 demo. remove it with lane split feature merge
+        return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity
+                if connectivity.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION]
 
     @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
@@ -383,8 +385,8 @@ class MapUtils:
         # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
         if len(downstream_lanes_ids_on_plan) == 0:
             raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
-                                                "downstream_lanes %s, next_road_segment_id_on_plan %d" %
-                                                (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
+                                              "downstream_lanes %s, next_road_segment_id_on_plan %d" %
+                                              (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
 
         route_plan_costs = route_plan.to_costs_dict()
         try:

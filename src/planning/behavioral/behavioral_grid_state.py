@@ -129,7 +129,8 @@ class BehavioralGridState:
                                                                             cartesian_state = dynamic_object.cartesian_state,
                                                                             map_state = MapState(None, other_lane.e_i_lane_segment_id),
                                                                             size = dynamic_object.size,
-                                                                            confidence = dynamic_object.confidence))
+                                                                            confidence = dynamic_object.confidence,
+                                                                            off_map = False))
 
         return dynamic_objects + pseudo_dynamic_objects
 
@@ -168,9 +169,13 @@ class BehavioralGridState:
                 corresponding extended_lane_frame
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
+
+        # filter out off map dynamic objects
+        on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
+
         # calculate objects' segment map_states
         # adds mirror objects to any dynamic object which is on the intersection
-        overloaded_dynamic_objects = BehavioralGridState._create_mirror_objects(dynamic_objects)
+        overloaded_dynamic_objects = BehavioralGridState._create_mirror_objects(on_map_dynamic_objects)
 
         objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
 
