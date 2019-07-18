@@ -150,17 +150,21 @@ class SmoothMapPoints:
         return frenet, frenet_seams
 
     @staticmethod
-    def save_points_to_file_in_WGS_format(path: str, filename: str, points: CartesianPath2D):
+    def save_points_to_file_in_WGS_format(path: str, filename: str, points: CartesianPath2D,
+                                          map_offset_lat: float = None, map_offset_lon: float = None):
         """
         WGS format is the GPS coordinates format. Saved in degrees
-        Assumes <x,y> cartesian points are given relative to <DEFAULT_MAP_ORIGIN_LAT, DEFAULT_MAP_ORIGIN_LON>=<42.5829,-83.6811>
         :param path: to file
         :param filename: to which data is saved
         :param points: data to save.
+        :param map_offset_lat: relative to which the points are given. If not provided default is 42.5829
+        :param map_offset_lon: relative to which the points are given. If not provided default is -83.6811
         :return: None
         """
         # Map (ENU) -> Geodetic (WGS) conversion
-        map0 = CtmPython.WGS84position(latitude=SmoothMapPoints.DEFAULT_MAP_ORIGIN_LAT, longitude=SmoothMapPoints.DEFAULT_MAP_ORIGIN_LON, altitude=0.0, degrees=True)
+        map0_latitude = SmoothMapPoints.DEFAULT_MAP_ORIGIN_LAT if map_offset_lat is None else map_offset_lat
+        map0_longitude = SmoothMapPoints.DEFAULT_MAP_ORIGIN_LON if map_offset_lon is None else map_offset_lon
+        map0 = CtmPython.WGS84position(latitude=map0_latitude, longitude=map0_longitude, altitude=0.0, degrees=True)
         geoPoints = np.zeros((points.shape[0], 2))
         for idx, point in enumerate(points):
             enu_position = CtmPython.ENUposition(east=point[0], north=point[1], up=0)
