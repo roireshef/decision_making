@@ -99,6 +99,9 @@ class NavigationPlanDoesNotFitMap(MappingException):
 class RoadNotFound(MappingException):
     pass
 
+class ValidLaneAheadTooShort(MappingException):
+    pass
+
 
 class LaneNotFound(MappingException):
     pass

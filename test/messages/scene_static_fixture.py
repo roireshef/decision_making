@@ -139,3 +139,51 @@ def right_lane_split_scene_static():
     scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
 
     return scene
+
+@pytest.fixture()
+def scene_static_left_fork():
+    scene = short_testable_scene_static_mock()
+    ssb = scene.s_Data.s_SceneStaticBase
+
+    # add a 3rd road segment
+    ssb.as_scene_road_segment.append(SceneRoadSegment(3, 0, 1, [30], MapRoadSegmentType.Normal,
+                                                                                 1, [2], 0, []))
+    ssb.e_Cnt_num_road_segments += 1
+
+    # make lane segment 22 become lane segment 30
+    lane30 = ssb.as_scene_lane_segments[5]
+    lane30.as_right_adjacent_lanes = []
+    lane30.e_Cnt_right_adjacent_lane_count = 0
+    lane30.e_i_lane_segment_id = 30
+    lane30.e_i_road_segment_id = 3
+
+    return scene
+
+@pytest.fixture()
+def scene_static_left_lane_ends():
+    """
+    Creates map where left lane suddenly ends
+    12 -> _
+    11 -> 21
+    10 -> 20
+    :return:
+    """
+    scene = short_testable_scene_static_mock()
+    ssb = scene.s_Data.s_SceneStaticBase
+
+    # delete lane 22
+    del ssb.as_scene_lane_segments[5]
+    #delete downstreams of lane 12
+    ssb.as_scene_lane_segments[2].as_downstream_lanes = np.array([])
+    ssb.as_scene_lane_segments[2].e_Cnt_downstream_lane_count = 0
+    #delete lane 22 in road 2
+    ssb.as_scene_road_segment[1].a_i_lane_segment_ids = np.array([20, 21])
+    ssb.as_scene_road_segment[1].e_Cnt_lane_segment_id_count -= 1
+    #delete left adjacent of lane 21
+    ssb.as_scene_lane_segments[4].as_left_adjacent_lanes = []
+    ssb.as_scene_lane_segments[4].e_Cnt_left_adjacent_lane_count = 0
+
+    ssb.e_Cnt_num_lane_segments -= 1
+
+    return scene
+

@@ -163,7 +163,7 @@ def ego_state_for_takover_message_default_scene():
 
 
 @pytest.fixture(scope='function')
-def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
+def state_with_surrounding_objects(route_plan_20_30: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -503,8 +503,8 @@ def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan)
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_30: RoutePlan):
-    yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
+def behavioral_grid_state(state_with_surrounding_objects: State, route_plan_20_30: RoutePlan):
+    yield BehavioralGridState.create_from_state(state_with_surrounding_objects,
                                                 route_plan_20_30, None)
 
 
@@ -535,13 +535,11 @@ def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_obje
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
                                                 route_plan_20_30, None)
 
-
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
         state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
                                                 route_plan_20_30, None)
-
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):

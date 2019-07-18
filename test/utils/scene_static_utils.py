@@ -33,9 +33,9 @@ class SceneStaticUtils:
         scene_lane_segments_geometry = []
 
         for road_idx, road_segment_id in enumerate(road_segment_ids):
-            upstream_roads = np.array([road_segment_ids[road_idx + 1]]) if road_idx < len(
+            downstream_roads = np.array([road_segment_ids[road_idx + 1]]) if road_idx < len(
                 road_segment_ids) - 1 else np.array([])
-            downstream_roads = np.array([road_segment_ids[road_idx - 1]]) if road_idx > 0 else np.array([])
+            upstream_roads = np.array([road_segment_ids[road_idx - 1]]) if road_idx > 0 else np.array([])
 
             local_lane_ids = lane_ids[road_idx]
             scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_segment_id, e_i_road_id=0,

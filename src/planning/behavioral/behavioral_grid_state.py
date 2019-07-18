@@ -280,7 +280,6 @@ class BehavioralGridState:
 
         frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
 
-        # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}
         for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
             try:

@@ -15,10 +15,12 @@ from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     scene_static_short_testable
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_left_lane_ends
 
 
 MAP_SPLIT = "PG_split.bin"
@@ -86,6 +88,21 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static_pg_spl
     dist_to_right, dist_to_left = MapUtils.get_dist_to_lane_borders(lane_ids[0], 0)
     assert dist_to_right == dist_to_left
 
+def test_getLookaheadFrenetFrame_leftLaneEnds(scene_static_left_lane_ends):
+    """
+    Make sure a partial GFF is created when the left lane suddenly ends
+    :param scene_static_left_lane_ends:
+    :return:
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_left_lane_ends)
+
+    starting_lon = 1
+    lookahead_dist = 1100.
+    starting_lane = 12
+
+    gff = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, lookahead_dist,
+                                              create_route_plan_msg(np.array([1, 2])))
+    assert gff.gff_type == GFF_Type.Partial
 
 def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(
         scene_static_pg_split, route_plan_20_30):
@@ -142,7 +159,7 @@ def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
         assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
     tot_length = sum([seg.e_i_SEnd - seg.e_i_SStart for seg in sub_segments])
     assert np.isclose(tot_length, lookahead_dist)
-
+    assert gff_type == GFF_Type.Normal
 
 def test_advanceByCost_navPlanDoesNotFitMap_relevantException(scene_static_pg_split, route_plan_20_30):
     """
@@ -173,8 +190,18 @@ def test_advanceByCost_navPlanDoesNotFitMap_relevantException(scene_static_pg_sp
     for lane_segment in route_plan.s_Data.as_route_plan_lane_segments[-1]:
         lane_segment.e_i_lane_segment_id = wrong_road_segment_id + lane_number
         lane_number += 1
-
+    # TODO FIX
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
+    # verify the wrong road segment is not added
+    subsegs, gff_type = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
+                              create_route_plan_msg(
+                                  np.array(road_segment_ids[:nav_plan_length] + [wrong_road_segment_id])).s_Data.a_i_road_segment_ids)
+    # make sure that the non-existent road segment is not contained in the GFF
+    assert np.all([MapUtils.get_road_segment_id_from_lane_id(subseg.e_i_SegmentID) != wrong_road_segment_id for subseg in subsegs])
+    # make sure that the previous existing road segments were used
+    assert len(subsegs) == nav_plan_length - current_road_idx
+    # make sure the GFF created was of type Partial since it should not extend the entire route plan
+    assert gff_type == GFF_Type.Partial
     # validate getting the relevant exception
     try:
         MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
@@ -184,33 +211,19 @@ def test_advanceByCost_navPlanDoesNotFitMap_relevantException(scene_static_pg_sp
 
 
 def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
-    """
-    test the method _advance_by_cost
-        test exception for too short nav plan; validate the relevant exception
-    """
-
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     road_segment_ids = MapUtils.get_road_segment_ids()
-    current_road_idx = 3
     current_ordinal = 1
-    starting_lon = 20.
-    lookahead_dist = 500.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
-    nav_plan_length = 7
-
-    # Modify route plan for this test case
-    route_plan = route_plan_20_30
-    route_plan.s_Data.e_Cnt_num_road_segments = nav_plan_length
-    route_plan.s_Data.a_i_road_segment_ids = route_plan.s_Data.a_i_road_segment_ids[:nav_plan_length]
-    route_plan.s_Data.a_Cnt_num_lane_segments = route_plan.s_Data.a_Cnt_num_lane_segments[:nav_plan_length]
-    route_plan.s_Data.as_route_plan_lane_segments = route_plan.s_Data.as_route_plan_lane_segments[:nav_plan_length]
-
-    # test the case when the navigation plan is too short; validate the relevant exception
-    try:
-        MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
-        assert False
-    except NavigationPlanTooShort:
-        assert True
+    # test lookahead distance until the end of the map: verify no exception is thrown
+    cumulative_distance = 0
+    for road_id in road_segment_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
+        cumulative_distance += MapUtils.get_lane_length(lane_id)
+    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
+    sub_segments, _ = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance,
+                                             create_route_plan_msg(np.array(road_segment_ids)).s_Data.a_i_road_segment_ids)
+    assert len(sub_segments) == len(road_segment_ids)
+    assert gff_type == GFF_Type.Normal
 
 
 def test_advanceByCost_lookAheadDistLongerThanMap_validateException(scene_static_pg_split, route_plan_20_30):
@@ -260,6 +273,15 @@ def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static_p
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     road_segment_ids = MapUtils.get_road_segment_ids()
 
+def test_advanceOnPlan_notEnoughLaneAhead_ThrowsException(scene_static_pg_split):
+    """
+    test the method _advance_on_plan
+        test that an exception is thrown when the there is not enough valid space ahead to create a GFF
+        minimum space is defined by the global constant MINIMUM_REQUIRED_DIST_LANE_AHEAD
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+    current_road_idx = 25
+    nonexistent_road_idx = 30
     current_ordinal = 1
     # test lookahead distance until the end of the map: verify no exception is thrown
     cumulative_distance = 0

@@ -2,6 +2,8 @@ import numpy as np
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, ValidLaneAheadTooShort
+from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
@@ -16,6 +18,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
 from decision_making.src.messages.scene_static_enums import ManeuverType
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 
 class MapUtils:
 
@@ -289,8 +292,10 @@ class MapUtils:
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
         # create GFF
-        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
+        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments, gff_type)
         return gff
+
+
 
     @staticmethod
     def _get_frenet_starting_point(lane_id, starting_lon):
@@ -318,7 +323,6 @@ class MapUtils:
         :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
-        # TODO: what will happen if there is a lane split ahead for left/right lanes and the doenstream road is not part of the nav. plan
 
         try:
             current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
@@ -331,6 +335,7 @@ class MapUtils:
 
         current_lane_id = initial_lane_id
         current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
+        gff_type = GFF_Type.Normal
         while True:
             current_lane_length = MapUtils.get_lane_length(current_lane_id)  # a lane's s_max
 
@@ -385,6 +390,14 @@ class MapUtils:
             raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
                                               "downstream_lanes %s, next_road_segment_id_on_plan %d" %
                                               (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
+            # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
+            if len(downstream_lanes_ids_on_plan) == 0:
+                gff_type = GFF_Type.Partial
+                break
+            if len(downstream_lanes_ids_on_plan) > 1:
+                raise AmbiguousNavigationPlan("More than 1 downstream lanes with STRAIGHT CONNECTION type according %s,"
+                                              " to the nav. plan downstream_lanes_ids_on_plan %s" %
+                                              (route_plan_road_ids, downstream_lanes_ids_on_plan))
 
         route_plan_costs = route_plan.to_costs_dict()
         try:

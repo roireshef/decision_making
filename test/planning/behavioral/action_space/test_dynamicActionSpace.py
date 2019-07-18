@@ -14,7 +14,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    follow_vehicle_recipes_towards_front_cells, state_with_sorrounding_objects, route_plan_20_30
+    follow_vehicle_recipes_towards_front_cells, state_with_surrounding_objects, route_plan_20_30
 
 # Specifies follow actions for front vehicles in 3 lanes. longitudinal and lateral coordinates
 # of terminal states in action specification should be as expected.
