@@ -6,6 +6,7 @@ from decision_making.src.planning.types import CartesianPath2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from matplotlib import pyplot as p
 from typing import List, Dict, Union
+from rte.ctm import CtmPython
 
 
 class SmoothMapPoints:
@@ -13,6 +14,9 @@ class SmoothMapPoints:
     This class smooth lane segments points by preserving continuity and differentiability between downstream lane
     segments, even in case of lanes split & merge.
     """
+
+    DEFAULT_MAP_ORIGIN_LAT = 42.5829
+    DEFAULT_MAP_ORIGIN_LON = -83.6811
 
     @staticmethod
     def smooth_points(path: str, desired_velocities: Union[float, Dict[int, float]],
@@ -58,6 +62,7 @@ class SmoothMapPoints:
         # save the smoothed points in files: divide all Frenet points to lane segments according to the original seams
         split_orig_k = orig_k[split_point_idx:merge_point_idx]
         SmoothMapPoints.save_points_to_files(path + 'smooth/', lane_ids, frenet_seams, frenet)
+        SmoothMapPoints.save_points_to_file_in_WGS_format(path=path + 'smooth/', filename='orig_geo.csv', points=points)
         # draw graphs
         SmoothMapPoints.draw_graphs(points, split_orig_k, frenet, prefix_anchor, suffix_anchor)
 
@@ -145,6 +150,27 @@ class SmoothMapPoints:
         return frenet, frenet_seams
 
     @staticmethod
+    def save_points_to_file_in_WGS_format(path: str, filename: str, points: CartesianPath2D):
+        """
+        WGS format is the GPS coordinates format. Saved in degrees
+        Assumes <x,y> cartesian points are given relative to <DEFAULT_MAP_ORIGIN_LAT, DEFAULT_MAP_ORIGIN_LON>=<42.5829,-83.6811>
+        :param path: to file
+        :param filename: to which data is saved
+        :param points: data to save.
+        :return: None
+        """
+        # Map (ENU) -> Geodetic (WGS) conversion
+        map0 = CtmPython.WGS84position(latitude=SmoothMapPoints.DEFAULT_MAP_ORIGIN_LAT, longitude=SmoothMapPoints.DEFAULT_MAP_ORIGIN_LON, altitude=0.0, degrees=True)
+        geoPoints = np.zeros((points.shape[0], 2))
+        for idx, point in enumerate(points):
+            enu_position = CtmPython.ENUposition(east=point[0], north=point[1], up=0)
+            position = CtmPython.enu_to_wgs84(loc=enu_position, map0=map0, degrees=True)
+            pos_lon, pos_lat = position.get_longitude(degrees=True), position.get_latitude(degrees=True)
+            geoPoints[idx, :] = np.array([pos_lat, pos_lon])
+
+        np.savetxt(path + filename, geoPoints, delimiter=",", fmt="%5.15f", header="lat , lon", comments="")
+
+    @staticmethod
     def save_points_to_files(path: str, lane_ids: np.array, frenet_seams: np.array, frenet: FrenetSerret2DFrame):
         """
         save points in files: divide all Frenet points to lane segments according to the seams
@@ -161,6 +187,8 @@ class SmoothMapPoints:
             smooth_curvatures = frenet.k[prev_seam:seam+1, 0]
             np.save(path + str(lane_id), np.c_[smooth_points, smooth_curvatures])
             prev_seam = seam
+
+        SmoothMapPoints.save_points_to_file_in_WGS_format(path=path, filename='smooth_geo.csv', points=frenet.points)
 
     @staticmethod
     def project_points_on_frenet(cpoints: CartesianPath2D, frenet: FrenetSerret2DFrame) -> np.array:
@@ -195,6 +223,9 @@ class SmoothMapPoints:
         p.figure()
         p.scatter(orig_points[:, 0], orig_points[:, 1], s=3, marker='.', linewidths=1)
         p.scatter(frenet.points[:, 0], frenet.points[:, 1], s=3, marker='.', linewidths=1)  # draw smoothed points
+        p.title('map route')
+        p.xlabel('x - map')
+        p.ylabel('y - map')
         if prefix is not None and suffix is not None:
             p.scatter(np.concatenate((prefix[:, 0], suffix[:, 0])), np.concatenate((prefix[:, 1], suffix[:, 1])), s=3,
                       marker='.', linewidths=1)  # draw prefix & suffix
@@ -203,17 +234,23 @@ class SmoothMapPoints:
         f_orig_points = SmoothMapPoints.project_points_on_frenet(orig_points[1:-1], frenet)
         p.figure()
         p.plot(f_orig_points[:, 1])
+        p.title('distance smoothed to original')
+        p.xlabel('s [points]')
+        p.ylabel('d [m]')
 
         # draw original and smoothed curvatures
         p.figure()
         p.plot(original_k)  # original curvatures at the original points
         p.plot(frenet.get_curvature(f_orig_points[:, 0]))  # new curvatures at the original points
+        p.title('curvature')
+        p.xlabel('s [points]')
+        p.ylabel('k [1/m]')
         p.show()
 
 
-SmoothMapPoints.smooth_points(path="/home/MZ8CJ6/temp/Clinton/", desired_velocities=14)
+SmoothMapPoints.smooth_points(path="/home/lzm9ww/Clinton/", desired_velocities=14)
 #
-# SmoothMapPoints.smooth_points(path="/home/MZ8CJ6/temp/Clinton/right/",
+# SmoothMapPoints.smooth_points(path="/home/lzm9ww/Clinton/right/",
 #                               desired_velocities=13.333,  # m/sec
 #                               split_lane_id=103296514,    # first lane after the split
 #                               merge_lane_id=103297538     # last lane before the merge
