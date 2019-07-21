@@ -118,7 +118,7 @@ class StateModule(DmModule):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0)
+                             confidence=1.0, off_map=False)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,
@@ -147,13 +147,14 @@ class StateModule(DmModule):
                               obj_loc.s_bounding_box.e_l_width,
                               obj_loc.s_bounding_box.e_l_height)
             confidence = obj_loc.as_object_hypothesis[0].e_r_probability
-
+            off_map = obj_loc.as_object_hypothesis[0].e_b_off_map
             dyn_obj = DynamicObject(obj_id=id,
                                     timestamp=timestamp,
                                     cartesian_state=cartesian_state,
                                     map_state=map_state if map_state.lane_id > 0 else None,
                                     size=size,
-                                    confidence=confidence)
+                                    confidence=confidence,
+                                    off_map=off_map)
 
             objects_list.append(dyn_obj)  # update the list of dynamic objects
 
