@@ -10,7 +10,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY, TAKE_SPLIT
+from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
@@ -91,26 +91,6 @@ def route_plan_for_oval_track_file():
         elif road_segment_id is 228007:
             route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
             route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 87744:
-            if TAKE_SPLIT is True:
-                route_plan_road_segment[1].e_cst_lane_end_cost = 1.0
-            else:
-                route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 87740:
-            if TAKE_SPLIT is True:
-                route_plan_road_segment[3].e_cst_lane_end_cost = 1.0
-            else:
-                route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 87211:
-            if TAKE_SPLIT is True:
-                route_plan_road_segment[3].e_cst_lane_end_cost = 1.0
-            else:
-                route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 87739:
-            if TAKE_SPLIT is True:
-                route_plan_road_segment[3].e_cst_lane_end_cost = 1.0
-            else:
-                route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
         elif road_segment_id is 40953:
             route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
         elif road_segment_id is 228034:
@@ -122,11 +102,6 @@ def route_plan_for_oval_track_file():
         elif road_segment_id is 228037:
             route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
             route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-
-            if TAKE_SPLIT is True:
-                route_plan_road_segment[2].e_cst_lane_end_cost = 1.0
-            else:
-                route_plan_road_segment[1].e_cst_lane_end_cost = 1.0
         elif road_segment_id is 88088:
             route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
             route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
@@ -136,11 +111,6 @@ def route_plan_for_oval_track_file():
         elif road_segment_id is 88192:
             route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
             route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-
-            if TAKE_SPLIT is True:
-                route_plan_road_segment[2].e_cst_lane_end_cost = 1.0
-            else:
-                route_plan_road_segment[1].e_cst_lane_end_cost = 1.0
 
         route_plan_lane_segments.append(route_plan_road_segment)
 
