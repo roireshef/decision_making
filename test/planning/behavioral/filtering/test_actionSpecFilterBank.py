@@ -3,7 +3,7 @@ from decision_making.src.messages.scene_static_message import StaticTrafficFlowC
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_accel_towards_vehicle
 from typing import List
 from unittest.mock import patch
 
@@ -144,6 +144,7 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_acceleration_towards_vehicle,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx """
+
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)
 

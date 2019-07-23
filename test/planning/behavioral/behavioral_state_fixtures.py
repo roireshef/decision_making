@@ -62,6 +62,9 @@ def route_plan_for_oval_track_file():
     num_lane_segments = []
     route_plan_lane_segments = []
 
+    SceneStaticModel.get_instance().set_scene_static(scene_static_accel_towards_vehicle())
+
+
     for road_segment_id in nav_plan:
         road_segment = MapUtils.get_road_segment(road_segment_id)
         num_lane_segments.append(road_segment.e_Cnt_lane_segment_id_count)
