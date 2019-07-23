@@ -276,15 +276,21 @@ def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static_p
 def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static, route_plan_1_2):
     """
     tests the method _advance_by_cost
-    The straight connection will have a higher cost, so vehicle should take the split (to lane 20)
+    The straight connection will have a higher cost, so vehicle should take the exit (to lane 20)
     :param right_lane_split_scene_static:
     :param route_plan_1_2:
     :return:
     """
     SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
 
-    # set cost of straight connection lane (lane 21) to be 1
-    [lane for lane in route_plan_1_2.s_Data.as_route_plan_lane_segments[1] if lane.e_i_lane_segment_id  == 21][0].e_cst_lane_end_cost = 1
+    # Modify the route plan
+    # In order to match the scene static data, the right lane in the first road segment needs to be deleted
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
+
+    # Set cost of straight connection lanes (lanes 21 and 22) to be 1
+    route_plan_1_2.s_Data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1
+    route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1
 
     sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
     assert sub_segments[1].e_i_SegmentID == 20
@@ -307,7 +313,23 @@ def test_advanceByCost_chooseOnlyLaneNoSplit(scene_static_short_testable, route_
 
 
 def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split_scene_static, route_plan_1_2):
+    """
+    tests the method get_lookahead_frenet_frame_by_cost
+    The straight connection will have a higher cost, so vehicle should take the exit (to lane 20)
+    :param right_lane_split_scene_static:
+    :param route_plan_1_2:
+    :return:
+    """
     SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
+
+    # Modify the route plan
+    # In order to match the scene static data, the right lane in the first road segment needs to be deleted
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
+
+    # Set cost of straight connection lanes (lanes 21 and 22) to be 1
+    route_plan_1_2.s_Data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1
+    route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1
 
     # set cost of straight connection lane (lane 21) to be 1
     [lane for lane in route_plan_1_2.s_Data.as_route_plan_lane_segments[1] if lane.e_i_lane_segment_id  == 21][0].e_cst_lane_end_cost = 1
