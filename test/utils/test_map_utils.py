@@ -299,6 +299,26 @@ def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static,
     assert sub_segments[1].e_i_SegmentID == 20
 
 
+def test_advanceByCost_chooseStraightLaneInSplitWithSameCosts(right_lane_split_scene_static, route_plan_1_2):
+    """
+    Tests the method _advance_by_cost
+    A two-lane road opens up to a three-lane road where all lanes have identical end costs. Since there is not a lane that is "preferrable"
+    to be in, the vehicle should continue straight.
+    :param right_lane_split_scene_static:
+    :param route_plan_1_2:
+    :return:
+    """
+    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
+
+    # Modify the route plan
+    # In order to match the scene static data, the right lane in the first road segment needs to be deleted
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
+
+    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
+    assert sub_segments[1].e_i_SegmentID == 21
+
+
 def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split_scene_static, route_plan_1_2):
     """
     tests the method get_lookahead_frenet_frame_by_cost
@@ -409,30 +429,30 @@ def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantExcept
 def test_getUpstreamLanes_emptyOnFirstSegment(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     current_lane_id = 202
-    upstream_lanes = MapUtils.get_upstream_lanes(lane_id=current_lane_id)
-    assert len(upstream_lanes) == 0
+    upstream_lane_ids = MapUtils.get_upstream_lane_ids(lane_id=current_lane_id)
+    assert len(upstream_lane_ids) == 0
 
 def test_getDownstreamLanes_emptyOnLastSegment(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     current_lane_id = 292
-    downstream_lanes = MapUtils.get_downstream_lanes(lane_id=current_lane_id)
-    print(downstream_lanes)
-    assert len(downstream_lanes) == 0
+    downstream_lane_ids = MapUtils.get_downstream_lane_ids(lane_id=current_lane_id)
+    print(downstream_lane_ids)
+    assert len(downstream_lane_ids) == 0
 
 def test_getUpstreamLanes_upstreamMatch(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     current_lane_id = 222
     upstream_of_current = 212
-    upstream_lanes = MapUtils.get_upstream_lanes(lane_id=current_lane_id)
-    assert upstream_lanes[0] == upstream_of_current
+    upstream_lane_ids = MapUtils.get_upstream_lane_ids(lane_id=current_lane_id)
+    assert upstream_lane_ids[0] == upstream_of_current
 
 
 def test_getDownstreamLanes_downstreamMatch(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     current_lane_id = 212
     downstream_of_current = 222
-    downstream_lanes = MapUtils.get_downstream_lanes(lane_id=current_lane_id)
-    assert downstream_lanes[0] == downstream_of_current
+    downstream_lane_ids = MapUtils.get_downstream_lane_ids(lane_id=current_lane_id)
+    assert downstream_lane_ids[0] == downstream_of_current
 
 
 def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_static_pg_split):
@@ -463,7 +483,7 @@ def test_getClosestLane_nearLanesSeam_closestPointIsInternal(scene_static_pg_spl
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
     # take the rightest lane
     lane_id1 = lane_ids[0]
-    lane_id2 = MapUtils.get_downstream_lanes(lane_id1)[0]
+    lane_id2 = MapUtils.get_downstream_lane_ids(lane_id1)[0]
     x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
     y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
     seam_point = MapUtils.get_lane_geometry(lane_id2).a_nominal_path_points[0]
@@ -484,7 +504,7 @@ def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static_pg_split):
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
     # take the rightest lane
     lane_id1 = lane_ids[0]
-    lane_id2 = MapUtils.get_downstream_lanes(lane_id1)[0]
+    lane_id2 = MapUtils.get_downstream_lane_ids(lane_id1)[0]
     x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
     y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
     seam_point = MapUtils.get_lane_geometry(lane_id2).a_nominal_path_points[0]
