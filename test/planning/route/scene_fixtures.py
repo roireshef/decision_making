@@ -156,14 +156,6 @@ def construction_scene_and_expected_output(request):
     else:
         lane_modifications = {}
 
-    # for road_segment in expected_output.as_route_plan_lane_segments:
-    #     for lane_segment in road_segment:
-    #         print("lane_segment_id     = ", lane_segment.e_i_lane_segment_id)
-    #         print("lane_occupancy_cost = ", lane_segment.e_cst_lane_occupancy_cost)
-    #         print("lane_end_cost       = ", lane_segment.e_cst_lane_end_cost, "\n")
-
-    #     print("==========================\n")
-
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
