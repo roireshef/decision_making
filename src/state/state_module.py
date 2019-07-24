@@ -120,17 +120,16 @@ class StateModule(DmModule):
         localization_ids = [hyp.e_i_lane_segment_id
                             for hyp in scene_dynamic.s_Data.s_host_localization.as_host_hypothesis]
 
-        if localization_ids.size == 1:
+        if len(localization_ids) == 1:
             selected_hypothesis_idx = 0
-        elif gff_segment_ids.size == 0:
+        elif len(gff_segment_ids) == 0:
             selected_hypothesis_idx = 0
         else:
             common_ids = np.intersect1d(localization_ids, gff_segment_ids)
             if len(common_ids) > 0:
                 selected_hypothesis_idx = np.argwhere(localization_ids == common_ids[0])[0][0]
             else:
-                # raise warning
-                # find adjacent lanes to
+                # TODO: should we raise exception or look at adjacent lanes to find the common lane
                 selected_hypothesis_idx = 0
 
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
