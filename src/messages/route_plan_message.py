@@ -153,7 +153,8 @@ class RoutePlan(PUBSUB_MSG_IMPL):
     def to_costs_dict(self) -> Dict[LaneSegmentID, Tuple[Cost, Cost]]:
         """
          returns a complete dictionary of lane costs:
-         keys are lane_segment_ids and values are tuples of (LANE_OCCUPANCY_COST_IND = 0, LANE_END_COST_IND = 1)
+         keys are lane_segment_ids and values are tuples containing the lane costs: (occupancy cost, end cost). The following are two
+         constants that hold the indices and can be used to access each cost: LANE_OCCUPANCY_COST_IND = 0 and LANE_END_COST_IND = 1
         :return:
         """
         return {lane_segment.e_i_lane_segment_id:
