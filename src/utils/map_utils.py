@@ -1,8 +1,9 @@
 import numpy as np
+from enum import Enum
+
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, ValidLaneAheadTooShort
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, ValidLaneAheadTooShort
 from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
@@ -19,6 +20,10 @@ import rte.python.profiler as prof
 from typing import List, Dict
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
+
+class LookaheadStatus(Enum):
+    Normal = 1
+    Partial = 2
 
 class MapUtils:
 
@@ -288,10 +293,13 @@ class MapUtils:
         """
         init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
         # get the full lanes path
-        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan)
+        sub_segments, lookahead_status = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
-        # create GFF
+        # create GFF, get gff_type from lookahead status
+        gff_type = GFF_Type.Normal
+        if lookahead_status == LookaheadStatus.Partial:
+            gff_type = GFF_Type.Partial
         gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments, gff_type)
         return gff
 
@@ -310,7 +318,7 @@ class MapUtils:
     @staticmethod
     @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         route_plan: RoutePlan) -> List[FrenetSubSegment]:
+                         route_plan: RoutePlan) -> (List[FrenetSubSegment], LookaheadStatus):
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
@@ -320,7 +328,9 @@ class MapUtils:
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
         # :param lane_cost_list: dictionary of key lane ID to value end cost of traversing lane
-        :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
+        :return: a tuple of
+                 tuple of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane),
+                 GFF_Type to be created
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
 
@@ -335,7 +345,7 @@ class MapUtils:
 
         current_lane_id = initial_lane_id
         current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
-        gff_type = GFF_Type.Normal
+        status = LookaheadStatus.Normal
         while True:
             current_lane_length = MapUtils.get_lane_length(current_lane_id)  # a lane's s_max
 
@@ -357,11 +367,16 @@ class MapUtils:
                                              (route_plan.s_Data.a_i_road_segment_ids, lookahead_distance - cumulative_distance,
                                               current_segment_end_s, lookahead_distance))
 
-            current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan)
+            try:
+                current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan)
+            except DownstreamLaneNotFound:
+                status = LookaheadStatus.Partial
+                break
+
             current_segment_start_s = 0
             current_road_idx_on_plan = next_road_idx_on_plan
 
-        return lane_subsegments
+        return lane_subsegments, status
 
     @staticmethod
     @raises(DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanDoesNotFitMap)
@@ -371,14 +386,14 @@ class MapUtils:
 
         :param current_lane_id:
         # :param lane_cost_dict: dictionary of key lane ID to value end cost of traversing lane
-        :return: ID of the lane with the minimal costs
+        :return: ID of the lane with the minimal costs, returns -1 if no downstream lane is found
         """
         # pull next road segment from the navigation plan, then look for the downstream lane segments on this road segment.
         next_road_segment_id_on_plan = route_plan.s_Data.a_i_road_segment_ids[next_road_idx_on_plan]
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
-        # TODO: what if lane is deadend or it is the last road segment in the nav. plan (destination reached)
+
         if len(downstream_lanes_ids) == 0:
-            raise DownstreamLaneNotFound("Downstream lane not found for lane_id=%d" % (current_lane_id))
+            raise DownstreamLaneNotFound("No downstream lanes found for lane %s." % current_lane_id)
 
         # collect downstream lanes, whose road_segment_id is next_road_segment_id_on_plan
         downstream_lanes_ids_on_plan = \
@@ -387,24 +402,14 @@ class MapUtils:
 
         # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
         if len(downstream_lanes_ids_on_plan) == 0:
-            raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
-                                              "downstream_lanes %s, next_road_segment_id_on_plan %d" %
-                                              (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
-            # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
-            if len(downstream_lanes_ids_on_plan) == 0:
-                gff_type = GFF_Type.Partial
-                break
-            if len(downstream_lanes_ids_on_plan) > 1:
-                raise AmbiguousNavigationPlan("More than 1 downstream lanes with STRAIGHT CONNECTION type according %s,"
-                                              " to the nav. plan downstream_lanes_ids_on_plan %s" %
-                                              (route_plan_road_ids, downstream_lanes_ids_on_plan))
+            raise DownstreamLaneNotFound("Downstream lanes exist for lane %s, but none are on the route plan." % current_lane_id)
 
         route_plan_costs = route_plan.to_costs_dict()
         try:
-            minimal_lane_id = min(downstream_lanes_ids_on_plan, key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
+            minimal_cost_lane_id = min(downstream_lanes_ids_on_plan, key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
         except KeyError:
             raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
-        return minimal_lane_id
+        return minimal_cost_lane_id
 
     @staticmethod
     @raises(UpstreamLaneNotFound)
