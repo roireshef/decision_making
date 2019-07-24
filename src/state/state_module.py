@@ -8,6 +8,7 @@ import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
@@ -17,6 +18,7 @@ from decision_making.src.planning.types import C_V, FS_SV, C_A, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 
 
 class DynamicObjectsData:
@@ -64,7 +66,9 @@ class StateModule(DmModule):
 
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
 
-                state = self.create_state_from_scene_dynamic(self._scene_dynamic)
+                last_gff_segment_ids = self._get_last_action_gff()
+
+                state = self.create_state_from_scene_dynamic(self._scene_dynamic, last_gff_segment_ids)
 
                 postprocessed_state = self._handle_negative_velocities(state)
 
@@ -102,17 +106,37 @@ class StateModule(DmModule):
         return state
 
     @staticmethod
-    def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic) -> State:
+    def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic, gff_segment_ids: np.ndarray) -> State:
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic:
+        :param gff_segment_ids: list of GFF segment ids for the last selected action
         :return: valid State object
         """
 
         timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
-        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
-                                 lane_id=scene_dynamic.s_Data.s_host_localization.e_i_lane_segment_id)
+
+        localization_ids = [hyp.e_i_lane_segment_id
+                            for hyp in scene_dynamic.s_Data.s_host_localization.as_host_hypothesis]
+
+        if localization_ids.size == 1:
+            selected_hypothesis_idx = 0
+        elif gff_segment_ids.size == 0:
+            selected_hypothesis_idx = 0
+        else:
+            common_ids = np.intersect1d(localization_ids, gff_segment_ids)
+            if len(common_ids) > 0:
+                selected_hypothesis_idx = np.argwhere(localization_ids == common_ids[0])[0][0]
+            else:
+                # raise warning
+                # find adjacent lanes to
+                selected_hypothesis_idx = 0
+
+        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
+                                 as_host_hypothesis[selected_hypothesis_idx].a_lane_frenet_pose,
+                                 lane_id=scene_dynamic.s_Data.s_host_localization.
+                                 as_host_hypothesis[selected_hypothesis_idx].e_i_lane_segment_id)
         ego_state = EgoState(obj_id=0,
                              timestamp=timestamp,
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
@@ -159,3 +183,20 @@ class StateModule(DmModule):
             objects_list.append(dyn_obj)  # update the list of dynamic objects
 
         return objects_list
+
+    def _get_last_action_gff(self) -> np.ndarray:
+        """
+        Returns the last received mission (trajectory) parameters.
+        We assume that if no updates have been received since the last call,
+        then we will output the last received trajectory parameters.
+        :return: deserialized trajectory parameters
+        """
+        gff_segment_ids = np.array([])
+
+        is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS)
+        if serialized_params is not None:
+            trajectory_params = TrajectoryParams.deserialize(serialized_params)
+            gff_segment_ids = trajectory_params.reference_route.segment_ids
+
+        return gff_segment_ids
+
