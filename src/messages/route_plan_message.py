@@ -7,7 +7,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_RoutePlanLaneSe
 from decision_making.src.exceptions import RoadNotFound, raises
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
-from decision_making.src.planning.types import LaneSegmentID, Cost
+from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 
 
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
@@ -150,7 +150,7 @@ class RoutePlan(PUBSUB_MSG_IMPL):
         self.s_Header = s_Header
         self.s_Data = s_Data
 
-    def to_costs_dict(self) -> Dict[LaneSegmentID, Tuple[Cost, Cost]]:
+    def to_costs_dict(self) -> Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]:
         """
          returns a complete dictionary of lane costs:
          keys are lane_segment_ids and values are tuples containing the lane costs: (occupancy cost, end cost). The following are two
