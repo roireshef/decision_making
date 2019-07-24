@@ -224,9 +224,9 @@ class MapUtils:
         return border_right + border_left
 
     @staticmethod
-    def get_upstream_lanes(lane_id: int) -> List[int]:
+    def get_upstream_lane_ids(lane_id: int) -> List[int]:
         """
-        Get upstream lanes (incoming) of the given lane.
+        Get upstream lane ids (incoming) of the given lane.
         This is referring only to the previous road-segment, and the returned list is there for many-to-1 connection.
         :param lane_id:
         :return: list of upstream lanes ids
@@ -235,9 +235,9 @@ class MapUtils:
         return [connectivity.e_i_lane_segment_id for connectivity in upstream_connectivity]
 
     @staticmethod
-    def get_downstream_lanes(lane_id: int) -> List[int]:
+    def get_downstream_lane_ids(lane_id: int) -> List[int]:
         """
-        Get downstream lanes (outgoing) of the given lane.
+        Get downstream lane ids (outgoing) of the given lane.
         This is referring only to the next road-segment, and the returned list is there for 1-to-many connection.
         :param lane_id:
         :return: list of downstream lanes ids
@@ -370,7 +370,7 @@ class MapUtils:
         """
         # pull next road segment from the navigation plan, then look for the downstream lane segments on this road segment.
         next_road_segment_id_on_plan = route_plan.s_Data.a_i_road_segment_ids[next_road_idx_on_plan]
-        downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
+        downstream_lanes_ids = MapUtils.get_downstream_lane_ids(current_lane_id)
         # TODO: what if lane is deadend or it is the last road segment in the nav. plan (destination reached)
         if len(downstream_lanes_ids) == 0:
             raise DownstreamLaneNotFound("Downstream lane not found for lane_id=%d" % (current_lane_id))
@@ -409,7 +409,7 @@ class MapUtils:
         prev_lane_id = starting_lane_id
         total_dist = starting_lon
         while total_dist < backward_dist:
-            prev_lane_ids = MapUtils.get_upstream_lanes(prev_lane_id)
+            prev_lane_ids = MapUtils.get_upstream_lane_ids(prev_lane_id)
             if len(prev_lane_ids) == 0:
                 # TODO: the lane can actually have no upstream; should we continue with the existing path instead of
                 #   raising exception, if total_dist > TBD
