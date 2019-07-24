@@ -1,10 +1,4 @@
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import create_route_plan_msg
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
-    behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive,\
-    route_plan_20_30
-from decision_making.test.planning.custom_fixtures import route_plan_1_2
 from unittest.mock import patch
-from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 
 import numpy as np
 import pytest
@@ -12,6 +6,7 @@ import pytest
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, \
     RoadObjectType
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
@@ -20,9 +15,11 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
-    scene_static_short_testable
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_left_lane_ends
-
+    scene_static_short_testable, scene_static_left_lane_ends
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
+    behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
+    route_plan_20_30, create_route_plan_msg
+from decision_making.test.planning.custom_fixtures import route_plan_1_2
 
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
