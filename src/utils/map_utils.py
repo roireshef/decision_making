@@ -16,6 +16,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
 from decision_making.src.messages.scene_static_enums import ManeuverType
+from decision_making.src.planning.types import LaneSegmentID
 
 class MapUtils:
 
@@ -246,6 +247,17 @@ class MapUtils:
         return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity]
 
     @staticmethod
+    def get_downstream_lane_maneuver_types(lane_id: int) -> Dict[LaneSegmentID, ManeuverType]:
+        """
+        Get maneuver types of the downstream lanes (outgoing) of the given lane as a dictionary with the downstream lane ids as keys.
+        This is referring only to the next road segment.
+        :param lane_id: ID for the lane in question
+        :return: Maneuver types of the downstream lanes
+        """
+        downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
+        return {connectivity.e_i_lane_segment_id: connectivity.e_e_maneuver_type for connectivity in downstream_connectivity}
+
+    @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
         """
         Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' ordinal,
@@ -376,22 +388,42 @@ class MapUtils:
             raise DownstreamLaneNotFound("Downstream lane not found for lane_id=%d" % (current_lane_id))
 
         # collect downstream lanes, whose road_segment_id is next_road_segment_id_on_plan
-        downstream_lanes_ids_on_plan = \
-            [lid for lid in downstream_lanes_ids
-                if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
+        downstream_lane_ids_on_plan = [lid for lid in downstream_lanes_ids
+                                       if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
+        num_downstream_lane_ids_on_plan = len(downstream_lane_ids_on_plan)
 
-        # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
-        if len(downstream_lanes_ids_on_plan) == 0:
+        if num_downstream_lane_ids_on_plan == 0:    # Verify that there is a downstream lane that continues along the navigation plan
             raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
                                               "downstream_lanes %s, next_road_segment_id_on_plan %d" %
                                               (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
+        elif num_downstream_lane_ids_on_plan == 1:
+            return downstream_lane_ids_on_plan[0]
+        elif num_downstream_lane_ids_on_plan > 1:   # If multiple downstream lanes continue along the navigation plan, choose one
+            route_plan_costs = route_plan.to_costs_dict()
+            downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
-        route_plan_costs = route_plan.to_costs_dict()
-        try:
-            minimal_lane_id = min(downstream_lanes_ids_on_plan, key=lambda x: route_plan_costs[x][LANE_END_COST_IND])
-        except KeyError:
-            raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
-        return minimal_lane_id
+            # Initialize the desired downstream lane to be the first element of downstream_lane_ids_on_plan
+            minimal_lane_id = downstream_lane_ids_on_plan[0]
+
+            try:
+                minimal_lane_end_cost = route_plan_costs[minimal_lane_id][LANE_END_COST_IND]
+            except KeyError:
+                raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
+
+            # Compare the remaining elements of downstream_lane_ids_on_plan to the first element
+            for downstream_lane_id in downstream_lane_ids_on_plan[1:]:
+                try:
+                    downstream_lane_end_cost = route_plan_costs[downstream_lane_id][LANE_END_COST_IND]
+                except KeyError:
+                    raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
+
+                if (downstream_lane_end_cost < minimal_lane_end_cost or
+                    (downstream_lane_end_cost == minimal_lane_end_cost and
+                     downstream_lane_maneuver_types[downstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION)):
+                    minimal_lane_id = downstream_lane_id
+                    minimal_lane_end_cost = downstream_lane_end_cost
+
+            return minimal_lane_id
 
     @staticmethod
     @raises(UpstreamLaneNotFound)

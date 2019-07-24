@@ -296,6 +296,26 @@ def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static,
     assert sub_segments[1].e_i_SegmentID == 20
 
 
+def test_advanceByCost_chooseStraightLaneInSplitWithSameCosts(right_lane_split_scene_static, route_plan_1_2):
+    """
+    Tests the method _advance_by_cost
+    A two-lane road opens up to a three-lane road where all lanes have identical end costs. Since there is not a lane that is "preferrable"
+    to be in, the vehicle should continue straight.
+    :param right_lane_split_scene_static:
+    :param route_plan_1_2:
+    :return:
+    """
+    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
+
+    # Modify the route plan
+    # In order to match the scene static data, the right lane in the first road segment needs to be deleted
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
+
+    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
+    assert sub_segments[1].e_i_SegmentID == 21
+
+
 def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split_scene_static, route_plan_1_2):
     """
     tests the method get_lookahead_frenet_frame_by_cost
