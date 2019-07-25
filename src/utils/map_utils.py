@@ -316,6 +316,7 @@ class MapUtils:
 
     @staticmethod
     @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
+    @prof.ProfileFunction()
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                          route_plan: RoutePlan) -> List[FrenetSubSegment]:
         """
