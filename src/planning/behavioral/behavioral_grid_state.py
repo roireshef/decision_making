@@ -122,6 +122,8 @@ class BehavioralGridState:
             rel_lanes_per_obj[relevant_objects] = rel_lane
 
         # filter relevant objects
+        # the list comprehension works as such:  [(rel_lane1, obj1), (rel_lane2, obj2)] -> (rel_lane1, rel_lane2), (obj1, obj2)
+        # -> [rel_lane1, rel_lane2], [obj1, obj2]
         relevant_dynamic_objects_lane, relevant_dynamic_objects = \
             [list(l) for l in zip(*[(rel_lane, obj) for rel_lane, obj in \
             zip(rel_lanes_per_obj, overloaded_dynamic_objects) if rel_lane is not None])] \
