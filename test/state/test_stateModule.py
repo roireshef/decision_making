@@ -29,7 +29,7 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix_single_host_hypothesis)
-    state_module.start()
+    # state_module.start()
     # Inserting a object that's not on the road
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
     assert len(dyn_obj_list) == 1  # check that object was inserted
@@ -47,7 +47,6 @@ def test_createStateFromSceneDyamic_singleHostHypothesis_correctHostLocalization
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix_single_host_hypothesis)
-    state_module.start()
 
     gff_segment_ids = np.array([200, 210, 220])
 
@@ -68,7 +67,6 @@ def test_createStateFromSceneDyamic_twoHostHypotheses_correctHostLocalization(pu
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix_two_host_hypotheses)
-    state_module.start()
 
     gff_segment_ids = np.array([201, 211, 221])
 
@@ -93,7 +91,6 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
 
     state_module = StateModule(pubsub=pubsub, logger=logger,
                                scene_dynamic=scene_dynamic_fix_single_host_hypothesis)
-    state_module.start()
 
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_negative_velocity)
 
@@ -118,7 +115,7 @@ def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: P
 
     state_module = StateModule(pubsub=pubsub, logger=logger,
                                scene_dynamic=scene_dynamic_fix_single_host_hypothesis)
-    state_module.start()
+
     # Inserting a object that's not on the road
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
     assert len(dyn_obj_list) == 0   # check that object was not inserted
