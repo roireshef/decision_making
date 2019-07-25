@@ -5,7 +5,8 @@ from decision_making.src.planning.types import FS_SA, C_A
 from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from typing import List
+from typing import List, Dict, Tuple
+from decision_making.src.planning.types import RoadSegmentID, LaneOccupancyCost, LaneEndCost
 
 import numpy as np
 import pytest
@@ -59,58 +60,44 @@ def route_plan_for_oval_track_file():
                 10068, 87211, 10320, 10322, 228029, 87739, 40953, 10073, 10066, 87732, 43516, 87770, 228034, 87996, 228037, 10536, 88088,
                 228039, 88192, 10519]
 
+    # The lane segment index type is being defined and used here because this is a session fixture that will only be run once and this type
+    # shouldn't be used anywhere else. It was created just for clarity in the below annotation.
+    LaneSegmentIndex = int
+
+    lane_cost_modifications: Dict[RoadSegmentID, List[Tuple[LaneSegmentIndex, LaneOccupancyCost, LaneEndCost]]] = \
+        {87759: [(4, 1.0, 1.0)],
+         76838: [(4, 1.0, 1.0)],
+         228030: [(4, 1.0, 1.0)],
+         228028: [(0, 1.0, 1.0)],
+         87622: [(0, 1.0, 1.0)],
+         228007: [(0, 1.0, 1.0)],
+         40953: [(4, 0.0, 1.0)],
+         228034: [(0, 1.0, 1.0)],
+         87996: [(0, 1.0, 1.0)],
+         228037: [(0, 1.0, 1.0)],
+         88088: [(0, 1.0, 1.0)],
+         228039: [(0, 1.0, 1.0)],
+         88192: [(0, 1.0, 1.0)]}
+
     num_lane_segments = []
     route_plan_lane_segments = []
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_accel_towards_vehicle())
 
-
     for road_segment_id in nav_plan:
         road_segment = MapUtils.get_road_segment(road_segment_id)
         num_lane_segments.append(road_segment.e_Cnt_lane_segment_id_count)
 
+        # Set default values
         route_plan_road_segment = [RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
                                                         e_cst_lane_occupancy_cost=0.0,
                                                         e_cst_lane_end_cost=0.0) for lane_segment_id in road_segment.a_i_lane_segment_ids]
 
-        if road_segment_id is 87759:
-            route_plan_road_segment[4].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 76838:
-            route_plan_road_segment[4].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 228030:
-            route_plan_road_segment[4].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 228028:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 87622:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 228007:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 40953:
-            route_plan_road_segment[4].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 228034:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 87996:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 228037:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 88088:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 228039:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
-        elif road_segment_id is 88192:
-            route_plan_road_segment[0].e_cst_lane_occupancy_cost = 1.0
-            route_plan_road_segment[0].e_cst_lane_end_cost = 1.0
+        # Modify default values
+        if road_segment_id in lane_cost_modifications:
+            for lane_segment in lane_cost_modifications[road_segment_id]:
+                route_plan_road_segment[lane_segment[0]].e_cst_lane_occupancy_cost = lane_segment[1]
+                route_plan_road_segment[lane_segment[0]].e_cst_lane_end_cost = lane_segment[2]
 
         route_plan_lane_segments.append(route_plan_road_segment)
 

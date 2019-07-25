@@ -88,6 +88,59 @@ class BehavioralGridState:
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
+    @prof.ProfileFunction()
+    def _add_road_semantics(dynamic_objects: List[DynamicObject],
+                            extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+                            projected_ego_fstates: Dict[RelativeLane, FrenetState2D]) -> \
+            List[DynamicObjectWithRoadSemantics]:
+        """
+        Wraps DynamicObjects with "on-road" information (relative progress on road wrt ego, road-localization and more).
+        This is a temporary function that caches relevant metrics for re-use. Should be removed after an efficient
+        representation of DynamicObject.
+        :param dynamic_objects: list of relevant DynamicObjects to calculate "on-road" metrics for.
+        :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
+        :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
+                corresponding extended_lane_frame
+        :return: list of object of type DynamicObjectWithRoadSemantics
+        """
+
+        # filter out off map dynamic objects
+        on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
+
+        # calculate objects' segment map_states
+        # adds mirror objects to any dynamic object which is on the intersection
+        overloaded_dynamic_objects = BehavioralGridState._create_mirror_objects(on_map_dynamic_objects)
+
+        objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
+
+        # for objects on non-adjacent lane set relative_lanes[i] = None
+        rel_lanes_per_obj = np.full(len(overloaded_dynamic_objects), None)
+        # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
+        for rel_lane, extended_lane_frame in extended_lane_frames.items():
+            # find all dynamic objects that belong to the current unified frame
+            relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
+            rel_lanes_per_obj[relevant_objects] = rel_lane
+
+        # filter relevant objects
+        relevant_dynamic_objects_lane, relevant_dynamic_objects = \
+            [list(l) for l in zip(*[(rel_lane, obj) for rel_lane, obj in \
+            zip(rel_lanes_per_obj, overloaded_dynamic_objects) if rel_lane is not None])] \
+            or ([], [])
+
+        # setting the missing map_states to pseudo-objects
+        BehavioralGridState._lazy_set_map_states(relevant_dynamic_objects, extended_lane_frames,
+                                                 relevant_dynamic_objects_lane)
+
+        object_map_states = [obj.map_state for obj in relevant_dynamic_objects]
+
+        # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
+        longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
+            extended_lane_frames, projected_ego_fstates, object_map_states)
+
+        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], relevant_dynamic_objects_lane[i])
+                for i, obj in enumerate(relevant_dynamic_objects)]
+
+    @staticmethod
     def _create_mirror_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
         """
         Takes all the dynamic objects that are on intersections, and adds 'pseudo (mirror) -objects' that are located
@@ -152,62 +205,6 @@ class BehavioralGridState:
                     cstate_to_fstate(dynamic_object.cartesian_state)
                 dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
                     convert_to_segment_state(obj_fstate_on_GFF)[1]
-
-    @staticmethod
-    @prof.ProfileFunction()
-    def _add_road_semantics(dynamic_objects: List[DynamicObject],
-                            extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                            projected_ego_fstates: Dict[RelativeLane, FrenetState2D]) -> \
-            List[DynamicObjectWithRoadSemantics]:
-        """
-        Wraps DynamicObjects with "on-road" information (relative progress on road wrt ego, road-localization and more).
-        This is a temporary function that caches relevant metrics for re-use. Should be removed after an efficient
-        representation of DynamicObject.
-        :param dynamic_objects: list of relevant DynamicObjects to calculate "on-road" metrics for.
-        :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
-        :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
-                corresponding extended_lane_frame
-        :return: list of object of type DynamicObjectWithRoadSemantics
-        """
-
-        # filter out off map dynamic objects
-        on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
-
-        # calculate objects' segment map_states
-        # adds mirror objects to any dynamic object which is on the intersection
-        overloaded_dynamic_objects = BehavioralGridState._create_mirror_objects(on_map_dynamic_objects)
-
-        objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
-
-        # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj = np.full(len(overloaded_dynamic_objects), None)
-        # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
-        for rel_lane, extended_lane_frame in extended_lane_frames.items():
-            # find all dynamic objects that belong to the current unified frame
-            relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
-            rel_lanes_per_obj[relevant_objects] = rel_lane
-
-        # filter relevant objects
-        relevant_dynamic_objects_lane, relevant_dynamic_objects = \
-            [list(l) for l in zip(*[(rel_lane, obj) for rel_lane, obj in \
-            zip(rel_lanes_per_obj, overloaded_dynamic_objects) if rel_lane is not None])] \
-            or ([], [])
-
-
-
-        # setting the missing map_states to pseudo-objects
-        BehavioralGridState._lazy_set_map_states(relevant_dynamic_objects, extended_lane_frames,
-                                                 relevant_dynamic_objects_lane)
-
-        object_map_states = [obj.map_state for obj in relevant_dynamic_objects]
-
-        # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
-        longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
-            extended_lane_frames, projected_ego_fstates, object_map_states)
-
-        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], relevant_dynamic_objects_lane[i])
-                for i, obj in enumerate(relevant_dynamic_objects)]
-
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
