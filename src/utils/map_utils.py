@@ -283,6 +283,7 @@ class MapUtils:
 
     @staticmethod
     @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
+    @prof.ProfileFunction()
     def get_lookahead_frenet_frame_by_cost(lane_id: int, starting_lon: float, lookahead_dist: float,
                                            route_plan: RoutePlan) -> GeneralizedFrenetSerretFrame:
         """
