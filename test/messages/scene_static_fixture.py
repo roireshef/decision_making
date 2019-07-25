@@ -5,9 +5,7 @@ from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, PG_P
     ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME, \
     OVAL_WITH_SPLITS_PICKLE_FILE_NAME
 from decision_making.paths import Paths
-from decision_making.src.messages.scene_static_message import SceneRoadSegment, MapRoadSegmentType, SceneLaneSegmentBase, \
-    MapLaneType, LaneSegmentConnectivity, ManeuverType, LaneCoupling
-
+from decision_making.src.messages.scene_static_message import MapRoadSegmentType, LaneSegmentConnectivity, ManeuverType
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
 
 NUM_LANES = 3
