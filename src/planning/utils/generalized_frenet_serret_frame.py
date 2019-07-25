@@ -389,7 +389,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         Delete too short curvature pieces by merging them with their neighbors, such that velocity limits of the
         neighbors may decrease.
         :param k_pieces: 2D array Nx3 original curvature pieces. The columns: s_offsets, vel_limits, pieces_lengths.
-        :return: 2D array Mx3, where M < N: curvature pieces after removing the short pieces
+        :return: 2D array Mx2, where M < N. Curvature pieces after removing the short pieces.
+                 The columns: s_offsets, vel_limits.
         """
         # delete too short pieces
         prev_piece_idx = 0
