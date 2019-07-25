@@ -185,28 +185,10 @@ def scene_dynamic_fix(scene_static_pg_split):
     ego_localization = HostLocalization(lane_id, 0, cstate, fstate, False)
     header = Header(0, timestamp, 0)
     data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
-    map_origin = MapOrigin(0.0, 0.0, 0.0, timestamp)
     scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
 
     yield scene_dynamic
 
-@pytest.fixture(scope='function')
-def scene_dynamic_fix(scene_static_pg_split):
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-
-    lane_id = 200
-    cstate = np.array([1100, 7, 0, 1.0, 0.0, 0])
-
-    frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    fstate = frenet.cstate_to_fstate(cstate)
-
-    timestamp = Timestamp.from_seconds(5.0)
-    ego_localization = HostLocalization(lane_id, 0, cstate, fstate, False)
-    header = Header(0, timestamp, 0)
-    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
-    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
-
-    yield scene_dynamic
 
 @pytest.fixture(scope='function')
 def ego_state_fix():
