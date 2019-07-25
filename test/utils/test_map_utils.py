@@ -17,8 +17,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
-    scene_static_short_testable
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static
 
 
 MAP_SPLIT = "PG_split.bin"
