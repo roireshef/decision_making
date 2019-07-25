@@ -11,6 +11,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneDynami
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneHost import TsSYSDataSceneHost
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_HostLocalization import \
     TsSYSHostLocalization
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_HostHypothesis import TsSYSHostHypothesis
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectHypothesis import \
     TsSYSObjectHypothesis
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectLocalization import \
@@ -64,88 +65,6 @@ class LaneFrenetPose(Enum):
     CeSYS_LaneFrenetPose_e_v_d_dot = 4
     CeSYS_LaneFrenetPose_e_a_d_dotdot = 5
 
-
-class HostLocalization(PUBSUB_MSG_IMPL):
-    e_i_road_segment_id = int
-    e_i_lane_segment_id = int
-    a_cartesian_pose = np.ndarray
-    a_lane_frenet_pose = np.ndarray
-    e_b_off_map = bool
-
-    def __init__(self, e_i_road_segment_id, e_i_lane_segment_id, a_cartesian_pose, a_lane_frenet_pose, e_b_off_map):
-        # type: (int, int, np.ndarray, np.ndarray, bool)->None
-        """
-        Host-localization information
-        :param e_i_road_segment_id: The ID of the road-segment that the host is in
-        :param e_i_lane_segment_id: The ID of the lane-segment that the host is in
-        :param a_cartesian_pose: The host's pose, expressed in the Map (ENU) frame
-        :param a_lane_frenet_pose: The host's pose, expressed in the the Frenet-Serret frame of the host's lane-segment
-        :param e_b_offmap: indicates if the vehicle is located off the map
-        """
-        self.e_i_road_segment_id = e_i_road_segment_id
-        self.e_i_lane_segment_id = e_i_lane_segment_id
-        self.a_cartesian_pose = a_cartesian_pose
-        self.a_lane_frenet_pose = a_lane_frenet_pose
-        self.e_b_off_map = e_b_off_map
-
-    def serialize(self):
-        # type: () -> TsSYSHostLocalization
-        pubsub_msg = TsSYSHostLocalization()
-
-        pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
-        pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
-
-        pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
-        pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
-
-        pubsub_msg.e_b_OffMap = self.e_b_off_map
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSHostLocalization)->HostLocalization
-        return cls(pubsubMsg.e_i_road_segment_id, pubsubMsg.e_i_lane_segment_id,
-                   pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS],
-                   pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
-                   pubsubMsg.e_b_OffMap)
-
-
-class DataSceneHost(PUBSUB_MSG_IMPL):
-
-    e_b_Valid = bool
-    s_ComputeTimestamp = Timestamp
-    s_host_localization = HostLocalization
-
-    def __init__(self, e_b_Valid, s_ComputeTimestamp, s_host_localization):
-        # type: (bool, Timestamp, HostLocalization)->None
-        """
-        Scene provider's information on host vehicle pose
-        :param e_b_Valid:
-        :param s_ComputeTimestamp:
-        :param s_host_localization:
-        """
-        self.e_b_Valid = e_b_Valid
-        self.s_ComputeTimestamp = s_ComputeTimestamp
-        self.s_host_localization = s_host_localization
-
-    def serialize(self):
-        # type: () -> TsSYSDataSceneHost
-        pubsub_msg = TsSYSDataSceneHost()
-
-        pubsub_msg.e_b_Valid = self.e_b_Valid
-        pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
-        pubsub_msg.s_host_localization = self.s_host_localization.serialize()
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSDataSceneHost)->DataSceneHost
-        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp),
-                   HostLocalization.deserialize(pubsubMsg.s_host_localization))
-
-
 class BoundingBoxSize(PUBSUB_MSG_IMPL):
     e_l_length = float
     e_l_width = float
@@ -173,6 +92,83 @@ class BoundingBoxSize(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_l_length, pubsubMsg.e_l_width, pubsubMsg.e_l_height)
 
 
+class HostHypothesis(PUBSUB_MSG_IMPL):
+    e_i_lane_segment_id = int
+    a_lane_frenet_pose = np.ndarray
+    e_b_off_map = bool
+
+    def __init__(self, e_i_lane_segment_id, a_lane_frenet_pose, e_b_off_map):
+        # type: (int, np.ndarray, bool)->None
+        """
+        Host-localization information
+        :param e_i_lane_segment_id: The ID of the lane-segment that the host is in
+        :param a_lane_frenet_pose: The host's pose, expressed in the the Frenet-Serret frame of the host's lane-segment
+        :param e_b_off_map: indicates if the vehicle is located off the map
+        """
+        self.e_i_lane_segment_id = e_i_lane_segment_id
+        self.a_lane_frenet_pose = a_lane_frenet_pose
+        self.e_b_off_map = e_b_off_map
+
+    def serialize(self):
+        # type: () -> TsSYSHostHypothesis
+        pubsub_msg = TsSYSHostHypothesis()
+
+        pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
+
+        pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
+
+        pubsub_msg.e_b_OffMap = self.e_b_off_map
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSHostHypothesis)->HostHypothesis
+        return cls(pubsubMsg.e_i_lane_segment_id,
+                   pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
+                   pubsubMsg.e_b_OffMap)
+
+
+class HostLocalization(PUBSUB_MSG_IMPL):
+    a_cartesian_pose = np.ndarray
+    e_Cnt_host_hypothesis_count = int
+    as_host_hypothesis = List[HostHypothesis]
+
+    def __init__(self, a_cartesian_pose, e_Cnt_host_hypothesis_count, as_host_hypothesis):
+        # type: (np.ndarray, int, List[HostHypothesis])->None
+        """
+        Host-localization information
+        :param a_cartesian_pose: The host's pose, expressed in the Map (ENU) frame
+        :param e_Cnt_host_hypothesis_count: Total number of localization hypotheses for host
+        :param as_host_hypothesis: Localization hypotheses for host
+        """
+        self.a_cartesian_pose = a_cartesian_pose
+        self.e_Cnt_host_hypothesis_count = e_Cnt_host_hypothesis_count
+        self.as_host_hypothesis = as_host_hypothesis
+
+    def serialize(self):
+        # type: () -> TsSYSHostLocalization
+        pubsub_msg = TsSYSHostLocalization()
+
+        pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
+        pubsub_msg.e_Cnt_obj_hypothesis_count = self.e_Cnt_host_hypothesis_count
+        for i in range(pubsub_msg.e_Cnt_host_hypothesis_count):
+            pubsub_msg.as_host_hypothesis[i] = self.as_host_hypothesis[i].serialize()
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSHostLocalization)->HostLocalization
+
+        host_hypotheses = list()
+        for i in range(pubsubMsg.e_Cnt_host_hypothesis_count):
+            host_hypotheses.append(HostHypothesis.deserialize(pubsubMsg.as_host_hypothesis[i]))
+
+        return cls(pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS],
+                   pubsubMsg.e_Cnt_host_hypothesis_count, host_hypotheses)
+
+
 class ObjectHypothesis(PUBSUB_MSG_IMPL):
     e_r_probability = float
     e_i_lane_segment_id = int
@@ -181,15 +177,14 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
     e_Pct_location_uncertainty_y = float
     e_Pct_location_uncertainty_yaw = float
     e_i_host_lane_frenet_id = int
-    a_cartesian_pose = np.ndarray
     a_lane_frenet_pose = np.ndarray
     a_host_lane_frenet_pose = np.ndarray
     e_b_off_map = bool
 
     def __init__(self, e_r_probability, e_i_lane_segment_id, e_e_dynamic_status, e_Pct_location_uncertainty_x,
                  e_Pct_location_uncertainty_y, e_Pct_location_uncertainty_yaw, e_i_host_lane_frenet_id,
-                 a_cartesian_pose, a_lane_frenet_pose, a_host_lane_frenet_pose, e_b_off_map):
-        # type: (float, int, ObjectTrackDynamicProperty, float, float, float, int, np.ndarray, np.ndarray, np.ndarray, bool) -> None
+                 a_lane_frenet_pose, a_host_lane_frenet_pose, e_b_off_map):
+        # type: (float, int, ObjectTrackDynamicProperty, float, float, float, int, np.ndarray, np.ndarray, bool) -> None
         """
         Actors-hypotheses information
         :param e_r_probability: Probability of this hypothesis (not relevant for M0)
@@ -199,7 +194,6 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         :param e_Pct_location_uncertainty_y: Not relevant for M0
         :param e_Pct_location_uncertainty_yaw: Not relevant for M0
         :param e_i_host_lane_frenet_id: The ID of the lane-segment that the host is in
-        :param a_cartesian_pose: The pose of this actor-hypothesis, expressed in the Map (ENU) frame
         :param a_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of its own lane-segment
         :param a_host_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of the host's lane-segment
         :param e_b_off_map: indicates if the vehicle is off the map
@@ -211,7 +205,6 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         self.e_Pct_location_uncertainty_y = e_Pct_location_uncertainty_y
         self.e_Pct_location_uncertainty_yaw = e_Pct_location_uncertainty_yaw
         self.e_i_host_lane_frenet_id = e_i_host_lane_frenet_id
-        self.a_cartesian_pose = a_cartesian_pose
         self.a_lane_frenet_pose = a_lane_frenet_pose
         self.a_host_lane_frenet_pose = a_host_lane_frenet_pose
         self.e_b_off_map = e_b_off_map
@@ -227,8 +220,6 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Pct_location_uncertainty_y = self.e_Pct_location_uncertainty_y
         pubsub_msg.e_Pct_location_uncertainty_yaw = self.e_Pct_location_uncertainty_yaw
         pubsub_msg.e_i_host_lane_frenet_id = self.e_i_host_lane_frenet_id
-
-        pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
         pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
         pubsub_msg.a_host_lane_frenet_pose = self.a_host_lane_frenet_pose
         pubsub_msg.e_b_OffMap = self.e_b_off_map
@@ -240,7 +231,6 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_r_probability, pubsubMsg.e_i_lane_segment_id, ObjectTrackDynamicProperty(pubsubMsg.e_e_dynamic_status),
                    pubsubMsg.e_Pct_location_uncertainty_x, pubsubMsg.e_Pct_location_uncertainty_y,
                    pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_i_host_lane_frenet_id,
-                   (pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS]),
                    pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
                    pubsubMsg.a_host_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS], pubsubMsg.e_b_OffMap)
 
@@ -249,22 +239,26 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
     e_Cnt_object_id = int
     e_e_object_type = ObjectClassification
     s_bounding_box = BoundingBoxSize
+    a_cartesian_pose = np.ndarray
     e_Cnt_obj_hypothesis_count = int
     as_object_hypothesis = List[ObjectHypothesis]
 
-    def __init__(self, e_Cnt_object_id, e_e_object_type, s_bounding_box, e_Cnt_obj_hypothesis_count, as_object_hypothesis):
-        # type: (int, ObjectClassification, BoundingBoxSize, int, List[ObjectHypothesis]) -> None
+    def __init__(self, e_Cnt_object_id, e_e_object_type, s_bounding_box, a_cartesian_pose,
+                 e_Cnt_obj_hypothesis_count, as_object_hypothesis):
+        # type: (int, ObjectClassification, BoundingBoxSize, np.ndarray, int, List[ObjectHypothesis]) -> None
         """
         Actors' localization information
         :param e_Cnt_object_id: Actor's id
         :param e_e_object_type:
         :param s_bounding_box:
-        :param e_Cnt_obj_hypothesis_count: Total number of localization - hypotheses for this actor(Only one hypothesis for M0)
-        :param as_object_hypothesis: Localization-hypotheses for this actor (Only one hypothesis for M0)
+        :param a_cartesian_pose: The pose of this actor-hypothesis, expressed in the Map (ENU) frame
+        :param e_Cnt_obj_hypothesis_count: Total number of localization hypotheses for this actor
+        :param as_object_hypothesis: Localization-hypotheses for this actor
         """
         self.e_Cnt_object_id = e_Cnt_object_id
         self.e_e_object_type = e_e_object_type
         self.s_bounding_box = s_bounding_box
+        self.a_cartesian_pose = a_cartesian_pose
         self.e_Cnt_obj_hypothesis_count = e_Cnt_obj_hypothesis_count
         self.as_object_hypothesis = as_object_hypothesis
 
@@ -275,6 +269,7 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_object_id = self.e_Cnt_object_id
         pubsub_msg.e_e_object_type = self.e_e_object_type.value
         pubsub_msg.s_bounding_box = self.s_bounding_box.serialize()
+        pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
         pubsub_msg.e_Cnt_obj_hypothesis_count = self.e_Cnt_obj_hypothesis_count
         for i in range(pubsub_msg.e_Cnt_obj_hypothesis_count):
             pubsub_msg.as_object_hypothesis[i] = self.as_object_hypothesis[i].serialize()
@@ -289,7 +284,9 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_obj_hypothesis_count):
             obj_hypotheses.append(ObjectHypothesis.deserialize(pubsubMsg.as_object_hypothesis[i]))
 
-        return cls(pubsubMsg.e_Cnt_object_id, ObjectClassification(pubsubMsg.e_e_object_type), BoundingBoxSize.deserialize(pubsubMsg.s_bounding_box),
+        return cls(pubsubMsg.e_Cnt_object_id, ObjectClassification(pubsubMsg.e_e_object_type),
+                   BoundingBoxSize.deserialize(pubsubMsg.s_bounding_box),
+                   (pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS]),
                    pubsubMsg.e_Cnt_obj_hypothesis_count, obj_hypotheses)
 
 
@@ -372,3 +369,39 @@ class SceneDynamic(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSSceneDynamic)->SceneDynamic
         return cls(Header.deserialize(pubsubMsg.s_Header), DataSceneDynamic.deserialize(pubsubMsg.s_Data))
+
+
+#TODO: do we need this here. we are not subscribing to SCENE_HOST at all
+class DataSceneHost(PUBSUB_MSG_IMPL):
+
+    e_b_Valid = bool
+    s_ComputeTimestamp = Timestamp
+    s_host_localization = HostLocalization
+
+    def __init__(self, e_b_Valid, s_ComputeTimestamp, s_host_localization):
+        # type: (bool, Timestamp, HostLocalization)->None
+        """
+        Scene provider's information on host vehicle pose
+        :param e_b_Valid:
+        :param s_ComputeTimestamp:
+        :param s_host_localization:
+        """
+        self.e_b_Valid = e_b_Valid
+        self.s_ComputeTimestamp = s_ComputeTimestamp
+        self.s_host_localization = s_host_localization
+
+    def serialize(self):
+        # type: () -> TsSYSDataSceneHost
+        pubsub_msg = TsSYSDataSceneHost()
+
+        pubsub_msg.e_b_Valid = self.e_b_Valid
+        pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
+        pubsub_msg.s_host_localization = self.s_host_localization.serialize()
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSDataSceneHost)->DataSceneHost
+        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp),
+                   HostLocalization.deserialize(pubsubMsg.s_host_localization))
