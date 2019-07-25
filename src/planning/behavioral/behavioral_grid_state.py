@@ -285,9 +285,7 @@ class BehavioralGridState:
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, route_plan=route_plan)
             except MappingException as e:
-                if rel_lane == RelativeLane.SAME_LANE:
-                    logger.warning(e)
-                continue
+                logger.warning(e)
 
         # TODO: Remove the two if statements below when there is no longer the possibility of having identical GFFs. Without these
         #  statements, identical GFFs will occur when a lane split in the host vehicle's lane is within the backward horizon that is used
