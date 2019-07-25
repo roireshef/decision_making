@@ -201,23 +201,34 @@ def test_advanceByCost_navPlanDoesNotFitMap_partialLookahead(scene_static_pg_spl
     # make sure the GFF created was of type Partial since it should not extend the entire route plan
     assert status == LookaheadStatus.Partial
 
-@pytest.mark.skip("broken test")
 def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
-    #TODO FIX
+    """
+    test the method _advance_by_cost
+        test exception for too short nav plan; validate the relevant exception
+    """
+
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     road_segment_ids = MapUtils.get_road_segment_ids()
+    current_road_idx = 3
     current_ordinal = 1
-    # test lookahead distance until the end of the map: verify no exception is thrown
-    cumulative_distance = 0
-    for road_id in road_segment_ids:
-        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
-        cumulative_distance += MapUtils.get_lane_length(lane_id)
-    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
-    sub_segments, _ = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance,
-                                             create_route_plan_msg(np.array(road_segment_ids)).s_Data.a_i_road_segment_ids)
-    assert len(sub_segments) == len(road_segment_ids)
-    assert gff_type == GFF_Type.Normal
+    starting_lon = 20.
+    lookahead_dist = 500.
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
+    nav_plan_length = 7
 
+    # Modify route plan for this test case
+    route_plan = route_plan_20_30
+    route_plan.s_Data.e_Cnt_num_road_segments = nav_plan_length
+    route_plan.s_Data.a_i_road_segment_ids = route_plan.s_Data.a_i_road_segment_ids[:nav_plan_length]
+    route_plan.s_Data.a_Cnt_num_lane_segments = route_plan.s_Data.a_Cnt_num_lane_segments[:nav_plan_length]
+    route_plan.s_Data.as_route_plan_lane_segments = route_plan.s_Data.as_route_plan_lane_segments[:nav_plan_length]
+
+    # test the case when the navigation plan is too short; validate the relevant exception
+    try:
+        MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
+        assert False
+    except NavigationPlanTooShort:
+        assert True
 
 def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialLookahead(scene_static_pg_split, route_plan_20_30):
     """
@@ -315,8 +326,9 @@ def test_advanceByCost_chooseStraightLaneInSplitWithSameCosts(right_lane_split_s
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
 
-    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
+    sub_segments, status = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
     assert sub_segments[1].e_i_SegmentID == 21
+    assert status == LookaheadStatus.Normal
 
 
 def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split_scene_static, route_plan_1_2):

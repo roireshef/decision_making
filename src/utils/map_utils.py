@@ -314,8 +314,6 @@ class MapUtils:
         gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments, gff_type)
         return gff
 
-
-
     @staticmethod
     def _get_frenet_starting_point(lane_id, starting_lon):
         # find the starting point
@@ -380,7 +378,7 @@ class MapUtils:
 
             try:
                 current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan)
-            except DownstreamLaneNotFound:
+            except (DownstreamLaneNotFound, NavigationPlanDoesNotFitMap):
                 status = LookaheadStatus.Partial
                 break
 
