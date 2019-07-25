@@ -10,15 +10,15 @@ from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.state.state_module import StateModule, DynamicObjectsData
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
-    dynamic_objects_negative_velocity
+from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, \
+    scene_dynamic_fix_single_host_hypothesis, scene_dynamic_fix_two_host_hypotheses, pubsub, dynamic_objects_negative_velocity
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_testable
 
 
 # @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
 def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
-                                                                       scene_dynamic_fix: SceneDynamic):
+                                                                       scene_dynamic_fix_single_host_hypothesis: SceneDynamic):
     """
     :param pubsub: Inter-process communication interface.
     :param scene_dynamic_fix: Fixture of scene dynamic
@@ -28,36 +28,58 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
 
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix)
+    state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix_single_host_hypothesis)
     state_module.start()
     # Inserting a object that's not on the road
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
     assert len(dyn_obj_list) == 1  # check that object was inserted
 
-# def test_createStateFromSceneDyamic_singleHostHypothesis_correctHostLocalization(pubsub: PubSub,
-#                                                                                  scene_dynamic_multiple_host_hypothesis: SceneDynamic,
-#                                                                                  gff_segment_ids: np.ndarray):
-#     """
-#     :param scene_dynamic_fix: Fixture of scene dynamic
-#     :param gff_segment_ids: GFF lane segment ids for last action
-#
-#     Checking functionality of create_state_from_scene_dynamic for the case of multiple host hypothesis
-#     """
-#
-#     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-#
-#     state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_multiple_host_hypothesis)
-#     state_module.start()
-#
-#     state = state_module.create_state_from_scene_dynamic(scene_dynamic_multiple_host_hypothesis, gff_segment_ids)
-#
-#     assert state.ego_state.map_state.lane_id == 1
 
+def test_createStateFromSceneDyamic_singleHostHypothesis_correctHostLocalization(pubsub: PubSub,
+                                                                                 scene_dynamic_fix_single_host_hypothesis: SceneDynamic):
+    """
+    :param scene_dynamic_fix: Fixture of scene dynamic
+    :param gff_segment_ids: GFF lane segment ids for last action
+
+    Checking functionality of create_state_from_scene_dynamic for the case of multiple host hypothesis
+    """
+
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix_single_host_hypothesis)
+    state_module.start()
+
+    gff_segment_ids = np.array([200, 210, 220])
+
+    state = state_module.create_state_from_scene_dynamic(scene_dynamic_fix_single_host_hypothesis, gff_segment_ids)
+
+    assert state.ego_state.map_state.lane_id == 200
+
+
+def test_createStateFromSceneDyamic_twoHostHypotheses_correctHostLocalization(pubsub: PubSub,
+                                                                                 scene_dynamic_fix_two_host_hypotheses: SceneDynamic):
+    """
+    :param scene_dynamic_fix: Fixture of scene dynamic
+    :param gff_segment_ids: GFF lane segment ids for last action
+
+    Checking functionality of create_state_from_scene_dynamic for the case of multiple host hypothesis
+    """
+
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix_two_host_hypotheses)
+    state_module.start()
+
+    gff_segment_ids = np.array([201, 211, 221])
+
+    state = state_module.create_state_from_scene_dynamic(scene_dynamic_fix_two_host_hypotheses, gff_segment_ids)
+
+    assert state.ego_state.map_state.lane_id == 201
 
 @pytest.mark.skip(reason="irrelevant since was moved to SP")
 def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: PubSub,
                                                                       dynamic_objects_negative_velocity: DynamicObjectsData,
-                                                                      scene_dynamic_fix: SceneDynamic,
+                                                                      scene_dynamic_fix_single_host_hypothesis: SceneDynamic,
                                                                       scene_static_pg_split):
     """
     :param pubsub: Inter-process communication interface.
@@ -70,7 +92,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger,
-                               scene_dynamic=scene_dynamic_fix)
+                               scene_dynamic=scene_dynamic_fix_single_host_hypothesis)
     state_module.start()
 
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_negative_velocity)
@@ -82,7 +104,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
 @pytest.mark.skip(reason="irrelevant since was moved to SP")
 def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
-                                                                       scene_dynamic_fix: SceneDynamic,
+                                                                       scene_dynamic_fix_single_host_hypothesis: SceneDynamic,
                                                                        scene_static_pg_split):
     """
     :param pubsub: Inter-process communication interface.
@@ -95,7 +117,7 @@ def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: P
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger,
-                               scene_dynamic=scene_dynamic_fix)
+                               scene_dynamic=scene_dynamic_fix_single_host_hypothesis)
     state_module.start()
     # Inserting a object that's not on the road
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
