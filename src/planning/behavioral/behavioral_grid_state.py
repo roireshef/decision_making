@@ -286,6 +286,7 @@ class BehavioralGridState:
                     lookahead_dist=frame_length, route_plan=route_plan)
             except MappingException as e:
                 logger.warning(e)
+                continue
 
         # TODO: Remove the two if statements below when there is no longer the possibility of having identical GFFs. Without these
         #  statements, identical GFFs will occur when a lane split in the host vehicle's lane is within the backward horizon that is used
