@@ -163,8 +163,8 @@ class StateModule(DmModule):
         for obj_idx in range(dyn_obj_data.num_objects):
             obj_loc = dyn_obj_data.objects_localization[obj_idx]
             id = obj_loc.e_Cnt_object_id
+            cartesian_state = obj_loc.a_cartesian_pose
             # TODO: Handle multiple hypotheses
-            cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
             map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
                               obj_loc.s_bounding_box.e_l_width,
