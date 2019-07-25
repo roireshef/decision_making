@@ -370,7 +370,7 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_traffic_control(route_plan_20_30):
+def state_with_traffic_control(route_plan_20_30: RoutePlan):
 
     scene_static_with_traffic = scene_static_pg_split()
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
