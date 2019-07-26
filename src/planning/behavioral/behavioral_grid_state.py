@@ -8,6 +8,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
@@ -199,11 +200,30 @@ class BehavioralGridState:
 
         # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}
-        for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
+        # for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
+        for rel_lane in [RelativeLane.LEFT_LANE, RelativeLane.SAME_LANE, RelativeLane.RIGHT_LANE]:
             try:
+                force_maneuver = None
+                # if neighboring lane exists, use it.
+                if rel_lane in closest_lanes_dict.keys():
+                    neighbor_lane_id = closest_lanes_dict.get(rel_lane)
+                # if neighboring lane doesn't exist, prepare to create an augmented lane (this assumes same_lane always exists)
+                else:
+                    neighbor_lane_id = closest_lanes_dict.get(RelativeLane.SAME_LANE)
+                    intersection_ahead, intersection_type = MapUtils.is_intersection_ahead(neighbor_lane_id, ref_route_start,
+                                                                                       frame_length, route_plan)
+                    if intersection_ahead:
+                        if rel_lane == RelativeLane.LEFT_LANE and intersection_type == ManeuverType.LEFT_SPLIT:
+                            force_maneuver = ManeuverType.LEFT_SPLIT
+                        elif rel_lane == RelativeLane.LEFT_LANE and intersection_type == ManeuverType.RIGHT_SPLIT:
+                            force_maneuver = ManeuverType.RIGHT_SPLIT
+                    # if no splits exist, don't create any GFF
+                    else:
+                        continue
+
                 extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                    lookahead_dist=frame_length, route_plan=route_plan)
+                    lookahead_dist=frame_length, route_plan=route_plan, force_maneuver=force_maneuver)
             except MappingException as e:
                 logger.warning(e)
                 continue

@@ -14,7 +14,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
-from typing import List, Dict
+from typing import List, Dict, Optional
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.types import LaneSegmentID
 
@@ -257,81 +257,14 @@ class MapUtils:
         downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
         return {connectivity.e_i_lane_segment_id: connectivity.e_e_maneuver_type for connectivity in downstream_connectivity}
 
-    @staticmethod
-    def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
-        """
-        Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' ordinal,
-        i.e. from the rightest lane to the most left.
-        :param road_segment_id:
-        :return: sorted list of lane segments' IDs
-        """
-        return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
-    def does_map_exist_backward(lane_id: int, backward_dist: float):
+    def is_intersection_ahead(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) -> (bool, ManeuverType):
         """
-        check whether the map contains roads behind the given lane_id far enough (backward_dist)
-        :param lane_id: current lane_id
-        :param backward_dist: distance backward
-        :return: True if the map contains upstream roads for the distance backward_dist
-        """
-        try:
-            MapUtils._get_upstream_lanes_from_distance(lane_id, 0, backward_dist)
-            return True
-        except UpstreamLaneNotFound:
-            return False
-
-    @staticmethod
-    @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
-    @prof.ProfileFunction()
-    def get_lookahead_frenet_frame_by_cost(lane_id: int, starting_lon: float, lookahead_dist: float,
-                                           route_plan: RoutePlan) -> GeneralizedFrenetSerretFrame:
-        """
-        Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
-        (may be negative).
-        When some lane ends, it automatically continues to the next lane, according to costs.
-        :param lane_id: starting lane_id
-        :param starting_lon: starting longitude (may be negative) [m]
-        :param lookahead_dist: lookahead distance for the output frame [m]
-        :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: generalized Frenet frame for the given route part
-        """
-        init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
-        # get the full lanes path
-        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan)
-        # create sub-segments for GFF
-        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
-        # create GFF
-        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
-        return gff
-
-    @staticmethod
-    def _get_frenet_starting_point(lane_id, starting_lon):
-        # find the starting point
-        if starting_lon <= 0:  # the starting point is behind lane_id
-            lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
-            init_lane_id = lane_ids[-1]
-        else:  # the starting point is within or after lane_id
-            init_lane_id, init_lon = lane_id, starting_lon
-        return init_lane_id, init_lon
-
-    @staticmethod
-    @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
-    @prof.ProfileFunction()
-    def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         route_plan: RoutePlan) -> List[FrenetSubSegment]:
-        """
-        Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
-        further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
-        If <desired_lon> is more than the distance to end of the plan, a LongitudeOutOfRoad exception is thrown.
-        :param initial_lane_id: the initial lane_id (the vehicle is current on)
-        :param initial_s: initial longitude along <initial_lane_id>
-        :param lookahead_distance: the desired distance of lookahead in [m].
-        :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
+        Does the lookahead as _advance_by_cost would do, and returns if an intersection is detected ahead
+        TODO: detect more than just splits (merges, crosses)
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
-        # TODO: what will happen if there is a lane split ahead for left/right lanes and the doenstream road is not part of the nav. plan
 
         try:
             current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
@@ -365,7 +298,146 @@ class MapUtils:
                                              (route_plan.s_Data.a_i_road_segment_ids, lookahead_distance - cumulative_distance,
                                               current_segment_end_s, lookahead_distance))
 
+            next_maneuvers = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
+
+            if np.any([next_maneuvers.items() == ManeuverType.LEFT_SPLIT]):
+                return True, ManeuverType.LEFT_SPLIT
+            elif np.any([next_maneuvers.items() == ManeuverType.RIGHT_SPLIT]):
+                return True, ManeuverType.RIGHT_SPLIT
+
             current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan)
+            current_segment_start_s = 0
+            current_road_idx_on_plan = next_road_idx_on_plan
+
+        return False, ManeuverType.STRAIGHT_CONNECTION
+
+
+
+
+    @staticmethod
+    def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
+        """
+        Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' ordinal,
+        i.e. from the rightest lane to the most left.
+        :param road_segment_id:
+        :return: sorted list of lane segments' IDs
+        """
+        return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
+
+    @staticmethod
+    def does_map_exist_backward(lane_id: int, backward_dist: float):
+        """
+        check whether the map contains roads behind the given lane_id far enough (backward_dist)
+        :param lane_id: current lane_id
+        :param backward_dist: distance backward
+        :return: True if the map contains upstream roads for the distance backward_dist
+        """
+        try:
+            MapUtils._get_upstream_lanes_from_distance(lane_id, 0, backward_dist)
+            return True
+        except UpstreamLaneNotFound:
+            return False
+
+    @staticmethod
+    @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
+    @prof.ProfileFunction()
+    def get_lookahead_frenet_frame_by_cost(lane_id: int, starting_lon: float, lookahead_dist: float,
+                                           route_plan: RoutePlan, force_maneuver: Optional[ManeuverType]) -> GeneralizedFrenetSerretFrame:
+        """
+        TODO: Use force_maneuver to force taking a certain split
+        Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
+        (may be negative).
+        When some lane ends, it automatically continues to the next lane, according to costs.
+        :param lane_id: starting lane_id
+        :param starting_lon: starting longitude (may be negative) [m]
+        :param lookahead_dist: lookahead distance for the output frame [m]
+        :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :return: generalized Frenet frame for the given route part
+        """
+        init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
+
+        # see if there is an intersection ahead
+        intersection_ahead, intersection_type = MapUtils.is_intersection_ahead(init_lane_id, init_lon, lookahead_dist, route_plan)
+
+        # get the full lanes path
+        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan, force_maneuver)
+        # create sub-segments for GFF
+        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
+        # create GFF
+        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
+        return gff
+
+    @staticmethod
+    def _get_frenet_starting_point(lane_id, starting_lon):
+        # find the starting point
+        if starting_lon <= 0:  # the starting point is behind lane_id
+            lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
+            init_lane_id = lane_ids[-1]
+        else:  # the starting point is within or after lane_id
+            init_lane_id, init_lon = lane_id, starting_lon
+        return init_lane_id, init_lon
+
+    @staticmethod
+    @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
+    @prof.ProfileFunction()
+    def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+                         route_plan: RoutePlan, maneuver_type: Optional[ManeuverType]) -> List[FrenetSubSegment]:
+        """
+        Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
+        further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
+        If <desired_lon> is more than the distance to end of the plan, a LongitudeOutOfRoad exception is thrown.
+        :param initial_lane_id: the initial lane_id (the vehicle is current on)
+        :param initial_s: initial longitude along <initial_lane_id>
+        :param lookahead_distance: the desired distance of lookahead in [m].
+        :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
+        """
+        initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
+        # TODO: what will happen if there is a lane split ahead for left/right lanes and the doenstream road is not part of the nav. plan
+
+        try:
+            current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
+        except IndexError:
+            raise RoadNotFound("Road ID {} is not in not found in the route plan road segment list"
+                               .format(initial_road_segment_id))
+
+        cumulative_distance = 0.
+        lane_subsegments = []
+
+        current_lane_id = initial_lane_id
+        current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
+        past_first_split = False
+        while True:
+            current_lane_length = MapUtils.get_lane_length(current_lane_id)  # a lane's s_max
+
+            # distance to travel on current lane: distance to end of lane, or shorter if reached <lookahead distance>
+            current_segment_end_s = min(current_lane_length,
+                                        current_segment_start_s + lookahead_distance - cumulative_distance)
+
+            # add subsegment to the list and add traveled distance to <cumulative_distance> sum
+            lane_subsegments.append(FrenetSubSegment(current_lane_id, current_segment_start_s, current_segment_end_s))
+            cumulative_distance += current_segment_end_s - current_segment_start_s
+
+            if cumulative_distance > lookahead_distance - EPS:
+                break
+
+            next_road_idx_on_plan = current_road_idx_on_plan + 1
+            if next_road_idx_on_plan > len(route_plan.s_Data.a_i_road_segment_ids) - 1:
+                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
+                                             "current_segment_end_s=%f lookahead_distance=%f" %
+                                             (route_plan.s_Data.a_i_road_segment_ids, lookahead_distance - cumulative_distance,
+                                              current_segment_end_s, lookahead_distance))
+
+            # only take the first split, rest of them should default to straight
+            if not maneuver_type or past_first_split:
+                maneuver_type = None
+
+            current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan, maneuver_type)
+
+            # if split was taken, don't take any more
+            if maneuver_type_taken != ManeuverType.STRAIGHT_CONNECTION:
+                past_first_split = True
+
             current_segment_start_s = 0
             current_road_idx_on_plan = next_road_idx_on_plan
 
@@ -373,7 +445,7 @@ class MapUtils:
 
     @staticmethod
     @raises(DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanDoesNotFitMap)
-    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int) -> int:
+    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int, maneuver_type: Optional[ManeuverType]) -> (int, ManeuverType):
         """
         Currently assumes that Lookahead spreads only current lane segment and the next lane segment(!)
 
@@ -399,32 +471,41 @@ class MapUtils:
                                               (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
         elif num_downstream_lane_ids_on_plan == 1:
             return downstream_lane_ids_on_plan[0]
+
         elif num_downstream_lane_ids_on_plan > 1:   # If multiple downstream lanes continue along the navigation plan, choose one
             route_plan_costs = route_plan.to_costs_dict()
             downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
-            # Initialize the desired downstream lane to be the first element of downstream_lane_ids_on_plan
-            minimal_lane_id = downstream_lane_ids_on_plan[0]
+            # if a maneuver type is forced, choose that one
+            if maneuver_type:
+                valid_maneuver_lanes = [(lane, maneuver) for lane, maneuver in downstream_lane_maneuver_types.items()
+                                        if maneuver == maneuver_type]
+                # TODO: handle case if more than one split present
+                return valid_maneuver_lanes[0]
 
-            try:
-                minimal_lane_end_cost = route_plan_costs[minimal_lane_id][LANE_END_COST_IND]
-            except KeyError:
-                raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
+            else:
+                # Initialize the desired downstream lane to be the first element of downstream_lane_ids_on_plan
+                minimal_lane_id = downstream_lane_ids_on_plan[0]
 
-            # Compare the remaining elements of downstream_lane_ids_on_plan to the first element
-            for downstream_lane_id in downstream_lane_ids_on_plan[1:]:
                 try:
-                    downstream_lane_end_cost = route_plan_costs[downstream_lane_id][LANE_END_COST_IND]
+                    minimal_lane_end_cost = route_plan_costs[minimal_lane_id][LANE_END_COST_IND]
                 except KeyError:
                     raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
 
-                if (downstream_lane_end_cost < minimal_lane_end_cost or
-                    (downstream_lane_end_cost == minimal_lane_end_cost and
-                     downstream_lane_maneuver_types[downstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION)):
-                    minimal_lane_id = downstream_lane_id
-                    minimal_lane_end_cost = downstream_lane_end_cost
+                # Compare the remaining elements of downstream_lane_ids_on_plan to the first element
+                for downstream_lane_id in downstream_lane_ids_on_plan[1:]:
+                    try:
+                        downstream_lane_end_cost = route_plan_costs[downstream_lane_id][LANE_END_COST_IND]
+                    except KeyError:
+                        raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
 
-            return minimal_lane_id
+                    if (downstream_lane_end_cost < minimal_lane_end_cost or
+                        (downstream_lane_end_cost == minimal_lane_end_cost and
+                         downstream_lane_maneuver_types[downstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION)):
+                        minimal_lane_id = downstream_lane_id
+                        minimal_lane_end_cost = downstream_lane_end_cost
+
+            return minimal_lane_id, downstream_lane_maneuver_types[minimal_lane_id]
 
     @staticmethod
     @raises(UpstreamLaneNotFound)
