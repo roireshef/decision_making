@@ -397,7 +397,7 @@ class MapUtils:
 
         :param current_lane_id:
         # :param lane_cost_dict: dictionary of key lane ID to value end cost of traversing lane
-        :return: ID of the lane with the minimal costs, returns -1 if no downstream lane is found
+        :return: ID of the lane with the minimal costs
         """
         # pull next road segment from the navigation plan, then look for the downstream lane segments on this road segment.
         next_road_segment_id_on_plan = route_plan.s_Data.a_i_road_segment_ids[next_road_idx_on_plan]
