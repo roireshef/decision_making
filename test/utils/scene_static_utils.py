@@ -1,7 +1,8 @@
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneRoadSegment, MapRoadSegmentType, AdjacentLane, \
     MovingDirection, MapLaneType, DataSceneStatic, SceneStatic, SceneStaticBase, SceneStaticGeometry, NavigationPlan, \
-    SceneLaneSegmentBase, SceneLaneSegmentGeometry, LaneSegmentConnectivity, ManeuverType, MapLaneMarkerType, BoundaryPoint
+    SceneLaneSegmentBase, SceneLaneSegmentGeometry, LaneSegmentConnectivity, ManeuverType, MapLaneMarkerType, BoundaryPoint,\
+    LaneOverlapType, LaneOverlap
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.types import FP_SX, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -99,6 +100,11 @@ class SceneStaticUtils:
                 else:
                     upstream_lane_segments = [LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)]
 
+                lane_overlap = [LaneOverlap(e_i_other_lane_segment_id=0,
+                                            a_l_source_lane_overlap_stations=np.array([0, 0]),
+                                            a_l_other_lane_overlap_stations=np.array([0, 0]),
+                                            e_e_lane_overlap_type=LaneOverlapType.CeSYS_e_LaneOverlapType_Unknown)]
+
                 scene_lane_segments_base.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_id,
                                                                      e_i_road_segment_id=road_segment_id,
                                                                      e_e_lane_type=MapLaneType.LocalRoadLane,
@@ -115,14 +121,13 @@ class SceneStaticUtils:
                                                                      e_Cnt_upstream_lane_count=len(upstream_lane_segments),
                                                                      as_upstream_lanes=upstream_lane_segments,
                                                                      e_v_nominal_speed=50.0,
-                                                                     e_i_downstream_road_intersection_id=0,
-                                                                     e_Cnt_lane_coupling_count=0,
-                                                                     as_lane_coupling=[],
                                                                      e_l_length=100,
                                                                      e_Cnt_num_active_lane_attributes=0,
                                                                      a_i_active_lane_attribute_indices=np.empty(1),
                                                                      a_cmp_lane_attributes=np.empty(1),
-                                                                     a_cmp_lane_attribute_confidences=np.empty(1)))
+                                                                     a_cmp_lane_attribute_confidences=np.empty(1),
+                                                                     e_Cnt_lane_overlap_count=0,
+                                                                     as_lane_overlaps=lane_overlap))
 
                 scene_lane_segments_geometry.append(SceneLaneSegmentGeometry(e_i_lane_segment_id=lane_id,
                                                                              e_i_road_segment_id=road_segment_id,
@@ -135,7 +140,6 @@ class SceneStaticUtils:
 
         header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
         map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0, 0))
-        scene_road_intersections = []
         data = DataSceneStatic(e_b_Valid=True,
                                s_RecvTimestamp=Timestamp(0, 0),
                                e_l_perception_horizon_front=.0,
@@ -143,8 +147,6 @@ class SceneStaticUtils:
                                s_MapOrigin=map_origin,
                                s_SceneStaticBase=SceneStaticBase(e_Cnt_num_lane_segments=len(scene_lane_segments_base),
                                                                  as_scene_lane_segments=scene_lane_segments_base,
-                                                                 e_Cnt_num_road_intersections=len(scene_road_intersections),
-                                                                 as_scene_road_intersection=scene_road_intersections,
                                                                  e_Cnt_num_road_segments=len(scene_road_segments),
                                                                  as_scene_road_segment=scene_road_segments),
                                s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=len(scene_lane_segments_geometry),
