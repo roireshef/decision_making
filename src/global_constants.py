@@ -173,7 +173,7 @@ SPLINE_POINT_DEVIATION = 0.0001
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in Werling planner (long. planning time)
-TS_OFFSET_MIN, TS_OFFSET_MAX = 0, 4
+TS_OFFSET_MIN, TS_OFFSET_MAX = -2, 4
 
 # [m] Range for grid search in Werling planner (lat. position)
 DX_OFFSET_MIN, DX_OFFSET_MAX = -0.8, 0.8
@@ -182,7 +182,7 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -0.8, 0.8
 DX_STEPS = 5
 
 # Number of steps in longitudinal and lateral horizon planning times
-TS_STEPS, TD_STEPS = 3, 5
+TS_STEPS, TD_STEPS = 4, 5
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3

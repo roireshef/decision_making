@@ -61,8 +61,11 @@ class WerlingPlanner(TrajectoryPlanner):
         #   DX (lat. offset from the goal)
         # Given T_s, the longitudinal deviation from the goal is: T_s_offset * target_velocity.
 
-        T_s_grid = np.linspace(TS_OFFSET_MIN, TS_OFFSET_MAX, TS_STEPS) + T_target_horizon \
-            if is_target_ahead else np.array([T_target_horizon])
+        if is_target_ahead:
+            T_s_grid = np.linspace(TS_OFFSET_MIN, TS_OFFSET_MAX, TS_STEPS) + T_target_horizon
+            T_s_grid = T_s_grid[T_s_grid > 0]
+        else:
+            T_s_grid = np.array([T_target_horizon])
 
         sx_range = goal_frenet_state[FS_SX] + goal_frenet_state[FS_SV] * (T_s_grid - T_target_horizon)
         dx_range = np.linspace(DX_OFFSET_MIN + goal_frenet_state[FS_DX], DX_OFFSET_MAX + goal_frenet_state[FS_DX],
