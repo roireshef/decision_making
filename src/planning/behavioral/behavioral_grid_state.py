@@ -200,33 +200,42 @@ class BehavioralGridState:
 
         # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}
-        # for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
-        for rel_lane in [RelativeLane.LEFT_LANE, RelativeLane.SAME_LANE, RelativeLane.RIGHT_LANE]:
-            try:
-                force_maneuver = None
-                # if neighboring lane exists, use it.
-                if rel_lane in closest_lanes_dict.keys():
-                    neighbor_lane_id = closest_lanes_dict.get(rel_lane)
-                # if neighboring lane doesn't exist, prepare to create an augmented lane (this assumes same_lane always exists)
-                else:
-                    neighbor_lane_id = closest_lanes_dict.get(RelativeLane.SAME_LANE)
-                    intersection_ahead, intersection_type = MapUtils.is_intersection_ahead(neighbor_lane_id, ref_route_start,
-                                                                                       frame_length, route_plan)
-                    if intersection_ahead:
-                        if rel_lane == RelativeLane.LEFT_LANE and intersection_type == ManeuverType.LEFT_SPLIT:
-                            force_maneuver = ManeuverType.LEFT_SPLIT
-                        elif rel_lane == RelativeLane.LEFT_LANE and intersection_type == ManeuverType.RIGHT_SPLIT:
-                            force_maneuver = ManeuverType.RIGHT_SPLIT
-                    # if no splits exist, don't create any GFF
-                    else:
-                        continue
 
-                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
+        # Find out if it is possible for lanes to be augmented
+        can_augment = [RelativeLane.LEFT_LANE not in closest_lanes_dict.keys(),
+                       RelativeLane.RIGHT_LANE not in closest_lanes_dict.keys()]
+
+        # begin to create GFFs
+        try:
+            # create SAME_LANE gff
+            same_lane_id = closest_lanes_dict.get(RelativeLane.SAME_LANE)
+
+            # get the dict of {RelativeLane: GFF}. If augmentated GFFs were created, use them.
+            lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(
+                        lane_id=same_lane_id, starting_lon=ref_route_start,
+                        lookahead_dist=frame_length, route_plan=route_plan, can_augment=can_augment)
+
+            extended_lane_frames[RelativeLane.SAME_LANE] = lane_gffs[RelativeLane.SAME_LANE]
+
+            # check for left augmented lane
+            if can_augment[0]:
+                extended_lane_frames[RelativeLane.LEFT_LANE] = lane_gffs[RelativeLane.LEFT_LANE]
+            # check for right augmented lane
+            if can_augment[1]:
+                extended_lane_frames[RelativeLane.RIGHT_LANE] = lane_gffs[RelativeLane.RIGHT_LANE]
+
+            # create normal left and right GFFs if possible
+            for rel_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
+                neighbor_lane_id = closest_lanes_dict.get(rel_lane)
+                lane_gffs= MapUtils.get_lookahead_frenet_frame_by_cost(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                    lookahead_dist=frame_length, route_plan=route_plan, force_maneuver=force_maneuver)
-            except MappingException as e:
-                logger.warning(e)
-                continue
+                    lookahead_dist=frame_length, route_plan=route_plan)
+                # lane_gffs[RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
+                extended_lane_frames[rel_lane] = lane_gffs[RelativeLane.SAME_LANE]
+
+        except MappingException as e:
+            logger.warning(e)
+
 
         # TODO: Remove the two if statements below when there is no longer the possibility of having identical GFFs. Without these
         #  statements, identical GFFs will occur when a lane split in the host vehicle's lane is within the backward horizon that is used

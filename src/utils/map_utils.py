@@ -491,17 +491,14 @@ class MapUtils:
                 # TODO: handle case if more than one split present
                 return valid_maneuver_lanes[0]
 
+            # maneuver_type is None
             else:
                 # Initialize the desired downstream lane to be the first element of downstream_lane_ids_on_plan
-                minimal_lane_id = downstream_lane_ids_on_plan[0]
-
                 try:
-                    minimal_lane_end_cost = route_plan_costs[minimal_lane_id][LANE_END_COST_IND]
+                    downstream_lane_end_costs = [route_plan_costs[downstream_lane_id][LANE_END_COST_IND]
+                                                 for downstream_lane_id in downstream_lane_ids_on_plan]
                 except KeyError:
                     raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
-
-                downstream_lane_end_costs = [route_plan_costs[downstream_lane_id][LANE_END_COST_IND]
-                                             for downstream_lane_id in downstream_lane_ids_on_plan]
 
                 sorted_costs, sorted_ids = zip(*[(cost, lane_id) for (cost, lane_id) in sorted(zip(downstream_lane_end_costs, downstream_lane_ids_on_plan))])
 
