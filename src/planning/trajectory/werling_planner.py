@@ -359,7 +359,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice]
 
     @staticmethod
-    def _raise_error(state: State, ftrajectories: FrenetTrajectories2D,ctrajectories: CartesianExtendedTrajectories,
+    def _raise_error(state: State, ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories,
                      reference_route: FrenetSerret2DFrame, T_target_horizon: float, planning_horizon: float,
                      goal: CartesianExtendedState, ego_frenet_state: FrenetState2D, goal_frenet_state: FrenetState2D,
                      cost_params: TrajectoryCostParams) -> None:

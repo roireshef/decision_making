@@ -1,3 +1,7 @@
+from logging import Logger
+
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import FrenetSubSegment, \
+    GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
@@ -13,7 +17,10 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
     LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TRAJECTORY_TIME_RESOLUTION, \
-    EPS
+    EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT, DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, \
+    DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, \
+    SHOULDER_SIGMOID_OFFSET
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
@@ -28,6 +35,7 @@ from decision_making.test.planning.trajectory.utils import RouteFixture, Plottab
     WerlingVisualizer
 from decision_making.src.utils.geometry_utils import CartesianFrame
 from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 
 
 @patch('decision_making.src.planning.trajectory.werling_planner.TD_STEPS', 5)
@@ -489,6 +497,83 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
 
     # fig.show()
     fig.clear()
+
+
+def test_computeObstacleCosts_actorOnLeftLaneTouchesSameLane_trajectoryDeviatesFromLaneCenter(scene_static_pg_split):
+    """
+    Test TP obstacle cost.
+    Ego has 3 lane-change trajectories (from right to left) with same init/end constraints but different T_d: [4, 6, 8].
+    Dynamic object is static, located on the right lane, such that ego reaches it longitudinally at time t = 4.
+    The result:
+    The first trajectory is collision-free.
+    The second trajectory is too close to the object.
+    The third trajectory collides with the object.
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+
+    logger = Logger("test_computeCost_threeSRoutesOneObstacle_validScore")
+    road_id = 20
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
+    left_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
+    lane_width = MapUtils.get_lane_width(lane_id, s=0)
+    s = 1
+    init_d = 0
+    end_d = init_d
+    v = 10
+    T = 4
+    # Ego has same-lane trajectory, moves with constant longitudinal velocity 10 m/s during 8 seconds.
+    init_fstate = np.array([s, v, 0, init_d, 0, 0])
+    target_fstate = np.array([s + T * v, v, 0, end_d, 0, 0])
+
+    # Actor moves on the left lane, such that it touches the border of the same lane
+    obj_size = ObjectSize(4, 2, 0)
+    obj_map_state = MapState(np.array([s, v, 0, -lane_width/2 + obj_size.width/2, 0, 0]), left_lane_id)
+
+    # create State
+    ego_map_state = MapState(init_fstate, lane_id)
+    ego = EgoState.create_from_map_state(0, 0, ego_map_state, obj_size, 0, off_map=False)
+    obj = DynamicObject.create_from_map_state(1, 0, obj_map_state, obj_size, 0, off_map=False)
+    state = State(False, None, [obj], ego)
+
+    frenet_frame = MapUtils.get_lane_frenet_frame(ego.map_state.lane_id)
+    sub_segment = FrenetSubSegment(ego.map_state.lane_id, 0, frenet_frame.s_max)
+    reference_route = GeneralizedFrenetSerretFrame.build([frenet_frame], [sub_segment])
+
+    goal = reference_route.fstate_to_cstate(target_fstate)
+
+    # calculate obstacle costs for each trajectory
+    predictor = RoadFollowingPredictor(logger)
+    objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
+                                           offset=LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
+    objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
+                                           offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
+    cost_params = TrajectoryCostParams(left_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, 0),
+                                       right_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, 0),
+                                       left_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, 0),
+                                       right_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, 0),
+                                       left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, SHOULDER_SIGMOID_OFFSET),
+                                       right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, SHOULDER_SIGMOID_OFFSET),
+                                       obstacle_cost_x=objects_cost_x,
+                                       obstacle_cost_y=objects_cost_y,
+                                       dist_from_goal_cost=DEVIATION_FROM_GOAL_COST,
+                                       dist_from_target_horizon_time_cost=200.0,
+                                       lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
+                                       lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
+                                       velocity_limits=VELOCITY_LIMITS,
+                                       lon_acceleration_limits=LON_ACC_LIMITS,
+                                       lat_acceleration_limits=LAT_ACC_LIMITS,
+                                       desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+    # run Werling planner
+    planner = WerlingPlanner(logger, predictor)
+    _, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route,
+                                           goal=goal, T_target_horizon=T, T_trajectory_end_horizon=T,
+                                           cost_params=cost_params)
+
+    final_state = ctrajectories[0][-1]
+    final_cstate = np.concatenate((final_state, np.array([0, 0])))
+    final_ego_latitude = reference_route.cstate_to_fstate(final_cstate)[FS_DX]
+    dist_between_vehicles = obj_map_state.lane_fstate[FS_DX] + lane_width - final_ego_latitude - obj_size.width
+    assert 1 <= dist_between_vehicles <= lane_width - obj_size.width
 
 
 def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
