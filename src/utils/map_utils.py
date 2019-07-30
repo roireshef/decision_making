@@ -1,6 +1,6 @@
 import numpy as np
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, MultipleDownstreamLanes
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
@@ -472,7 +472,10 @@ class MapUtils:
         elif num_downstream_lane_ids_on_plan == 1:
             return downstream_lane_ids_on_plan[0]
 
-        elif num_downstream_lane_ids_on_plan > 1:   # If multiple downstream lanes continue along the navigation plan, choose one
+        elif num_downstream_lane_ids_on_plan > 1:
+
+            # raise exception if no maneuver is commanded when there are multiple downstreams
+
             route_plan_costs = route_plan.to_costs_dict()
             downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
@@ -480,6 +483,11 @@ class MapUtils:
             if maneuver_type:
                 valid_maneuver_lanes = [(lane, maneuver) for lane, maneuver in downstream_lane_maneuver_types.items()
                                         if maneuver == maneuver_type]
+
+                # if no valid downstream lanes found, raise same exception that would trigger a partial GFF to be created
+                if len(valid_maneuver_lanes) == 0:
+                    raise DownstreamLaneNotFound(f"No downstream with maneuver type {ManeuverType.name} for lane {current_lane_id}")
+
                 # TODO: handle case if more than one split present
                 return valid_maneuver_lanes[0]
 
@@ -492,20 +500,18 @@ class MapUtils:
                 except KeyError:
                     raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
 
-                # Compare the remaining elements of downstream_lane_ids_on_plan to the first element
-                for downstream_lane_id in downstream_lane_ids_on_plan[1:]:
-                    try:
-                        downstream_lane_end_cost = route_plan_costs[downstream_lane_id][LANE_END_COST_IND]
-                    except KeyError:
-                        raise LaneCostNotFound(f"Cost not found for one or more downstream lanes of lane id {current_lane_id}")
+                downstream_lane_end_costs = [route_plan_costs[downstream_lane_id][LANE_END_COST_IND]
+                                             for downstream_lane_id in downstream_lane_ids_on_plan]
 
-                    if (downstream_lane_end_cost < minimal_lane_end_cost or
-                        (downstream_lane_end_cost == minimal_lane_end_cost and
-                         downstream_lane_maneuver_types[downstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION)):
-                        minimal_lane_id = downstream_lane_id
-                        minimal_lane_end_cost = downstream_lane_end_cost
+                sorted_costs, sorted_ids = zip(*[(cost, lane_id) for (cost, lane_id) in sorted(zip(downstream_lane_end_costs, downstream_lane_ids_on_plan))])
 
-            return minimal_lane_id, downstream_lane_maneuver_types[minimal_lane_id]
+                # check if there are duplicate minimum costs (ok to do because array size should be > 1)
+                if sorted_costs[0] == sorted_costs[1]:
+                    raise MultipleDownstreamLanes("Multiple downstream lanes with the same cost found for lane %s" % current_lane_id)
+                else:
+                    minimal_lane_id = sorted_ids[0]
+
+            return minimal_lane_id
 
     @staticmethod
     @raises(UpstreamLaneNotFound)
