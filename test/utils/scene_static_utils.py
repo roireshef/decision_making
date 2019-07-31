@@ -119,7 +119,7 @@ class SceneStaticUtils:
                                                                      e_i_downstream_road_intersection_id=0,
                                                                      e_Cnt_lane_coupling_count=0,
                                                                      as_lane_coupling=[],
-                                                                     e_l_length=100,
+                                                                     e_l_length=nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
                                                                      e_Cnt_num_active_lane_attributes=4,
                                                                      a_i_active_lane_attribute_indices=np.array([0, 1, 2, 3]),
                                                                      a_cmp_lane_attributes=np.array(
