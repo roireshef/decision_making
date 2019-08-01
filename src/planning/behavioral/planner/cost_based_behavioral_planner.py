@@ -2,6 +2,7 @@ import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.planning.behavioral.behavioral_planner_strategy import ActionEvaluationStrategyType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
 from typing import Optional, List
@@ -42,8 +43,9 @@ class CostBasedBehavioralPlanner:
                  value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
-        self.action_spec_evaluator = action_spec_evaluator
         self.action_spec_validator = action_spec_validator or ActionSpecFiltering(filters=None, logger=logger)
+        self.actions_evaluator = {ActionEvaluationStrategyType.RULE_BASED: action_spec_evaluator,
+                                  ActionEvaluationStrategyType.RL_POLICY: recipe_evaluator}
         self.value_approximator = value_approximator
         self.predictor = predictor
         self.logger = logger

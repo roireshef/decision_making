@@ -209,7 +209,7 @@ class BrakingDistances:
     Calculates braking distances
     """
     @staticmethod
-    def create_braking_distances(aggresiveness_level: AggressivenessLevel=AggressivenessLevel.CALM.value) -> np.array:
+    def create_braking_distances(aggresiveness_level: AggressivenessLevel=AggressivenessLevel.STANDARD.value) -> np.array:
         """
         Creates distances of all follow_lane with the given aggressiveness_level, braking actions with a0 = 0
         :return: the actions' distances

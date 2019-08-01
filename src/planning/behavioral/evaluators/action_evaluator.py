@@ -8,6 +8,7 @@ import six
 import rte.python.profiler as prof
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.state.state import State
 
 
 @six.add_metaclass(ABCMeta)
@@ -17,7 +18,7 @@ class ActionSpecEvaluator:
 
     @abstractmethod
     @prof.ProfileFunction()
-    def evaluate(self, behavioral_state: BehavioralGridState,
+    def evaluate(self, state: State, behavioral_state: BehavioralGridState,
                  action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec],
                  action_specs_mask: List[bool]) -> np.ndarray:
@@ -31,7 +32,8 @@ class ActionRecipeEvaluator:
 
     @abstractmethod
     @prof.ProfileFunction()
-    def evaluate(self, behavioral_state: BehavioralGridState,
+    def evaluate(self, state: State, behavioral_state: BehavioralGridState,
                  action_recipes: List[ActionRecipe],
-                 action_recipes_mask: List[bool]) -> np.ndarray:
+                 action_recipes_mask: List[bool],
+                 policy) -> np.ndarray:
         pass

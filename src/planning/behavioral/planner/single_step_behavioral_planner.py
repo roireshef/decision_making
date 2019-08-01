@@ -4,6 +4,8 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_planner_strategy import ActionEvaluationStrategyType, \
+    ActionEvaluationStrategy
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
     ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
@@ -29,10 +31,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
+                 action_spec_evaluator: Optional[ActionSpecEvaluator],
+                 action_spec_validator: Optional[ActionSpecFiltering],
                  value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
-        super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
-                         predictor, logger)
+        super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator,
+                         value_approximator, predictor, logger)
 
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                       recipes_mask: List[bool], route_plan: RoutePlan) -> (int, ActionSpec):
@@ -65,8 +68,12 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
+        # choose action evaluation strategy according to the current state (e.g. rule-based or RL policy)
+        eval_strategy = ActionEvaluationStrategy.choose_strategy(state, behavioral_state)
+
         # State-Action Evaluation
-        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
+        action_costs = self.actions_evaluator[eval_strategy].evaluate(state, behavioral_state, action_recipes,
+                                                                      action_specs, action_specs_mask)
 
         # approximate cost-to-go per terminal state
         terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
@@ -100,8 +107,10 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
+
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
                                                                          recipes_mask, route_plan)
+
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
             behavioral_state=behavioral_state, action_spec=selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(

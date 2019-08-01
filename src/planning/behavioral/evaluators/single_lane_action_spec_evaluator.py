@@ -3,19 +3,20 @@ from logging import Logger
 from typing import List
 
 import numpy as np
-
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
+from decision_making.src.state.state import State
 
 
 class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def evaluate(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
+    def evaluate(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec], action_specs_mask: List[bool]) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
@@ -23,6 +24,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         * If there's a leading vehicle, try following it (ActionType.FOLLOW_LANE, lowest aggressiveness possible)
         * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_LANE action with maximal
         allowed velocity and lowest aggressiveness possible.
+        :param state: current state
         :param behavioral_state: semantic behavioral state, containing the semantic grid.
         :param action_recipes: semantic actions list.
         :param action_specs: specifications of action_recipes.
