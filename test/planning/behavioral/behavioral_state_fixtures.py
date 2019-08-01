@@ -433,7 +433,7 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 58, route_plan_20_30)
+    next_sub_segments = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 58, route_plan_20_30)[RelativeLane.SAME_LANE]
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 30

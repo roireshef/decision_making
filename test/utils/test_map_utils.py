@@ -105,7 +105,7 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
-    gff = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id, starting_lon, lookahead_dist, route_plan_20_30)
+    gff = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id, starting_lon, lookahead_dist, route_plan_20_30)[RelativeLane.SAME_LANE]
 
     # validate the length of the obtained frenet frame
     assert abs(gff.s_max - lookahead_dist) < SMALL_DISTANCE_ERROR
@@ -135,7 +135,7 @@ def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     starting_lon = 20.
     lookahead_dist = 500.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    sub_segments = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)
+    sub_segments = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)[RelativeLane.SAME_LANE]
     assert len(sub_segments) == 5
     for seg in sub_segments:
         assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
@@ -268,8 +268,8 @@ def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static_p
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
 
     #TODO: Change route_plan_20_30 to route_plan based on road_segment_ids
-    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, route_plan_20_30)
-    assert len(sub_segments) == len(road_segment_ids)
+    sub_segments_dict = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, route_plan_20_30)
+    assert len(sub_segments_dict[RelativeLane.SAME_LANE]) == len(road_segment_ids)
 
 
 def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static, route_plan_1_2):
@@ -291,7 +291,7 @@ def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static,
     route_plan_1_2.s_Data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1
     route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1
 
-    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
+    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)[RelativeLane.SAME_LANE]
     assert sub_segments[1].e_i_SegmentID == 20
 
 
@@ -311,7 +311,7 @@ def test_advanceByCost_chooseStraightLaneInSplitWithSameCosts(right_lane_split_s
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
 
-    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
+    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)[RelativeLane.SAME_LANE]
     assert sub_segments[1].e_i_SegmentID == 21
 
 
@@ -337,7 +337,7 @@ def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split
     # set cost of straight connection lane (lane 21) to be 1
     [lane for lane in route_plan_1_2.s_Data.as_route_plan_lane_segments[1] if lane.e_i_lane_segment_id  == 21][0].e_cst_lane_end_cost = 1
 
-    gff = MapUtils.get_lookahead_frenet_frame_by_cost(11, 0, MapUtils.get_lane_length(11)+1, route_plan_1_2)
+    gff = MapUtils.get_lookahead_frenet_frame_by_cost(11, 0, MapUtils.get_lane_length(11)+1, route_plan_1_2)[RelativeLane.SAME_LANE]
     chosen_lane = gff.segment_ids[gff._get_segment_idxs_from_s(np.array([MapUtils.get_lane_length(11)+1]))[0]]
     assert chosen_lane == 20
 

@@ -201,7 +201,7 @@ class BehavioralGridState:
         # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}
 
-        # Find out if it is possible for lanes to be augmented
+        # Augmented GFFS can be created only if the lanes don't currently exist
         can_augment = {RelativeLane.LEFT_LANE: RelativeLane.LEFT_LANE not in closest_lanes_dict.keys(),
                        RelativeLane.RIGHT_LANE: RelativeLane.RIGHT_LANE not in closest_lanes_dict.keys()}
 
@@ -210,28 +210,26 @@ class BehavioralGridState:
             # create SAME_LANE gff
             same_lane_id = closest_lanes_dict.get(RelativeLane.SAME_LANE)
 
-            # get the dict of {RelativeLane: GFF}. If augmentated GFFs were created, use them.
-            lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(
+            # get the dict of {RelativeLane: GFF}. If augmented GFFs were created, use them.
+            lane_gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(
                         lane_id=same_lane_id, starting_lon=ref_route_start,
                         lookahead_dist=frame_length, route_plan=route_plan, can_augment=can_augment)
 
-            extended_lane_frames[RelativeLane.SAME_LANE] = lane_gffs[RelativeLane.SAME_LANE]
+            extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
 
-            # check for left augmented lane
-            if can_augment[0]:
-                extended_lane_frames[RelativeLane.LEFT_LANE] = lane_gffs[RelativeLane.LEFT_LANE]
-            # check for right augmented lane
-            if can_augment[1]:
-                extended_lane_frames[RelativeLane.RIGHT_LANE] = lane_gffs[RelativeLane.RIGHT_LANE]
-
-            # create normal left and right GFFs if possible
-            for rel_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
-                neighbor_lane_id = closest_lanes_dict.get(rel_lane)
-                lane_gffs= MapUtils.get_lookahead_frenet_frame_by_cost(
-                    lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                    lookahead_dist=frame_length, route_plan=route_plan)
-                # lane_gffs[RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
-                extended_lane_frames[rel_lane] = lane_gffs[RelativeLane.SAME_LANE]
+            # assign augmented GFFs if possible
+            for relative_lane in can_augment.keys():
+                if can_augment[relative_lane]:
+                    if lane_gff_dict[relative_lane]:
+                        extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
+                # try to create GFF normally if an augmented GFF won't be created
+                else:
+                    neighbor_lane_id = closest_lanes_dict.get(relative_lane)
+                    lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(
+                        lane_id=neighbor_lane_id, starting_lon=ref_route_start,
+                        lookahead_dist=frame_length, route_plan=route_plan)
+                    # index by [RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
+                    extended_lane_frames[relative_lane] = lane_gffs[RelativeLane.SAME_LANE]
 
         except MappingException as e:
             logger.warning(e)

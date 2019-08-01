@@ -287,7 +287,8 @@ class MapUtils:
     @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     @prof.ProfileFunction()
     def get_lookahead_frenet_frame_by_cost(lane_id: int, starting_lon: float, lookahead_dist: float,
-                                           route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]]) -> Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
+                                           route_plan: RoutePlan,
+                                           can_augment: Optional[Dict[RelativeLane, bool]] = None) -> Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
         (may be negative).
@@ -296,8 +297,14 @@ class MapUtils:
         :param starting_lon: starting longitude (may be negative) [m]
         :param lookahead_dist: lookahead distance for the output frame [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: generalized Frenet frame for the given route part
+        :return: Dict of generalized Frenet frame for the given route part
+                 Keys are RelativeLane types. Left and Right will be None if an augmented GFF is not created
         """
+        # initialze default argument
+        if can_augment == None:
+            can_augment = {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
+
+
         init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
 
         # get the full lanes path
@@ -309,9 +316,10 @@ class MapUtils:
                      RelativeLane.RIGHT_LANE: None}
 
         for relative_lane in sub_segments_dict.keys():
-            frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments_dict[relative_lane]]
-            # create GFF
-            gffs_dict[relative_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments_dict[relative_lane])
+            if sub_segments_dict[relative_lane]:
+                frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments_dict[relative_lane]]
+                # create GFF
+                gffs_dict[relative_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments_dict[relative_lane])
         return gffs_dict
 
     @staticmethod
@@ -328,7 +336,7 @@ class MapUtils:
     @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
     @prof.ProfileFunction()
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]]) -> Dict[RelativeLane, List[FrenetSubSegment]]:
+                         route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]] = None) -> Dict[RelativeLane, List[FrenetSubSegment]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
@@ -343,6 +351,8 @@ class MapUtils:
                  The left-augmented and right-augmented values will be None, unless an augmented GFF can be created.
                  The values are a list of FrenetSubSegments that will be used to create the GFF.
         """
+        if can_augment == None:
+             can_augment = {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
 
         try:
@@ -386,7 +396,7 @@ class MapUtils:
                                               current_segment_end_s, lookahead_distance))
 
             try:
-                current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
+                current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
                                                                                              next_road_idx_on_plan)
             # catch the case where there are multiple downstreams, and decide if an augmented can be created
             except MultipleDownstreamLanes:
@@ -410,7 +420,7 @@ class MapUtils:
                     next_augmented_road_segment[RelativeLane.RIGHT_LANE] = next_road_idx_on_plan
 
                 # force a straight_connection maneuver to continue the lookahead
-                current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
+                current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
                                                                                          next_road_idx_on_plan, maneuver_type=ManeuverType.STRAIGHT_CONNECTION)
 
             current_segment_start_s = 0
@@ -464,12 +474,12 @@ class MapUtils:
                                                   current_segment_end_s, lookahead_distance))
 
                 if not split_taken:
-                    current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
+                    current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
                                                                                                  next_road_idx_on_plan,
                                                                                                  maneuver_type=augmented_maneuver_map[relative_lane])
                 # if a split has been taken already, take straight connections from there on
                 else:
-                    current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id,
+                    current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id,
                                                                                                  route_plan,
                                                                                                  next_road_idx_on_plan,
                                                                                                  maneuver_type=ManeuverType.STRAIGHT_CONNECTION)
@@ -480,7 +490,7 @@ class MapUtils:
 
     @staticmethod
     @raises(DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanDoesNotFitMap, MultipleDownstreamLanes)
-    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int, maneuver_type: Optional[ManeuverType]) -> (int, ManeuverType):
+    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int, maneuver_type: Optional[ManeuverType] = None) -> (int):
         """
         Currently assumes that Lookahead spreads only current lane segment and the next lane segment(!)
 
@@ -521,7 +531,7 @@ class MapUtils:
                     raise DownstreamLaneNotFound(f"No downstream with maneuver type {ManeuverType.name} for lane {current_lane_id}")
 
                 # TODO: handle case if more than one split present
-                return valid_maneuver_lanes[0]
+                return valid_maneuver_lanes[0][0]
 
             # if maneuver_type is None, get the lane with the minimal cost. Raise exception if multiple minimums found
             else:
@@ -541,7 +551,7 @@ class MapUtils:
                 else:
                     minimal_lane_id = sorted_ids[0]
 
-            return minimal_lane_id, downstream_lane_maneuver_types[minimal_lane_id]
+            return minimal_lane_id
 
     @staticmethod
     @raises(UpstreamLaneNotFound)
