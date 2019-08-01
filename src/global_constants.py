@@ -5,6 +5,7 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
+FLOAT_MAX  = np.finfo(np.float32).max
 TRUE_COST = 1.0
 FALSE_COST = 0.0
 
@@ -113,6 +114,10 @@ BEYOND_SPEC_INDEX_STEP = 4
 MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
 # Time threshold to raise takeover flag
 TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
+
+# [m] The maximum station difference between the host and an adjacent lane's last nominal path point that is allowed when localizing the
+# host in an adjacent lane
+MAX_STATION_DIFFERENCE_FROM_HOST = 1.0
 
 
 # Trajectory Planner #

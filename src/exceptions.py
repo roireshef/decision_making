@@ -108,6 +108,10 @@ class LaneCostNotFound(MappingException):
     pass
 
 
+class HostStationInAdjacentLaneNotFound(MappingException):
+    pass
+
+
 class ConstraintFilterHaltWithValue(Exception):
     """
     This is raised internally within ConstraintFilter when halt (stopping the filter without completing the entire execution)

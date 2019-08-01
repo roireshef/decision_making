@@ -5,11 +5,12 @@ from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
-from decision_making.src.exceptions import MappingException
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
+from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, HostStationInAdjacentLaneNotFound
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, FLOAT_MAX, MAX_STATION_DIFFERENCE_FROM_HOST
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX, FrenetState2D
+from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
@@ -186,27 +187,71 @@ class BehavioralGridState:
         # calculate unified generalized frenet frames
         ego_lane_id = state.ego_state.map_state.lane_id
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
-        # create generalized_frames for the nearest lanes
-        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
-
-        # TODO: remove this hack when all unit-tests have enough margin backward
-        # if there is no long enough road behind ego, set ref_route_start = 0
-        ref_route_start = suggested_ref_route_start \
-            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
-            else 0
-
-        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
-
-        # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}
-        for rel_lane, lane_id in closest_lanes_dict.items():
-            try:
-                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
-                    lane_id=lane_id, starting_lon=ref_route_start,
-                    lookahead_dist=frame_length, route_plan=route_plan)
-            except MappingException as e:
-                logger.warning(e)
-                continue
+
+        # Create generalized Frenet frame for the host's lane
+        try:
+            extended_lane_frames[RelativeLane.SAME_LANE] = MapUtils.get_lookahead_frenet_frame_by_cost(
+                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=state.ego_state.map_state.lane_fstate[FS_SX],
+                route_plan=route_plan)
+        except MappingException as e:
+            logger.warning(e)
+            return extended_lane_frames
+
+        host_cartesion_state = state.ego_state.cartesian_state
+        host_cartesion_point = np.array([host_cartesion_state[C_X], host_cartesion_state[C_Y]])
+        host_station_on_same_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE].cpoint_to_fpoint(host_cartesion_point)[FP_SX]
+
+        # If an adjacent lane exists, create a generalized Frenet frame for it
+        for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
+            if relative_lane in closest_lanes_dict:
+                # First, find the station value in the relative lane that is adjacent to the host's station in the lane it is occupying
+                previous_station_difference = FLOAT_MAX
+                host_station_in_adjacent_lane = -1.0
+
+                nominal_path_points = MapUtils.get_lane_geometry(closest_lanes_dict[relative_lane]).a_nominal_path_points
+                last_nominal_path_point_index = len(nominal_path_points) - 1
+
+                for i, nominal_path_point in enumerate(nominal_path_points):
+                    cartesian_point = np.array([nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value],
+                                                nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value]])
+
+                    try:
+                        station_on_same_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE].cpoint_to_fpoint(cartesian_point)[FP_SX]
+                    except (OutOfSegmentBack, OutOfSegmentFront, AssertionError):
+                        # If any of these errors were raised, then the nominal path point is not close to the host's station. Continue to
+                        # the next point.
+                        continue
+
+                    station_difference = abs(host_station_on_same_lane_gff - station_on_same_lane_gff)
+
+                    if station_difference < previous_station_difference:
+                        # If station_difference is less than previous_station_difference, there is potentially a closer station to the host.
+                        # Unless the last nominal path point has been reached, continue iterating until station_difference begins to
+                        # increase. If the last nominal path point has been reached and it's "close enough" to the host, record the station
+                        # value prior to exiting the loop.
+                        if i == last_nominal_path_point_index and station_difference < MAX_STATION_DIFFERENCE_FROM_HOST:
+                            host_station_in_adjacent_lane = nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+                        else:
+                            previous_station_difference = station_difference
+                    else:
+                        # If station_difference is greater than or equal to previous_station_difference, then the closest station value in
+                        # the adjacent lane to the host has been reached. Record the previous station value and break from the loop.
+                        host_station_in_adjacent_lane = nominal_path_points[i - 1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+                        break
+
+                if host_station_in_adjacent_lane == -1.0:
+                    # Since the host's equivalent station in the adjacent lane could not be found, a GFF cannot be created for that lane.
+                    logger.warning(HostStationInAdjacentLaneNotFound("Could not determine the host's equivalent station in lane segment {}"
+                                                                     .format(closest_lanes_dict[relative_lane])))
+                    continue
+
+                # Second, create the GFF
+                try:
+                    extended_lane_frames[relative_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
+                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan)
+                except MappingException as e:
+                    logger.warning(e)
 
         # TODO: Remove the two if statements below when there is no longer the possibility of having identical GFFs. Without these
         #  statements, identical GFFs will occur when a lane split in the host vehicle's lane is within the backward horizon that is used

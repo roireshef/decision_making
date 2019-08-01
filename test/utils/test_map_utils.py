@@ -18,6 +18,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static
+from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 
 
 MAP_SPLIT = "PG_split.bin"
@@ -90,7 +91,6 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
         scene_static_pg_split, route_plan_20_30):
     """
     test method get_lookahead_frenet_frame_by_cost:
-        the current map has only one road segment;
         the frame starts and ends on arbitrary points.
     verify that final length, offset of GFF and conversion of an arbitrary point are accurate
     """
@@ -99,18 +99,17 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
     road_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 3
     current_ordinal = 1
-    starting_lon = -200.
-    lookahead_dist = 500.
+    station = 50.0
     arbitrary_fpoint = np.array([450., 1.])
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
-    gff = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id, starting_lon, lookahead_dist, route_plan_20_30)
+    gff = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id, station, route_plan_20_30)
 
     # validate the length of the obtained frenet frame
-    assert abs(gff.s_max - lookahead_dist) < SMALL_DISTANCE_ERROR
+    assert abs(gff.s_max - (PLANNING_LOOKAHEAD_DIST + MAX_HORIZON_DISTANCE)) < SMALL_DISTANCE_ERROR
     # calculate cartesian state of the origin of lane_id using GFF and using original frenet of lane_id and compare them
-    gff_cpoint = gff.fpoint_to_cpoint(np.array([-starting_lon, 0]))
+    gff_cpoint = gff.fpoint_to_cpoint(np.array([PLANNING_LOOKAHEAD_DIST - station, 0]))
     ff_cpoint = MapUtils.get_lane_frenet_frame(lane_id).fpoint_to_cpoint(np.array([0, 0]))
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
@@ -337,8 +336,8 @@ def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split
     # set cost of straight connection lane (lane 21) to be 1
     [lane for lane in route_plan_1_2.s_Data.as_route_plan_lane_segments[1] if lane.e_i_lane_segment_id  == 21][0].e_cst_lane_end_cost = 1
 
-    gff = MapUtils.get_lookahead_frenet_frame_by_cost(11, 0, MapUtils.get_lane_length(11)+1, route_plan_1_2)
-    chosen_lane = gff.segment_ids[gff._get_segment_idxs_from_s(np.array([MapUtils.get_lane_length(11)+1]))[0]]
+    gff = MapUtils.get_lookahead_frenet_frame_by_cost(11, 800, route_plan_1_2)
+    chosen_lane = gff.segment_ids[-1]
     assert chosen_lane == 20
 
 def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength(scene_static_pg_split):

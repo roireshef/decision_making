@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound
-from decision_making.src.global_constants import EPS, LANE_END_COST_IND
+from decision_making.src.global_constants import EPS, LANE_END_COST_IND, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
@@ -284,21 +284,28 @@ class MapUtils:
     @staticmethod
     @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     @prof.ProfileFunction()
-    def get_lookahead_frenet_frame_by_cost(lane_id: int, starting_lon: float, lookahead_dist: float,
-                                           route_plan: RoutePlan) -> GeneralizedFrenetSerretFrame:
+    def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan) -> GeneralizedFrenetSerretFrame:
         """
-        Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
-        (may be negative).
+        Create Generalized Frenet frame along lane center, starting from given lane and station.
         When some lane ends, it automatically continues to the next lane, according to costs.
         :param lane_id: starting lane_id
-        :param starting_lon: starting longitude (may be negative) [m]
-        :param lookahead_dist: lookahead distance for the output frame [m]
+        :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
         :return: generalized Frenet frame for the given route part
         """
-        init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
+        suggested_ref_route_start = station - PLANNING_LOOKAHEAD_DIST
+
+        # TODO: remove this hack when all unit-tests have enough margin backward
+        # if there is no long enough road behind ego, set ref_route_start = 0
+        ref_route_start = suggested_ref_route_start \
+            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(lane_id, -suggested_ref_route_start) \
+            else 0
+
+        frame_length = station - ref_route_start + MAX_HORIZON_DISTANCE
+
+        init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, ref_route_start)
         # get the full lanes path
-        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan)
+        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, frame_length, route_plan)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
         # create GFF
