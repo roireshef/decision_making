@@ -287,9 +287,8 @@ class MapUtils:
     @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     @prof.ProfileFunction()
     def get_lookahead_frenet_frame_by_cost(lane_id: int, starting_lon: float, lookahead_dist: float,
-                                           route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]]) -> GeneralizedFrenetSerretFrame:
+                                           route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]]) -> Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
-        TODO: Use force_maneuver to force taking a certain split
         Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
         (may be negative).
         When some lane ends, it automatically continues to the next lane, according to costs.
@@ -302,12 +301,18 @@ class MapUtils:
         init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
 
         # get the full lanes path
-        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan, can_augment)
+        sub_segments_dict = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan, can_augment)
+
         # create sub-segments for GFF
-        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
-        # create GFF
-        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
-        return gff
+        gffs_dict = {RelativeLane.LEFT_LANE: None,
+                     RelativeLane.SAME_LANE: None,
+                     RelativeLane.RIGHT_LANE: None}
+
+        for relative_lane in sub_segments_dict.keys():
+            frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments_dict[relative_lane]]
+            # create GFF
+            gffs_dict[relative_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments_dict[relative_lane])
+        return gffs_dict
 
     @staticmethod
     def _get_frenet_starting_point(lane_id, starting_lon):
