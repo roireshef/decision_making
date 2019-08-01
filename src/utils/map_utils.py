@@ -343,7 +343,7 @@ class MapUtils:
         try:
             current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
         except IndexError:
-            raise RoadNotFound("Road ID {} is not in not found in the route plan road segment list"
+            raise RoadNotFound("Road ID {} was not found in the route plan road segment list"
                                .format(initial_road_segment_id))
 
         lane_subsegments_dict = {RelativeLane.SAME_LANE: [], RelativeLane.LEFT_LANE: None, RelativeLane.RIGHT_LANE: None}
@@ -352,6 +352,7 @@ class MapUtils:
         # flags to determine if a split path should be taken
         take_split = {ManeuverType.LEFT_SPLIT: False, ManeuverType.RIGHT_SPLIT: False}
         cumulative_common_distance = {RelativeLane.LEFT_LANE: 0., RelativeLane.RIGHT_LANE: 0.}
+        next_augmented_road_segment = {RelativeLane.LEFT_LANE: current_road_idx_on_plan, RelativeLane.RIGHT_LANE: current_road_idx_on_plan}
         augmented_maneuver_map = {RelativeLane.LEFT_LANE: ManeuverType.LEFT_SPLIT, RelativeLane.RIGHT_LANE: ManeuverType.RIGHT_SPLIT}
 
         current_lane_id = initial_lane_id
@@ -393,6 +394,7 @@ class MapUtils:
                     take_split[ManeuverType.LEFT_SPLIT] = True
                     lane_subsegments_dict[RelativeLane.LEFT_LANE] = lane_subsegments_dict[RelativeLane.SAME_LANE]
                     cumulative_common_distance[RelativeLane.LEFT_LANE] = cumulative_distance
+                    next_augmented_road_segment[RelativeLane.LEFT_LANE] = next_road_idx_on_plan
 
                 # check if right augmented is possible. Set flag and copy common subsegs.
                 elif not take_split[ManeuverType.RIGHT_SPLIT] and can_augment[RelativeLane.RIGHT_LANE] \
@@ -400,6 +402,7 @@ class MapUtils:
                     take_split[ManeuverType.RIGHT_SPLIT] = True
                     lane_subsegments_dict[RelativeLane.RIGHT_LANE] = lane_subsegments_dict[RelativeLane.RIGHT_LANE]
                     cumulative_common_distance[RelativeLane.RIGHT_LANE] = cumulative_distance
+                    next_augmented_road_segment[RelativeLane.RIGHT_LANE] = next_road_idx_on_plan
 
                 # force a straight_connection maneuver to continue the lookahead
                 current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
@@ -418,11 +421,18 @@ class MapUtils:
                 current_lane_id = lane_subsegments_dict[relative_lane][-1]
                 current_segment_start_s = 0
                 cumulative_distance = cumulative_common_distance[relative_lane]
+                current_road_idx_on_plan = next_augmented_road_segment[relative_lane]
             # otherwise, use initial conditions that are passed in
             elif len(lane_subsegments_dict[relative_lane] == 0):
                 current_lane_id = initial_lane_id
                 current_segment_start_s = initial_s
                 cumulative_distance = 0.
+                try:
+                    current_road_idx_on_plan = \
+                        np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
+                except IndexError:
+                    raise RoadNotFound("Road ID {} was not found in the route plan road segment list."
+                                       .format(initial_road_segment_id))
 
             # continue the lookahead for the augmented lanes
             while True:
@@ -452,6 +462,7 @@ class MapUtils:
                     current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
                                                                                                  next_road_idx_on_plan,
                                                                                                  maneuver_type=augmented_maneuver_map[relative_lane])
+                # if a split has been taken already, take straight connections from there on
                 else:
                     current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id,
                                                                                                  route_plan,
