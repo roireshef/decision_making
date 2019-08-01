@@ -202,8 +202,8 @@ class BehavioralGridState:
         extended_lane_frames = {}
 
         # Find out if it is possible for lanes to be augmented
-        can_augment = [RelativeLane.LEFT_LANE not in closest_lanes_dict.keys(),
-                       RelativeLane.RIGHT_LANE not in closest_lanes_dict.keys()]
+        can_augment = {RelativeLane.LEFT_LANE: RelativeLane.LEFT_LANE not in closest_lanes_dict.keys(),
+                       RelativeLane.RIGHT_LANE: RelativeLane.RIGHT_LANE not in closest_lanes_dict.keys()}
 
         # begin to create GFFs
         try:
