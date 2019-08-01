@@ -1,6 +1,7 @@
 import numpy as np
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, MultipleDownstreamLanes
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, MultipleDownstreamLanes, \
+    MappingException
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
@@ -350,6 +351,8 @@ class MapUtils:
 
         # flags to determine if a split path should be taken
         take_split = {ManeuverType.LEFT_SPLIT: False, ManeuverType.RIGHT_SPLIT: False}
+        cumulative_common_distance = {RelativeLane.LEFT_LANE: 0., RelativeLane.RIGHT_LANE: 0.}
+        augmented_maneuver_map = {RelativeLane.LEFT_LANE: ManeuverType.LEFT_SPLIT, RelativeLane.RIGHT_LANE: ManeuverType.RIGHT_SPLIT}
 
         current_lane_id = initial_lane_id
         current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
@@ -377,34 +380,85 @@ class MapUtils:
                                               current_segment_end_s, lookahead_distance))
 
             try:
-                # if any split will be taken, force straight for now. Splits will be taken care of after.
-                if np.any(take_split.values()):
-                    current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
-                                                                                                 next_road_idx_on_plan, maneuver_type=ManeuverType.STRAIGHT_CONNECTION)
-                # otherwise, don't pass in the maneuver_type (maneuver_type = None)
-                else:
-                    current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
-                                                                                                 next_road_idx_on_plan)
+                current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
+                                                                                             next_road_idx_on_plan)
             # catch the case where there are multiple downstreams, and decide if an augmented can be created
             except MultipleDownstreamLanes:
                 downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
-                # check if left augmented is possible. Set flag and copy common subsegs.
-                if can_augment[RelativeLane.LEFT_LANE] and ManeuverType.LEFT_SPLIT in downstream_lane_maneuver_types.values():
+                # Left augmentation is possible if a previous left split hasn't been found, and a left_split is detected
+                # Set flag and copy common subsegs.
+                if not take_split[ManeuverType.LEFT_SPLIT] and can_augment[RelativeLane.LEFT_LANE] \
+                        and ManeuverType.LEFT_SPLIT in downstream_lane_maneuver_types.values():
                     take_split[ManeuverType.LEFT_SPLIT] = True
                     lane_subsegments_dict[RelativeLane.LEFT_LANE] = lane_subsegments_dict[RelativeLane.SAME_LANE]
+                    cumulative_common_distance[RelativeLane.LEFT_LANE] = cumulative_distance
 
                 # check if right augmented is possible. Set flag and copy common subsegs.
-                elif can_augment[RelativeLane.RIGHT_LANE] and ManeuverType.RIGHT_SPLIT in downstream_lane_maneuver_types.values():
+                elif not take_split[ManeuverType.RIGHT_SPLIT] and can_augment[RelativeLane.RIGHT_LANE] \
+                        and ManeuverType.RIGHT_SPLIT in downstream_lane_maneuver_types.values():
                     take_split[ManeuverType.RIGHT_SPLIT] = True
                     lane_subsegments_dict[RelativeLane.RIGHT_LANE] = lane_subsegments_dict[RelativeLane.RIGHT_LANE]
+                    cumulative_common_distance[RelativeLane.RIGHT_LANE] = cumulative_distance
+
+                # force a straight_connection maneuver to continue the lookahead
+                current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
+                                                                                         next_road_idx_on_plan, maneuver_type=ManeuverType.STRAIGHT_CONNECTION)
 
             current_segment_start_s = 0
             current_road_idx_on_plan = next_road_idx_on_plan
 
         # take care of splits
         for relative_lane in [relative_lane for relative_lane in take_split.keys() if take_split[relative_lane]]:
+            # flag to see if a split has been taken, since only the first split will be taken
+            split_taken = False
 
+            # initialize lookahead using the last common lane segment if there are common segments
+            if len(lane_subsegments_dict[relative_lane] > 0):
+                current_lane_id = lane_subsegments_dict[relative_lane][-1]
+                current_segment_start_s = 0
+                cumulative_distance = cumulative_common_distance[relative_lane]
+            # otherwise, use initial conditions that are passed in
+            elif len(lane_subsegments_dict[relative_lane] == 0):
+                current_lane_id = initial_lane_id
+                current_segment_start_s = initial_s
+                cumulative_distance = 0.
+
+            # continue the lookahead for the augmented lanes
+            while True:
+                current_lane_length = MapUtils.get_lane_length(current_lane_id)
+
+                # distance to travel on current lane: distance to end of lane, or shorter if reached <lookahead distance>
+                current_segment_end_s = min(current_lane_length,
+                                            current_segment_start_s + lookahead_distance - cumulative_distance)
+
+                # add subsegment to the list and add traveled distance to <cumulative_distance> sum
+                lane_subsegments_dict[relative_lane].append(
+                    FrenetSubSegment(current_lane_id, current_segment_start_s, current_segment_end_s))
+                cumulative_distance += current_segment_end_s - current_segment_start_s
+
+                if cumulative_distance > lookahead_distance - EPS:
+                    break
+
+                next_road_idx_on_plan = current_road_idx_on_plan + 1
+                if next_road_idx_on_plan > len(route_plan.s_Data.a_i_road_segment_ids) - 1:
+                    raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
+                                                 "current_segment_end_s=%f lookahead_distance=%f" %
+                                                 (route_plan.s_Data.a_i_road_segment_ids,
+                                                  lookahead_distance - cumulative_distance,
+                                                  current_segment_end_s, lookahead_distance))
+
+                if not split_taken:
+                    current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan,
+                                                                                                 next_road_idx_on_plan,
+                                                                                                 maneuver_type=augmented_maneuver_map[relative_lane])
+                else:
+                    current_lane_id, maneuver_type_taken = MapUtils._choose_next_lane_id_by_cost(current_lane_id,
+                                                                                                 route_plan,
+                                                                                                 next_road_idx_on_plan,
+                                                                                                 maneuver_type=ManeuverType.STRAIGHT_CONNECTION)
+                current_segment_start_s = 0
+                current_road_idx_on_plan = next_road_idx_on_plan
 
         return lane_subsegments_dict
 
