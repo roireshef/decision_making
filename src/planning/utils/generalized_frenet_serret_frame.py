@@ -43,6 +43,7 @@ class GFF_Type(Enum):
     Normal = 0
     Augmented = 1
     Partial = 2
+    AugmentedPartial = 3
 
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
