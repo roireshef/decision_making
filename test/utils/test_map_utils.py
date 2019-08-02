@@ -17,7 +17,8 @@ from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
+    left_right_lane_split_scene_static
 
 
 MAP_SPLIT = "PG_split.bin"
@@ -321,8 +322,7 @@ def test_advanceByCost_chooseStraightLaneInSplitWithSameCosts(right_lane_split_s
 def test_advanceByCost_rightSplitConsideredIfCanAugment(right_lane_split_scene_static, route_plan_1_2):
     """
     Tests the method _advance_by_cost
-    A two-lane road opens up to a three-lane road where all lanes have identical end costs. Since there is not a lane that is "preferrable"
-    to be in, the vehicle should continue straight.
+    If the right lane can be augmented, subsegments including the split should be returned for the right augmented lane
     :param right_lane_split_scene_static:
     :param route_plan_1_2:
     :return:
@@ -340,6 +340,53 @@ def test_advanceByCost_rightSplitConsideredIfCanAugment(right_lane_split_scene_s
     assert sub_segments[RelativeLane.SAME_LANE][1].e_i_SegmentID == 21
     assert sub_segments[RelativeLane.LEFT_LANE] == None
     assert sub_segments[RelativeLane.RIGHT_LANE][1].e_i_SegmentID == 20
+
+def test_advanceByCost_leftRightSplitBothConsideredIfCanAugment(left_right_lane_split_scene_static, route_plan_1_2):
+    """
+       Tests the method _advance_by_cost
+       If the both the left and right lane can be augmented,
+       subsegments including the split should be returned for both lanes
+       :param right_lane_split_scene_static:
+       :param route_plan_1_2:
+       :return:
+       """
+    SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static)
+    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
+
+    # Modify the route plan
+    # In order to match the scene static data, the left and right lane in the first road segment needs to be deleted since
+    # it does not exist in left_right_lane_split_scene_static.
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][1]
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 1
+
+    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2,
+                                             can_augment=can_augment)
+    assert sub_segments[RelativeLane.SAME_LANE][1].e_i_SegmentID == 21
+    assert sub_segments[RelativeLane.LEFT_LANE][1].e_i_SegmentID == 22
+    assert sub_segments[RelativeLane.RIGHT_LANE][1].e_i_SegmentID == 20
+
+def test_advanceByCost_rightSplitNoneIfCannotAugment(right_lane_split_scene_static, route_plan_1_2):
+    """
+    Tests the method _advance_by_cost
+    If a right split is not allowed, subsegments should only be returned for SAME_LANE using straight connections
+    :param right_lane_split_scene_static:
+    :param route_plan_1_2:
+    :return:
+    """
+    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
+    can_augment = {RelativeLane.LEFT_LANE:False, RelativeLane.RIGHT_LANE:False}
+
+    # Modify the route plan
+    # In order to match the scene static data, the right lane in the first road segment needs to be deleted since
+    # it does not exist in right_lane_split_scene_static.
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
+
+    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2, can_augment=can_augment)
+    assert sub_segments[RelativeLane.SAME_LANE][1].e_i_SegmentID == 21
+    assert sub_segments[RelativeLane.LEFT_LANE] == None
+    assert sub_segments[RelativeLane.RIGHT_LANE] == None
 
 def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split_scene_static, route_plan_1_2):
     """

@@ -413,7 +413,7 @@ class MapUtils:
                     next_augmented_road_segment[RelativeLane.LEFT_LANE] = next_road_idx_on_plan
 
                 # check if right augmented is possible. Set flag and copy common subsegs.
-                elif not take_split[ManeuverType.RIGHT_SPLIT] and can_augment[RelativeLane.RIGHT_LANE] \
+                if not take_split[ManeuverType.RIGHT_SPLIT] and can_augment[RelativeLane.RIGHT_LANE] \
                         and ManeuverType.RIGHT_SPLIT in downstream_lane_maneuver_types.values():
                     take_split[ManeuverType.RIGHT_SPLIT] = True
                     lane_subsegments_dict[RelativeLane.RIGHT_LANE] = list(lane_subsegments_dict[RelativeLane.SAME_LANE])
