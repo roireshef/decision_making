@@ -346,7 +346,7 @@ class MapUtils:
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: a list of tuples of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane)
+        :return: List of lane subsegments ahead of the host
         """
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
         # TODO: what will happen if there is a lane split ahead for left/right lanes and the doenstream road is not part of the nav. plan
