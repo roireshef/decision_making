@@ -247,6 +247,17 @@ class MapUtils:
         return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity]
 
     @staticmethod
+    def get_upstream_lane_maneuver_types(lane_id: int) -> Dict[LaneSegmentID, ManeuverType]:
+        """
+        Get maneuver types of the upstream lanes (incoming) of the given lane as a dictionary with the upstream lane ids as keys.
+        This is referring only to the previous road segment.
+        :param lane_id: ID for the lane in question
+        :return: Maneuver types of the upstream lanes
+        """
+        upstream_connectivity = MapUtils.get_lane(lane_id).as_upstream_lanes
+        return {connectivity.e_i_lane_segment_id: connectivity.e_e_maneuver_type for connectivity in upstream_connectivity}
+
+    @staticmethod
     def get_downstream_lane_maneuver_types(lane_id: int) -> Dict[LaneSegmentID, ManeuverType]:
         """
         Get maneuver types of the downstream lanes (outgoing) of the given lane as a dictionary with the downstream lane ids as keys.
