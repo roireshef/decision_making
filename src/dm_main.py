@@ -14,7 +14,7 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING
-from decision_making.src.planning.behavioral.evaluators.action_evaluator_by_policy import LaneMergePolicy
+from decision_making.src.planning.behavioral.evaluators.action_evaluator_by_policy import LaneMergeRLPolicy
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
@@ -70,7 +70,7 @@ class DmInitialization:
                                                      DynamicActionSpace(logger, predictor,
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
-        recipe_evaluator = LaneMergePolicy(logger)
+        recipe_evaluator = LaneMergeRLPolicy(logger)
         action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
