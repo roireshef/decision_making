@@ -80,10 +80,13 @@ class KinematicUtils:
         lon_velocity = ctrajectories[:, :, C_V]
 
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
-        conforms_desired = np.logical_or(
-            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= nominal_velocity + EPS), axis=1),
-            np.logical_and(lon_acceleration[:, 0] > lon_acceleration[:, 1],
-                           lon_velocity[:, -1] <= nominal_velocity[:, -1] + NEGLIGIBLE_VELOCITY))
+        conforms_desired = np.logical_and(
+            lon_velocity[:, -1] <= nominal_velocity[:, -1] + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
+            np.logical_or(
+                # either speed is below limit, or vehicle is slowing down when it doesn't
+                np.all(np.logical_or(lon_acceleration <= 0, lon_velocity <= nominal_velocity + EPS), axis=1),
+                # acceleration is being reduced throughout the trajectory
+                lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
         return conforms_desired
 

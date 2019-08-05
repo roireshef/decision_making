@@ -1,4 +1,3 @@
-import rte.python.profiler as prof
 from collections import defaultdict
 from itertools import compress
 
@@ -9,12 +8,12 @@ from logging import Logger
 from typing import List
 from typing import Optional
 
-from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN
+from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, FS_SX, FS_SV, FS_SA
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
@@ -125,7 +124,11 @@ class ActionSpecFilter:
                 trajectory_s[spec_t_idx:last_pad_idx] = np.c_[spec.s + times_beyond_spec * spec.v,
                                                               np.full(times_beyond_spec.shape, spec.v),
                                                               np.zeros_like(times_beyond_spec)]
-            trajectory_s[last_pad_idx:] = 0
+            # need to add padding, as we look at the whole trajectory to decide if we meet the speed limits
+            # pad s beyond last_pad_idx: in case of short actions padding take the last s, otherwise take spec.s
+            trajectory_s[last_pad_idx:, FS_SX] = max(spec.s, trajectory_s[last_pad_idx-1, FS_SX])
+            trajectory_s[last_pad_idx:, FS_SV] = spec.v
+            trajectory_s[last_pad_idx:, FS_SA] = 0
             trajectory_d[spec_t_idx:] = 0
 
         # return full Frenet trajectories
