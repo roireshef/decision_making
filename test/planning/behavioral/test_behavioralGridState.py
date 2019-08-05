@@ -3,9 +3,6 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.src.messages.scene_static_message import SceneStatic
-from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import DynamicObject, MapState, ObjectSize
 
 import numpy as np
 

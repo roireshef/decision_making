@@ -305,13 +305,10 @@ class MapUtils:
         """
         init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, starting_lon)
         # get the full lanes path
-        sub_segments, lookahead_status = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan)
+        sub_segments, gff_type = MapUtils._advance_by_cost(init_lane_id, init_lon, lookahead_dist, route_plan)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
         # create GFF, get gff_type from lookahead status
-        gff_type = GFF_Type.Normal
-        if lookahead_status == LookaheadStatus.Partial:
-            gff_type = GFF_Type.Partial
         gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments, gff_type)
         return gff
 
@@ -329,7 +326,7 @@ class MapUtils:
     @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
     @prof.ProfileFunction()
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         route_plan: RoutePlan) -> (List[FrenetSubSegment], LookaheadStatus):
+                         route_plan: RoutePlan) -> (List[FrenetSubSegment], GFF_Type):
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
@@ -338,7 +335,6 @@ class MapUtils:
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        # :param lane_cost_list: dictionary of key lane ID to value end cost of traversing lane
         :return: a tuple of
                  tuple of the format (lane_id, start_s (longitude) on lane, end_s (longitude) on lane),
                  GFF_Type to be created
@@ -356,7 +352,7 @@ class MapUtils:
 
         current_lane_id = initial_lane_id
         current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
-        status = LookaheadStatus.Normal
+        status = GFF_Type.Normal
         while True:
             current_lane_length = MapUtils.get_lane_length(current_lane_id)  # a lane's s_max
 
@@ -381,7 +377,7 @@ class MapUtils:
             try:
                 current_lane_id = MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan)
             except (DownstreamLaneNotFound, NavigationPlanDoesNotFitMap):
-                status = LookaheadStatus.Partial
+                status = GFF_Type.Partial
                 break
 
             current_segment_start_s = 0

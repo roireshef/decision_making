@@ -267,9 +267,9 @@ def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialLookahead(scene
     subsegs, status = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookadhead_dist, route_plan)
     assert status == LookaheadStatus.Partial
 
-def test_advanceOnPlan_notEnoughLaneAhead_ThrowsException(scene_static_pg_split, route_plan_20_30):
+def test_advanceByCost_notEnoughLaneAhead_ThrowsException(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_on_plan
+    test the method _advance_by_cost
         test that an exception is thrown when the there is not enough valid space ahead to create a GFF
         minimum space is defined by the global constant MINIMUM_REQUIRED_DIST_LANE_AHEAD
     """
