@@ -13,6 +13,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import EgoState, ObjectSize
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
+from decision_making.src.planning.types import LaneSegmentID
 
 
 class RoutePlanTestData:
@@ -22,25 +23,24 @@ class RoutePlanTestData:
 
 
 class TakeOverTestData:
-    def __init__(self, scene_static: SceneStatic, route_plan_data: DataRoutePlan, ego_state: EgoState, expected_takeover: bool ):
+    def __init__(self, scene_static: SceneStatic, route_plan_data: DataRoutePlan, ego_state: EgoState, expected_takeover: bool):
         self.scene_static = scene_static
         self.route_plan_data = route_plan_data
         self.ego_state = ego_state
         self.expected_takeover = expected_takeover
 
 
-def default_route_plan() -> DataRoutePlan:
+def default_route_plan_for_PG_split_file() -> DataRoutePlan:
     return DataRoutePlan(e_b_is_valid=True,
                          e_Cnt_num_road_segments = 10,
                          a_i_road_segment_ids = np.arange(20, 30),
                          a_Cnt_num_lane_segments = np.full(10, 3),
-                         as_route_plan_lane_segments = [[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id_base+lane_number,
+                         as_route_plan_lane_segments = [[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id_base + lane_number,
                                                                               e_cst_lane_occupancy_cost=0.0,
                                                                               e_cst_lane_end_cost=0.0) for lane_number in [0, 1, 2]]
                                                         for lane_segment_id_base in np.arange(200, 300, 10)])
 
 
-LaneSegmentID = int
 IsLaneAttributeActive = bool
 LaneAttribute = int  # actually, LaneMappingStatusType, MapLaneDirection, GMAuthorityType, or LaneConstructionType
 LaneAttributeConfidence = float
@@ -88,7 +88,7 @@ def modify_default_lane_attributes(lane_attribute_modifications: LaneAttributeMo
                                           "scene_three"])
 def construction_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -171,7 +171,7 @@ def construction_scene_and_expected_output(request):
                                           "scene_two"])
 def map_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -218,6 +218,7 @@ def map_scene_and_expected_output(request):
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
+
 @pytest.fixture(scope='function', params=["scene_one",
                                           "scene_two",
                                           "scene_three",
@@ -230,7 +231,7 @@ def map_scene_and_expected_output(request):
                                           "scene_ten"])
 def gmfa_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -329,10 +330,11 @@ def gmfa_scene_and_expected_output(request):
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
+
 @pytest.fixture(scope='function', params=["scene_one"])
 def lane_direction_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -351,11 +353,12 @@ def lane_direction_scene_and_expected_output(request):
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
                              expected_output=expected_output)
 
+
 @pytest.fixture(scope='function', params=["scene_one",
                                           "scene_two"])
 def combined_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan()
+    expected_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -371,7 +374,7 @@ def combined_scene_and_expected_output(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
                                      LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
                                      1.0),
-                                     (True,
+                                    (True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)],
@@ -454,7 +457,7 @@ def combined_scene_and_expected_output(request):
                                         as_route_plan_lane_segments = [[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
                                                                                              e_cst_lane_occupancy_cost=0.0,
                                                                                              e_cst_lane_end_cost=0.0)
-                                                                        for lane_segment_id in lane_segment_ids[road_segment_id-1]]
+                                                                        for lane_segment_id in lane_segment_ids[road_segment_id - 1]]
                                                                        for road_segment_id in navigation_plan])
 
         # Road Segment 1
@@ -478,7 +481,7 @@ def combined_scene_and_expected_output(request):
                              expected_output=expected_output)
 
 
-def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState :
+def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState:
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
     map_state = MapState(np.array([ego_lane_station, 10, 0, 0, 0, 0]), ego_lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
@@ -490,9 +493,9 @@ def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState :
                                           "scene_three"])
 def construction_scene_for_takeover_test(request):
     # Set Default Expected Output
-    route_plan_data = default_route_plan()
-    expected_takover = False
-    ego_state = generate_ego_state(ego_lane_id = 200 , ego_lane_station = 0)
+    route_plan_data = default_route_plan_for_PG_split_file()
+    expected_takeover = False
+    ego_state = generate_ego_state(ego_lane_id = 200, ego_lane_station = 0)
 
 
     # Define Lane Modifications and Modify Expected Outputs
@@ -516,15 +519,15 @@ def construction_scene_for_takeover_test(request):
         route_plan_data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
         route_plan_data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
 
-        ego_state = generate_ego_state(ego_lane_id = 201 , ego_lane_station = 50)
+        ego_state = generate_ego_state(ego_lane_id = 201, ego_lane_station = 50)
 
-        expected_takover = False
+        expected_takeover = False
 
     elif request.param is "scene_two":
         lane_modifications = {290: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
-                                     1.0)] ,
+                                     1.0)],
                               291: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
@@ -547,9 +550,9 @@ def construction_scene_for_takeover_test(request):
         route_plan_data.as_route_plan_lane_segments[9][1].e_cst_lane_end_cost = 1.0
         route_plan_data.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
 
-        ego_state = generate_ego_state(ego_lane_id = 282 , ego_lane_station = 80)
+        ego_state = generate_ego_state(ego_lane_id = 282, ego_lane_station = 80)
 
-        expected_takover = True
+        expected_takeover = True
 
     elif request.param is "scene_three":
         lane_modifications = {212: [(True,
@@ -568,7 +571,7 @@ def construction_scene_for_takeover_test(request):
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
                                      LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
                                      1.0),
-                                     (True,
+                                    (True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)],
@@ -603,17 +606,17 @@ def construction_scene_for_takeover_test(request):
 
         # ego state
         ego_lane_id = 211
-        ego_lane_station = 30 # station along the lane
+        ego_lane_station = 30  # station along the lane
         car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
         map_state = MapState(np.array([ego_lane_station, 10, 0, 0, 0, 0]), ego_lane_id)
         ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
         # expected output
-        expected_takover = True
+        expected_takeover = True
 
     else:
         lane_modifications = {}
 
     return TakeOverTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                             route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takover)
+                             route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takeover)

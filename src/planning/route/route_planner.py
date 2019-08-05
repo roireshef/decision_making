@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import List, Dict, Optional
 import rte.python.profiler as prof
-from decision_making.src.messages.route_plan_message import DataRoutePlan
+from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanRoadSegment
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
     SceneRoadSegment, SceneLaneSegmentBase
 from decision_making.src.exceptions import MissingInputInformation, RepeatedRoadSegments, raises,\
@@ -202,23 +202,37 @@ class RoutePlannerInputData():
         return self._route_lane_segment_ids[road_segment_id]
 
     @raises(RoadSegmentDataNotFound)
-    def get_next_road_segment(self, road_segment_id: int) -> int:
+    def get_next_road_segment_id(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
         if road_segment_id not in self._next_road_segment_id:
             raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry for next road segment found for road segment ID {0}'.format(road_segment_id))
 
+        return self._next_road_segment_id[road_segment_id]
+
 
     @raises(RoadSegmentDataNotFound)
-    def get_prev_road_segment(self, road_segment_id: int) -> int:
+    def get_prev_road_segment_id(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
         if road_segment_id not in self._prev_road_segment_id:
             raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry for previous road segment found for road segment ID {0}'.format(road_segment_id))
 
-        self._prev_road_segment_id[road_segment_id]
+        return self._prev_road_segment_id[road_segment_id]
+
+    @raises(RoadSegmentDataNotFound)
+    def get_road_segment(self, road_segment_id: int) -> SceneRoadSegment:
+        """
+         This method retrieves the road segment by its ID
+         :param road_segment_id:
+         :return:
+        """
+        if road_segment_id not in self._route_road_segments_as_dict:
+            raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry found for road segment ID {0}'.format(road_segment_id))
+
+        return self._route_road_segments_as_dict[road_segment_id]
 
     def __str__(self) -> str:
         """
@@ -234,6 +248,9 @@ class RoutePlannerInputData():
 
 class RoutePlanner(metaclass=ABCMeta):
     """Abstract route planner class"""
+    def __init__(self):
+        self._route_plan_lane_segments_reversed: RoutePlanRoadSegment = []
+        self._route_plan_input_data: RoutePlannerInputData = None
     @abstractmethod
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """Abstract route planner method. Implementation details will be in child class/methods """

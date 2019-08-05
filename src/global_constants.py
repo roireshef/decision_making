@@ -5,8 +5,8 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
-TRUE_COST = 1.0
-FALSE_COST = 0.0
+HIGH_COST = 1.0
+LOW_COST = 0.0
 
 # Communication Layer
 
@@ -220,7 +220,18 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 # Route Planner #
 LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 
+LANE_OCCUPANCY_COST_IND = 0
+LANE_END_COST_IND = 1
 
+# Config parameter for what the vehicle should do at a lane split
+# If set to True, the vehicle will follow the lane that is added at the split.
+# If set to False, the vehicle will continue straight in the same lane.
+TAKE_SPLIT = False
+
+# Config parameter for what the vehicle should do if a lane splits to the left and right
+# If set to True, the vehicle will follow the split on the right.
+# If set to False, the vehicle will follow the split on the left.
+PRIORITIZE_RIGHT_SPLIT_OVER_LEFT_SPLIT = True
 
 # State #
 
@@ -291,3 +302,4 @@ PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
 PG_PICKLE_FILE_NAME = 'PG.pkl'
 ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME = 'accel_scene_static.pkl'
 ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME = 'accel_scene_dynamic.pkl'
+OVAL_WITH_SPLITS_PICKLE_FILE_NAME = 'oval_with_splits.pkl'
