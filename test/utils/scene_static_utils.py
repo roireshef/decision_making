@@ -34,9 +34,9 @@ class SceneStaticUtils:
         scene_lane_segments_geometry = []
 
         for road_idx, road_segment_id in enumerate(road_segment_ids):
-            upstream_roads = np.array([road_segment_ids[road_idx + 1]]) if road_idx < len(
+            downstream_roads = np.array([road_segment_ids[road_idx + 1]]) if road_idx < len(
                 road_segment_ids) - 1 else np.array([])
-            downstream_roads = np.array([road_segment_ids[road_idx - 1]]) if road_idx > 0 else np.array([])
+            upstream_roads = np.array([road_segment_ids[road_idx - 1]]) if road_idx > 0 else np.array([])
 
             local_lane_ids = lane_ids[road_idx]
             scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_segment_id, e_i_road_id=0,
@@ -174,7 +174,7 @@ class SceneStaticUtils:
         points_direction = np.diff(points, axis=0)
         norms = np.linalg.norm(points_direction, axis=1)[np.newaxis].T
         norms[np.where(norms == 0.0)] = 1.0
-        direction_unit_vec = np.divide(points_direction, norms)
+        direction_unit_vec = np.array(np.divide(points_direction, norms))
         normal_unit_vec = np.c_[-direction_unit_vec[:, 1], direction_unit_vec[:, 0]]
         normal_unit_vec = np.concatenate((normal_unit_vec, normal_unit_vec[-1, np.newaxis]))
         shifted_points = points + normal_unit_vec * lateral_shift

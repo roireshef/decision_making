@@ -95,6 +95,12 @@ class NavigationPlanTooShort(MappingException):
 class NavigationPlanDoesNotFitMap(MappingException):
     pass
 
+class ValidLaneAheadTooShort(MappingException):
+    pass
+
+class MultipleDownstreamLanes(MappingException):
+    pass
+
 
 class RoadNotFound(MappingException):
     pass

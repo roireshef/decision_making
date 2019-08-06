@@ -1,4 +1,5 @@
 from typing import List
+from enum import Enum
 
 import numpy as np
 import numpy_indexed as npi
@@ -38,6 +39,12 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSFrenetSubsegment):
         return cls(pubsubMsg.e_i_SegmentID, pubsubMsg.e_i_SStart, pubsubMsg.e_i_SEnd)
 
+class GFF_Type(Enum):
+    Normal = 0
+    Augmented = 1
+    Partial = 2
+    AugmentedPartial = 3
+
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
@@ -49,6 +56,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
+        self._gff_type = GFF_Type.Normal
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
@@ -62,6 +70,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         pubsub_msg.s_SegmentsSOffsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         pubsub_msg.s_SegmentsDS = SerializationUtils.serialize_non_typed_array(self._segments_ds)
         pubsub_msg.s_SegmentsPointOffset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
+        #TODO: publish gff type?
 
         return pubsub_msg
 
@@ -106,7 +115,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     @classmethod
     @prof.ProfileFunction()
-    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
+    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment], gff_type: GFF_Type = GFF_Type.Normal):
         """
         Create a generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
         A special case might be a sub segment of a single frenet frame.
@@ -158,12 +167,22 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         # plus the number of points taken from subsegment #1.
         segments_point_offset = np.insert(segments_num_points_so_far, 0, 0., axis=0)
 
-        return cls(points, T, N, k, k_tag, segments_id, segments_s_start, segments_s_offsets, segments_ds,
+        gff =  cls(points, T, N, k, k_tag, segments_id, segments_s_start, segments_s_offsets, segments_ds,
                    segments_point_offset)
+        gff.gff_type = gff_type
+        return gff
 
     def has_segment_id(self, segment_id: int) -> bool:
         """see has_segment_ids"""
         return self.has_segment_ids(np.array([segment_id]))[0]
+
+    @property
+    def gff_type(self):
+        return self._gff_type
+
+    @gff_type.setter
+    def gff_type(self, value):
+        self._gff_type = value
 
     @property
     def segment_ids(self):

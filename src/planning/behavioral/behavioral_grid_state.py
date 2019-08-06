@@ -187,13 +187,20 @@ class BehavioralGridState:
         # calculate unified generalized frenet frames
         ego_lane_id = state.ego_state.map_state.lane_id
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
+
+        # Augmented GFFS can be created only if the lanes don't currently exist
+        can_augment = {RelativeLane.LEFT_LANE: RelativeLane.LEFT_LANE not in closest_lanes_dict.keys(),
+                       RelativeLane.RIGHT_LANE: RelativeLane.RIGHT_LANE not in closest_lanes_dict.keys()}
+
         extended_lane_frames = {}
 
         # Create generalized Frenet frame for the host's lane
         try:
-            extended_lane_frames[RelativeLane.SAME_LANE] = MapUtils.get_lookahead_frenet_frame_by_cost(
-                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=state.ego_state.map_state.lane_fstate[FS_SX],
-                route_plan=route_plan)
+            lane_gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
+                                                                        station=state.ego_state.map_state.lane_fstate[FS_SX],
+                                                                        route_plan=route_plan, can_augment=can_augment)
+            # TODO: Add comment
+            extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
         except MappingException as e:
             logger.warning(e)
             return extended_lane_frames
@@ -204,7 +211,12 @@ class BehavioralGridState:
 
         # If an adjacent lane exists, create a generalized Frenet frame for it
         for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
-            if relative_lane in closest_lanes_dict:
+            if can_augment[relative_lane]:
+                # TODO: Add comment
+                if lane_gff_dict[relative_lane]:
+                    extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
+            else:
+                # TODO: Move search for host's location in other lane to a function
                 # First, find the station value in the relative lane that is adjacent to the host's station in the lane it is occupying
                 previous_station_difference = FLOAT_MAX
                 host_station_in_adjacent_lane = -1.0
@@ -248,8 +260,11 @@ class BehavioralGridState:
 
                 # Second, create the GFF
                 try:
-                    extended_lane_frames[relative_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
+                    lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(
                         lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan)
+                    # TODO: Try to make the below assignment not confusing
+                    # index by [RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
+                    extended_lane_frames[relative_lane] = lane_gffs[RelativeLane.SAME_LANE]
                 except MappingException as e:
                     logger.warning(e)
 
