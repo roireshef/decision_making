@@ -170,7 +170,7 @@ class StateModule(DmModule):
                               obj_loc.s_bounding_box.e_l_width,
                               obj_loc.s_bounding_box.e_l_height)
             confidence = obj_loc.as_object_hypothesis[0].e_r_probability
-            off_map = obj_loc.as_object_hypothesis[0].e_b_off_map
+            off_map = obj_loc.as_object_hypothesis[0].e_b_off_lane
             dyn_obj = DynamicObject(obj_id=id,
                                     timestamp=timestamp,
                                     cartesian_state=cartesian_state,
