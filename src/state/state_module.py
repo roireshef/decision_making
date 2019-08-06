@@ -68,7 +68,7 @@ class StateModule(DmModule):
 
                 last_gff_segment_ids = self._get_last_action_gff()
 
-                state = self.create_state_from_scene_dynamic(self._scene_dynamic, last_gff_segment_ids)
+                state = self.create_state_from_scene_dynamic(self._scene_dynamic, last_gff_segment_ids, self.logger)
 
                 postprocessed_state = self._handle_negative_velocities(state)
 
@@ -106,36 +106,45 @@ class StateModule(DmModule):
         return state
 
     @staticmethod
-    def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic, gff_segment_ids: np.ndarray) -> State:
+    def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic, last_gff_segment_ids: np.ndarray, logger: Logger) -> State:
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic:
-        :param gff_segment_ids: list of GFF segment ids for the last selected action
+        :param last_gff_segment_ids: list of GFF segment ids for the last selected action
+        :param logger: Logging module
         :return: valid State object
         """
 
         timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
 
-        localization_ids = [hyp.e_i_lane_segment_id
-                            for hyp in scene_dynamic.s_Data.s_host_localization.as_host_hypothesis]
+        selected_host_hyp_idx = 0
 
-        if len(localization_ids) == 1:
-            selected_hypothesis_idx = 0
-        elif len(gff_segment_ids) == 0:
-            selected_hypothesis_idx = 0
-        else:
-            common_ids = np.intersect1d(localization_ids, gff_segment_ids)
-            if len(common_ids) > 0:
-                selected_hypothesis_idx = np.argwhere(localization_ids == common_ids[0])[0][0]
+        host_hyp_lane_ids = [hyp.e_i_lane_segment_id
+                             for hyp in scene_dynamic.s_Data.s_host_localization.as_host_hypothesis]
+
+        if len(host_hyp_lane_ids) > 1 and len(last_gff_segment_ids) > 0:
+
+            # find all common lae ids in host hypotheses and last gff segments
+            common_lane_ids = np.intersect1d(host_hyp_lane_ids, last_gff_segment_ids)
+
+            if len(common_lane_ids) == 1:
+                selected_host_hyp_idx = np.argwhere(host_hyp_lane_ids == common_lane_ids[0])[0][0]
+            elif len(common_lane_ids) > 1:
+                # take the hyp. whose lane has the least distance from the host, i.e.,
+                # the min. index in host_hyp_lane_ids since it is sorted based on the distance
+                selected_host_hyp_idx = min([np.argwhere(host_hyp_lane_ids == common_lane_ids[i])[0][0]
+                                             for i in range(len(common_lane_ids))])
             else:
-                # TODO: should we raise exception or look at adjacent lanes to find the common lane
-                selected_hypothesis_idx = 0
+                # there are no common ids between localization and prev. gff
+                # raise a warning and choose the closet lane
+                logger.warning("None of the host localization hypotheses matches the previous planning action")
+                selected_host_hyp_idx = 0
 
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
-                                 as_host_hypothesis[selected_hypothesis_idx].a_lane_frenet_pose,
+                                 as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
                                  lane_id=scene_dynamic.s_Data.s_host_localization.
-                                 as_host_hypothesis[selected_hypothesis_idx].e_i_lane_segment_id)
+                                 as_host_hypothesis[selected_host_hyp_idx].e_i_lane_segment_id)
         ego_state = EgoState(obj_id=0,
                              timestamp=timestamp,
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
@@ -185,17 +194,17 @@ class StateModule(DmModule):
 
     def _get_last_action_gff(self) -> np.ndarray:
         """
-        Returns the last received mission (trajectory) parameters.
-        We assume that if no updates have been received since the last call,
-        then we will output the last received trajectory parameters.
-        :return: deserialized trajectory parameters
+        Returns the array of GFF lane segments from the last action sent to trajectory planner.
+        If no valid action is available, returns an empty array
+        :return: array of GFF lane segments
         """
-        gff_segment_ids = np.array([])
+        last_gff_segment_ids = np.array([])
 
         is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS)
+        # TODO: Do we need a timeout here in the case trajectory parameters is empty for a while
         if serialized_params is not None:
             trajectory_params = TrajectoryParams.deserialize(serialized_params)
-            gff_segment_ids = trajectory_params.reference_route.segment_ids
+            last_gff_segment_ids = trajectory_params.reference_route.segment_ids
 
-        return gff_segment_ids
+        return last_gff_segment_ids
 
