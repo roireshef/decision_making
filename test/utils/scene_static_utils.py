@@ -2,7 +2,8 @@ from decision_making.src.messages.scene_common_messages import Header, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneRoadSegment, MapRoadSegmentType, AdjacentLane, \
     MovingDirection, MapLaneType, DataSceneStatic, SceneStatic, SceneStaticBase, SceneStaticGeometry, NavigationPlan, \
     SceneLaneSegmentBase, SceneLaneSegmentGeometry, LaneSegmentConnectivity, ManeuverType, MapLaneMarkerType, BoundaryPoint
-from decision_making.src.messages.scene_static_enums import NominalPathPoint
+from decision_making.src.messages.scene_static_enums import NominalPathPoint, LaneMappingStatusType, MapLaneDirection, \
+    GMAuthorityType, LaneConstructionType
 from decision_making.src.planning.types import FP_SX, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from typing import List
@@ -119,10 +120,15 @@ class SceneStaticUtils:
                                                                      e_Cnt_lane_coupling_count=0,
                                                                      as_lane_coupling=[],
                                                                      e_l_length=100,
-                                                                     e_Cnt_num_active_lane_attributes=0,
-                                                                     a_i_active_lane_attribute_indices=np.empty(1),
-                                                                     a_cmp_lane_attributes=np.empty(1),
-                                                                     a_cmp_lane_attribute_confidences=np.empty(1)))
+                                                                     e_Cnt_num_active_lane_attributes=4,
+                                                                     a_i_active_lane_attribute_indices=np.array(
+                                                                         [0, 1, 2, 3]),
+                                                                     a_cmp_lane_attributes=np.array(
+                                                                         [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                                                                          GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
+                                                                          LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
+                                                                          MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value]),
+                                                                     a_cmp_lane_attribute_confidences=np.ones(4)))
 
                 scene_lane_segments_geometry.append(SceneLaneSegmentGeometry(e_i_lane_segment_id=lane_id,
                                                                              e_i_road_segment_id=road_segment_id,
@@ -149,8 +155,8 @@ class SceneStaticUtils:
                                                                  as_scene_road_segment=scene_road_segments),
                                s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=len(scene_lane_segments_geometry),
                                                                          as_scene_lane_segments=scene_lane_segments_geometry),
-                               s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=0,
-                                                               a_i_road_segment_ids=np.empty(1)))
+                               s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=len(road_segment_ids),
+                                                               a_i_road_segment_ids=np.array(road_segment_ids)))
 
         scene = SceneStatic(s_Header=header, s_Data=data)
         return scene

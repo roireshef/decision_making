@@ -2,6 +2,8 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import c
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive,\
     route_plan_20_30
+from decision_making.test.planning.custom_fixtures import route_plan_1_2
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from unittest.mock import patch
 
 import numpy as np
@@ -15,7 +17,9 @@ from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
+    scene_static_short_testable
+
 
 
 MAP_SPLIT = "PG_split.bin"
