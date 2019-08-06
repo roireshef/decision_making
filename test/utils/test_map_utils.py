@@ -107,9 +107,9 @@ def test_getLookaheadFrenetFrame_leftLaneEnds(scene_static_left_lane_ends):
     lookahead_dist = 500.
     starting_lane = 12
 
-    gff = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, lookahead_dist,
+    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, lookahead_dist,
                                               create_route_plan_msg(np.array([1, 2])))
-    assert gff.gff_type == GFF_Type.Partial
+    assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Partial
 
 def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(
         scene_static_pg_split, route_plan_20_30):
@@ -200,7 +200,9 @@ def test_advanceByCost_navPlanDoesNotFitMap_partialLookahead(scene_static_pg_spl
 
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
     # validate getting the relevant exception
-    subsegs, status = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
+    subsegs_dict = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
+
+    subsegs = subsegs_dict[RelativeLane.SAME_LANE][0]
 
     # verify the wrong road segment is not added
     # make sure that the non-existent road segment is not contained in the GFF
@@ -208,7 +210,7 @@ def test_advanceByCost_navPlanDoesNotFitMap_partialLookahead(scene_static_pg_spl
     # make sure that the previous existing road segments were used
     assert len(subsegs) == nav_plan_length - current_road_idx
     # make sure the GFF created was of type Partial since it should not extend the entire route plan
-    assert status == GFF_Type.Partial
+    assert subsegs_dict[RelativeLane.SAME_LANE][1] == GFF_Type.Partial
 
 def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
     """
@@ -270,8 +272,8 @@ def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialLookahead(scene
     route_plan.s_Data.as_route_plan_lane_segments.append(lane_segments)
 
     # test the case when the map is too short; validate partial lookahead is done
-    subsegs, status = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookadhead_dist, route_plan)
-    assert status == GFF_Type.Partial
+    subsegs_dict = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookadhead_dist, route_plan)
+    assert subsegs_dict[RelativeLane.SAME_LANE][1] == GFF_Type.Partial
 
 def test_advanceByCost_notEnoughLaneAhead_ThrowsException(scene_static_pg_split, route_plan_20_30):
     """
@@ -293,7 +295,7 @@ def test_advanceByCost_notEnoughLaneAhead_ThrowsException(scene_static_pg_split,
 
     #TODO: Change route_plan_20_30 to route_plan based on road_segment_ids
     sub_segments_dict = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, route_plan_20_30)
-    assert len(sub_segments_dict[RelativeLane.SAME_LANE]) == len(road_segment_ids)
+    assert len(sub_segments_dict[RelativeLane.SAME_LANE][0]) == len(road_segment_ids)
 
 
 def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static, route_plan_1_2):
@@ -315,8 +317,8 @@ def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static,
     route_plan_1_2.s_Data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1
     route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1
 
-    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)[RelativeLane.SAME_LANE]
-    assert sub_segments[1].e_i_SegmentID == 20
+    sub_segments_dict = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
+    assert sub_segments_dict[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 20
 
 
 def test_advanceByCost_chooseStraightLaneInSplitWithSameCosts(right_lane_split_scene_static, route_plan_1_2):
@@ -337,9 +339,9 @@ def test_advanceByCost_chooseStraightLaneInSplitWithSameCosts(right_lane_split_s
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
 
     sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
-    assert sub_segments[RelativeLane.SAME_LANE][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE] == None
-    assert sub_segments[RelativeLane.RIGHT_LANE] == None
+    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
+    assert sub_segments[RelativeLane.LEFT_LANE][0] == None
+    assert sub_segments[RelativeLane.RIGHT_LANE][0] == None
     #assert status == LookaheadStatus.Normal
 
 def test_advanceByCost_rightSplitConsideredIfCanAugment(right_lane_split_scene_static, route_plan_1_2):
@@ -360,9 +362,9 @@ def test_advanceByCost_rightSplitConsideredIfCanAugment(right_lane_split_scene_s
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
 
     sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2, can_augment=can_augment)
-    assert sub_segments[RelativeLane.SAME_LANE][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE] == None
-    assert sub_segments[RelativeLane.RIGHT_LANE][1].e_i_SegmentID == 20
+    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
+    assert sub_segments[RelativeLane.LEFT_LANE][0] == None
+    assert sub_segments[RelativeLane.RIGHT_LANE][0][1].e_i_SegmentID == 20
 
 def test_advanceByCost_leftRightSplitBothConsideredIfCanAugment(left_right_lane_split_scene_static, route_plan_1_2):
     """
@@ -385,9 +387,9 @@ def test_advanceByCost_leftRightSplitBothConsideredIfCanAugment(left_right_lane_
 
     sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2,
                                              can_augment=can_augment)
-    assert sub_segments[RelativeLane.SAME_LANE][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE][1].e_i_SegmentID == 22
-    assert sub_segments[RelativeLane.RIGHT_LANE][1].e_i_SegmentID == 20
+    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
+    assert sub_segments[RelativeLane.LEFT_LANE][0][1].e_i_SegmentID == 22
+    assert sub_segments[RelativeLane.RIGHT_LANE][0][1].e_i_SegmentID == 20
 
 def test_advanceByCost_rightSplitNoneIfCannotAugment(right_lane_split_scene_static, route_plan_1_2):
     """
@@ -407,9 +409,9 @@ def test_advanceByCost_rightSplitNoneIfCannotAugment(right_lane_split_scene_stat
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
 
     sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2, can_augment=can_augment)
-    assert sub_segments[RelativeLane.SAME_LANE][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE] == None
-    assert sub_segments[RelativeLane.RIGHT_LANE] == None
+    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
+    assert sub_segments[RelativeLane.LEFT_LANE][0] == None
+    assert sub_segments[RelativeLane.RIGHT_LANE][0] == None
 
 def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split_scene_static, route_plan_1_2):
     """
