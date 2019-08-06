@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
     ActionRecipe, RelativeLane, ActionType, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, \
     FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle, StaticTrafficFlowControlFilter, \
-    BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter
+    BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter, FilterForSLimit
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as FilterRecipeIfNone
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -381,3 +381,32 @@ def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimits_filterResul
 
     np.testing.assert_array_equal(filter_results, expected_filter_results)
 
+
+def test_filter_filterForSLimit_filterTooLongActions(
+        behavioral_grid_state_with_objects_for_filtering_too_aggressive,
+        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
+    """
+    State leads to two dynamic actions: {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE), {a0=0,v0=10,sT=53.5,vT=20} (RIGHT_LANE).
+    The action on the same lane ends beyond SAME_LANE Frenet frame and therefore is filtered.
+    The action on the right lane (with slower dynamic object) ends inside RIGHT_LANE Frenet frame.
+    All ground truths checked with desmos - https://www.desmos.com/calculator/exizg3iuhs
+    """
+    logger = AV_Logger.get_logger()
+    predictor = RoadFollowingPredictor(logger)
+
+    filtering = RecipeFiltering(filters=[FilterRecipeIfNone()], logger=logger)
+
+    actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[:6]
+
+    expected_filter_results = np.array([False, False, True, False, False, False], dtype=bool)
+    dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
+
+    action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
+                                                                   behavioral_grid_state_with_objects_for_filtering_too_aggressive)
+
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForSLimit()], logger=logger)
+
+    filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
+                                                            behavioral_grid_state_with_objects_for_filtering_too_aggressive)
+
+    np.testing.assert_array_equal(filter_results, expected_filter_results)
