@@ -50,13 +50,13 @@ def test_createStateFromSceneDyamic_singleHostHypothesis_correctHostLocalization
 
     gff_segment_ids = np.array([200, 210, 220])
 
-    state = state_module.create_state_from_scene_dynamic(scene_dynamic_fix_single_host_hypothesis, gff_segment_ids)
+    state = state_module.create_state_from_scene_dynamic(scene_dynamic_fix_single_host_hypothesis, gff_segment_ids, logger)
 
     assert state.ego_state.map_state.lane_id == 200
 
 
 def test_createStateFromSceneDyamic_twoHostHypotheses_correctHostLocalization(pubsub: PubSub,
-                                                                                 scene_dynamic_fix_two_host_hypotheses: SceneDynamic):
+                                                                              scene_dynamic_fix_two_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action
@@ -70,7 +70,7 @@ def test_createStateFromSceneDyamic_twoHostHypotheses_correctHostLocalization(pu
 
     gff_segment_ids = np.array([201, 211, 221])
 
-    state = state_module.create_state_from_scene_dynamic(scene_dynamic_fix_two_host_hypotheses, gff_segment_ids)
+    state = state_module.create_state_from_scene_dynamic(scene_dynamic_fix_two_host_hypotheses, gff_segment_ids, logger)
 
     assert state.ego_state.map_state.lane_id == 201
 
