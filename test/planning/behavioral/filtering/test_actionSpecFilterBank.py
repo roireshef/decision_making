@@ -127,13 +127,13 @@ def test_BeyondSpecSpeedLimitFilter_NoSpeedLimitChange(behavioral_grid_state_wit
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LAT_ACC_LIMITS', np.array([-4.0, 4.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.FilterForLaneSpeedLimits._pointwise_speed_limit', lambda *args : 40 / 3.6)
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
+@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.FilterForLaneSpeedLimits._pointwise_nominal_speed', lambda *args : 40 / 3.6)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_ACTION_T_LIMITS', np.array([0, 15]))
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_JERK_S_JERK_D_TIME_WEIGHTS', np.array([
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_JERK_S_JERK_D_TIME_WEIGHTS=np.array([
     [12, 0.15, 0.1],
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
@@ -166,12 +166,11 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LAT_ACC_LIMITS', np.array([-4.0, 4.0]))
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_ACTION_T_LIMITS', np.array([0, 15]))
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_JERK_S_JERK_D_TIME_WEIGHTS', np.array([
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_JERK_S_JERK_D_TIME_WEIGHTS=np.array([
     [12, 0.15, 0.1],
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
@@ -205,12 +204,12 @@ def test_filter_closeToTrackingMode_allActionsAreValid(
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LAT_ACC_LIMITS', np.array([-4.0, 4.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_ACTION_T_LIMITS', np.array([0, 15]))
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_JERK_S_JERK_D_TIME_WEIGHTS', np.array([
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_JERK_S_JERK_D_TIME_WEIGHTS=np.array([
     [12, 0.15, 0.1],
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
@@ -243,12 +242,12 @@ def test_filter_trackingMode_allActionsAreValid(
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LAT_ACC_LIMITS', np.array([-4.0, 4.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_ACTION_T_LIMITS', np.array([0, 15]))
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_JERK_S_JERK_D_TIME_WEIGHTS', np.array([
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_JERK_S_JERK_D_TIME_WEIGHTS=np.array([
     [12, 0.15, 0.1],
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
@@ -284,12 +283,12 @@ def test_filter_staticActionsWithLeadingVehicle_filterResultsMatchExpected(
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LAT_ACC_LIMITS', np.array([-4.0, 4.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_ACTION_T_LIMITS', np.array([0, 15]))
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_JERK_S_JERK_D_TIME_WEIGHTS', np.array([
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_JERK_S_JERK_D_TIME_WEIGHTS=np.array([
     [12, 0.15, 0.1],
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
@@ -327,12 +326,12 @@ def test_filter_aggressiveFollowScenario_allActionsAreInvalid(
 
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT', 5)
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LON_ACC_LIMITS', np.array([-5.5, 3.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.LAT_ACC_LIMITS', np.array([-4.0, 4.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
+@patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_ACTION_T_LIMITS', np.array([0, 15]))
-@patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.BP_JERK_S_JERK_D_TIME_WEIGHTS', np.array([
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))
+@patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_JERK_S_JERK_D_TIME_WEIGHTS=np.array([
     [12, 0.15, 0.1],
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
