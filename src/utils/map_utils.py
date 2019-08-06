@@ -1,5 +1,4 @@
 import numpy as np
-from enum import Enum
 
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, ValidLaneAheadTooShort
@@ -21,9 +20,6 @@ from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.types import LaneSegmentID
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 
-class LookaheadStatus(Enum):
-    Normal = 1
-    Partial = 2
 
 class MapUtils:
 
@@ -382,6 +378,10 @@ class MapUtils:
 
             current_segment_start_s = 0
             current_road_idx_on_plan = next_road_idx_on_plan
+
+        # Don't return anything if the length is too short
+        if cumulative_distance < MINIMUM_REQUIRED_DIST_LANE_AHEAD:
+            raise ValidLaneAheadTooShort(f"Only {cumulative_distance} m of valid lane ahead. Minimum required is {MINIMUM_REQUIRED_DIST_LANE_AHEAD}")
 
         return lane_subsegments, status
 
