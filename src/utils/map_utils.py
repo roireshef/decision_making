@@ -298,30 +298,97 @@ class MapUtils:
     def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan) -> GeneralizedFrenetSerretFrame:
         """
         Create Generalized Frenet frame along lane center, starting from given lane and station.
-        When some lane ends, it automatically continues to the next lane, according to costs.
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
         :return: generalized Frenet frame for the given route part
         """
-        suggested_ref_route_start = station - PLANNING_LOOKAHEAD_DIST
+        # First, get the lane subsegments
+        # TODO: Remove the error handling below once partial GFFs are added
+        try:
+            upstream_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, PLANNING_LOOKAHEAD_DIST)
+        except UpstreamLaneNotFound:
+            upstream_subsegments = []
 
-        # TODO: remove this hack when all unit-tests have enough margin backward
-        # if there is no long enough road behind ego, set ref_route_start = 0
-        ref_route_start = suggested_ref_route_start \
-            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(lane_id, -suggested_ref_route_start) \
-            else 0
+        if station < PLANNING_LOOKAHEAD_DIST:
+            # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane. In this
+            # case, the starting station for the forward lookahead should be the beginning of the current lane, and the forward lookahead
+            # distance should include the maximum forward horizon ahead of the given station and the backward distance to the beginning of
+            # the lane (i.e. the station).
+            starting_station = 0.0
+            lookahead_distance = MAX_HORIZON_DISTANCE + station
+        else:
+            # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
+            # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
+            # distance should include the maximum forward and backward horizons ahead of and behind the given station, respectively. In
+            # other words, if we're at station = 150 m on a lane and the maximum forward and backward horizons are 400 m and 100 m,
+            # respectively, then starting station = 50 m and forward lookahead distance = 400 + 100 = 500 m. This is the case where the GFF
+            # does not include any upstream lanes.
+            starting_station = station - PLANNING_LOOKAHEAD_DIST
+            lookahead_distance = MAX_HORIZON_DISTANCE + PLANNING_LOOKAHEAD_DIST
 
-        frame_length = station - ref_route_start + MAX_HORIZON_DISTANCE
+        current_and_downstream_subsegments = MapUtils._advance_by_cost(lane_id, starting_station, lookahead_distance, route_plan)
+        subsegments = upstream_subsegments + current_and_downstream_subsegments
 
-        init_lane_id, init_lon = MapUtils._get_frenet_starting_point(lane_id, ref_route_start)
-        # get the full lanes path
-        sub_segments = MapUtils._advance_by_cost(init_lane_id, init_lon, frame_length, route_plan)
-        # create sub-segments for GFF
-        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in sub_segments]
-        # create GFF
-        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
+        # Second, create Frenet frame for each sub segment
+        frenet_frames = [MapUtils.get_lane_frenet_frame(subsegment.e_i_SegmentID) for subsegment in subsegments]
+
+        # Third, create GFF
+        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, subsegments)
+
         return gff
+
+    @staticmethod
+    @raises(UpstreamLaneNotFound)
+    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float) -> List[FrenetSubSegment]:
+        """
+        Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
+        :param initial_lane_id:
+        :param initial_station: Station on given lane
+        :param backward_distance:
+        :return: List of upstream lane subsegments
+        """
+        lane_id = initial_lane_id
+        upstream_distance = initial_station
+        upstream_lane_subsegments = []
+
+        while upstream_distance < backward_distance:
+            # First, choose an upstream lane
+            upstream_lane_ids = MapUtils.get_upstream_lane_ids(lane_id)
+            num_upstream_lanes = len(upstream_lane_ids)
+
+            if num_upstream_lanes == 0:
+                # TODO: There can actually be no upstream lanes, but partial GFFs will solve this scenario. Remove?
+                raise UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id))
+            elif num_upstream_lanes == 1:
+                chosen_upstream_lane_id = upstream_lane_ids[0]
+            elif num_upstream_lanes > 1:
+                # If there are multiple upstream lanes and one of those lanes has a STRAIGHT_CONNECTION maneuver type, choose that lane to
+                # follow. Otherwise, default to choosing the first upstream lane in the list.
+                chosen_upstream_lane_id = upstream_lane_ids[0]
+                upstream_lane_maneuver_types = MapUtils.get_upstream_lane_maneuver_types(lane_id)
+
+                for upstream_lane_id in upstream_lane_ids:
+                    if upstream_lane_maneuver_types[upstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION:
+                        chosen_upstream_lane_id = upstream_lane_id
+                        break
+
+            # Second, determine the start and end stations for the subsegment
+            end_station = MapUtils.get_lane_length(chosen_upstream_lane_id)
+            upstream_distance += end_station
+            start_station = max(0.0, upstream_distance - backward_distance)
+
+            # Third, create and append the upstream lane subsegment
+            upstream_lane_subsegments.append(FrenetSubSegment(chosen_upstream_lane_id, start_station, end_station))
+
+            # Last, set lane for next loop
+            lane_id = chosen_upstream_lane_id
+
+        # Before returning, reverse the order of the subsegments so that they are in the order that they would have been traveled on. In
+        # other words, the first subsegment should be the furthest from the host, and the last subsegment should be the closest to the host.
+        upstream_lane_subsegments.reverse()
+
+        return upstream_lane_subsegments
 
     @staticmethod
     def _get_frenet_starting_point(lane_id, starting_lon):
@@ -538,6 +605,5 @@ class MapUtils:
         frenet_states = np.zeros((len(stations_s_coordinates), 6))
         frenet_states[:, FS_SX] = sorted(stations_s_coordinates)
         return lane_frenet.convert_from_segment_states(frenet_states, lane_ids)[:, FS_SX]
-
 
 

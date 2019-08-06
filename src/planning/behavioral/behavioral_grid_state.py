@@ -253,24 +253,6 @@ class BehavioralGridState:
                 except MappingException as e:
                     logger.warning(e)
 
-        # TODO: Remove the two if statements below when there is no longer the possibility of having identical GFFs. Without these
-        #  statements, identical GFFs will occur when a lane split in the host vehicle's lane is within the backward horizon that is used
-        #  to create GFFs. While creating GFFs, the upstream lane segments are iterated over until the backward horizon is reached, and if
-        #  a lane split is present, the upstream lane segment will be the same for the relevant lanes. This results in multiple GFFs being
-        #  created from the same location. When the downstream lane segments are iterated over for each GFF, the downstream lane segment
-        #  that is chosen at the lane split is based on the RP lane end cost. Therefore, the same downstream lane is chosen for each GFF,
-        #  and this results in identical GFFs. One reason why this is an issue is that dynamic objects can be assigned to the wrong lane.
-        #  This was discovered during the addition of lane split functionality.
-        if RelativeLane.LEFT_LANE in extended_lane_frames and \
-            np.array_equal(extended_lane_frames[RelativeLane.LEFT_LANE].segment_ids,
-                           extended_lane_frames[RelativeLane.SAME_LANE].segment_ids):
-            del extended_lane_frames[RelativeLane.LEFT_LANE]
-
-        if RelativeLane.RIGHT_LANE in extended_lane_frames and \
-            np.array_equal(extended_lane_frames[RelativeLane.RIGHT_LANE].segment_ids,
-                           extended_lane_frames[RelativeLane.SAME_LANE].segment_ids):
-            del extended_lane_frames[RelativeLane.RIGHT_LANE]
-
         return extended_lane_frames
 
     @staticmethod
