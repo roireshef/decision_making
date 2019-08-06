@@ -359,9 +359,9 @@ class MapUtils:
             next_road_idx_on_plan = current_road_idx_on_plan + 1
             if next_road_idx_on_plan > len(route_plan_road_ids) - 1:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
-                                             "current_segment_end_s=%f lookahead_distance=%f" %
+                                             "initial_road_segment_id=%d current_segment_end_s=%f lookahead_distance=%f" %
                                              (route_plan_road_ids, lookahead_distance - cumulative_distance,
-                                              current_segment_end_s, lookahead_distance))
+                                              initial_road_segment_id, current_segment_end_s, lookahead_distance))
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
             # road segment. This assumes a single correct downstream segment.

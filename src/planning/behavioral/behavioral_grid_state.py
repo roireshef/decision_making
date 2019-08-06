@@ -209,7 +209,7 @@ class BehavioralGridState:
                 if rel_lane != RelativeLane.SAME_LANE:
                     logger.warning("Create GFF error: " + e.__str__())
                 else:  # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
-                    raise e
+                    raise AssertionError(e.__str__())
 
         return extended_lane_frames
 
