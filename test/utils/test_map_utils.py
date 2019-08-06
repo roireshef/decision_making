@@ -96,7 +96,7 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static_pg_spl
     dist_to_right, dist_to_left = MapUtils.get_dist_to_lane_borders(lane_ids[0], 0)
     assert dist_to_right == dist_to_left
 
-def test_getLookaheadFrenetFrame_leftLaneEnds(scene_static_left_lane_ends):
+def test_getLookaheadFrenetFrame_leftLaneEnds(scene_static_left_lane_ends, route_plan_1_2):
     """
     Make sure a partial GFF is created when the left lane suddenly ends
     :param scene_static_left_lane_ends:
@@ -104,12 +104,13 @@ def test_getLookaheadFrenetFrame_leftLaneEnds(scene_static_left_lane_ends):
     """
     SceneStaticModel.get_instance().set_scene_static(scene_static_left_lane_ends)
 
-    starting_lon = 500
-    lookahead_dist = 500.
+    starting_lon = 800
     starting_lane = 12
 
-    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, lookahead_dist,
-                                              create_route_plan_msg(np.array([1, 2])))
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[-1]
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
+
+    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2)
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Partial
 
 def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(

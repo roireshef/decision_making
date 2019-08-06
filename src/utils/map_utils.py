@@ -335,10 +335,12 @@ class MapUtils:
             starting_station = station - PLANNING_LOOKAHEAD_DIST
             lookahead_distance = MAX_HORIZON_DISTANCE + PLANNING_LOOKAHEAD_DIST
 
-        current_and_downstream_subsegments = MapUtils._advance_by_cost(lane_id, starting_station, lookahead_distance, route_plan,
-                                                                       can_augment)
-        # TODO: Turn upstream_subsegments into dictionary
-        subsegments = upstream_subsegments + current_and_downstream_subsegments
+        subsegments = MapUtils._advance_by_cost(lane_id, starting_station, lookahead_distance, route_plan, can_augment)
+
+        # TODO: Add comment
+        for relative_lane in subsegments:
+            if subsegments[relative_lane][0]:
+                subsegments[relative_lane] = (upstream_subsegments + subsegments[relative_lane][0], subsegments[relative_lane][1])
 
         # TODO: Look into impact of initializing this as empty dictionary
         gffs_dict = {RelativeLane.LEFT_LANE: None,
@@ -348,7 +350,7 @@ class MapUtils:
         for relative_lane in subsegments.keys():
             if subsegments[relative_lane][0]:
                 # Create Frenet frame for each sub segment
-                frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.e_i_SegmentID) for sub_segment in subsegments[relative_lane][0]]
+                frenet_frames = [MapUtils.get_lane_frenet_frame(subsegment.e_i_SegmentID) for subsegment in subsegments[relative_lane][0]]
 
                 # Create GFF
                 gffs_dict[relative_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, subsegments[relative_lane][0])
