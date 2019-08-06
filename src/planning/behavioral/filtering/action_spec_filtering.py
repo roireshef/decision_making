@@ -125,9 +125,7 @@ class ActionSpecFilter:
                                                               np.zeros_like(times_beyond_spec)]
             # need to add padding, as we look at the whole trajectory to decide if we meet the speed limits
             # pad s beyond last_pad_idx: in case of short actions padding take the last s, otherwise take spec.s
-            trajectory_s[last_pad_idx:, FS_SX] = max(spec.s, trajectory_s[last_pad_idx-1, FS_SX])
-            trajectory_s[last_pad_idx:, FS_SV] = spec.v
-            trajectory_s[last_pad_idx:, FS_SA] = 0
+            trajectory_s[last_pad_idx:] = 0
             trajectory_d[spec_t_idx:] = 0
 
         # return full Frenet trajectories
