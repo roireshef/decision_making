@@ -10,7 +10,7 @@ from logging import Logger
 from typing import List
 from typing import Optional
 
-from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN
+from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, BoolArray
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
@@ -28,7 +28,7 @@ class ActionSpecFilter:
     (or one of its children) and  BehavioralGridState (or one of its children) even if they don't actually use them.
     """
     @abstractmethod
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> np.array:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         pass
 
     @staticmethod
