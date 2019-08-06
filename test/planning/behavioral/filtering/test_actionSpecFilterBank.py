@@ -168,7 +168,6 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
 @patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
 @patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED', 100 / 3.6)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
 @patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))

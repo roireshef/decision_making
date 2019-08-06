@@ -2,24 +2,21 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, EPS, BP_ACTION_T_LIMITS, \
-    TRAJECTORY_TIME_RESOLUTION
+from decision_making.src.global_constants import EPS
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, RelativeLane
+    RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, C_V
+from decision_making.src.planning.types import FS_DX, FS_SX
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from typing import List
 from typing import List, Union, Any
 
 
@@ -73,7 +70,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                 nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
                     ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
 
-        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds))
+        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds, action_specs))
 
     @staticmethod
     def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
