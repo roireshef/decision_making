@@ -79,14 +79,13 @@ def short_testable_scene_static_mock():
 def right_lane_split_scene_static():
     scene = short_testable_scene_static_mock()
     # disconnect right lane in 1st road segment
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_left_adjacent_lanes = []
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_left_adjacent_lane_count = 0
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_left_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_Cnt_left_adjacent_lane_count = 0
 
     # add connection from 11 to 20
     scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_downstream_lane_count = 2
     scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes.append(LaneSegmentConnectivity(20,
                                                                                                                 ManeuverType.RIGHT_SPLIT))
-
     # add upstream connection from 20 to 11
     scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_upstream_lanes = LaneSegmentConnectivity(11, ManeuverType.RIGHT_SPLIT)
 
@@ -104,6 +103,51 @@ def right_lane_split_scene_static():
     del scene.s_Data.s_SceneStaticGeometry.as_scene_lane_segments[0]
     scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
 
+    return scene
+
+@pytest.fixture()
+def left_right_lane_split_scene_static():
+    """
+    Creates the following scenario:
+    11 -> [22, 21, 20]
+    :return:
+    """
+
+    scene = short_testable_scene_static_mock()
+    # disconnect right lane in 1st road segment
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_left_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_Cnt_left_adjacent_lane_count = 0
+    # disconnect left lane in 1st road segment
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[2].as_right_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[2].e_Cnt_right_adjacent_lane_count = 0
+    # add connection from 11 to 20
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_downstream_lane_count = 2
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes.append(LaneSegmentConnectivity(20, ManeuverType.RIGHT_SPLIT))
+    # add upstream connection from 20 to 11
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_upstream_lanes = LaneSegmentConnectivity(11, ManeuverType.RIGHT_SPLIT)
+    # add connection from 11 to 22
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_downstream_lane_count = 2
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes.append(LaneSegmentConnectivity(22, ManeuverType.LEFT_SPLIT))
+    # add upstream connection from 22 to 11
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[5].as_upstream_lanes = LaneSegmentConnectivity(11, ManeuverType.LEFT_SPLIT)
+    # change type of 2nd road segment
+    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[1].e_e_road_segment_type = MapRoadSegmentType.Intersection
+    # delete right lane in 1st road segment
+    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0]
+    scene.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments -= 1
+    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].a_i_lane_segment_ids = np.delete(
+        scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].a_i_lane_segment_ids, 0)
+    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].e_Cnt_lane_segment_id_count -= 1
+    del scene.s_Data.s_SceneStaticGeometry.as_scene_lane_segments[0]
+    scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
+    # delete left lane in 1st road segment
+    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1]
+    scene.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments -= 1
+    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].a_i_lane_segment_ids = np.delete(
+        scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].a_i_lane_segment_ids, 1)
+    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].e_Cnt_lane_segment_id_count -= 1
+    del scene.s_Data.s_SceneStaticGeometry.as_scene_lane_segments[1]
+    scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
     return scene
 
 @pytest.fixture()

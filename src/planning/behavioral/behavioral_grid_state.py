@@ -8,6 +8,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
@@ -198,14 +199,40 @@ class BehavioralGridState:
         frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
 
         extended_lane_frames = {}
-        for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
-            try:
-                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
-                    lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                    lookahead_dist=frame_length, route_plan=route_plan)
-            except MappingException as e:
-                logger.warning(e)
-                continue
+
+        # Augmented GFFS can be created only if the lanes don't currently exist
+        can_augment = {RelativeLane.LEFT_LANE: RelativeLane.LEFT_LANE not in closest_lanes_dict.keys(),
+                       RelativeLane.RIGHT_LANE: RelativeLane.RIGHT_LANE not in closest_lanes_dict.keys()}
+
+        # begin to create GFFs
+        try:
+            # create SAME_LANE gff
+            same_lane_id = closest_lanes_dict.get(RelativeLane.SAME_LANE)
+
+            # get the dict of {RelativeLane: GFF}. If augmented GFFs were created, use them.
+            lane_gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(
+                        lane_id=same_lane_id, starting_lon=ref_route_start,
+                        lookahead_dist=frame_length, route_plan=route_plan, can_augment=can_augment)
+
+            extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
+
+            # assign augmented GFFs if possible
+            for relative_lane in can_augment.keys():
+                if can_augment[relative_lane]:
+                    if lane_gff_dict[relative_lane]:
+                        extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
+                # try to create GFF normally if an augmented GFF won't be created
+                else:
+                    neighbor_lane_id = closest_lanes_dict.get(relative_lane)
+                    lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(
+                        lane_id=neighbor_lane_id, starting_lon=ref_route_start,
+                        lookahead_dist=frame_length, route_plan=route_plan)
+                    # index by [RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
+                    extended_lane_frames[relative_lane] = lane_gffs[RelativeLane.SAME_LANE]
+
+        except MappingException as e:
+            logger.warning(e)
+
 
         # TODO: Remove the two if statements below when there is no longer the possibility of having identical GFFs. Without these
         #  statements, identical GFFs will occur when a lane split in the host vehicle's lane is within the backward horizon that is used
