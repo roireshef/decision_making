@@ -83,7 +83,7 @@ def dynamic_objects_not_on_road():
                                                                                       e_Pct_location_uncertainty_yaw=0,
                                                                                       e_i_host_lane_frenet_id=0,
                                                                                       a_lane_frenet_pose=np.zeros(6),
-                                                                                      a_host_lane_frenet_pose=np.zeros(6), e_b_off_map=True)])]
+                                                                                      a_host_lane_frenet_pose=np.zeros(6), e_b_off_lane=True)])]
     objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
     yield objects
 
@@ -178,8 +178,9 @@ def scene_dynamic_fix_single_host_hypothesis(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     lane_id = 200
+    road_id = 20
     fstate = np.array([10, 5, 0, 0, 0, 0])
-    host_hypotheses = [HostHypothesis(lane_id, fstate, False)]
+    host_hypotheses = [HostHypothesis(road_id, lane_id, fstate, False)]
 
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
     cstate = frenet.fstate_to_cstate(fstate)
@@ -199,12 +200,14 @@ def scene_dynamic_fix_two_host_hypotheses(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     lane_id1 = 200
+    road_id1 = 20
     fstate1 = np.array([50, 5, 0, 1.8, 0, 0])
-    host_hyp1 = HostHypothesis(lane_id1, fstate1, False)
+    host_hyp1 = HostHypothesis(road_id1, lane_id1, fstate1, False)
 
     lane_id2 = 201
+    road_id2 = 20
     fstate2 = np.array([50, 5, 0, -1.8, 0, 0])
-    host_hyp2 = HostHypothesis(lane_id2, fstate2, False)
+    host_hyp2 = HostHypothesis(road_id2, lane_id2, fstate2, False)
 
     host_hypotheses = [host_hyp1, host_hyp2]
 

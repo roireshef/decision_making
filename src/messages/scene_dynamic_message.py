@@ -93,40 +93,45 @@ class BoundingBoxSize(PUBSUB_MSG_IMPL):
 
 
 class HostHypothesis(PUBSUB_MSG_IMPL):
+    e_i_road_segment_id = int
     e_i_lane_segment_id = int
     a_lane_frenet_pose = np.ndarray
-    e_b_off_map = bool
+    e_b_off_lane = bool
 
-    def __init__(self, e_i_lane_segment_id, a_lane_frenet_pose, e_b_off_map):
+    def __init__(self, e_i_road_segment_id, e_i_lane_segment_id, a_lane_frenet_pose, e_b_off_lane):
         # type: (int, np.ndarray, bool)->None
         """
         Host-localization information
         :param e_i_lane_segment_id: The ID of the lane-segment that the host is in
         :param a_lane_frenet_pose: The host's pose, expressed in the the Frenet-Serret frame of the host's lane-segment
-        :param e_b_off_map: indicates if the vehicle is located off the map
+        :param e_b_off_lane: indicates if the vehicle is located off the map
         """
+        self.e_i_road_segment_id = e_i_road_segment_id
         self.e_i_lane_segment_id = e_i_lane_segment_id
         self.a_lane_frenet_pose = a_lane_frenet_pose
-        self.e_b_off_map = e_b_off_map
+        self.e_b_off_lane = e_b_off_lane
 
     def serialize(self):
         # type: () -> TsSYSHostHypothesis
         pubsub_msg = TsSYSHostHypothesis()
 
+        pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
+
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
 
         pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
 
-        pubsub_msg.e_b_OffMap = self.e_b_off_map
+        pubsub_msg.e_b_OffLane = self.e_b_off_lane
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSHostHypothesis)->HostHypothesis
-        return cls(pubsubMsg.e_i_lane_segment_id,
+        return cls(pubsubMsg.e_i_road_segment_id,
+                   pubsubMsg.e_i_lane_segment_id,
                    pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
-                   pubsubMsg.e_b_OffMap)
+                   pubsubMsg.e_b_OffLane)
 
 
 class HostLocalization(PUBSUB_MSG_IMPL):
@@ -159,7 +164,7 @@ class HostLocalization(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg):
-        # type: (TsSYSHostLocalization)->HostLocalization
+        # type: (TsSYSHostLocalization)-> HostLocalization
 
         host_hypotheses = list()
         for i in range(pubsubMsg.e_Cnt_host_hypothesis_count):
@@ -179,11 +184,11 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
     e_i_host_lane_frenet_id = int
     a_lane_frenet_pose = np.ndarray
     a_host_lane_frenet_pose = np.ndarray
-    e_b_off_map = bool
+    e_b_off_lane = bool
 
     def __init__(self, e_r_probability, e_i_lane_segment_id, e_e_dynamic_status, e_Pct_location_uncertainty_x,
                  e_Pct_location_uncertainty_y, e_Pct_location_uncertainty_yaw, e_i_host_lane_frenet_id,
-                 a_lane_frenet_pose, a_host_lane_frenet_pose, e_b_off_map):
+                 a_lane_frenet_pose, a_host_lane_frenet_pose, e_b_off_lane):
         # type: (float, int, ObjectTrackDynamicProperty, float, float, float, int, np.ndarray, np.ndarray, bool) -> None
         """
         Actors-hypotheses information
@@ -196,7 +201,7 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         :param e_i_host_lane_frenet_id: The ID of the lane-segment that the host is in
         :param a_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of its own lane-segment
         :param a_host_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of the host's lane-segment
-        :param e_b_off_map: indicates if the vehicle is off the map
+        :param e_b_off_lane: indicates if the vehicle is off the map
         """
         self.e_r_probability = e_r_probability
         self.e_i_lane_segment_id = e_i_lane_segment_id
@@ -207,7 +212,7 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         self.e_i_host_lane_frenet_id = e_i_host_lane_frenet_id
         self.a_lane_frenet_pose = a_lane_frenet_pose
         self.a_host_lane_frenet_pose = a_host_lane_frenet_pose
-        self.e_b_off_map = e_b_off_map
+        self.e_b_off_lane = e_b_off_lane
 
     def serialize(self):
         # type: () -> TsSYSObjectHypothesis
@@ -222,7 +227,7 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         pubsub_msg.e_i_host_lane_frenet_id = self.e_i_host_lane_frenet_id
         pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
         pubsub_msg.a_host_lane_frenet_pose = self.a_host_lane_frenet_pose
-        pubsub_msg.e_b_OffMap = self.e_b_off_map
+        pubsub_msg.e_b_OffLane = self.e_b_off_lane
         return pubsub_msg
 
     @classmethod
@@ -232,7 +237,7 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Pct_location_uncertainty_x, pubsubMsg.e_Pct_location_uncertainty_y,
                    pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_i_host_lane_frenet_id,
                    pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
-                   pubsubMsg.a_host_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS], pubsubMsg.e_b_OffMap)
+                   pubsubMsg.a_host_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS], pubsubMsg.e_b_OffLane)
 
 
 class ObjectLocalization(PUBSUB_MSG_IMPL):
