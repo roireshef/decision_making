@@ -8,7 +8,6 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_BoundingBoxSize
     TsSYSBoundingBoxSize
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneDynamic import \
     TsSYSDataSceneDynamic
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneHost import TsSYSDataSceneHost
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_HostLocalization import \
     TsSYSHostLocalization
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_HostHypothesis import TsSYSHostHypothesis
@@ -374,39 +373,3 @@ class SceneDynamic(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSSceneDynamic)->SceneDynamic
         return cls(Header.deserialize(pubsubMsg.s_Header), DataSceneDynamic.deserialize(pubsubMsg.s_Data))
-
-
-#TODO: do we need this here. we are not subscribing to SCENE_HOST at all
-class DataSceneHost(PUBSUB_MSG_IMPL):
-
-    e_b_Valid = bool
-    s_ComputeTimestamp = Timestamp
-    s_host_localization = HostLocalization
-
-    def __init__(self, e_b_Valid, s_ComputeTimestamp, s_host_localization):
-        # type: (bool, Timestamp, HostLocalization)->None
-        """
-        Scene provider's information on host vehicle pose
-        :param e_b_Valid:
-        :param s_ComputeTimestamp:
-        :param s_host_localization:
-        """
-        self.e_b_Valid = e_b_Valid
-        self.s_ComputeTimestamp = s_ComputeTimestamp
-        self.s_host_localization = s_host_localization
-
-    def serialize(self):
-        # type: () -> TsSYSDataSceneHost
-        pubsub_msg = TsSYSDataSceneHost()
-
-        pubsub_msg.e_b_Valid = self.e_b_Valid
-        pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
-        pubsub_msg.s_host_localization = self.s_host_localization.serialize()
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSDataSceneHost)->DataSceneHost
-        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp),
-                   HostLocalization.deserialize(pubsubMsg.s_host_localization))
