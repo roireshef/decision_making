@@ -7,9 +7,9 @@ from decision_making.src.messages.scene_static_enums import MapLaneMarkerType, M
     MapLaneDirection, GMAuthorityType, LaneConstructionType, RoutePlanLaneSegmentAttr
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic,\
     SceneStaticGeometry, SceneStaticBase, NavigationPlan, SceneLaneSegmentGeometry,\
-    BoundaryPoint, SceneLaneSegmentBase, SceneRoadSegment,\
+    BoundaryPoint, SceneLaneSegmentBase, SceneRoadIntersection, SceneRoadSegment,\
     MAX_NOMINAL_PATH_POINT_FIELDS, StaticTrafficFlowControl, DynamicTrafficFlowControl,\
-    DynamicStatus, AdjacentLane, LaneSegmentConnectivity, LaneOverlap, LaneOverlapType
+    DynamicStatus, AdjacentLane, LaneSegmentConnectivity, LaneCoupling
 
 
 class SceneStaticPublisher:
@@ -73,6 +73,8 @@ class SceneStaticPublisher:
                                    s_SceneStaticBase=SceneStaticBase(e_Cnt_num_lane_segments=
                                                                         sum(len(row) for row in self._lane_segment_ids),
                                                                      as_scene_lane_segments=self._generate_lane_segments(),
+                                                                     e_Cnt_num_road_intersections=0,
+                                                                     as_scene_road_intersection=self._generate_road_intersections(),
                                                                      e_Cnt_num_road_segments=len(self._road_segment_ids),
                                                                      as_scene_road_segment=self._generate_road_segments()),
                                    s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=0,
@@ -141,13 +143,14 @@ class SceneStaticPublisher:
                                                               e_Cnt_upstream_lane_count=0,
                                                               as_upstream_lanes=self._generate_lane_segment_connectivity(),
                                                               e_v_nominal_speed=0,
+                                                              e_i_downstream_road_intersection_id=1,
+                                                              e_Cnt_lane_coupling_count=0,
+                                                              as_lane_coupling=self._generate_lane_coupling(),
                                                               e_l_length=100,
                                                               e_Cnt_num_active_lane_attributes=num_active_lane_attributes,
                                                               a_i_active_lane_attribute_indices=active_lane_attribute_indices,
                                                               a_cmp_lane_attributes=lane_attributes,
-                                                              a_cmp_lane_attribute_confidences=lane_attribute_confidences,
-                                                              e_Cnt_lane_overlap_count=0,
-                                                              as_lane_overlaps=self._generate_lane_overlap()))
+                                                              a_cmp_lane_attribute_confidences=lane_attribute_confidences))
         
         return lane_segment_base
 
@@ -175,8 +178,27 @@ class SceneStaticPublisher:
                                      e_Cnt_upstream_segment_count=0,
                                      a_i_upstream_road_segment_ids=np.array([0]),
                                      e_Cnt_downstream_segment_count=0,
-                                     a_i_downstream_road_segment_ids=np.array([]))
+                                     a_i_downstream_road_segment_ids=np.array([])) \
                     for i, road_segment_id in enumerate(self._road_segment_ids)]
+    
+    def _generate_road_intersections(self, num_intersections: int = 1) -> List[SceneRoadIntersection]:
+        """
+        Generates default road intersection data
+        :param num_intersections: Number of intersections, Default is 1
+        """
+        return [SceneRoadIntersection(e_i_road_intersection_id=1,
+                                      e_Cnt_lane_coupling_count=0,
+                                      a_i_lane_coupling_segment_ids=0,
+                                      e_Cnt_intersection_road_segment_count=0,
+                                      a_i_intersection_road_segment_ids=0)]
+    
+    def _generate_lane_coupling(self) -> List[LaneCoupling]:
+        """ Generates default lane coupling data """
+        return [LaneCoupling(e_i_lane_segment_id=1,
+                             e_i_road_intersection_id=1,
+                             e_i_downstream_lane_segment_id=1,
+                             e_i_upstream_lane_segment_id=1,
+                             e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
     
     def _generate_lane_segment_connectivity(self) -> List[LaneSegmentConnectivity]:
         """ Generates default lane segment connectivity data """
@@ -206,14 +228,6 @@ class SceneStaticPublisher:
         return [StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
                                          e_l_station=0,
                                          e_Pct_confidence=0)]
-
-    def _generate_lane_overlap(self) -> List[LaneOverlap]:
-        """ Generate default lane overlap data"""
-        return [LaneOverlap(e_i_other_lane_segment_id=0,
-                            a_l_source_lane_overlap_stations=np.array([0,0]),
-                            a_l_other_lane_overlap_stations=np.array([0,0]),
-                            e_e_lane_overlap_type=LaneOverlapType.CeSYS_e_LaneOverlapType_Unknown)]
-
     
     def _generate_geometry(self, num_nominal_path_points: int = 1) -> List[SceneLaneSegmentGeometry]:
         """
