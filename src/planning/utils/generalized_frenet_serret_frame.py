@@ -56,7 +56,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
-        self._gff_type = GFF_Type.Normal
+        self._gff_type = gff_type
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
