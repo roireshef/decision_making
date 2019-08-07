@@ -52,6 +52,18 @@ def route_plan_1_2():
                                              [RoutePlanLaneSegment(20, 0, 0), RoutePlanLaneSegment(21, 0, 0), RoutePlanLaneSegment(22, 0, 0)]]))
 
 @pytest.fixture(scope='function')
+def route_plan_1_2_3():
+    yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
+                    s_Data=DataRoutePlan(e_b_is_valid=True,
+                                         e_Cnt_num_road_segments=3,
+                                         a_i_road_segment_ids=np.array([1, 2, 3]),
+                                         a_Cnt_num_lane_segments=np.array([3, 3, 3]),
+                                         as_route_plan_lane_segments=[
+                                             [RoutePlanLaneSegment(10, 0, 0), RoutePlanLaneSegment(11, 0, 0), RoutePlanLaneSegment(12, 0, 0)],
+                                             [RoutePlanLaneSegment(20, 0, 0), RoutePlanLaneSegment(21, 0, 0), RoutePlanLaneSegment(22, 0, 0)],
+                                             [RoutePlanLaneSegment(30, 0, 0), RoutePlanLaneSegment(31, 0, 0), RoutePlanLaneSegment(32, 0, 0)]]))
+
+@pytest.fixture(scope='function')
 def dynamic_objects_not_on_road():
 
     obj_id = 1
