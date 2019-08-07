@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from enum import Enum
 
 import numpy as np
@@ -116,15 +116,18 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     @classmethod
     @prof.ProfileFunction()
-    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment], gff_type: GFF_Type = GFF_Type.Normal):
+    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment], gff_type: Optional[GFF_Type] = None):
         """
         Create a generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
         A special case might be a sub segment of a single frenet frame.
         :param frenet_frames: a list of all frenet frames involved in creating the new generalized frame.
         :param sub_segments: a list of FrenetSubSegment objects, used for segmenting the respective elements from
         the frenet_frames parameter.
+        :param gff_type:
         :return: A new GeneralizedFrenetSerretFrame built out of different other frenet frames.
         """
+        # If the GFF type is not provided, default to Normal
+        gff_type = gff_type or GFF_Type.Normal
 
         segments_id = np.array([sub_seg.e_i_SegmentID for sub_seg in sub_segments])
         segments_s_start = np.array([sub_seg.e_i_SStart for sub_seg in sub_segments])
