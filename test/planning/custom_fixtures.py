@@ -224,6 +224,41 @@ def scene_dynamic_fix_two_host_hypotheses(scene_static_pg_split):
 
     yield scene_dynamic
 
+
+@pytest.fixture(scope='function')
+def scene_dynamic_fix_three_host_hypotheses(scene_static_oval_with_splits):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
+
+    lane_id1 = 2244100
+    road_id1 = MapUtils.get_road_segment_id_from_lane_id(lane_id1)
+    fstate1 = np.array([MapUtils.get_lane_length(2244100), 10, 0, 0, 0, 0])
+    host_hyp1 = HostHypothesis(road_id1, lane_id1, fstate1, False)
+
+    lane_id2 = 19670532
+    road_id2 = MapUtils.get_road_segment_id_from_lane_id(lane_id2)
+    fstate2 = np.array([0, 10, 0, 0, 0, 0])
+    host_hyp2 = HostHypothesis(road_id2, lane_id2, fstate2, False)
+
+    lane_id3 = 19670533
+    road_id3 = MapUtils.get_road_segment_id_from_lane_id(lane_id3)
+    fstate3 = np.array([0, 10, 0, 0, 0, 0])
+    host_hyp3 = HostHypothesis(road_id3, lane_id3, fstate3, False)
+
+    host_hypotheses = [host_hyp1, host_hyp2, host_hyp3]
+
+    frenet = MapUtils.get_lane_frenet_frame(lane_id1)
+    cstate = frenet.fstate_to_cstate(fstate1)
+    ego_localization = HostLocalization(cstate, 3, host_hypotheses)
+
+    timestamp = Timestamp.from_seconds(5.0)
+    header = Header(0, timestamp, 0)
+    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
+
+    yield scene_dynamic
+
+
 @pytest.fixture(scope='function')
 def ego_state_fix():
     size = ObjectSize(0, 0, 0)
