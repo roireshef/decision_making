@@ -49,7 +49,7 @@ class GFF_Type(Enum):
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
-                 segments_ds: np.ndarray, segments_point_offset: np.ndarray):
+                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: GFF_Type):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
         self._segment_ids = segment_ids
         self._segments_s_start = segments_s_start
@@ -70,7 +70,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         pubsub_msg.s_SegmentsSOffsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         pubsub_msg.s_SegmentsDS = SerializationUtils.serialize_non_typed_array(self._segments_ds)
         pubsub_msg.s_SegmentsPointOffset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
-        #TODO: publish gff type?
+        pubsub_msg.e_e_GFFType = SerializationUtils.serialize_non_typed_array(np.array([self._gff_type.value]))
 
         return pubsub_msg
 
@@ -85,7 +85,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsSStart),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsSOffsets),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsDS),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsPointOffset))
+                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsPointOffset),
+                   GFF_Type(SerializationUtils.deserialize_any_array(pubsubMsg.e_e_GFFType)))
 
     @property
     def segments(self) -> List[FrenetSubSegment]:
@@ -168,8 +169,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segments_point_offset = np.insert(segments_num_points_so_far, 0, 0., axis=0)
 
         gff =  cls(points, T, N, k, k_tag, segments_id, segments_s_start, segments_s_offsets, segments_ds,
-                   segments_point_offset)
-        gff.gff_type = gff_type
+                   segments_point_offset, gff_type)
         return gff
 
     def has_segment_id(self, segment_id: int) -> bool:
