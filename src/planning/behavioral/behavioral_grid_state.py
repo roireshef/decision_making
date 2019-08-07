@@ -211,9 +211,13 @@ class BehavioralGridState:
 
         # If an adjacent lane exists, create a generalized Frenet frame for it
         for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
+            # can_augment is True only if the adjacent lane does not exist. Therefore, the only thing that can be done is to
+            # create an augmented GFF
             if can_augment[relative_lane]:
-                # TODO: Add comment
-                if lane_gff_dict[relative_lane]:
+                # Even though a lane augmentation is possible, it may not exist
+                # (e.g. right lane doesn't exist allowing for an augmented GFF, but there are no right splits ahead)
+                # Need to check if the augmented GFF was actually created
+                if lane_gff_dict.get(relative_lane):
                     extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
             else:
                 # TODO: Move search for host's location in other lane to a function
@@ -258,12 +262,13 @@ class BehavioralGridState:
                                                                      .format(closest_lanes_dict[relative_lane])))
                     continue
 
-                # Second, create the GFF
+                # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
                     lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(
                         lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan)
-                    # TODO: Try to make the below assignment not confusing
-                    # index by [RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
+
+                    # Index by [RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
+                    # These lanes are relative to the lane_id that is passed in, not the vehicle's actual position
                     extended_lane_frames[relative_lane] = lane_gffs[RelativeLane.SAME_LANE]
                 except MappingException as e:
                     logger.warning(e)

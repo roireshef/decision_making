@@ -29,6 +29,9 @@ LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 # The minimum distance in [m] of valid lane for a GFF to exist
 MINIMUM_REQUIRED_DIST_LANE_AHEAD = 1
 
+# Minimum cost difference required to prefer one lane over another
+MINIMUM_REQUIRED_COST_DIFFERENCE = 0.1
+
 # After a change of TP costs run the following test:
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
 
