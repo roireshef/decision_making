@@ -111,8 +111,8 @@ class ActionSpecFilter:
         spec_t_idxs[in_padding_mode] = 0
 
         # calculate trajectory time indices for t = max(spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
-        last_pad_idxs = (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(
-            int) + 1
+        last_pad_idxs = KinematicUtils.get_time_index_of_padded_actions(T) + 1
+        # (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(int)
 
         # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
         for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
@@ -124,11 +124,7 @@ class ActionSpecFilter:
                 trajectory_s[spec_t_idx:last_pad_idx] = np.c_[spec.s + times_beyond_spec * spec.v,
                                                               np.full(times_beyond_spec.shape, spec.v),
                                                               np.zeros_like(times_beyond_spec)]
-            # need to add padding, as we look at the whole trajectory to decide if we meet the speed limits
-            # pad s beyond last_pad_idx: in case of short actions padding take the last s, otherwise take spec.s
-            trajectory_s[last_pad_idx:, FS_SX] = max(spec.s, trajectory_s[last_pad_idx-1, FS_SX])
-            trajectory_s[last_pad_idx:, FS_SV] = spec.v
-            trajectory_s[last_pad_idx:, FS_SA] = 0
+            trajectory_s[last_pad_idx:] = 0
             trajectory_d[spec_t_idx:] = 0
 
         # return full Frenet trajectories
@@ -164,6 +160,24 @@ class ActionSpecFiltering:
 
             # a mask only on the valid action specs
             current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
+
+            # TODO DEBUG REMOVE
+            next_mask = mask.copy()
+            next_mask[mask] = current_mask
+            removed_action_specs_aggressiveness = [a_s.recipe.aggressiveness.value for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
+                                                   action_specs[i] is not None and
+                                                   (action_specs[i].recipe.action_type == ActionType.FOLLOW_ROAD_SIGN)]
+            if len(removed_action_specs_aggressiveness) > 0:
+                print('\x1b[6;30;44m', action_spec_filter, "removed", len(removed_action_specs_aggressiveness),
+                      "STOP action specs", removed_action_specs_aggressiveness, '\x1b[0m')
+            removed_action_specs_speeds = [(a_s.recipe.velocity, a_s.recipe.aggressiveness.value) for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
+                                           action_specs[i] is not None and
+                                           (action_specs[i].recipe.action_type == ActionType.FOLLOW_LANE and
+                                            action_specs[i].recipe.velocity > -20)]
+            if len(removed_action_specs_speeds) > 0:
+                print('\x1b[6;30;44m', action_spec_filter, "removed", len(removed_action_specs_speeds),
+                      "STATIC action specs", removed_action_specs_speeds, '\x1b[0m')
+            # TODO DEBUG REMOVE
 
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask

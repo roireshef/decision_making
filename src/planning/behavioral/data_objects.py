@@ -8,11 +8,12 @@ from decision_making.src.planning.types import FrenetState2D
 
 class ActionType(Enum):
     """"
-    Type of Recipe, when "follow lane" is a static action while "follow vehicle" and "takeover vehicle" are dynamic ones.
+    Type of Recipe, when "follow lane" is a static action while "follow vehicle" and "takeover vehicle" and "follow_road_sign" are dynamic ones.
     """
     FOLLOW_LANE = 1
     FOLLOW_VEHICLE = 2
     OVERTAKE_VEHICLE = 3
+    FOLLOW_ROAD_SIGN = 4
 
 
 class AggressivenessLevel(Enum):

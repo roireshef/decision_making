@@ -2,24 +2,22 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, EPS, BP_ACTION_T_LIMITS, \
-    TRAJECTORY_TIME_RESOLUTION
+from decision_making.src.global_constants import EPS
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, RelativeLane
+    RelativeLongitudinalPosition, ActionType, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, C_V
+from decision_making.src.planning.types import FS_DX, FS_SX
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from typing import List
 from typing import List, Union, Any
 
 
@@ -73,7 +71,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                 nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
                     ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
 
-        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds))
+        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds, action_specs))
 
     @staticmethod
     def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
@@ -84,8 +82,10 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
 
         # get the lane ids
         lane_ids_matrix = frenet.convert_to_segment_states(ftrajectories)[0]
-        lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
+        # lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
+        lane_to_nominal_speed = {lane_id: 20.3 #TODO DEBUG ONLY REMOVE
                                  for lane_id in np.unique(lane_ids_matrix)}
+        print("nominal speed limits", lane_to_nominal_speed)
         # creates an ndarray with the same shape as of `lane_ids_list`,
         # where each element is replaced by the maximal speed limit (according to lane)
         return np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
@@ -95,7 +95,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
          of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
-         maintaining the required safety-headway + constant safety-margin"""
+         maintaining the required safety-headway + constant safety-margin. Also used for action FOLLOW_ROAD_SIGN to
+         verify ego maintains enough safety towards closest vehicle"""
         # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
         # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
         relative_cells = [(spec.recipe.relative_lane,
@@ -159,8 +160,16 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
+        result = [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
                 for action_spec in action_specs]
+        # removed_action_specs_speeds = [(a_s.recipe.velocity, a_s.recipe.aggressiveness.value) for res, a_s in zip(result, action_specs) if
+        #                                not res and
+        #                                a_s is not None and
+        #                                a_s.recipe.action_type == ActionType.FOLLOW_LANE]
+        # if len(removed_action_specs_speeds) > 0:
+        #     print('\x1b[6;30;44m', "StaticTrafficFlowControlFilter decides removal", len(removed_action_specs_speeds),
+        #           removed_action_specs_speeds, '\x1b[0m')
+        return result
 
 
 @six.add_metaclass(ABCMeta)
@@ -182,7 +191,7 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
     """
     def __init__(self):
         super(BeyondSpecBrakingFilter, self).__init__()
-        self.braking_distances = BrakingDistances.create_braking_distances()
+        self.braking_distances = BrakingDistances.create_braking_distances(aggresiveness_level=AggressivenessLevel.STANDARD.value)  # TODO aggressiveness_level
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
@@ -200,7 +209,7 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
     def _target_function(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec, points: Any) -> np.array:
         """
         Calculate the braking distances from action_spec.s to the selected points, using static
-        actions with STANDARD aggressiveness level.
+        actions with CALM aggressiveness level.
         :param behavioral_state:  A behavioral grid state
         :param action_spec: the action spec which to filter
         :return: array of braking distances from action_spec.s to the selected points
@@ -223,6 +232,12 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
         :param constraints_values: the (externally calculated) constraint values
         :return: a single boolean indicating whether this action_spec should be filtered or not
         """
+        if isinstance(self, BeyondSpecStaticTrafficFlowControlFilter) and len(constraints_values) > 0:
+            if target_values[0] >= constraints_values[0]:
+                v = self.spec.recipe.velocity if isinstance(self.spec.recipe, StaticActionRecipe) else 0
+                print('\x1b[6;30;41m', "FAIL violation", target_values - constraints_values, "[m] out of action of", self.spec.s, "[m]", self.spec.t, "[sec]")
+                print(">>recipe (type,aggr, v)", self.spec.recipe.action_type, self.spec.recipe.aggressiveness.value, v)
+                print(">>braking distance ", target_values, "vs actual", constraints_values, '\x1b[0m')
         return np.all(target_values < constraints_values)
 
     def _braking_distances(self, action_spec: ActionSpec, slow_points_velocity_limits: np.array) -> np.ndarray:
@@ -243,6 +258,11 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
         :param slow_points_s: s coordinates of selected points
         :return: distances from the spec's endpoint (spec.s) to the given points
         """
+        # if isinstance(self, BeyondSpecStaticTrafficFlowControlFilter) and len(slow_points_s) > 0:
+        #     if isinstance(action_spec.recipe, DynamicActionRecipe):
+        #     print(">>recipe (type,aggr, v)", action_spec.recipe.action_type, action_spec.recipe.aggressiveness.value,
+        #           action_spec.recipe.velocity if isinstance(action_spec.recipe, StaticActionRecipe) else 0,
+        #           "spec ends at", action_spec.s, "after", action_spec.t, "leaving", slow_points_s - action_spec.s)
         return slow_points_s - action_spec.s
 
 
@@ -281,6 +301,16 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
             self._raise_true()
         return np.array([stop_bar_s]), np.array([0])
 
+    # def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    #     result = super().filter(action_specs, behavioral_state)
+    #     removed_action_specs_speeds = [(a_s.recipe.velocity, a_s.recipe.aggressiveness.value) for res, a_s in zip(result, action_specs) if
+    #                                    not res and
+    #                                    a_s is not None and
+    #                                    a_s.recipe.action_type == ActionType.FOLLOW_LANE]
+    #     if len(removed_action_specs_speeds) > 0:
+    #         print('\x1b[6;30;44m', "BeyondSpecStaticTrafficFlowControlFilter decides removal", len(removed_action_specs_speeds),
+    #               removed_action_specs_speeds, '\x1b[0m')
+    #     return result
 
 class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
     """
@@ -336,7 +366,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
 class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
     """
     Checks if the speed limit will be exceeded.
-    This filter assumes that the STANDARD aggressiveness will be used, and only checks the points that are before
+    This filter assumes that the CALM aggressiveness will be used, and only checks the points that are before
     the worst case stopping distance.
     The braking distances are calculated upon initialization and cached.
 
@@ -353,7 +383,7 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         Finds speed limits of the lanes ahead
         :param behavioral_state
         :param action_spec:
-        :return: tuple of (Frenet indicies of start points of lanes ahead, speed limits at those indicies)
+        :return: tuple of (Frenet indices of start points of lanes ahead, speed limits at those indices)
         """
         # get the lane the action_spec wants to drive in
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
@@ -373,8 +403,11 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         lane_ids_ahead = [subsegment.e_i_SegmentID for subsegment in subsegments_ahead]
 
         # find speed limits of points at the start of the lane (should be in mps)
-        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids_ahead]
+        # speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids_ahead]
+        speed_limits = [20.3 for lane_id in lane_ids_ahead]
 
+        # if action_spec.recipe.action_type == ActionType.FOLLOW_LANE and action_spec.recipe.velocity > 22:
+        #     print("BeyondSpecSpeedLimitFilter _get_upcoming_speed_limits lanes ahead", lanes_s_start_ahead, "limits", speed_limits)
         return (np.array(lanes_s_start_ahead), np.array(speed_limits))
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
@@ -397,6 +430,8 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         # skip filtering if there are no points that require slowing down
         if len(slow_points) == 0:
             self._raise_true()
+        # if action_spec.recipe.action_type == ActionType.FOLLOW_LANE and action_spec.recipe.velocity > 22:
+        #     print("BeyondSpecSpeedLimitFilter _select_points lanes ahead", lane_s_start_ahead[slow_points], "limits", speed_limits[slow_points])
 
         return lane_s_start_ahead[slow_points], speed_limits[slow_points]
 

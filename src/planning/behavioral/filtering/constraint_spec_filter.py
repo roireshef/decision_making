@@ -30,6 +30,8 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :param extend_short_action_specs:  Determines whether very short action should be extended (assuming constant velocity)
         """
         self._extend_short_action_specs = extend_short_action_specs
+        # TODO DEBUG REMOVE
+        self.spec = None
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
@@ -103,6 +105,8 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :return:
         """
         points_under_test = self._select_points(behavioral_state, action_spec)
+        # TODO DEBUG REMOVE
+        self.spec = action_spec
         return self._condition(self._target_function(behavioral_state, action_spec, points_under_test),
                                self._constraint_function(behavioral_state, action_spec, points_under_test))
 
@@ -118,8 +122,8 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :param action_specs:
         :return: A list of action specs with potentially extended copies of short ones
         """
-        return [spec if spec.t >= MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON else
-                ActionSpec(spec.t, spec.v,  spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
+        return [spec if spec.t >= min_action_time else
+                ActionSpec(min_action_time, spec.v,  spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
                 for spec in action_specs]
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
