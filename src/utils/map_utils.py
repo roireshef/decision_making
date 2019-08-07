@@ -355,8 +355,8 @@ class MapUtils:
                 frenet_frames = [MapUtils.get_lane_frenet_frame(subsegment.e_i_SegmentID) for subsegment in subsegments[relative_lane][0]]
 
                 # Create GFF
-                gffs_dict[relative_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, subsegments[relative_lane][0])
-                gffs_dict[relative_lane].gff_type = subsegments[relative_lane][1] # TODO: This should be set with constructor
+                gffs_dict[relative_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, subsegments[relative_lane][0],
+                                                                              subsegments[relative_lane][1])
 
         return gffs_dict
 

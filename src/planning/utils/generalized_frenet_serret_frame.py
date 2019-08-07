@@ -183,10 +183,6 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def gff_type(self):
         return self._gff_type
 
-    @gff_type.setter
-    def gff_type(self, value):
-        self._gff_type = value
-
     @property
     def segment_ids(self):
         return self._segment_ids
