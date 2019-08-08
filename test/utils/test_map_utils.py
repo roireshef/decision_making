@@ -642,12 +642,3 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[0])
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[-1])
-
-
-def test_doesMapExistBackward_longBackwardDist_validateRelevantException(scene_static_pg_split):
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    road_segment_id = road_segment_ids[2]
-    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
-    assert MapUtils.does_map_exist_backward(lane_id, 200)
-    assert not MapUtils.does_map_exist_backward(lane_id, 400)

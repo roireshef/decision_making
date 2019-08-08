@@ -285,20 +285,6 @@ class MapUtils:
         return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
-    def does_map_exist_backward(lane_id: int, backward_dist: float):
-        """
-        check whether the map contains roads behind the given lane_id far enough (backward_dist)
-        :param lane_id: current lane_id
-        :param backward_dist: distance backward
-        :return: True if the map contains upstream roads for the distance backward_dist
-        """
-        try:
-            MapUtils._get_upstream_lanes_from_distance(lane_id, 0, backward_dist)
-            return True
-        except UpstreamLaneNotFound:
-            return False
-
-    @staticmethod
     @raises(LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     @prof.ProfileFunction()
     def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
@@ -413,16 +399,6 @@ class MapUtils:
         upstream_lane_subsegments.reverse()
 
         return upstream_lane_subsegments
-
-    @staticmethod
-    def _get_frenet_starting_point(lane_id, starting_lon):
-        # find the starting point
-        if starting_lon <= 0:  # the starting point is behind lane_id
-            lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
-            init_lane_id = lane_ids[-1]
-        else:  # the starting point is within or after lane_id
-            init_lane_id, init_lon = lane_id, starting_lon
-        return init_lane_id, init_lon
 
     @staticmethod
     @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
