@@ -199,7 +199,6 @@ class BehavioralGridState:
             lane_gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
                                                                         station=state.ego_state.map_state.lane_fstate[FS_SX],
                                                                         route_plan=route_plan, can_augment=can_augment)
-            # TODO: Add comment
             extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
         except MappingException as e:
             logger.warning(e)
