@@ -394,7 +394,6 @@ class MapUtils:
                     if upstream_lane_maneuver_types[upstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION:
                         chosen_upstream_lane_id = upstream_lane_id
                         break
-            # TODO: throw exception if num_upstream_lanes < 0
 
             # Second, determine the start and end stations for the subsegment
             end_station = MapUtils.get_lane_length(chosen_upstream_lane_id)
