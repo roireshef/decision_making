@@ -198,7 +198,7 @@ class BehavioralGridState:
         try:
             lane_gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
                                                                         station=state.ego_state.map_state.lane_fstate[FS_SX],
-                                                                        route_plan=route_plan, can_augment=can_augment)
+                                                                        route_plan=route_plan, logger=logger, can_augment=can_augment)
             extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
         except MappingException as e:
             logger.warning(e)
@@ -231,8 +231,9 @@ class BehavioralGridState:
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
-                    lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(
-                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan)
+                    lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[relative_lane],
+                                                                            station=host_station_in_adjacent_lane, route_plan=route_plan,
+                                                                            logger=logger)
 
                     # Index by [RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
                     # These lanes are relative to the lane_id that is passed in, not the vehicle's actual position

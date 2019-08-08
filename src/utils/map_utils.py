@@ -1,4 +1,5 @@
 import numpy as np
+from logging import Logger
 
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, ValidLaneAheadTooShort, \
@@ -298,9 +299,9 @@ class MapUtils:
             return False
 
     @staticmethod
-    @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
+    @raises(LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     @prof.ProfileFunction()
-    def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan,
+    def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
                                            can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
                                            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
@@ -308,15 +309,13 @@ class MapUtils:
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param logger:
+        :param can_augment:
         :return: Dict of generalized Frenet frame for the given route part
                  Keys are RelativeLane types. The dict will only contain the key if the lane or augmented lane was created.
         """
         # Get the lane subsegments
-        # TODO: Remove the error handling below once partial GFFs are added
-        try:
-            upstream_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, PLANNING_LOOKAHEAD_DIST)
-        except UpstreamLaneNotFound:
-            upstream_subsegments = []
+        upstream_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, PLANNING_LOOKAHEAD_DIST, logger)
 
         if station < PLANNING_LOOKAHEAD_DIST:
             # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane. In this
@@ -361,13 +360,14 @@ class MapUtils:
         return gffs_dict
 
     @staticmethod
-    @raises(UpstreamLaneNotFound)
-    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float) -> List[FrenetSubSegment]:
+    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float,
+                                       logger: Optional[Logger] = None) -> List[FrenetSubSegment]:
         """
         Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
         :param initial_lane_id:
         :param initial_station: Station on given lane
         :param backward_distance:
+        :param logger:
         :return: List of upstream lane subsegments
         """
         lane_id = initial_lane_id
@@ -380,8 +380,10 @@ class MapUtils:
             num_upstream_lanes = len(upstream_lane_ids)
 
             if num_upstream_lanes == 0:
-                # TODO: There can actually be no upstream lanes, but partial GFFs will solve this scenario. Remove?
-                raise UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id))
+                if logger is not None:
+                    logger.debug(UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id)))
+
+                break
             elif num_upstream_lanes == 1:
                 chosen_upstream_lane_id = upstream_lane_ids[0]
             elif num_upstream_lanes > 1:
