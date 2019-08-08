@@ -2,15 +2,15 @@ import numpy as np
 
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, ValidLaneAheadTooShort, \
-    MultipleDownstreamLanes
+    MultipleDownstreamLanes, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound
 from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, PLANNING_LOOKAHEAD_DIST, \
-    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE
+    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D, FS_SX
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX, FP_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -744,4 +744,46 @@ class MapUtils:
         frenet_states[:, FS_SX] = sorted(stations_s_coordinates)
         return lane_frenet.convert_from_segment_states(frenet_states, lane_ids)[:, FS_SX]
 
+    @staticmethod
+    @raises(EquivalentStationNotFound)
+    def _find_equivalent_station(lane_segment_id: int, desired_station: float, gff: GeneralizedFrenetSerretFrame) -> float:
+        """
+        Find the station on a lane that is equivalent to a given station in a GFF
+        :param lane_segment_id: ID for the lane segment in question
+        :param desired_station: Station in given GFF
+        :param gff: Generalized Frenet frame
+        :return: Equivalent station in given lane to given GFF station
+        """
+        previous_station_difference = FLOAT_MAX
 
+        nominal_path_points = MapUtils.get_lane_geometry(lane_segment_id).a_nominal_path_points
+        last_nominal_path_point_index = len(nominal_path_points) - 1
+
+        for i, nominal_path_point in enumerate(nominal_path_points):
+            cartesian_point = np.array([nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value],
+                                        nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value]])
+
+            try:
+                station = gff.cpoint_to_fpoint(cartesian_point)[FP_SX]
+            except (OutOfSegmentBack, OutOfSegmentFront, AssertionError):
+                # If any of these errors were raised, then the nominal path point is not close to the desired station.
+                continue
+
+            station_difference = abs(desired_station - station)
+
+            if station_difference < previous_station_difference:
+                # If station_difference is less than previous_station_difference, there is potentially a closer station to the desired
+                # station. Unless the last nominal path point has been reached, continue iterating until station_difference begins to
+                # increase. If the last nominal path point has been reached and it's "close enough" to the desired station, return its
+                # station.
+                if i == last_nominal_path_point_index and station_difference < MAX_STATION_DIFFERENCE:
+                    return nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+                else:
+                    previous_station_difference = station_difference
+            else:
+                # If station_difference is greater than or equal to previous_station_difference, then the closest station in the given lane
+                # has been reached. Return the station of the previous nominal path point.
+                return nominal_path_points[i - 1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+
+        # If this point is reached, then an equivalent station could not be found
+        raise EquivalentStationNotFound("Could not determine the host's equivalent station in lane segment {}".format(lane_segment_id))

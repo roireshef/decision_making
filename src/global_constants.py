@@ -121,9 +121,8 @@ MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
 # Time threshold to raise takeover flag
 TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
 
-# [m] The maximum station difference between the host and an adjacent lane's last nominal path point that is allowed when localizing the
-# host in an adjacent lane
-MAX_STATION_DIFFERENCE_FROM_HOST = 1.0
+# [m] The maximum difference between two stations to say that they are "close".
+MAX_STATION_DIFFERENCE = 1.0
 
 
 # Trajectory Planner #

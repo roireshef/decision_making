@@ -114,7 +114,7 @@ class LaneCostNotFound(MappingException):
     pass
 
 
-class HostStationInAdjacentLaneNotFound(MappingException):
+class EquivalentStationNotFound(MappingException):
     pass
 
 
