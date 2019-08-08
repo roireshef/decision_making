@@ -9,7 +9,6 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
-from decision_making.src.exceptions import  NavigationPlanTooShort, UpstreamLaneNotFound
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     route_plan_20_30, create_route_plan_msg
