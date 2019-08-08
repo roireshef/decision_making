@@ -586,7 +586,8 @@ class MapUtils:
 
     @staticmethod
     @raises(DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanDoesNotFitMap, MultipleDownstreamLanes)
-    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int, maneuver_type: Optional[ManeuverType] = None) -> (int):
+    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int,
+                                     maneuver_type: Optional[ManeuverType] = None) -> int:
         """
         Currently assumes that Lookahead spreads only current lane segment and the next lane segment(!)
 
