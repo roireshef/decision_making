@@ -21,8 +21,10 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
-    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle
+    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
+from decision_making.test.planning.custom_fixtures import route_plan_1_2
+
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 NAVIGATION_PLAN = np.array(range(20, 30))
@@ -414,6 +416,23 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
+@pytest.fixture(scope='function')
+def state_with_left_lane_ending():
+    SceneStaticModel.get_instance().set_scene_static(scene_static_left_lane_ends())
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+    ego_lane_lon = 700
+    ego_vel = 10
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(1)[1]
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
+
+
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               off_map=False)
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
+
+
 
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan):
@@ -546,6 +565,10 @@ def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State
 def behavioral_grid_state_with_segments_limits(state_for_testing_lanes_speed_limits_violations, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_for_testing_lanes_speed_limits_violations,
                                                 route_plan_20_30, None)
+
+@pytest.fixture(scope='function')
+def behavioral_grid_state_with_left_lane_ending(state_with_left_lane_ending, route_plan_1_2):
+    yield BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_1_2, None)
 
 
 @pytest.fixture(scope='function')

@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.types import FS_DX, FS_SX, C_V
 from decision_making.src.planning.types import LAT_CELL
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFF_Type
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
@@ -399,4 +399,41 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
             self._raise_true()
 
         return lane_s_start_ahead[slow_points], speed_limits[slow_points]
+
+class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
+    """
+    Checks if an action will make the vehicle unable to stop before the end of a Partial GFF.
+
+    This filter assumes that the STANDARD aggressiveness will be used, and only checks the points that are before
+    the worst case stopping distance.
+    The braking distances are calculated upon initialization and cached.
+
+    The filter will return True if the GFF is not a Partial or AugmentedPartial GFF.
+    """
+
+    def __init__(self):
+        super(BeyondSpecPartialGffFilter, self).__init__()
+
+    def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
+        """
+        Finds the end of the Partial GFF
+        :param behavioral_state:
+        :param action_spec:
+        :return: points that require braking after the spec
+        """
+
+        # skip checking speed limits if the vehicle will be stopped
+        if action_spec.v == 0:
+            self._raise_true()
+
+        target_gff = behavioral_state.extended_lane_frames[action_spec.relative_lane]
+
+        # skip checking if the GFF is not a partial GFF
+        if target_gff.gff_type not in [GFF_Type.Partial, GFF_Type.AugmentedPartial]:
+            self._raise_true()
+
+        gff_end_s = target_gff.s_max
+
+        return gff_end_s, 0
+
 
