@@ -79,6 +79,19 @@ class DynamicActionRecipe(ActionRecipe):
         return 'DynamicActionRecipe: %s' % self.__dict__
 
 
+class RoadSignActionRecipe(DynamicActionRecipe):
+    """"
+    Data object containing the fields needed for specifying a certain road sign action, together with the state.
+    """
+    #  Basically same as DynamicActionRecipe, but need a separate one, since every action space should deal with its recipes
+    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
+                 aggressiveness: AggressivenessLevel):
+        super().__init__(relative_lane, relative_lon, action_type, aggressiveness)
+
+    def __str__(self):
+        return 'RoadSignActionRecipe: %s' % self.__dict__
+
+
 class ActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.

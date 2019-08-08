@@ -20,7 +20,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 PLANNING_LOOKAHEAD_DIST = 100.0
 
 # [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 400
+MAX_HORIZON_DISTANCE = 400  # todo 600
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
@@ -67,7 +67,7 @@ VELOCITY_STEP = 5/2.23694
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([0.0, 15.0])
+BP_ACTION_T_LIMITS = np.array([0.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -104,7 +104,7 @@ ZERO_SPEED = 0.0
 # [m] road sign length
 ROAD_SIGN_LENGTH = 0
 # TODO DEBUG REMOVE
-SELECTED_STOP_LANE_ID = 19670531
+SELECTED_STOP_LANE_ID = 58375683 #19670531
 # TODO DEBUG REMOVE
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions

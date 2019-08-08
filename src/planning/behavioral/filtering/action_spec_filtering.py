@@ -164,12 +164,18 @@ class ActionSpecFiltering:
             # TODO DEBUG REMOVE
             next_mask = mask.copy()
             next_mask[mask] = current_mask
-            removed_action_specs_aggressiveness = [a_s.recipe.aggressiveness.value for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
+            removed_action_specs_aggressiveness_stop = [a_s.recipe.aggressiveness.value for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
                                                    action_specs[i] is not None and
                                                    (action_specs[i].recipe.action_type == ActionType.FOLLOW_ROAD_SIGN)]
+            if len(removed_action_specs_aggressiveness_stop) > 0:
+                print('\x1b[6;30;44m', action_spec_filter, "removed", len(removed_action_specs_aggressiveness_stop),
+                      "STOP action specs", removed_action_specs_aggressiveness_stop, '\x1b[0m')
+            removed_action_specs_aggressiveness = [a_s.recipe.aggressiveness.value for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
+                                                   action_specs[i] is not None and
+                                                   (action_specs[i].recipe.action_type == ActionType.FOLLOW_VEHICLE)]
             if len(removed_action_specs_aggressiveness) > 0:
                 print('\x1b[6;30;44m', action_spec_filter, "removed", len(removed_action_specs_aggressiveness),
-                      "STOP action specs", removed_action_specs_aggressiveness, '\x1b[0m')
+                      "FOLLOW action specs", removed_action_specs_aggressiveness, '\x1b[0m')
             removed_action_specs_speeds = [(a_s.recipe.velocity, a_s.recipe.aggressiveness.value) for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
                                            action_specs[i] is not None and
                                            (action_specs[i].recipe.action_type == ActionType.FOLLOW_LANE and

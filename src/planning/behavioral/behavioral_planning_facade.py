@@ -82,11 +82,11 @@ class BehavioralPlanningFacade(DmModule):
 
             # TODO ADD STOP SIGN REMOVE
             try:
-                if True:
+                if False:
                     patched_lane = MapUtils.get_lane(lane_id=SELECTED_STOP_LANE_ID)
                     lane_length = patched_lane.e_l_length
-                    assert lane_length > 30
-                    stop_bar = StaticTrafficFlowControl(RoadObjectType.StopSign, 30, 100)
+                    assert lane_length > lane_length-1
+                    stop_bar = StaticTrafficFlowControl(RoadObjectType.StopSign, lane_length-1, 100)
                     patched_lane.as_static_traffic_flow_control.append(stop_bar)
             except LaneNotFound:
                 pass

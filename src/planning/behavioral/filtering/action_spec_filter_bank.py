@@ -20,6 +20,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from typing import List, Union, Any
 
+from decision_making.src.utils.print_utils import PrintUtils
 
 class FilterIfNone(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
@@ -83,7 +84,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         # get the lane ids
         lane_ids_matrix = frenet.convert_to_segment_states(ftrajectories)[0]
         # lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
-        lane_to_nominal_speed = {lane_id: 20.3 #TODO DEBUG ONLY REMOVE
+        lane_to_nominal_speed = {lane_id: 34.7 #TODO DEBUG ONLY REMOVE
                                  for lane_id in np.unique(lane_ids_matrix)}
         print("nominal speed limits", lane_to_nominal_speed)
         # creates an ndarray with the same shape as of `lane_ids_list`,
@@ -192,6 +193,9 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
     def __init__(self):
         super(BeyondSpecBrakingFilter, self).__init__()
         self.braking_distances = BrakingDistances.create_braking_distances(aggresiveness_level=AggressivenessLevel.STANDARD.value)  # TODO aggressiveness_level
+        PrintUtils.change_bg_green()
+        print(">>>maximal braking distance at", self.braking_distances.shape[0] * 0.5 * 3.6, "km/h", self.braking_distances[-1, 0])
+        PrintUtils.change_bg_default()
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
@@ -404,7 +408,7 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
 
         # find speed limits of points at the start of the lane (should be in mps)
         # speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in lane_ids_ahead]
-        speed_limits = [20.3 for lane_id in lane_ids_ahead]
+        speed_limits = [34.7 for lane_id in lane_ids_ahead]
 
         # if action_spec.recipe.action_type == ActionType.FOLLOW_LANE and action_spec.recipe.velocity > 22:
         #     print("BeyondSpecSpeedLimitFilter _get_upcoming_speed_limits lanes ahead", lanes_s_start_ahead, "limits", speed_limits)

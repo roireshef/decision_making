@@ -41,6 +41,10 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         # The selection is only by aggressiveness, since it relies on the fact that we only follow a vehicle on the
         # SAME lane, which means there is only 1 possible vehicle to follow, so there is only 1 target vehicle speed.
         if len(follow_vehicle_valid_action_idxs) > 0:
+            print('\x1b[5;30;43m', "available FOLLOW aggressiveness", [action.aggressiveness for action, mask in zip(action_recipes, action_specs_mask)
+                                                                       if action.action_type == ActionType.FOLLOW_VEHICLE and mask], '\x1b[0m')
+            print('\x1b[5;30;43m', "selected action FOLLOW aggressiveness",
+                  action_recipes[follow_vehicle_valid_action_idxs[0]].aggressiveness, '\x1b[0m')
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action, which is least aggressive
             return costs
 
@@ -107,6 +111,15 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                 costs[selected_follow_lane_idx] = 0
                 return costs
             else:
+                # actual selection can change here - for now prefer STANDARD over CALM.
+                # Will not select aggressive, as aggressive only case is less preferable than FOLLOW_LANE
+                # standard_stop_index = -1
+                # for index in range(len(follow_road_sign_valid_action_idxs)):
+                #     if action_recipes[follow_road_sign_valid_action_idxs[index]].aggressiveness == AggressivenessLevel.STANDARD:
+                #         standard_stop_index = follow_road_sign_valid_action_idxs[index]
+                #         break
+                # if standard_stop_index >= 0:
+                #     tentative_road_sign_idx = standard_stop_index
                 print('\x1b[5;30;43m', "selected action STOP aggressiveness",
                       action_recipes[tentative_road_sign_idx].aggressiveness, '\x1b[0m')
                 costs[tentative_road_sign_idx] = 0
