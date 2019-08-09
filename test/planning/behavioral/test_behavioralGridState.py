@@ -2,13 +2,17 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 from rte.python.logger.AV_logger import AV_Logger
 
 import numpy as np
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    state_with_surrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30
+    state_with_surrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, \
+    state_with_left_lane_ending, state_with_right_lane_ending, state_with_same_lane_ending_no_left_lane, \
+    state_with_same_lane_ending_no_right_lane
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
+from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_left_lane_ends, route_plan_right_lane_ends
 
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_surrounding_objects, route_plan_20_30):
     """
@@ -42,6 +46,66 @@ def test_createFromState_eightObjectsAroundEgo_IgnoreThreeOffMapObjects(state_wi
         dynamic_objects_on_grid = behavioral_state.road_occupancy_grid[(rel_lane, rel_lon)]
         assert np.all([not obj.dynamic_object.off_map for obj in dynamic_objects_on_grid])
 
+
+def test_createFromState_leftLaneEnds_partialGffOnLeft(state_with_left_lane_ending, route_plan_left_lane_ends):
+    """
+    Host is in middle lane of three-lane road, and the left lane ends ahead. The left GFF should be a partial, and the other two should
+    be normal.
+    """
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_left_lane_ends, None)
+    gffs = behavioral_grid_state.extended_lane_frames
+
+    # Check GFF Types
+    assert gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Partial
+    assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Normal
+
+
+def test_createFromState_rightLaneEnds_partialGffOnRight(state_with_right_lane_ending, route_plan_right_lane_ends):
+    """
+    Host is in middle lane of three-lane road, and the right lane ends ahead. The right GFF should be a partial, and the other two should
+    be normal.
+    """
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_right_lane_ending, route_plan_right_lane_ends, None)
+    gffs = behavioral_grid_state.extended_lane_frames
+
+    # Check GFF Types
+    assert gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Partial
+
+
+def test_createFromState_laneEndsNoLeftLane_partialGffInLaneNoLeftLane(state_with_same_lane_ending_no_left_lane, route_plan_left_lane_ends):
+    """
+    Host is on three-lane road, and is in the furthest left lane that ends ahead. A left GFF should not be created, the same lane GFF
+    should be partial, and the right lane GFF should be normal.
+    """
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_same_lane_ending_no_left_lane, route_plan_left_lane_ends, None)
+    gffs = behavioral_grid_state.extended_lane_frames
+
+    # Check GFF Types
+    assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Partial
+    assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Normal
+
+    # Check that left GFF does not exist
+    assert RelativeLane.LEFT_LANE not in gffs
+
+
+def test_createFromState_laneEndsNoRightLane_partialGffInLaneNoRightLane(state_with_same_lane_ending_no_right_lane,
+                                                                         route_plan_right_lane_ends):
+    """
+    Host is on three-lane road, and is in the furthest right lane that ends ahead. A right GFF should not be created, the same lane GFF
+    should be partial, and the left lane GFF should be normal.
+    """
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_same_lane_ending_no_right_lane, route_plan_right_lane_ends, None)
+    gffs = behavioral_grid_state.extended_lane_frames
+
+    # Check GFF Types
+    assert gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Partial
+
+    # Check that right GFF does not exist
+    assert RelativeLane.RIGHT_LANE not in gffs
 
 
 def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_surrounding_objects, behavioral_grid_state):

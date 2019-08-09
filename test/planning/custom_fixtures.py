@@ -64,6 +64,22 @@ def route_plan_1_2_3():
                                              [RoutePlanLaneSegment(30, 0, 0), RoutePlanLaneSegment(31, 0, 0), RoutePlanLaneSegment(32, 0, 0)]]))
 
 @pytest.fixture(scope='function')
+def route_plan_left_lane_ends(route_plan_1_2):
+    # Delete left lane
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[1][-1]
+
+    yield route_plan_1_2
+
+@pytest.fixture(scope='function')
+def route_plan_right_lane_ends(route_plan_1_2):
+    # Delete right lane
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[1][0]
+
+    yield route_plan_1_2
+
+@pytest.fixture(scope='function')
 def dynamic_objects_not_on_road():
 
     obj_id = 1

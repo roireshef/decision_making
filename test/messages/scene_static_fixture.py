@@ -197,3 +197,30 @@ def scene_static_left_lane_ends():
 
     return scene
 
+@pytest.fixture()
+def scene_static_right_lane_ends():
+    """
+    Creates map where right lane suddenly ends
+    12 -> 22
+    11 -> 21
+    10 -> _
+    :return:
+    """
+    scene = short_testable_scene_static_mock()
+    ssb = scene.s_Data.s_SceneStaticBase
+
+    # delete lane 20
+    del ssb.as_scene_lane_segments[3]
+    #delete downstreams of lane 10
+    ssb.as_scene_lane_segments[0].as_downstream_lanes = np.array([])
+    ssb.as_scene_lane_segments[0].e_Cnt_downstream_lane_count = 0
+    #delete lane 20 in road 2
+    ssb.as_scene_road_segment[1].a_i_lane_segment_ids = np.array([21, 22])
+    ssb.as_scene_road_segment[1].e_Cnt_lane_segment_id_count -= 1
+    #delete right adjacent of lane 21
+    ssb.as_scene_lane_segments[4].as_right_adjacent_lanes = []
+    ssb.as_scene_lane_segments[4].e_Cnt_right_adjacent_lane_count = 0
+
+    ssb.e_Cnt_num_lane_segments -= 1
+
+    return scene
