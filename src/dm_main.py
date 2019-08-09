@@ -14,8 +14,7 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING
-from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
-    SingleLaneActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.multi_lane_action_spec_evaluator import MultiLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
@@ -70,7 +69,7 @@ class DmInitialization:
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
-        action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
+        action_spec_evaluator = MultiLaneActionSpecEvaluator(logger) #SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
         action_spec_filtering = DEFAULT_ACTION_SPEC_FILTERING
