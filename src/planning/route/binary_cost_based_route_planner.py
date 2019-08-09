@@ -13,6 +13,7 @@ from decision_making.src.planning.route.route_planner import RoutePlanner, Route
 from decision_making.src.planning.types import LaneSegmentID, LaneEndCost
 from typing import List, Dict
 
+
 class BinaryCostBasedRoutePlanner(RoutePlanner):
     """
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
@@ -21,8 +22,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
     def __init__(self):
         super().__init__()
 
-    def get_route_plan_lane_segments(self) -> RoutePlanRoadSegments:
-        return self.__route_plan_lane_segments
+    def get_route_plan_lane_segments(self) -> [RoutePlanLaneSegment]:
+        return list(reversed(self._route_plan_lane_segments_reversed))
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
