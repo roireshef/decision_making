@@ -9,7 +9,6 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
-from decision_making.src.exceptions import  NavigationPlanTooShort, UpstreamLaneNotFound
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     route_plan_20_30, create_route_plan_msg
@@ -645,10 +644,69 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[-1])
 
 
-def test_doesMapExistBackward_longBackwardDist_validateRelevantException(scene_static_pg_split):
+def test_getUpstreamLaneSubsegments_backwardHorizonOnLane_NoUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
+    """
+    Test _get_upstream_lane_subsegments
+    The distance to travel backwards is small enough that it is still on the same lane. This should result in no upstream lane subsegments
+    returned.
+    """
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    road_segment_id = road_segment_ids[2]
-    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
-    assert MapUtils.does_map_exist_backward(lane_id, 200)
-    assert not MapUtils.does_map_exist_backward(lane_id, 400)
+    upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(200, 100, 50)
+    assert upstream_lane_subsegments == []
+
+
+def test_getUpstreamLaneSubsegments_backwardHorizonPassesBeginningOfLane_CorrectUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
+    """
+    Test _get_upstream_lane_subsegments
+    This tests the scenario where the backwards horizon extends to upstream lanes and they exist. The result should be the "normal" output
+    with subsegments extending back as far as the provided horizon with start and end stations assigned accordingly. The expected values
+    were calculated as follows:
+
+        station_on_220 = 5
+        backward_distance = 150
+        length_of_200 = 120.84134201631973  (from pickle file)
+        length_of_210 = 119.64304560784024  (from pickle file)
+
+        start_station_on_200 = (length_of_200 + length_of_210 + station_on_220) - backward_distance
+        end_station_on_200 = length_of_200
+
+        start_station_on_210 = 0.0  (beginning of lane segment)
+        end_station_on_210 = length_of_210
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+    upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(220, 5, 150)
+
+    # Check size
+    assert len(upstream_lane_subsegments) == 2
+
+    # Check order
+    assert upstream_lane_subsegments[0].e_i_SegmentID == 200
+    assert upstream_lane_subsegments[1].e_i_SegmentID == 210
+
+    # Check start and end stations
+    assert upstream_lane_subsegments[0].e_i_SStart == 95.48438762415998
+    assert upstream_lane_subsegments[0].e_i_SEnd == 120.84134201631973
+
+    assert upstream_lane_subsegments[1].e_i_SStart == 0.0
+    assert upstream_lane_subsegments[1].e_i_SEnd == 119.64304560784024
+
+
+def test_getUpstreamLaneSubsegments_NoUpstreamLane_CorrectUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
+    """
+    Test _get_upstream_lane_subsegments
+    This tests the scenario where the backwards horizon extends to upstream lanes but an upstream lane doesn't exist at some point. With
+    starting close to the beginning of lane 210 and going backwards 150 m, the beginning of lane 200 is passed. Since lane 200 doesn't
+    have any upstream lanes, the search should end and the lane subsegment should include the entire length of lane 200.
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+    upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(210, 5, 150)
+
+    # Check size
+    assert len(upstream_lane_subsegments) == 1
+
+    # Check ID
+    assert upstream_lane_subsegments[0].e_i_SegmentID == 200
+
+    # Check start and end stations
+    assert upstream_lane_subsegments[0].e_i_SStart == 0.0
+    assert upstream_lane_subsegments[0].e_i_SEnd == 120.84134201631973  # Lane length taken from pickle file

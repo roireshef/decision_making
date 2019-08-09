@@ -1,16 +1,17 @@
 import numpy as np
+from logging import Logger
 
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, ValidLaneAheadTooShort, \
-    MultipleDownstreamLanes
+    MultipleDownstreamLanes, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound
 from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, PLANNING_LOOKAHEAD_DIST, \
-    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE
+    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D, FS_SX
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX, FP_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -284,23 +285,9 @@ class MapUtils:
         return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
-    def does_map_exist_backward(lane_id: int, backward_dist: float):
-        """
-        check whether the map contains roads behind the given lane_id far enough (backward_dist)
-        :param lane_id: current lane_id
-        :param backward_dist: distance backward
-        :return: True if the map contains upstream roads for the distance backward_dist
-        """
-        try:
-            MapUtils._get_upstream_lanes_from_distance(lane_id, 0, backward_dist)
-            return True
-        except UpstreamLaneNotFound:
-            return False
-
-    @staticmethod
-    @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
+    @raises(LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     @prof.ProfileFunction()
-    def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan,
+    def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
                                            can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
                                            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
@@ -308,15 +295,13 @@ class MapUtils:
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param logger:
+        :param can_augment:
         :return: Dict of generalized Frenet frame for the given route part
                  Keys are RelativeLane types. The dict will only contain the key if the lane or augmented lane was created.
         """
         # Get the lane subsegments
-        # TODO: Remove the error handling below once partial GFFs are added
-        try:
-            upstream_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, PLANNING_LOOKAHEAD_DIST)
-        except UpstreamLaneNotFound:
-            upstream_subsegments = []
+        upstream_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, PLANNING_LOOKAHEAD_DIST, logger)
 
         if station < PLANNING_LOOKAHEAD_DIST:
             # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane. In this
@@ -361,13 +346,14 @@ class MapUtils:
         return gffs_dict
 
     @staticmethod
-    @raises(UpstreamLaneNotFound)
-    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float) -> List[FrenetSubSegment]:
+    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float,
+                                       logger: Optional[Logger] = None) -> List[FrenetSubSegment]:
         """
         Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
         :param initial_lane_id:
         :param initial_station: Station on given lane
         :param backward_distance:
+        :param logger:
         :return: List of upstream lane subsegments
         """
         lane_id = initial_lane_id
@@ -380,8 +366,10 @@ class MapUtils:
             num_upstream_lanes = len(upstream_lane_ids)
 
             if num_upstream_lanes == 0:
-                # TODO: There can actually be no upstream lanes, but partial GFFs will solve this scenario. Remove?
-                raise UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id))
+                if logger is not None:
+                    logger.debug(UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id)))
+
+                break
             elif num_upstream_lanes == 1:
                 chosen_upstream_lane_id = upstream_lane_ids[0]
             elif num_upstream_lanes > 1:
@@ -394,7 +382,6 @@ class MapUtils:
                     if upstream_lane_maneuver_types[upstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION:
                         chosen_upstream_lane_id = upstream_lane_id
                         break
-            # TODO: throw exception if num_upstream_lanes < 0
 
             # Second, determine the start and end stations for the subsegment
             end_station = MapUtils.get_lane_length(chosen_upstream_lane_id)
@@ -412,16 +399,6 @@ class MapUtils:
         upstream_lane_subsegments.reverse()
 
         return upstream_lane_subsegments
-
-    @staticmethod
-    def _get_frenet_starting_point(lane_id, starting_lon):
-        # find the starting point
-        if starting_lon <= 0:  # the starting point is behind lane_id
-            lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
-            init_lane_id = lane_ids[-1]
-        else:  # the starting point is within or after lane_id
-            init_lane_id, init_lon = lane_id, starting_lon
-        return init_lane_id, init_lon
 
     @staticmethod
     @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
@@ -585,7 +562,8 @@ class MapUtils:
 
     @staticmethod
     @raises(DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanDoesNotFitMap, MultipleDownstreamLanes)
-    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int, maneuver_type: Optional[ManeuverType] = None) -> (int):
+    def _choose_next_lane_id_by_cost(current_lane_id: int, route_plan: RoutePlan, next_road_idx_on_plan: int,
+                                     maneuver_type: Optional[ManeuverType] = None) -> int:
         """
         Currently assumes that Lookahead spreads only current lane segment and the next lane segment(!)
 
@@ -744,4 +722,46 @@ class MapUtils:
         frenet_states[:, FS_SX] = sorted(stations_s_coordinates)
         return lane_frenet.convert_from_segment_states(frenet_states, lane_ids)[:, FS_SX]
 
+    @staticmethod
+    @raises(EquivalentStationNotFound)
+    def _find_equivalent_station(lane_segment_id: int, desired_station: float, gff: GeneralizedFrenetSerretFrame) -> float:
+        """
+        Find the station on a lane that is equivalent to a given station in a GFF
+        :param lane_segment_id: ID for the lane segment in question
+        :param desired_station: Station in given GFF
+        :param gff: Generalized Frenet frame
+        :return: Equivalent station in given lane to given GFF station
+        """
+        previous_station_difference = FLOAT_MAX
 
+        nominal_path_points = MapUtils.get_lane_geometry(lane_segment_id).a_nominal_path_points
+        last_nominal_path_point_index = len(nominal_path_points) - 1
+
+        for i, nominal_path_point in enumerate(nominal_path_points):
+            cartesian_point = np.array([nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value],
+                                        nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value]])
+
+            try:
+                station = gff.cpoint_to_fpoint(cartesian_point)[FP_SX]
+            except (OutOfSegmentBack, OutOfSegmentFront, AssertionError):
+                # If any of these errors were raised, then the nominal path point is not close to the desired station.
+                continue
+
+            station_difference = abs(desired_station - station)
+
+            if station_difference < previous_station_difference:
+                # If station_difference is less than previous_station_difference, there is potentially a closer station to the desired
+                # station. Unless the last nominal path point has been reached, continue iterating until station_difference begins to
+                # increase. If the last nominal path point has been reached and it's "close enough" to the desired station, return its
+                # station.
+                if i == last_nominal_path_point_index and station_difference < MAX_STATION_DIFFERENCE:
+                    return nominal_path_point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+                else:
+                    previous_station_difference = station_difference
+            else:
+                # If station_difference is greater than or equal to previous_station_difference, then the closest station in the given lane
+                # has been reached. Return the station of the previous nominal path point.
+                return nominal_path_points[i - 1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+
+        # If this point is reached, then an equivalent station could not be found
+        raise EquivalentStationNotFound("Could not determine the host's equivalent station in lane segment {}".format(lane_segment_id))
