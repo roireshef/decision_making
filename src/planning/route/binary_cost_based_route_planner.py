@@ -1,15 +1,12 @@
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, \
-    DownstreamLaneDataNotFound, RoutePlanNotDefinedForAnyRoadSegment
+from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, DownstreamLaneDataNotFound
 from decision_making.src.global_constants import HIGH_COST, LOW_COST
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan, \
     RoutePlanRoadSegment, RoutePlanRoadSegments
-from decision_making.src.messages.scene_static_enums import  ManeuverType
-from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase, LaneSegmentConnectivity
+from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
-from decision_making.src.planning.types import LaneSegmentID, LaneEndCost
-from typing import List, Dict
+from typing import List
 
 
 class BinaryCostBasedRoutePlanner(RoutePlanner):
@@ -84,7 +81,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         lane_segment_id = lane_segment_base_data.e_i_lane_segment_id
 
         # Calculate lane occupancy costs for a lane
-        lane_occupancy_cost = BinaryCostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
+        lane_occupancy_cost = RoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
 
         # Calculate lane end costs (from lane occupancy costs)
         if not self._route_plan_lane_segments_reversed:  # if route_plan_lane_segments is empty indicating the last segment in route
@@ -148,40 +145,6 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                                                     road_segment_id,
                                                     self._route_plan_input_data.get_next_road_segment_id(road_segment_id)))
         return route_lane_segments
-
-    @raises(RoutePlanNotDefinedForAnyRoadSegment)
-    def _modify_lane_end_costs_on_last_road_segment(self, lane_segment_ids: List[int], cost: float) -> None:
-        """
-        This function modifies lane end costs for the last road segment in self._route_plan_lane_segments_reversed.
-        :param lane_segment_ids: List of lane segment IDs that will have their associated lane end costs modified
-        :param cost: New lane end cost
-        :return:
-        """
-        if not lane_segment_ids:    # Return if list of lane segmend IDs is empty
-            return
-
-        if not self._route_plan_lane_segments_reversed:
-            raise RoutePlanNotDefinedForAnyRoadSegment("Attempting to access _route_plan_lane_segments_reversed, but it's empty.")
-
-        for lane_segment in self._route_plan_lane_segments_reversed[-1]:
-            if lane_segment.e_i_lane_segment_id in lane_segment_ids:
-                lane_segment.e_cst_lane_end_cost = cost
-
-    @raises(RoutePlanNotDefinedForAnyRoadSegment)
-    def _get_lane_end_costs_on_last_road_segment(self) -> Dict[LaneSegmentID, LaneEndCost]:
-        """
-        This function returns the lane end costs for the last road segment in self._route_plan_lane_segments_reversed as a dictionary.
-        :return: Dictionary where keys are lane segment IDs and values are lane end costs
-        """
-        if not self._route_plan_lane_segments_reversed:
-            raise RoutePlanNotDefinedForAnyRoadSegment("Attempting to access _route_plan_lane_segments_reversed, but it's empty.")
-
-        lane_end_costs: Dict[LaneSegmentID, LaneEndCost] = {}
-
-        for lane_segment in self._route_plan_lane_segments_reversed[-1]:
-            lane_end_costs[lane_segment.e_i_lane_segment_id] = lane_segment.e_cst_lane_end_cost
-
-        return lane_end_costs
 
     @prof.ProfileFunction()
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:

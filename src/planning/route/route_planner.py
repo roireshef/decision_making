@@ -3,13 +3,13 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import List, Dict, Optional
 import rte.python.profiler as prof
-from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanRoadSegment, RoutePlanLaneSegment
+from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanRoadSegment
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
     SceneRoadSegment, SceneLaneSegmentBase
 from decision_making.src.exceptions import MissingInputInformation, RepeatedRoadSegments, raises,\
     NavigationSceneDataMismatch, LaneSegmentDataNotFound, RoadSegmentDataNotFound, LaneAttributeNotFound
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, \
-    MapLaneDirection, GMAuthorityType, LaneConstructionType, ManeuverType
+    MapLaneDirection, GMAuthorityType, LaneConstructionType
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, HIGH_COST, LOW_COST
 
 RoadSegmentDict = Dict[int, SceneRoadSegment]
@@ -322,6 +322,7 @@ class RoutePlanner(metaclass=ABCMeta):
         :param lane_attribute_value: value of the pointed lane attribute
         :return: Normalized lane occupancy cost based on the concerned lane attribute (LOW_COST to HIGH_COST)
         """
+        attribute_based_occupancy_cost_methods = {}
         if 'attribute_based_occupancy_cost_methods' not in RoutePlanner.lane_attribute_based_occupancy_cost.__dict__:
             # The above if check and then setting of attribute_based_occupancy_cost_methods within the if block is equivalent of
             # making attribute_based_occupancy_cost_methods a static dictionary (of [lane_attribute_index, lane attribute based occupancy_cost
