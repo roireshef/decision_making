@@ -453,10 +453,13 @@ class MapUtils:
                                if take_maneuver.get(maneuver) is not None]):
                     continue
 
+            # initialize the SAME_LANE to Normal. Don't initialize left or right here because it will overwrite what was set below
+            if relative_lane == RelativeLane.SAME_LANE:
+                lane_gff_type[RelativeLane.SAME_LANE] = GFF_Type.Normal
+
             # Initialze lookahead variables
             current_lane_id = initial_lane_ids[relative_lane]
             current_segment_start_s = initial_s if lane_subsegments_dict[relative_lane] is None else 0
-            lane_gff_type[relative_lane] = GFF_Type.Normal
 
             # Initialize empty list for subsegments only if the list hasn't been initialized before.
             # In the case where common subsegments were stored from another lane, use those.
@@ -516,6 +519,7 @@ class MapUtils:
                             # Copy common lane segments to augmented lane
                             lane_subsegments_dict[RelativeLane.LEFT_LANE] = list(lane_subsegments_dict[RelativeLane.SAME_LANE])
                             cumulative_distances[RelativeLane.LEFT_LANE] = cumulative_distances[RelativeLane.SAME_LANE]
+                            lane_gff_type[RelativeLane.LEFT_LANE] = GFF_Type.Augmented
                             # Do lookahead with forced maneuver type to get the lane after the maneuver
                             initial_lane_ids[RelativeLane.LEFT_LANE] = \
                                 MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan, maneuver_type=ManeuverType.LEFT_SPLIT)
@@ -528,6 +532,7 @@ class MapUtils:
                             # Copy common lane segments to augmented lane
                             lane_subsegments_dict[RelativeLane.RIGHT_LANE] = list(lane_subsegments_dict[RelativeLane.SAME_LANE])
                             cumulative_distances[RelativeLane.RIGHT_LANE] = cumulative_distances[RelativeLane.SAME_LANE]
+                            lane_gff_type[RelativeLane.RIGHT_LANE] = GFF_Type.Augmented
                             # Do lookahead with forced maneuver type to get the lane after the maneuver
                             initial_lane_ids[RelativeLane.RIGHT_LANE] = \
                                 MapUtils._choose_next_lane_id_by_cost(current_lane_id, route_plan, next_road_idx_on_plan, maneuver_type=ManeuverType.RIGHT_SPLIT)
