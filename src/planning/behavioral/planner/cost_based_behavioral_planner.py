@@ -93,8 +93,22 @@ class CostBasedBehavioralPlanner:
         :param mask: 1D mask vector (boolean) for filtering valid action specifications
         :return: a list of terminal states
         """
-        # TODO: implement after M0
-        return [None] * len(action_specs)
+        # TODO: Predict actual future states instead of just shifting the GFF
+
+        future_behavioral_states = []
+        for i, action_spec in enumerate(action_specs):
+            if mask[i]:
+                # shift the GFF position based on the manuever that will be taken
+                shifted_dict = {RelativeLane.SAME_LANE: behavioral_state.extended_lane_frames[action_spec.relative_lane],
+                                RelativeLane.LEFT_LANE: None, RelativeLane.RIGHT_LANE: None}
+                # create dummy GFF to hold the extended lane frames
+                next_behavioral_state = BehavioralGridState(extended_lane_frames=shifted_dict, road_occupancy_grid=None,
+                                                            projected_ego_fstates=None, ego_state=None)
+            else:
+                next_behavioral_state = None
+            future_behavioral_states.append(next_behavioral_state)
+
+        return future_behavioral_states
 
     @staticmethod
     @prof.ProfileFunction()

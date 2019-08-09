@@ -62,6 +62,7 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
         action_velocities = [action_recipes[idx].velocity
                              if action_recipes[idx].velocity > EPS else EPS
                              for idx in follow_lane_valid_action_idxs]
+
         # normalize velocities to be between 0 and 1
         action_velocities /= np.max(np.abs(action_velocities), axis=0)
 
