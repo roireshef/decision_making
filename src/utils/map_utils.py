@@ -603,7 +603,9 @@ class MapUtils:
                 if len(valid_maneuver_lanes) == 0:
                     raise DownstreamLaneNotFound(f"No downstream with maneuver type {ManeuverType.name} for lane {current_lane_id}")
 
-                # TODO: handle case if more than one split present
+                # Return the first element in the array since this array should always be size 1.
+                # There should never be more than one lane with the same maneuver type
+                assert len(valid_maneuver_lanes) == 1
                 return valid_maneuver_lanes[0][0]
 
             # if maneuver_type is None, get the lane with the minimal cost. Raise exception if multiple minimums found
