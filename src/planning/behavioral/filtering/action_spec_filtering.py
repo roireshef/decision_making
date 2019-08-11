@@ -176,7 +176,7 @@ class ActionSpecFiltering:
         self.logger.debug('\nFiltering_map at timestamp_in_sec %f: %s' %
                           (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(filtering_map.astype(int))))
 
-        return mask.lolist()
+        return mask.tolist()
 
     @prof.ProfileFunction()
     def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
