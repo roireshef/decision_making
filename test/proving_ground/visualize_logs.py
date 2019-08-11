@@ -206,10 +206,10 @@ def plot_dynamics(log_file_path: str):
 
     ax8 = plt.subplot(5, 2, 6, sharex=ax1)
     for t, traj in zip(trajectory_time, trajectory):
-        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_K], '-.')
+        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_Y], '-.')
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (curvature)')
+    plt.ylabel('trajectories (y position)')
 
     ax9 = plt.subplot(5, 2, 8, sharex=ax1)
     for t, traj in zip(trajectory_time, trajectory):
