@@ -220,39 +220,44 @@ class BrakingDistances:
         # calculate distances for braking actions
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggresiveness_level]
         distances = np.zeros_like(v0)
-        distances[v0 > vT] = BrakingDistances._calc_actions_distances_for_given_weights(w_T, w_J, v0[v0 > vT],
-                                                                                        vT[v0 > vT])
+        distances[v0 > vT] = BrakingDistances.calc_actions_distances_for_given_weights(w_T, w_J, v0[v0 > vT],
+                                                                                       vT[v0 > vT])
         return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
 
     @staticmethod
-    def _calc_actions_distances_for_given_weights(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
-                                                  poly: Poly1D = QuarticPoly1D) -> np.array:
+    def calc_actions_distances_for_given_weights(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
+                                                 a_0: np.array = None, poly: Poly1D = QuarticPoly1D) -> np.array:
         """
         Calculate the distances for the given actions' weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
         :param w_J: weight of longitudinal jerk component in time-jerk cost function
         :param v_0: array of initial velocities [m/s]
         :param v_T: array of desired final velocities [m/s]
+        :param a_0: array of initial accelerations [m/s^2]
         :param poly: The Poly1D (Quintic or Quartic) to use when checking the acceleration limits.
          Currently supporting only QuarticPoly1D
         :return: actions' distances; actions not meeting acceleration limits have infinite distance
         """
         # calculate actions' planning time
-        a_0 = np.zeros_like(v_0)
+        if a_0 is None:
+            a_0 = np.zeros_like(v_0)
         T = BrakingDistances.calc_T_s(w_T, w_J, v_0, a_0, v_T)
 
         # check acceleration limits
         if poly is not QuarticPoly1D:
-            raise NotImplementedError('Currently function expects only QuarticPoly1Dsdf')
+            raise NotImplementedError('Currently function expects only QuarticPoly1D')
         # TODO: Once Quintic might be used, pull `s_profile_coefficients` method up
-        poly_coefs = poly.s_profile_coefficients(a_0, v_0, v_T, T)
-        in_limits = poly.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+        s_profile_coefs = poly.s_profile_coefficients(a_0, v_0, v_T, T)
+        in_limits = poly.are_accelerations_in_limits(s_profile_coefs, T, LON_ACC_LIMITS)
 
-        # Calculate actions' distances, assuming a_0 = a_T = 0, and an average speed between v_0 an v_T.
-        # Since the velocity profile is symmetric around the midpoint then the average velocity is (v_0 + v_T)/2 - this holds for Quartic.
         # Distances for accelerations which are not in limits are defined as infinity. This implied that braking on
         # invalid accelerations would take infinite distance, which in turn filters out these (invalid) action specs.
-        distances = T * (v_0 + v_T) / 2
+        distances = Math.zip_polyval2d(s_profile_coefs, T)
+
+        # TODO: remove the following two lines (for DEBUG)
+        old_distances = T * (v_0 + v_T) / 2  # for a_0 = 0
+        assert np.isclose(distances, old_distances).all()
+
         distances[np.logical_not(in_limits)] = np.inf
         return distances
 

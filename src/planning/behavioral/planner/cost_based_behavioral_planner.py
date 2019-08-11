@@ -2,7 +2,7 @@ import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.planning.behavioral.behavioral_planner_strategy import ActionEvaluationStrategyType
+from decision_making.src.planning.behavioral.rule_based_lane_merge import ActionEvaluationStrategyType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
 from typing import Optional, List
@@ -41,10 +41,10 @@ class CostBasedBehavioralPlanner:
                  action_spec_evaluator: Optional[ActionSpecEvaluator],
                  action_spec_validator: Optional[ActionSpecFiltering],
                  value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
-        self.action_space = action_space
+        self.default_action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_validator = action_spec_validator or ActionSpecFiltering(filters=None, logger=logger)
-        self.actions_evaluator = {ActionEvaluationStrategyType.RULE_BASED: action_spec_evaluator,
+        self.actions_evaluator = {ActionEvaluationStrategyType.DEFAULT_RULE_BASED: action_spec_evaluator,
                                   ActionEvaluationStrategyType.RL_POLICY: recipe_evaluator}
         self.value_approximator = value_approximator
         self.predictor = predictor
@@ -52,22 +52,6 @@ class CostBasedBehavioralPlanner:
 
         self._last_action: Optional[ActionRecipe] = None
         self._last_action_spec: Optional[ActionSpec] = None
-
-    @abstractmethod
-    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool], route_plan: RoutePlan):
-        """
-        upon receiving an input state, return an action specification and its respective index in the given list of
-        action recipes.
-        :param recipes_mask: A list of boolean values, which are True if respective action recipe in
-        input argument action_recipes is valid, else False.
-        :param state: the current world state
-        :param behavioral_state: processed behavioral state
-        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
-        :param route_plan -  a route_plane message
-        :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
-        """
-        pass
 
     @abstractmethod
     def plan(self, state: State, route_plan: RoutePlan):

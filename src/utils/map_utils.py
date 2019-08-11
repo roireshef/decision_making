@@ -514,27 +514,42 @@ class MapUtils:
         return merge_lane_id
 
     @staticmethod
-    def get_straight_upstream_lanes(init_lane_id: int, max_back_horizon: float) -> List[int]:
+    def get_straight_upstream_downstream_lanes(init_lane_id: int, max_back_horizon: float, max_ahead_horizon: float) \
+            -> [List[int], List[float]]:
         """
         Return lane_ids of the main road upstream from the merge point. Otherwise return empty list.
         :param init_lane_id: main lane_id immediately after the merge
         :param max_back_horizon: maximal backward length on the main road from the merge point
-        :return: list of lane_ids of the main lane upstream from the merge point or empty list if no merge
+        :return: 1. list of lane_ids of the main lane upstream from the merge point or empty list if no merge
+                 2. s of the main lanes' origin relatively to the merge point
         """
+        init_lane_segment = MapUtils.get_lane(init_lane_id)
         # look upstream lanes from the merge point
-        main_lane_ids = []
-        main_lanes_length = 0
-        last_lane_id = init_lane_id
-        last_lane_segment = MapUtils.get_lane(last_lane_id)
-        while main_lanes_length < max_back_horizon:
+        upstream_lane_ids = []
+        upstream_s = [0]
+        last_lane_segment = init_lane_segment
+        while -upstream_s[-1] < max_back_horizon:
             upstream_connectivity = last_lane_segment.as_upstream_lanes
             upstream_ids = [connectivity.e_i_lane_segment_id for connectivity in upstream_connectivity
                             if connectivity.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION]
             if len(upstream_ids) == 0:
                 break
-            last_lane_id = upstream_ids[0]
-            last_lane_segment = MapUtils.get_lane(last_lane_id)
-            main_lanes_length += last_lane_segment.e_l_length
-            main_lane_ids.append(last_lane_id)
+            last_lane_segment = MapUtils.get_lane(upstream_ids[0])
+            upstream_s.append(upstream_s[-1] - last_lane_segment.e_l_length)
+            upstream_lane_ids.append(upstream_ids[0])
 
-        return main_lane_ids
+        # look downstream lanes from the merge point
+        downstream_lane_ids = [init_lane_segment.e_i_lane_segment_id]
+        downstream_s = [init_lane_segment.e_l_length]
+        last_lane_segment = init_lane_segment
+        while downstream_s[-1] < max_ahead_horizon:
+            downstream_connectivity = last_lane_segment.as_downstream_lanes
+            downstream_ids = [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity
+                              if connectivity.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION]
+            if len(downstream_ids) == 0:
+                break
+            last_lane_segment = MapUtils.get_lane(downstream_ids[0])
+            downstream_s.append(downstream_s[-1] + last_lane_segment.e_l_length)
+            downstream_lane_ids.append(downstream_ids[0])
+
+        return upstream_lane_ids.reverse() + downstream_lane_ids, upstream_s.reverse() + downstream_s.pop()

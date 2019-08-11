@@ -16,12 +16,9 @@ class ActionSpecEvaluator:
     def __init__(self, logger: Logger):
         self.logger = logger
 
+    @staticmethod
     @abstractmethod
-    @prof.ProfileFunction()
-    def evaluate(self, state: State, behavioral_state: BehavioralGridState,
-                 action_recipes: List[ActionRecipe],
-                 action_specs: List[ActionSpec],
-                 action_specs_mask: List[bool]) -> np.ndarray:
+    def evaluate(action_recipes: List[ActionRecipe]) -> np.ndarray:
         pass
 
 

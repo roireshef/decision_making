@@ -4,9 +4,8 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.behavioral_planner_strategy import ActionEvaluationStrategyType, \
-    ActionEvaluationStrategy
-from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
+from decision_making.src.planning.behavioral.rule_based_lane_merge import RuleBasedLaneMerge
+from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
     ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
@@ -18,6 +17,14 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.state import State
 from logging import Logger
 from typing import Optional, List
+from enum import Enum
+
+
+class ActionEvaluationStrategyType(Enum):
+    DEFAULT_RB = 0
+    BRAKING = 1
+    MERGE_RB = 2
+    LANE_MERGE_RL = 3
 
 
 class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
@@ -37,88 +44,30 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator,
                          value_approximator, predictor, logger)
 
-    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool], route_plan: RoutePlan) -> (int, ActionSpec):
-        """
-        upon receiving an input state, return an action specification and its respective index in the given list of
-        action recipes.
-        :param recipes_mask: A list of boolean values, which are True if respective action recipe in
-        input argument action_recipes is valid, else False.
-        :param state: the current world state
-        :param behavioral_state: processed behavioral state
-        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
-        :param route_plan:
-        :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
-        """
-
-        # Action specification
-        # TODO: replace numpy array with fast sparse-list implementation
-        action_specs = np.full(len(action_recipes), None)
-        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
-        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
-        action_specs = list(action_specs)
-
-        # TODO: FOR DEBUG PURPOSES!
-        num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
-        num_of_considered_dynamic_actions = sum(isinstance(x, DynamicActionRecipe) for x in valid_action_recipes)
-        num_of_specified_actions = sum(x is not None for x in action_specs)
-        self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
-                          num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
-
-        # ActionSpec filtering
-        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
-
-        # choose action evaluation strategy according to the current state (e.g. rule-based or RL policy)
-        eval_strategy = ActionEvaluationStrategy.choose_strategy(state, behavioral_state)
-
-        # State-Action Evaluation
-        action_costs = self.actions_evaluator[eval_strategy].evaluate(state, behavioral_state, action_recipes,
-                                                                      action_specs, action_specs_mask)
-
-        # approximate cost-to-go per terminal state
-        terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
-                                                                    action_specs_mask, route_plan)
-        # TODO: NavigationPlan is now None and should be meaningful when we have one
-        terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask[i] else np.nan
-                                           for i, state in enumerate(terminal_behavioral_states)])
-
-        self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))
-
-        # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
-        action_q_cost = action_costs + terminal_states_values
-
-        valid_idxs = np.where(action_specs_mask)[0]
-        selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
-        selected_action_spec = action_specs[selected_action_index]
-
-        return selected_action_index, selected_action_spec
-
     @prof.ProfileFunction()
     def plan(self, state: State, route_plan: RoutePlan):
-
-        action_recipes = self.action_space.recipes
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
-        # Recipe filtering
-        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+        # choose action evaluation strategy according to the current state (e.g. rule-based or RL policy)
+        eval_strategy, action_specs = self._choose_strategy(state, behavioral_state)
 
-        self.logger.debug('Number of actions originally: %d, valid: %d',
-                          self.action_space.action_space_size, np.sum(recipes_mask))
+        # State-Action Evaluation
+        action_costs = self.actions_evaluator[eval_strategy].evaluate(state, behavioral_state, action_specs)
 
-        selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
-                                                                         recipes_mask, route_plan)
+        # ActionSpec filtering
+        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+
+        # choose action (argmax)
+        valid_idxs = np.where(action_specs_mask)[0]
+        selected_action_index = valid_idxs[action_costs[valid_idxs].argmin()]
+        selected_action_spec = action_specs[selected_action_index]
 
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
             behavioral_state=behavioral_state, action_spec=selected_action_spec)
-        visualization_message = BehavioralVisualizationMsg(
-            reference_route_points=trajectory_parameters.reference_route.points)
-
-        # keeping selected actions for next iteration use
-        self._last_action = action_recipes[selected_action_index]
-        self._last_action_spec = selected_action_spec
+        visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
             state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
@@ -135,3 +84,47 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                              selected_action_spec.t))
 
         return trajectory_parameters, baseline_trajectory, visualization_message
+
+    def _choose_strategy(self, state: State, behavioral_state: BehavioralGridState) -> \
+            [ActionEvaluationStrategyType, List[ActionSpec]]:
+        """
+        Given the current state, choose the strategy for actions evaluation in BP.
+        Currently, perform evaluation by RL policy only if there is a lane merge ahead and there are cars on the
+        main lanes upstream the merge point.
+        :param state: current state
+        :param behavioral_state: current behavioral grid state
+        :return: action evaluation strategy
+        """
+        lane_merge_state = RuleBasedLaneMerge.create_lane_merge_state(state, behavioral_state)
+        if lane_merge_state is None or len(lane_merge_state.actors) == 0:  # no merge ahead or no cars on the main road
+            return ActionEvaluationStrategyType.DEFAULT_RULE_BASED, self._specify_default_action_space(behavioral_state)
+
+        # yellow line condition: if braking distance is greater or equal than distance to the red line
+        if lane_merge_state.dist_to_yellow_line <= 0:
+            merge_specs = RuleBasedLaneMerge.create_safe_merge_actions(behavioral_state, lane_merge_state)
+            if len(merge_specs) > 0:
+                return ActionEvaluationStrategyType.MERGE_RB, merge_specs
+            else:
+                return ActionEvaluationStrategyType.BRAKING, [stop_sign_spec]
+        else:  # not arrived to the yellow line
+            return ActionEvaluationStrategyType.LANE_MERGE_RL, self._specify_default_action_space(behavioral_state)
+
+    def _specify_default_action_space(self, behavioral_state: BehavioralGridState) -> List[ActionSpec]:
+        action_recipes = self.default_action_space.recipes
+
+        # Recipe filtering
+        recipes_mask = self.default_action_space.filter_recipes(action_recipes, behavioral_state)
+        self.logger.debug('Number of actions originally: %d, valid: %d',
+                          self.default_action_space.action_space_size, np.sum(recipes_mask))
+
+        action_specs = np.full(len(action_recipes), None)
+        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+        action_specs[recipes_mask] = self.default_action_space.specify_goals(valid_action_recipes, behavioral_state)
+
+        # TODO: FOR DEBUG PURPOSES!
+        num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
+        num_of_considered_dynamic_actions = sum(isinstance(x, DynamicActionRecipe) for x in valid_action_recipes)
+        num_of_specified_actions = sum(x is not None for x in action_specs)
+        self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
+                          num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
+        return list(action_specs)
