@@ -206,8 +206,7 @@ class BehavioralGridState:
                     lookahead_dist=frame_length, route_plan=route_plan)
             except MappingException as e:
                 # TODO: when lane split activity will be resolved, GFF creation failure should not be ignored
-                error_message = "Trying to fetch data for %s, but data is unavailable. %s" % \
-                                (rel_lane.__str__(), e.__str__())
+                error_message = "Trying to fetch data for %s, but data is unavailable. %s" % (rel_lane, str(e))
                 if rel_lane != RelativeLane.SAME_LANE:
                     logger.warning(error_message)
                 else:  # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
