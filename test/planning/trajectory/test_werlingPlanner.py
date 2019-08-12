@@ -542,48 +542,8 @@ def test_computeObstacleCosts_actorOnLeftLaneTouchesSameLane_trajectoryDeviatesF
 
     # calculate obstacle costs for each trajectory
     predictor = RoadFollowingPredictor(logger)
-    objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
-                                           offset=LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
-    objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
-                                           offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
+    cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego_map_state, ego_size)
 
-    is_rightmost_lane = True
-    is_leftmost_lane = False
-    dist_from_right_lane_border = lane_width/2
-    dist_from_left_lane_border = lane_width/2
-
-    dist_from_right_road_border = dist_from_right_lane_border if is_rightmost_lane else LARGE_DISTANCE_FROM_SHOULDER
-    dist_from_left_road_border = dist_from_left_lane_border if is_leftmost_lane else LARGE_DISTANCE_FROM_SHOULDER
-
-    # lateral distance in [m] from ref. path to rightmost edge of lane
-    right_lane_offset = dist_from_right_lane_border - ego_size.width / 2
-    # lateral distance in [m] from ref. path to leftmost edge of lane
-    left_lane_offset = dist_from_left_lane_border - ego_size.width / 2
-    # as stated above, for shoulders
-    right_shoulder_offset = dist_from_right_road_border - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
-    # as stated above, for shoulders
-    left_shoulder_offset = dist_from_left_road_border - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
-    # as stated above, for whole road including shoulders
-    right_road_offset = dist_from_right_road_border - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
-    # as stated above, for whole road including shoulders
-    left_road_offset = dist_from_left_road_border - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
-
-    cost_params = TrajectoryCostParams(left_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, left_lane_offset),
-                                       right_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, right_lane_offset),
-                                       left_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, left_road_offset),
-                                       right_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, right_road_offset),
-                                       left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, left_shoulder_offset),
-                                       right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, right_shoulder_offset),
-                                       obstacle_cost_x=objects_cost_x,
-                                       obstacle_cost_y=objects_cost_y,
-                                       dist_from_goal_cost=DEVIATION_FROM_GOAL_COST,
-                                       deviation_from_target_time_cost=DEVIATION_FROM_TARGET_TIME_COST,
-                                       lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
-                                       lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
-                                       velocity_limits=VELOCITY_LIMITS,
-                                       lon_acceleration_limits=LON_ACC_LIMITS,
-                                       lat_acceleration_limits=LAT_ACC_LIMITS,
-                                       desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
     # run Werling planner
     planner = WerlingPlanner(logger, predictor)
     _, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route,
