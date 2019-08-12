@@ -10,7 +10,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 
 
-class BinaryCostBasedRoutePlanner(RoutePlanner):
+class CostBasedRoutePlanner(RoutePlanner):
     """
     child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
     """
