@@ -5,14 +5,14 @@ from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import EPS
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, C_K, BoolArray
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, C_K, BoolArray
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -140,7 +140,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX], padding_mode)
 
         are_valid = []
-        for poly_s, t, cell, target in zip(poly_coefs_s, T, relative_cells, target_vehicles):
+        for poly_s, cell, target, spec in zip(poly_coefs_s, relative_cells, target_vehicles, action_specs):
             if target is None:
                 are_valid.append(True)
                 continue
@@ -155,8 +155,14 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
-                                                             np.array([0, t]))
+                                                             np.array([0, spec.t]))
 
+            # for short actions check safety also beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+            if is_safe and spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON and spec.v > target_fstate[FS_SV]:
+                # build ego polynomial with constant velocity spec.v, such that at time spec.t it will be in spec.s
+                linear_ego_poly_s = np.array([0, 0, 0, 0, spec.v, spec.s - spec.v * spec.t])
+                is_safe = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                                                                 np.array([spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON]))
             are_valid.append(is_safe)
 
         return np.array(are_valid)
