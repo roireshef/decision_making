@@ -21,7 +21,8 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
-    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends, scene_static_right_lane_ends
+    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends, scene_static_right_lane_ends, \
+    right_lane_split_scene_static, left_lane_split_scene_static, left_right_lane_split_scene_static
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
 from decision_making.test.planning.custom_fixtures import route_plan_1_2
 
@@ -475,6 +476,57 @@ def state_with_same_lane_ending_no_right_lane():
     ego_lane_lon = 700
     ego_vel = 10
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(1)[0]
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
+
+
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               off_map=False)
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
+def state_with_lane_split_on_right():
+    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static())
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+    ego_lane_lon = 700
+    ego_vel = 10
+    lane_id = 11
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
+
+
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               off_map=False)
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
+def state_with_lane_split_on_left():
+    SceneStaticModel.get_instance().set_scene_static(left_lane_split_scene_static())
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+    ego_lane_lon = 700
+    ego_vel = 10
+    lane_id = 11
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
+
+
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               off_map=False)
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
+def state_with_lane_split_on_left_and_right():
+    SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static())
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+    ego_lane_lon = 700
+    ego_vel = 10
+    lane_id = 11
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
 
