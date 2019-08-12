@@ -106,6 +106,7 @@ class DmInitialization:
 def main():
     av_argument_parser.parse_arguments()
     # register termination signal handler
+    AV_Logger.init_group("PLAN")
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (DM main) registered signal handler', os.getpid())
     catch_interrupt_signals()
