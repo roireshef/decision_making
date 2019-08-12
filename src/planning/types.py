@@ -108,3 +108,6 @@ NumpyIndicesArray = np.ndarray
 
 RoadSegmentID = int
 LaneSegmentID = int
+
+# boolean array
+BoolArray = np.ndarray
