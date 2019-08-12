@@ -15,6 +15,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 
 
 class RoutePlanningFacade(DmModule):
@@ -49,6 +50,7 @@ class RoutePlanningFacade(DmModule):
             # Read inputs
             start_time = time.time()
             scene_static = self._get_current_scene_static()
+            SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             route_planner_input = RoutePlannerInputData()
             route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,

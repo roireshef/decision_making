@@ -1,11 +1,12 @@
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, DownstreamLaneDataNotFound
-from decision_making.src.global_constants import HIGH_COST, LOW_COST
+from decision_making.src.global_constants import HIGH_COST, LOW_COST, ROUTE_PLAN_BACKPROP_DISCOUNT_FACTOR
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan, \
     RoutePlanRoadSegment, RoutePlanRoadSegments
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 
 
@@ -31,7 +32,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         min_downstream_lane_segment_occupancy_cost = HIGH_COST
 
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
-        # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
+        # Assign the end cost of current lane = Min of (occ. cost + discounted end cost) for all downstream lanes
         # search through all downstream lanes to current lane
         downstream_lane_found_in_route = False
 
@@ -45,14 +46,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             downstream_lane_segment_id = downstream_base_lane_segment.e_i_lane_segment_id
 
             # All lane IDs in downstream road segment in route to the currently indexed road segment in the loop
-            # verify if the downstream lane is in the route (it may not be ex: fork/exit)
-            if downstream_lane_segment_id in downstream_route_lane_segment_ids:
+            if downstream_lane_segment_id in downstream_route_lane_segment_ids:  # verify if the downstream lane is in the route (it may not be ex: fork/exit)
 
                 downstream_lane_found_in_route = True
 
                 # find the index corresponding to the lane seg ID in the road segment
-                downstream_route_lane_segment_idx = np.where(downstream_route_lane_segment_ids ==
-                                                             downstream_lane_segment_id)[0][0]
+                downstream_route_lane_segment_idx = np.where(downstream_route_lane_segment_ids == downstream_lane_segment_id)[0][0]
 
                 if downstream_route_lane_segment_idx < len(downstream_route_lane_segments):
                     downstream_route_lane_segment = downstream_route_lane_segments[downstream_route_lane_segment_idx]
@@ -63,9 +62,16 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
                 downstream_lane_segment_occupancy_cost = downstream_route_lane_segment.e_cst_lane_occupancy_cost
 
-                min_downstream_lane_segment_occupancy_cost = min(min_downstream_lane_segment_occupancy_cost,
-                                                                 downstream_lane_segment_occupancy_cost)
+                downstream_lane_segment_length = MapUtils.get_lane(downstream_lane_segment_id).e_l_length
 
+                backprop_downstream_lane_segment_end_cost = downstream_route_lane_segment.e_cst_lane_end_cost * \
+                                                            ROUTE_PLAN_BACKPROP_DISCOUNT_FACTOR ** \
+                                                            downstream_lane_segment_length
+
+                min_downstream_lane_segment_occupancy_cost = min(min(min_downstream_lane_segment_occupancy_cost,
+                                                                     downstream_lane_segment_occupancy_cost +
+                                                                     backprop_downstream_lane_segment_end_cost),
+                                                                 HIGH_COST)
             else:
                 # Downstream lane segment not in route. Do nothing.
                 pass
@@ -86,7 +92,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         # Calculate lane occupancy costs for a lane
         lane_occupancy_cost = RoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
 
-        # Calculate lane end costs (from lane occupancy costs)
+        # Calculate lane end costs (from lane occupancy costs and downstream lane end costs)
         if not self._route_plan_lane_segments_reversed:  # if route_plan_lane_segments is empty indicating the last segment in route
             if lane_occupancy_cost == HIGH_COST:  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=HIGH_COST)
                 lane_end_cost = HIGH_COST
