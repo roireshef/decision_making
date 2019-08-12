@@ -14,7 +14,7 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.action_space.road_sign_action_space import RoadSignActionSpace
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
-    DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING
+    DEFAULT_ROAD_SIGN_RECIPE_FILTERING, DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
@@ -70,7 +70,7 @@ class DmInitialization:
                                                      DynamicActionSpace(logger, predictor,
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                      RoadSignActionSpace(logger, predictor,
-                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)],
+                                                                         DEFAULT_ROAD_SIGN_RECIPE_FILTERING)],
                                             )
 
         recipe_evaluator = None

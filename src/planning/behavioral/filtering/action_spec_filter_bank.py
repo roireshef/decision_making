@@ -22,6 +22,7 @@ from typing import List, Union, Any
 
 from decision_making.src.utils.print_utils import PrintUtils
 
+
 class FilterIfNone(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         return [(action_spec and behavioral_state) is not None and ~np.isnan(action_spec.t) for action_spec in action_specs]

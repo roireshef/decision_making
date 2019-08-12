@@ -6,11 +6,12 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, D
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.utils.print_utils import PrintUtils
+
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [(recipe.relative_lane, recipe.relative_lon) in behavioral_state.road_occupancy_grid or
-                recipe.action_type == ActionType.FOLLOW_ROAD_SIGN
+        return [(recipe.relative_lane, recipe.relative_lon) in behavioral_state.road_occupancy_grid
                 if recipe is not None else False for recipe in recipes]
 
 
@@ -40,9 +41,9 @@ class FilterOvertakeActions(RecipeFilter):
 
 class FilterActionsTowardsCellsWithoutRoadSigns(RecipeFilter):
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [recipe.action_type != ActionType.FOLLOW_ROAD_SIGN or
-                len(MapUtils.get_static_traffic_flow_controls_s(behavioral_state.extended_lane_frames[recipe.relative_lane])) > 0
-                if recipe is not None else False for recipe in recipes]
+            return [len(MapUtils.get_static_traffic_flow_controls_s(
+                behavioral_state.extended_lane_frames[recipe.relative_lane])) > 0
+                    if recipe is not None else False for recipe in recipes]
 
 
 # General ActionRecipe Filters
@@ -94,8 +95,7 @@ class FilterSpeedingOverDesiredVelocityDynamic(RecipeFilter):
     This will be tested at the action spec filter FilterForLaneSpeedLimits
     """
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [recipe.action_type == ActionType.FOLLOW_ROAD_SIGN or
-                behavioral_state.road_occupancy_grid
+        return [behavioral_state.road_occupancy_grid
                 [(recipe.relative_lane, recipe.relative_lon)][0].dynamic_object.velocity
                 <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                 if recipe is not None else False for recipe in recipes]

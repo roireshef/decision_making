@@ -82,7 +82,7 @@ class BehavioralPlanningFacade(DmModule):
 
             # TODO ADD STOP SIGN REMOVE
             try:
-                if False:
+                if True:
                     patched_lane = MapUtils.get_lane(lane_id=SELECTED_STOP_LANE_ID)
                     lane_length = patched_lane.e_l_length
                     assert lane_length > lane_length-1

@@ -16,16 +16,19 @@ DEFAULT_STATIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                            FilterLaneChanging(),
                                                            FilterSpeedingOverDesiredVelocityStatic()
                                                            ], logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
-# the DEFAULT_DYNAMIC_RECIPE_FILTERING also works on ROAD_SIGN recipes
 DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                             FilterActionsTowardsNonOccupiedCells(),
-                                                            FilterActionsTowardsCellsWithoutRoadSigns(),
                                                             FilterActionsTowardBackAndParallelCells(),
                                                             FilterOvertakeActions(),
                                                             FilterLaneChanging(),
                                                             FilterSpeedingOverDesiredVelocityDynamic()
                                                             ],
                                                    logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
+DEFAULT_ROAD_SIGN_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
+                                                              FilterActionsTowardsCellsWithoutRoadSigns(),
+                                                              FilterLaneChanging(),
+                                                              ],
+                                                     logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone(),
                                                              FilterForKinematics(),
                                                              FilterForLaneSpeedLimits(),
@@ -34,5 +37,6 @@ DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone()
                                                              BeyondSpecStaticTrafficFlowControlFilter(),
                                                              BeyondSpecSpeedLimitFilter(),
                                                              BeyondSpecCurvatureFilter(),
+                                                             # FilterStopActionMovesFasterThanPreviousAction(), #TODO
                                                              ],
                                                     logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
