@@ -31,7 +31,7 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
 
-        costs = np.full(len(action_recipes), 1)
+        costs = np.full(len(action_recipes), 1.0)
 
         # first try to find actions that follow vehicles
         follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)

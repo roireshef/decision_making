@@ -1,6 +1,6 @@
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.global_constants import ACTION_COST_ALPHA
+from decision_making.src.global_constants import ACTION_COST_ALPHA, EPS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -74,10 +74,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
                                                                     action_specs_mask, route_plan)
 
-        terminal_states_values = np.array([self.value_approximator.approximate(state, route_plan, None) if action_specs_mask[i] else np.nan
+        terminal_states_values = np.array([self.value_approximator.approximate(state, route_plan, None) if action_specs_mask[i] else 0.0
                                            for i, state in enumerate(terminal_behavioral_states)])
         # normalize terminal_states_values to [0,1]
-        terminal_states_values /= np.max(np.abs(terminal_states_values), axis=0)
+        terminal_states_values /= max(np.max(np.abs(terminal_states_values), axis=0), EPS)
+        terminal_states_values[np.logical_not(action_specs_mask)] = 1.0
 
 
         self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))
