@@ -79,8 +79,8 @@ def short_testable_scene_static_mock():
 def right_lane_split_scene_static():
     scene = short_testable_scene_static_mock()
     # disconnect right lane in 1st road segment
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_left_adjacent_lanes = []
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_Cnt_left_adjacent_lane_count = 0
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_right_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_right_adjacent_lane_count = 0
 
     # add connection from 11 to 20
     scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_downstream_lane_count = 2
