@@ -402,4 +402,4 @@ def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_st
         ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.LEFT_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_left_lane_ending)
     expected = [True, False]
-    assert actual == expected
+    assert np.all(actual == expected)
