@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, C_K
+from decision_making.src.planning.types import FS_DX, FS_SX, C_K, BoolArray
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -21,13 +21,14 @@ from typing import List, Union, Any
 
 
 class FilterIfNone(ActionSpecFilter):
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [(action_spec and behavioral_state) is not None and ~np.isnan(action_spec.t) for action_spec in action_specs]
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
+        return np.array([(action_spec and behavioral_state) is not None and ~np.isnan(action_spec.t)
+                         for action_spec in action_specs])
 
 
 class FilterForKinematics(ActionSpecFilter):
     @prof.ProfileFunction()
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """
         Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
             - max longitudinal position (available in the reference frame)
@@ -37,14 +38,14 @@ class FilterForKinematics(ActionSpecFilter):
             conceptually "straightens" the road's shape.
         :param action_specs: list of action specs
         :param behavioral_state:
-        :return: boolean list per action spec: True if a spec passed the filter
+        :return: boolean array per action spec: True if a spec passed the filter
         """
-        return list(KinematicUtils.filter_by_cartesian_limits(self._ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS))
+        return KinematicUtils.filter_by_cartesian_limits(self._ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
     @prof.ProfileFunction()
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """
         Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
             - max longitudinal position (available in the reference frame)
@@ -54,18 +55,17 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
             conceptually "straightens" the road's shape.
         :param action_specs: list of action specs
         :param behavioral_state:
-        :return: boolean list per action spec: True if a spec passed the filter
+        :return: boolean array per action spec: True if a spec passed the filter
         """
         _, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
 
         num_points = self._ftrajectories.shape[1]
-        pointwise_speed_limit = np.empty((len(action_specs), num_points), dtype=np.float)
+        nominal_speeds = np.empty((len(action_specs), num_points), dtype=np.float)
         for relative_lane, lane_frame in behavioral_state.extended_lane_frames.items():
             idxs_per_lane = indices_by_rel_lane[relative_lane]
             if len(idxs_per_lane) > 0:
-                pointwise_speed_limit[idxs_per_lane] = self._pointwise_speed_limit(self._ftrajectories[idxs_per_lane],
-                                                                                   lane_frame)
-        return list(KinematicUtils.flexible_filter_by_velocity(self._ctrajectories, pointwise_speed_limit))
+                nominal_speeds[idxs_per_lane] = self._pointwise_speed_limit(self._ftrajectories[idxs_per_lane], lane_frame)
+        return KinematicUtils.flexible_filter_by_velocity(self._ctrajectories, nominal_speeds)
 
     @staticmethod
     def _pointwise_speed_limit(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
@@ -116,7 +116,7 @@ class FilterForCurvature(ActionSpecFilter):
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
          of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
          maintaining the required safety-headway + constant safety-margin"""
@@ -159,7 +159,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             are_valid.append(is_safe)
 
-        return are_valid
+        return np.array(are_valid)
 
 
 class StaticTrafficFlowControlFilter(ActionSpecFilter):
@@ -182,9 +182,9 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
 
         return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
-                for action_spec in action_specs]
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
+        return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
+                         for action_spec in action_specs])
 
 
 @six.add_metaclass(ABCMeta)
