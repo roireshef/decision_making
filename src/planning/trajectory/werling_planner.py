@@ -74,7 +74,7 @@ class WerlingPlanner(TrajectoryPlanner):
         fconstraints_tT = FrenetConstraints(sx=sx_range, sv=goal_frenet_state[FS_SV], sa=goal_frenet_state[FS_SA],
                                             dx=dx_range, dv=goal_frenet_state[FS_DV], da=goal_frenet_state[FS_DA])
 
-        planning_horizon = max(T_trajectory_end_horizon, T_s_grid[-1])
+        planning_horizon = max(T_trajectory_end_horizon, np.max(T_s_grid))
 
         assert planning_horizon >= self.dt + EPS, 'planning_horizon (=%f) is too short and is less than one trajectory' \
                                                   ' timestamp (=%f)' % (planning_horizon, self.dt)
@@ -206,7 +206,7 @@ class WerlingPlanner(TrajectoryPlanner):
         dist_from_goal_costs = params.dist_from_goal_cost * np.square(lateral_dist_from_goal)
 
         # calculate deviation cost from the target horizon time (negative deviation has zero cost)
-        dist_from_T_target_horizon_costs = np.maximum(0, T_s_vals - T_target_horizon) * params.dist_from_target_horizon_time_cost
+        dist_from_T_target_horizon_costs = np.maximum(0, T_s_vals - T_target_horizon) * params.deviation_from_target_time_cost
 
         ''' point-wise costs: obstacles, deviations, jerk '''
         pointwise_costs = TrajectoryPlannerCosts.compute_pointwise_costs(
@@ -239,9 +239,8 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _create_lat_horizon_grid(T_d_low_bound: float, T_d_high_bound: float, T_target_horizon: float) -> np.ndarray:
         """
-        Receives the lower bound of the lateral time horizon T_d_low_bound and the longitudinal time horizons array
-        T_s_grid and returns a grid of possible lateral planning time values.
-        One of the T_d values will be T_target_horizon.
+        Receives the low & high bounds of the lateral time horizon and returns a grid of possible lateral planning
+        time values. One of the T_d values will be T_target_horizon.
         :param T_d_low_bound: lower bound on lateral trajectory duration (sec.), relative to ego.
         :param T_d_high_bound: higher bound on lateral trajectory duration (sec.), relative to ego.
         :param T_target_horizon: original target horizon time
@@ -283,6 +282,9 @@ class WerlingPlanner(TrajectoryPlanner):
         multiples of dt.
         :param T_d_grid: lateral trajectory possible durations (sec.), relative to ego. Higher bound is Ts.
         :param dt: [sec] basic time unit from constructor.
+        :param T_trajectory_end_horizon: RELATIVE [sec]. The time at which the final trajectory will end, including
+        padding (extension beyond the target - the terminal boundary condition).
+        A consequence of a minimal time required by control.
         :return: a tuple: (points-matrix of rows in the form [sx, sv, sa, dx, dv, da],
         poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d],
         array of the Td values associated with the polynomials)

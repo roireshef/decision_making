@@ -3,7 +3,7 @@ import pytest
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, ROUTE_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, DEVIATION_FROM_GOAL_COST
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
@@ -242,8 +242,8 @@ def trajectory_params():
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
-                                                  mock_sigmoid, 3.0, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT,
-                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
+                                                  DEVIATION_FROM_GOAL_COST, 3.0, LON_JERK_COST_WEIGHT,
+                                                  LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
                                                   BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, target_time=16, trajectory_end_time=16,

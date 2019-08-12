@@ -42,7 +42,7 @@ SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-sho
 DEVIATION_FROM_ROAD_COST = 1000             # cost of deviation from road (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_TARGET_HORIZON_TIME_COST = 1  # cost of positive deviation from target horizon time
+DEVIATION_FROM_TARGET_TIME_COST = 1         # cost of positive deviation from target horizon time
                                             # if T_s <= T_target_horizon, then cost = 0)
 
 DEVIATION_FROM_GOAL_COST = 200              # cost of squared lateral deviation from the goal

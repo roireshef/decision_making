@@ -10,7 +10,7 @@ import rte.python.profiler as prof
 from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, \
     LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, \
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
-    DEVIATION_FROM_TARGET_HORIZON_TIME_COST, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, \
+    DEVIATION_FROM_TARGET_TIME_COST, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
     MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, ROAD_SHOULDERS_WIDTH, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
@@ -230,7 +230,7 @@ class CostBasedBehavioralPlanner:
         objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                                offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
         dist_from_goal_cost = DEVIATION_FROM_GOAL_COST
-        dist_from_target_horizon_time_cost = DEVIATION_FROM_TARGET_HORIZON_TIME_COST
+        deviation_from_target_time_cost = DEVIATION_FROM_TARGET_TIME_COST
 
         cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x,
                                            obstacle_cost_y=objects_cost_y,
@@ -241,7 +241,7 @@ class CostBasedBehavioralPlanner:
                                            left_road_cost=left_road_cost,
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
-                                           dist_from_target_horizon_time_cost=dist_from_target_horizon_time_cost,
+                                           deviation_from_target_time_cost=deviation_from_target_time_cost,
                                            lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
                                            lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,

@@ -92,7 +92,7 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_pg
     cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x, obstacle_cost_y=objects_cost_y,
                                        left_lane_cost=None, right_lane_cost=None, left_shoulder_cost=None,
                                        right_shoulder_cost=None, left_road_cost=None, right_road_cost=None,
-                                       dist_from_goal_cost=None, dist_from_target_horizon_time_cost=None, lon_jerk_cost_weight=None,
+                                       dist_from_goal_cost=None, deviation_from_target_time_cost=None, lon_jerk_cost_weight=None,
                                        lat_jerk_cost_weight=None, velocity_limits=None, lon_acceleration_limits=None,
                                        lat_acceleration_limits=None,
                                        desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)

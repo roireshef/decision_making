@@ -210,7 +210,9 @@ class BrakingDistances:
     @staticmethod
     def create_braking_distances(aggresiveness_level: AggressivenessLevel=AggressivenessLevel.STANDARD.value) -> np.array:
         """
-        Creates distances of all follow_lane with the given aggressiveness_level, braking actions with a0 = 0
+        Creates distances of all follow_lane with the given aggressiveness_level, braking actions with a0 = 0.
+        STANDARD aggressiveness level is chosen as a default level, since it enables to brake from 90 kph to 0
+        in one single action. Acceleration profile of multiple actions is less consistent than of a single action.
         :return: the actions' distances
         """
         # create v0 & vT arrays for all braking actions

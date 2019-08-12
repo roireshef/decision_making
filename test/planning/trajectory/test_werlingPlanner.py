@@ -20,7 +20,7 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, \
-    SHOULDER_SIGMOID_OFFSET
+    SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_TARGET_TIME_COST, LARGE_DISTANCE_FROM_SHOULDER
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
@@ -39,10 +39,10 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 
 
 @patch('decision_making.src.planning.trajectory.werling_planner.TD_STEPS', 5)
-@patch('decision_making.src.planning.trajectory.werling_planner.T_S_STEPS', 3)
+@patch('decision_making.src.planning.trajectory.werling_planner.TS_STEPS', 3)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_STEPS', 5)
-@patch('decision_making.src.planning.trajectory.werling_planner.T_S_OFFSET_MIN', 0)
-@patch('decision_making.src.planning.trajectory.werling_planner.T_S_OFFSET_MAX', 4)
+@patch('decision_making.src.planning.trajectory.werling_planner.TS_OFFSET_MIN', 0)
+@patch('decision_making.src.planning.trajectory.werling_planner.TS_OFFSET_MAX', 4)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MIN', -1.6)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MAX', 1.6)
 def test_werlingPlanner_toyScenario_noException():
@@ -89,8 +89,8 @@ def test_werlingPlanner_toyScenario_noException():
                                        right_shoulder_cost=SigmoidFunctionParams(10, 1.0, 2),
                                        obstacle_cost_x=SigmoidFunctionParams(100, 10.0, 0.3),
                                        obstacle_cost_y=SigmoidFunctionParams(100, 10.0, 0.3),
-                                       dist_from_goal_cost=SigmoidFunctionParams(100, 10.0, 0.3),
-                                       dist_from_target_horizon_time_cost=200.0,
+                                       dist_from_goal_cost=DEVIATION_FROM_GOAL_COST,
+                                       deviation_from_target_time_cost=DEVIATION_FROM_TARGET_TIME_COST,
                                        lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
                                        lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                        velocity_limits=VELOCITY_LIMITS,
@@ -501,13 +501,11 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
 
 def test_computeObstacleCosts_actorOnLeftLaneTouchesSameLane_trajectoryDeviatesFromLaneCenter(scene_static_pg_split):
     """
-    Test TP obstacle cost.
-    Ego has 3 lane-change trajectories (from right to left) with same init/end constraints but different T_d: [4, 6, 8].
-    Dynamic object is static, located on the right lane, such that ego reaches it longitudinally at time t = 4.
-    The result:
-    The first trajectory is collision-free.
-    The second trajectory is too close to the object.
-    The third trajectory collides with the object.
+    Test TP cost shaping: lateral deviation vs. obstacle cost.
+    Ego has trajectories with different lateral deviation.
+    Dynamic object moves on the left lane parallel to ego but it touches the common lanes border by its right wheels.
+    The expected result:
+    Ego should deviate laterally to increase its lateral distance from the object.
     """
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
@@ -532,6 +530,7 @@ def test_computeObstacleCosts_actorOnLeftLaneTouchesSameLane_trajectoryDeviatesF
     # create State
     ego_map_state = MapState(init_fstate, lane_id)
     ego = EgoState.create_from_map_state(0, 0, ego_map_state, obj_size, 0, off_map=False)
+    ego_size = ego.size
     obj = DynamicObject.create_from_map_state(1, 0, obj_map_state, obj_size, 0, off_map=False)
     state = State(False, None, [obj], ego)
 
@@ -547,16 +546,38 @@ def test_computeObstacleCosts_actorOnLeftLaneTouchesSameLane_trajectoryDeviatesF
                                            offset=LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
     objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                            offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
-    cost_params = TrajectoryCostParams(left_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, 0),
-                                       right_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, 0),
-                                       left_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, 0),
-                                       right_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, 0),
-                                       left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, SHOULDER_SIGMOID_OFFSET),
-                                       right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, SHOULDER_SIGMOID_OFFSET),
+
+    is_rightmost_lane = True
+    is_leftmost_lane = False
+    dist_from_right_lane_border = lane_width/2
+    dist_from_left_lane_border = lane_width/2
+
+    dist_from_right_road_border = dist_from_right_lane_border if is_rightmost_lane else LARGE_DISTANCE_FROM_SHOULDER
+    dist_from_left_road_border = dist_from_left_lane_border if is_leftmost_lane else LARGE_DISTANCE_FROM_SHOULDER
+
+    # lateral distance in [m] from ref. path to rightmost edge of lane
+    right_lane_offset = dist_from_right_lane_border - ego_size.width / 2
+    # lateral distance in [m] from ref. path to leftmost edge of lane
+    left_lane_offset = dist_from_left_lane_border - ego_size.width / 2
+    # as stated above, for shoulders
+    right_shoulder_offset = dist_from_right_road_border - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
+    # as stated above, for shoulders
+    left_shoulder_offset = dist_from_left_road_border - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
+    # as stated above, for whole road including shoulders
+    right_road_offset = dist_from_right_road_border - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
+    # as stated above, for whole road including shoulders
+    left_road_offset = dist_from_left_road_border - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
+
+    cost_params = TrajectoryCostParams(left_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, left_lane_offset),
+                                       right_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, right_lane_offset),
+                                       left_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, left_road_offset),
+                                       right_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, right_road_offset),
+                                       left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, left_shoulder_offset),
+                                       right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, right_shoulder_offset),
                                        obstacle_cost_x=objects_cost_x,
                                        obstacle_cost_y=objects_cost_y,
                                        dist_from_goal_cost=DEVIATION_FROM_GOAL_COST,
-                                       dist_from_target_horizon_time_cost=200.0,
+                                       deviation_from_target_time_cost=DEVIATION_FROM_TARGET_TIME_COST,
                                        lon_jerk_cost_weight=LON_JERK_COST_WEIGHT,
                                        lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                        velocity_limits=VELOCITY_LIMITS,

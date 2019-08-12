@@ -53,7 +53,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     left_road_cost = SigmoidFunctionParams
     right_road_cost = SigmoidFunctionParams
     dist_from_goal_cost = float
-    dist_from_target_horizon_time_cost = float
+    deviation_from_target_time_cost = float
     lon_jerk_cost_weight = float
     lat_jerk_cost_weight = float
     velocity_limits = Limits
@@ -61,7 +61,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     lat_acceleration_limits = Limits
     desired_velocity = float
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
-                 right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_target_horizon_time_cost,
+                 right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, deviation_from_target_time_cost,
                  lon_jerk_cost_weight, lat_jerk_cost_weight,
                  velocity_limits, lon_acceleration_limits, lat_acceleration_limits, desired_velocity):
         # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits, int)->None
@@ -85,7 +85,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param left_road_cost: defines the sigmoid cost of the left-side of the road
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
         :param dist_from_goal_cost: cost of squared distance from the target
-        :param dist_from_target_horizon_time_cost: Weight of deviation from the target horizon time.
+        :param deviation_from_target_time_cost: Weight of deviation from the target horizon time.
         :param lon_jerk_cost_weight: longitudinal jerk cost
         :param lat_jerk_cost_weight: lateral jerk cost
         :param velocity_limits: Limits of allowed velocity in [m/sec]
@@ -102,7 +102,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         self.left_road_cost = left_road_cost
         self.right_road_cost = right_road_cost
         self.dist_from_goal_cost = dist_from_goal_cost
-        self.dist_from_target_horizon_time_cost = dist_from_target_horizon_time_cost
+        self.deviation_from_target_time_cost = deviation_from_target_time_cost
         self.lon_jerk_cost_weight = lon_jerk_cost_weight
         self.lat_jerk_cost_weight = lat_jerk_cost_weight
         self.velocity_limits = velocity_limits
@@ -123,7 +123,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         pubsub_msg.s_LeftRoadCost = self.left_road_cost.serialize()
         pubsub_msg.s_RightRoadCost = self.right_road_cost.serialize()
         pubsub_msg.s_DistanceFromGoalCost = self.dist_from_goal_cost
-        pubsub_msg.e_l_DistFromTargetHorizonTimeCost = self.dist_from_target_horizon_time_cost
+        pubsub_msg.e_l_DeviationFromTargetTimeCost = self.deviation_from_target_time_cost
         pubsub_msg.e_Wt_LonJerkCostWeight = self.lon_jerk_cost_weight
         pubsub_msg.e_Wt_LatJerkCostWeight = self.lat_jerk_cost_weight
         pubsub_msg.e_v_VelocityLimits = self.velocity_limits
@@ -145,7 +145,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                    , SigmoidFunctionParams.deserialize(pubsubMsg.s_LeftRoadCost)
                    , SigmoidFunctionParams.deserialize(pubsubMsg.s_RightRoadCost)
                    , pubsubMsg.s_DistanceFromGoalCost
-                   , pubsubMsg.e_l_DistFromTargetHorizonTimeCost
+                   , pubsubMsg.e_l_DeviationFromTargetTimeCost
                    , pubsubMsg.e_Wt_LonJerkCostWeight
                    , pubsubMsg.e_Wt_LatJerkCostWeight
                    , pubsubMsg.e_v_VelocityLimits
