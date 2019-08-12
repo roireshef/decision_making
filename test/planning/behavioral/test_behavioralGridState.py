@@ -11,7 +11,9 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     state_with_surrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, \
     state_with_left_lane_ending, state_with_right_lane_ending, state_with_same_lane_ending_no_left_lane, \
     state_with_same_lane_ending_no_right_lane, state_with_lane_split_on_right, state_with_lane_split_on_left, \
-    state_with_lane_split_on_left_and_right
+    state_with_lane_split_on_left_and_right, state_with_lane_split_on_right_ending, route_plan_lane_split_on_right_ends, \
+    state_with_lane_split_on_left_ending, route_plan_lane_split_on_left_ends, state_with_lane_split_on_left_and_right_ending, \
+    route_plan_lane_splits_on_left_and_right_end
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_left_lane_ends, route_plan_right_lane_ends, \
     route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
@@ -152,6 +154,54 @@ def test_createFromState_laneSplitOnLeftAndRight_augmentedGffOnLeftAndRight(stat
     assert gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
     assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
     assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented
+
+
+def test_createFromState_laneSplitOnRight_augmentedPartialGffOnRight(state_with_lane_split_on_right_ending,
+                                                                     route_plan_lane_split_on_right_ends):
+    """
+    Host is in right lane of two-lane road, a lane split on the right is ahead, and the new lane ends shortly thereafter. The right GFF
+    should be augmented partial, and the other two should be normal.
+    """
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right_ending,
+                                                                  route_plan_lane_split_on_right_ends, None)
+    gffs = behavioral_grid_state.extended_lane_frames
+
+    # Check GFF Types
+    assert gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial
+
+
+def test_createFromState_laneSplitOnLeft_augmentedPartialGffOnLeft(state_with_lane_split_on_left_ending,
+                                                                   route_plan_lane_split_on_left_ends):
+    """
+    Host is in left lane of two-lane road, a lane split on the left is ahead, and the new lane ends shortly thereafter. The left GFF
+    should be augmented partial, and the other two should be normal.
+    """
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_ending,
+                                                                  route_plan_lane_split_on_left_ends, None)
+    gffs = behavioral_grid_state.extended_lane_frames
+
+    # Check GFF Types
+    assert gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.AugmentedPartial
+    assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Normal
+
+
+def test_createFromState_laneSplitOnLeftAndRight_augmentedPartialGffOnLeftAndRight(state_with_lane_split_on_left_and_right_ending,
+                                                                                   route_plan_lane_splits_on_left_and_right_end):
+    """
+    Host is on one-lane road, lane splits on the left and right are ahead, and the new lanes end shortly thereafter. The left and right GFFs
+    should be augmented partial, and the same lane GFF should be normal.
+    """
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_and_right_ending,
+                                                                  route_plan_lane_splits_on_left_and_right_end, None)
+    gffs = behavioral_grid_state.extended_lane_frames
+
+    # Check GFF Types
+    assert gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.AugmentedPartial
+    assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial
 
 
 def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_surrounding_objects, behavioral_grid_state):
