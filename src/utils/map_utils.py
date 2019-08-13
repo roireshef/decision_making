@@ -271,7 +271,7 @@ class MapUtils:
         try:
             MapUtils._get_upstream_lanes_from_distance(lane_id, 0, backward_dist)
             return True
-        except UpstreamLaneNotFound('upstream lane for %d not found for distance %f' % (lane_id, backward_dist)):
+        except UpstreamLaneNotFound as e:
             return False
 
     @staticmethod
