@@ -30,8 +30,6 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :param extend_short_action_specs:  Determines whether very short action should be extended (assuming constant velocity)
         """
         self._extend_short_action_specs = extend_short_action_specs
-        # TODO DEBUG REMOVE
-        self.spec = None
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> Any:
@@ -105,8 +103,6 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :return:
         """
         points_under_test = self._select_points(behavioral_state, action_spec)
-        # TODO DEBUG REMOVE
-        self.spec = action_spec
         return self._condition(self._target_function(behavioral_state, action_spec, points_under_test),
                                self._constraint_function(behavioral_state, action_spec, points_under_test))
 

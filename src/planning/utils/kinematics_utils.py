@@ -74,7 +74,6 @@ class KinematicUtils:
             (initial jerk is calculated by subtracting the first two acceleration samples)
         (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
         (3) keeps the velocity under the desired velocity limit.
-        :param specs:
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param nominal_velocity: 2D matrix [trajectories, timestamps] of nominal velocities to validate against
         :param specs: list of action specs

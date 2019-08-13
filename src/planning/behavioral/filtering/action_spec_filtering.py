@@ -8,12 +8,11 @@ from logging import Logger
 from typing import List
 from typing import Optional
 
-from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, FS_SX, FS_SV, FS_SA
+from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionType
+from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
@@ -112,7 +111,6 @@ class ActionSpecFilter:
 
         # calculate trajectory time indices for t = max(spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
         last_pad_idxs = KinematicUtils.get_time_index_of_padded_actions(T) + 1
-        # (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(int)
 
         # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
         for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
@@ -160,30 +158,6 @@ class ActionSpecFiltering:
 
             # a mask only on the valid action specs
             current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
-
-            # TODO DEBUG REMOVE
-            next_mask = mask.copy()
-            next_mask[mask] = current_mask
-            removed_action_specs_aggressiveness_stop = [a_s.recipe.aggressiveness.value for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
-                                                   action_specs[i] is not None and
-                                                   (action_specs[i].recipe.action_type == ActionType.FOLLOW_ROAD_SIGN)]
-            if len(removed_action_specs_aggressiveness_stop) > 0:
-                print('\x1b[6;30;44m', action_spec_filter, "removed", len(removed_action_specs_aggressiveness_stop),
-                      "STOP action specs", removed_action_specs_aggressiveness_stop, '\x1b[0m')
-            removed_action_specs_aggressiveness = [a_s.recipe.aggressiveness.value for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
-                                                   action_specs[i] is not None and
-                                                   (action_specs[i].recipe.action_type == ActionType.FOLLOW_VEHICLE)]
-            if len(removed_action_specs_aggressiveness) > 0:
-                print('\x1b[6;30;44m', action_spec_filter, "removed", len(removed_action_specs_aggressiveness),
-                      "FOLLOW action specs", removed_action_specs_aggressiveness, '\x1b[0m')
-            removed_action_specs_speeds = [(a_s.recipe.velocity, a_s.recipe.aggressiveness.value) for i,a_s in zip(range(len(mask)), action_specs) if mask[i] and not next_mask[i] and
-                                           action_specs[i] is not None and
-                                           (action_specs[i].recipe.action_type == ActionType.FOLLOW_LANE and
-                                            action_specs[i].recipe.velocity > -20)]
-            if len(removed_action_specs_speeds) > 0:
-                print('\x1b[6;30;44m', action_spec_filter, "removed", len(removed_action_specs_speeds),
-                      "STATIC action specs", removed_action_specs_speeds, '\x1b[0m')
-            # TODO DEBUG REMOVE
 
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask

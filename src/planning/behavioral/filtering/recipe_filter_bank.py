@@ -6,7 +6,6 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, D
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.utils.print_utils import PrintUtils
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):

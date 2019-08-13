@@ -41,10 +41,6 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         # The selection is only by aggressiveness, since it relies on the fact that we only follow a vehicle on the
         # SAME lane, which means there is only 1 possible vehicle to follow, so there is only 1 target vehicle speed.
         if len(follow_vehicle_valid_action_idxs) > 0:
-            print('\x1b[5;30;43m', "available FOLLOW aggressiveness", [action.aggressiveness for action, mask in zip(action_recipes, action_specs_mask)
-                                                                       if action.action_type == ActionType.FOLLOW_VEHICLE and mask], '\x1b[0m')
-            print('\x1b[5;30;43m', "selected action FOLLOW aggressiveness",
-                  action_recipes[follow_vehicle_valid_action_idxs[0]].aggressiveness, '\x1b[0m')
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action, which is least aggressive
             return costs
 
@@ -55,10 +51,6 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                               and recipe.relative_lane == RelativeLane.SAME_LANE
                                               and recipe.action_type == ActionType.FOLLOW_ROAD_SIGN]
         if len(follow_road_sign_valid_action_idxs) > 0:
-            # TODO DEBUG REMOVE
-            print('\x1b[5;30;43m', "available STOP aggressiveness", [action.aggressiveness for action, mask in zip(action_recipes, action_specs_mask)
-                                                                     if action.action_type == ActionType.FOLLOW_ROAD_SIGN and mask], '\x1b[0m')
-            # TODO DEBUG REMOVE
             # choose the found action, which is least aggressive.
             # Will be used if no proper static action is found
             tentative_road_sign_idx = follow_road_sign_valid_action_idxs[0]
@@ -85,57 +77,20 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         if tentative_road_sign_idx < 0 and selected_follow_lane_idx < 0:
             raise NoActionsLeftForBPError()
         elif tentative_road_sign_idx < 0:
-            print('\x1b[5;30;43m', "available LANE velocities",
-                  [action.velocity for i, action in enumerate(action_recipes)
-                   if i in follow_lane_valid_action_idxs], "aggr", min_aggr_level, '\x1b[0m')
-            print('\x1b[5;30;43m', "selected action FOLLOW_LANE velocity",
-                  action_recipes[selected_follow_lane_idx].velocity, "aggr",
-                  action_recipes[selected_follow_lane_idx].aggressiveness, "tentative",
-                  tentative_road_sign_idx, '\x1b[0m')
             costs[selected_follow_lane_idx] = 0
             return costs
         elif selected_follow_lane_idx < 0:
             costs[tentative_road_sign_idx] = 0
-            print('\x1b[5;30;43m', "selected action STOP aggressiveness",
-                  action_recipes[tentative_road_sign_idx].aggressiveness, '\x1b[0m')
             return costs
         else:  # both road sign and static actions are valid - choose
             if self._is_static_action_preferred(action_recipes, tentative_road_sign_idx, selected_follow_lane_idx):
-                print('\x1b[5;30;43m', "available LANE velocities",
-                      [action.velocity for i, action in enumerate(action_recipes)
-                       if i in follow_lane_valid_action_idxs], "aggr", min_aggr_level, '\x1b[0m')
-                print('\x1b[5;30;43m', "selected action FOLLOW_LANE velocity",
-                      action_recipes[selected_follow_lane_idx].velocity, "aggr",
-                      action_recipes[selected_follow_lane_idx].aggressiveness, "tentative",
-                      tentative_road_sign_idx, '\x1b[0m')
                 costs[selected_follow_lane_idx] = 0
                 return costs
             else:
-                # actual selection can change here - for now prefer STANDARD over CALM.
-                # Will not select aggressive, as aggressive only case is less preferable than FOLLOW_LANE
-                # standard_stop_index = -1
-                # for index in range(len(follow_road_sign_valid_action_idxs)):
-                #     if action_recipes[follow_road_sign_valid_action_idxs[index]].aggressiveness == AggressivenessLevel.STANDARD:
-                #         standard_stop_index = follow_road_sign_valid_action_idxs[index]
-                #         break
-                # if standard_stop_index >= 0:
-                #     tentative_road_sign_idx = standard_stop_index
-                print('\x1b[5;30;43m', "selected action STOP aggressiveness",
-                      action_recipes[tentative_road_sign_idx].aggressiveness, '\x1b[0m')
                 costs[tentative_road_sign_idx] = 0
                 return costs
 
     def _is_static_action_preferred(self, action_recipes: List[ActionRecipe], road_sign_idx: int, follow_lane_idx: int):
-        static_action = action_recipes[follow_lane_idx]
         road_sign_action = action_recipes[road_sign_idx]
-        # return static_action.velocity > 10  # Naive
-
-        # This selects many STATIC actions, and is even non-consistent, until finally selecting STOP
-        # return static_action.aggressiveness.value < road_sign_action.aggressiveness.value or \
-        #     (static_action.aggressiveness.value == road_sign_action.aggressiveness.value and static_action.velocity > 0)
-
-        # This starts from AGGRESSIVE which accelerates, and only then moves to STANDARD / CALM
-        # return False
-
         # Avoid AGGRESSIVE stop
         return road_sign_action.aggressiveness == AggressivenessLevel.AGGRESSIVE

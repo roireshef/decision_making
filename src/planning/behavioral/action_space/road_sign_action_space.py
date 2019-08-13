@@ -68,10 +68,6 @@ class RoadSignActionSpace(DistanceFacingActionSpace):
         longitudinal_differences = np.array([self._get_closest_stop_bar_distance(action_recipe, behavioral_state)
                                              for action_recipe in action_recipes])
         assert not np.isnan(longitudinal_differences).any()
-        # TODO DEBUG REMOVE
-        print('\x1b[6;30;41m', "distance to stop sign(", len(longitudinal_differences), ")",
-              longitudinal_differences[0], '\x1b[0m')
-        # TODO DEBUG REMOVE
         return longitudinal_differences
 
     def _get_closest_stop_bar_distance(self, action: RoadSignActionRecipe, behavioral_state: BehavioralGridState) -> \

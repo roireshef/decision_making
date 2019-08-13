@@ -20,7 +20,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 PLANNING_LOOKAHEAD_DIST = 100.0
 
 # [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 400  # todo 600
+MAX_HORIZON_DISTANCE = 400
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
@@ -103,9 +103,6 @@ ZERO_SPEED = 0.0
 
 # [m] road sign length
 ROAD_SIGN_LENGTH = 0
-# TODO DEBUG REMOVE
-SELECTED_STOP_LANE_ID = 58375683 #19670531
-# TODO DEBUG REMOVE
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1

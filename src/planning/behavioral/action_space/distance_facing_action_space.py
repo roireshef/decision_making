@@ -139,7 +139,6 @@ class DistanceFacingActionSpace(ActionSpace):
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
-        print('\x1b[6;30;41m', "dynamic actions specs times", T, '\x1b[0m')
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution.
         # distance_s also takes into account the safe distance that depends on target vehicle velocity that we want

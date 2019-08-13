@@ -42,15 +42,12 @@ class DynamicActionSpace(DistanceFacingActionSpace):
         self.targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                         for action_recipe in action_recipes]
         self.target_map_states = [target.dynamic_object.map_state for target in self.targets]
-        print(">>> perform_common")
-        pass
 
     def get_target_length(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         """ Should return the length of the target object (e.g. cars) for the objects which the actions are
         relative to """
         target_length = np.array([target.dynamic_object.size.length for target in self.targets])
-        print(">>> get_target_length")
         return target_length
 
     def get_target_velocities(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
@@ -58,7 +55,6 @@ class DynamicActionSpace(DistanceFacingActionSpace):
         """ Should return the velocities of the target object (e.g. cars) for the objects which the actions are
         relative to """
         v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in self.target_map_states])
-        print(">>> get_target_velocities")
         return v_T
 
     def get_end_target_relative_position(self, action_recipes: List[DynamicActionRecipe]) -> np.ndarray:
@@ -67,7 +63,6 @@ class DynamicActionSpace(DistanceFacingActionSpace):
         For example: -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)  """
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
-        print(">>> get_end_target_relative_position")
         return margin_sign
 
     def get_distance_to_targets(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState)\
@@ -76,7 +71,6 @@ class DynamicActionSpace(DistanceFacingActionSpace):
         are relative to """
         longitudinal_differences = behavioral_state.calculate_longitudinal_differences(self.target_map_states)
         assert not np.isinf(longitudinal_differences).any()
-        print(">>> get_distance_to_targets")
         return longitudinal_differences
 
     def get_margin_to_keep_from_targets(self, action_recipes: List[DynamicActionRecipe],

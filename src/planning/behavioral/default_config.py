@@ -37,6 +37,5 @@ DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone()
                                                              BeyondSpecStaticTrafficFlowControlFilter(),
                                                              BeyondSpecSpeedLimitFilter(),
                                                              BeyondSpecCurvatureFilter(),
-                                                             # FilterStopActionMovesFasterThanPreviousAction(), #TODO
                                                              ],
                                                     logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))

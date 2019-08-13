@@ -12,7 +12,6 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
-from decision_making.src.planning.types import C_V
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from logging import Logger
@@ -65,14 +64,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
-        # TODO DEBUG REMOVE
-        num_of_specified_dynamic_actions = sum(x is not None for x in action_specs if x is not None and isinstance(x.recipe, DynamicActionRecipe))
-        valid_action_specs = [action_spec for i, action_spec in enumerate(action_specs) if action_specs_mask[i]]
-        num_of_considered_dynamic_action_specs = sum(isinstance(x.recipe, DynamicActionRecipe) for x in valid_action_specs)
-        print('\x1b[6;30;41m', "number of valid dynamic actions recipes", num_of_considered_dynamic_actions,
-              "specified dynamic actions", num_of_specified_dynamic_actions,
-              "valid dynamic action specs", num_of_considered_dynamic_action_specs, '\x1b[0m')
-        # TODO DEBUG REMOVE
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
@@ -87,11 +78,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))
 
         # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
-        try:
-            action_q_cost = action_costs + terminal_states_values
-        except:
-            print("cost", action_costs, "\n terminal_val", terminal_states_values)
-            raise
+        action_q_cost = action_costs + terminal_states_values
 
         valid_idxs = np.where(action_specs_mask)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
@@ -113,7 +100,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
-        print(">>Current speed", state.ego_state.cartesian_state[C_V], "lane", state.ego_state.map_state.lane_id)
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
                                                                          recipes_mask, route_plan)
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
