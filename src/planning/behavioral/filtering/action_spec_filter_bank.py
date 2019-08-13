@@ -70,7 +70,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                 nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
                     ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
 
-        return KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds)
+        return KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds, action_specs)
 
     @staticmethod
     def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
@@ -89,7 +89,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
 
 class FilterForCurvature(ActionSpecFilter):
     @prof.ProfileFunction()
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """
         Builds a baseline trajectory out of the action specs (terminal states) and validates them against:
             - max longitudinal position (available in the reference frame)
@@ -112,7 +112,7 @@ class FilterForCurvature(ActionSpecFilter):
             if len(lane_idxs) > 0:
                 pointwise_speed_limit[lane_idxs] = self._pointwise_speed_limit(ftrajectories[lane_idxs], lane_frame)
 
-        return list(KinematicUtils.filter_by_nominal_velocity(ctrajectories, pointwise_speed_limit))
+        return KinematicUtils.filter_by_nominal_velocity(ctrajectories, pointwise_speed_limit, action_specs)
 
     @staticmethod
     def _pointwise_speed_limit(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
