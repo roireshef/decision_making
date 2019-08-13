@@ -2,10 +2,10 @@ import time
 
 import numpy as np
 import traceback
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
 
 from decision_making.src.exceptions import MsgDeserializationError, CartesianLimitsViolated, StateHasNotArrivedYet
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \

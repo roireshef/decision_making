@@ -5,9 +5,9 @@ from typing import Optional, Any, List
 
 import numpy as np
 import rte.python.profiler as prof
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule

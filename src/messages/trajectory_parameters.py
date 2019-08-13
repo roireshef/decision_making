@@ -1,9 +1,9 @@
 import numpy as np
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SigmoidFunctionParams import \
+from interface.Rte_Types.python.sub_structures.TsSYS_SigmoidFunctionParams import \
     TsSYSSigmoidFunctionParams
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryCostParams import \
+from interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryCostParams import \
     TsSYSTrajectoryCostParams
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryParameters import TsSYSTrajectoryParameters
+from interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryParameters import TsSYSTrajectoryParameters
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits

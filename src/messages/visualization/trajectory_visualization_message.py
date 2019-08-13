@@ -1,8 +1,8 @@
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataTrajectoryVisualization import \
+from interface.Rte_Types.python.sub_structures.TsSYS_DataTrajectoryVisualization import \
     TsSYSDataTrajectoryVisualization
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_PredictionsVisualization import \
+from interface.Rte_Types.python.sub_structures.TsSYS_PredictionsVisualization import \
     TsSYSPredictionsVisualization
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryVisualization import \
+from interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryVisualization import \
     TsSYSTrajectoryVisualization
 from typing import List
 

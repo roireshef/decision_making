@@ -5,13 +5,13 @@ import traceback
 from logging import Logger
 import numpy as np
 
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet,\
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \

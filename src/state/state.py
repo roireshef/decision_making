@@ -1,11 +1,11 @@
 import copy
 import numpy as np
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicObject import TsSYSDynamicObject
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_EgoState import TsSYSEgoState
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectSize import TsSYSObjectSize
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_OccupancyState import TsSYSOccupancyState
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_State import TsSYSState
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
+from interface.Rte_Types.python.sub_structures.TsSYS_DynamicObject import TsSYSDynamicObject
+from interface.Rte_Types.python.sub_structures.TsSYS_EgoState import TsSYSEgoState
+from interface.Rte_Types.python.sub_structures.TsSYS_ObjectSize import TsSYSObjectSize
+from interface.Rte_Types.python.sub_structures.TsSYS_OccupancyState import TsSYSOccupancyState
+from interface.Rte_Types.python.sub_structures.TsSYS_State import TsSYSState
+from decision_making.src.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K

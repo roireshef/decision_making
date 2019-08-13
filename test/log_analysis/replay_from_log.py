@@ -7,8 +7,8 @@ from typing import Dict
 import numpy as np
 import pickle
 
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING, PG_PICKLE_FILE_NAME
 from decision_making.src.messages.class_serialization import ClassSerializer

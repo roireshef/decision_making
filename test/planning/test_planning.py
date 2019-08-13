@@ -2,9 +2,9 @@ from decision_making.test.messages.scene_static_fixture import scene_static_shor
 from unittest.mock import MagicMock
 
 from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
