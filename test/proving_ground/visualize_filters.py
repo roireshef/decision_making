@@ -21,7 +21,7 @@ def plot_filters_map(log_file_path: str):
     """
     file = open(log_file_path, 'r')
     f = plt.figure(1)
-    colors_num = len(DEFAULT_ACTION_SPEC_FILTERING._filters) + 1
+    colors_num = len(DEFAULT_ACTION_SPEC_FILTERING._filters) + 2
     map_idx_to_color = np.array([4, 6, 2, 0, 8, 7, 5, 1, 3]) / colors_num
     gray_color = np.array([0.75, 0.75, 0.75])
 
