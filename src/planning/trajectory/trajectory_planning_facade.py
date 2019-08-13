@@ -278,6 +278,8 @@ class TrajectoryPlanningFacade(DmModule):
                                                                       prediction_horizons)[0][:, [FS_SX, FS_DX]]
                 # skip objects having predictions out of reference_route
                 valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
+                if len(valid_obj_fpredictions) == 0:
+                    continue
                 obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
                 objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
 
