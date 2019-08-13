@@ -20,7 +20,6 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
                  action_specs: List[ActionSpec], action_specs_mask: List[bool]) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
-        * Only takes into account actions on RelativeLane.SAME_LANE
         * If there's a leading vehicle, try following it (ActionType.FOLLOW_LANE, lowest aggressiveness possible)
         * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_LANE action with maximal
         allowed velocity and lowest aggressiveness possible.
