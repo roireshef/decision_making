@@ -201,8 +201,8 @@ class BehavioralGridState:
                                                                         route_plan=route_plan, logger=logger, can_augment=can_augment)
             extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
         except MappingException as e:
-            logger.warning(e)
-            return extended_lane_frames
+            # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
+            raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
 
         host_cartesion_point = np.array([state.ego_state.cartesian_state[C_X],
                                          state.ego_state.cartesian_state[C_Y]])
@@ -226,7 +226,7 @@ class BehavioralGridState:
                                                                                       extended_lane_frames[RelativeLane.SAME_LANE])
                 except EquivalentStationNotFound as e:
                     # Since the host's equivalent station in the adjacent lane could not be found, a GFF cannot be created for that lane.
-                    logger.warning(e)
+                    logger.warning("Trying to fetch data for %s, but data is unavailable. %s" % (relative_lane, str(e)))
                     continue
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
@@ -239,7 +239,7 @@ class BehavioralGridState:
                     # These lanes are relative to the lane_id that is passed in, not the vehicle's actual position
                     extended_lane_frames[relative_lane] = lane_gffs[RelativeLane.SAME_LANE]
                 except MappingException as e:
-                    logger.warning(e)
+                    logger.warning("Trying to fetch data for %s, but data is unavailable. %s" % (relative_lane, str(e)))
 
         return extended_lane_frames
 

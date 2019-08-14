@@ -383,6 +383,7 @@ def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimits_filterResul
 
     np.testing.assert_array_equal(filter_results, expected_filter_results)
 
+
 def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_state_with_left_lane_ending):
     """
     Tests the filter BeyondSpecGffFilter.
@@ -403,3 +404,43 @@ def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_st
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_left_lane_ending)
     expected = [True, False]
     assert np.all(actual == expected)
+
+
+def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimitsWhenSlowing_filterResultsMatchExpected(
+        behavioral_grid_state_with_segments_limits,
+        follow_lane_recipes: List[StaticActionRecipe]):
+
+    logger = AV_Logger.get_logger()
+    # The scene_static that is being used, is in accordance to whatever happens in behavioral_grid_state_
+    # with_segments_limits fixture
+    scene_static_with_limits = SceneStaticModel.get_instance().get_scene_static()
+    # The following are 4 consecutive lane segments with varying speed limits (ego starts at the end of [0])
+    # These are the s-values that correspond to lane transitions on the GFF:
+    # [0.0, 100.84134201631973, 220.48438762415998, 343.9575891327402, 466.0989153990629]
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_v_nominal_speed = 4
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_v_nominal_speed = 4
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[6].e_v_nominal_speed = 4
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[9].e_v_nominal_speed = 4
+    SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
+
+    filtering = RecipeFiltering(filters=[], logger=logger)
+    # note: first lane segment speed limit is almost irrelevant because we start at the end of this segment
+    expected_filter_results = np.array([True, True, True,      # v_T=0 (Calm, Standard, Aggressive)  - All Pass (not arriving at [9])
+                                        False, False, False,   # v_T=6 - Fail  <<-- This was fixed by checking the final velocity is met
+                                        False, False, False,   # v_T=12 - Fail
+                                        False, False, False,   # v_T=18 - Fail
+                                        False, False, False,   # v_T=24 - Fail
+                                        False, False, False    # v_T=30 - Fail
+                                        ], dtype=bool)
+
+    static_action_space = StaticActionSpace(logger, filtering=filtering)
+
+    action_specs = static_action_space.specify_goals(follow_lane_recipes,
+                                                     behavioral_grid_state_with_segments_limits)
+
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForLaneSpeedLimits()], logger=logger)
+
+    filter_results = action_spec_filter.filter_action_specs(action_specs,
+                                                            behavioral_grid_state_with_segments_limits)
+
+    np.testing.assert_array_equal(filter_results, expected_filter_results)
