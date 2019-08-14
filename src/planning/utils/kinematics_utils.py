@@ -49,7 +49,6 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
-        :param desired_velocity: desired longitudinal speed [m/sec]
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
@@ -67,7 +66,7 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_nominal_velocity(ctrajectories: CartesianExtendedTrajectories, nominal_velocity: np.ndarray,
-                                   specs: List[ActionSpec]):
+                                   action_specs: List[ActionSpec]):
         """
         validates the following behavior for each trajectory:
         (1) applies negative jerk to reduce initial positive acceleration, if necessary
@@ -76,15 +75,15 @@ class KinematicUtils:
         (3) keeps the velocity under the desired velocity limit.
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param nominal_velocity: 2D matrix [trajectories, timestamps] of nominal velocities to validate against
-        :param specs: list of action specs
+        :param action_specs: list of action specs
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
         lon_velocity = ctrajectories[:, :, C_V]
-        spec_v = np.array([spec.v for spec in specs])
-        last_pad_idxs = KinematicUtils.get_time_index_of_padded_actions(np.array([spec.t for spec in specs]))
+        spec_v = np.array([spec.v for spec in action_specs])
+        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(np.array([spec.t for spec in action_specs]))
         # for each spec use the appropriate last time index (possibly after padding)
-        target_nominal_velocities = nominal_velocity[np.arange(len(specs)), last_pad_idxs]
+        target_nominal_velocities = nominal_velocity[np.arange(len(action_specs)), last_pad_idxs]
 
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_desired = np.logical_and(
@@ -92,13 +91,13 @@ class KinematicUtils:
             np.logical_or(
                 # either speed is below limit, or vehicle is slowing down when it doesn't
                 np.all(np.logical_or(lon_acceleration <= 0, lon_velocity <= nominal_velocity + EPS), axis=1),
-                # acceleration is being reduced throughout the trajectory
+                # negative initial jerk
                 lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
         return conforms_desired
 
     @staticmethod
-    def get_time_index_of_padded_actions(T: np.array):
+    def convert_padded_spec_time_to_index(T: np.array):
         return (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(int)
 
     @staticmethod
