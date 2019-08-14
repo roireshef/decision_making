@@ -1,6 +1,5 @@
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.global_constants import ACTION_COST_ALPHA, EPS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -67,24 +66,19 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        # this returns the action_costs normalized to [0,1]
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         # approximate cost-to-go per terminal state
         terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
                                                                     action_specs_mask, route_plan)
-
-        terminal_states_values = np.array([self.value_approximator.approximate(state, route_plan, None) if action_specs_mask[i] else 0.0
+        # TODO: NavigationPlan is now None and should be meaningful when we have one
+        terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
-        # normalize terminal_states_values to [0,1]
-        terminal_states_values /= max(np.max(np.abs(terminal_states_values), axis=0), EPS)
-        terminal_states_values[np.logical_not(action_specs_mask)] = 1.0
-
 
         self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))
 
         # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
-        action_q_cost = ACTION_COST_ALPHA * action_costs + (1 - ACTION_COST_ALPHA) * terminal_states_values
+        action_q_cost = action_costs + terminal_states_values
 
         valid_idxs = np.where(action_specs_mask)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]

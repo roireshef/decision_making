@@ -32,10 +32,6 @@ MINIMUM_REQUIRED_DIST_LANE_AHEAD = 1
 # Minimum cost difference required to prefer one lane over another
 MINIMUM_REQUIRED_COST_DIFFERENCE = 0.1
 
-# Tuning parameter to prefer either action_costs or terminal_states_values
-# Implemented as q_value = alpha*action_costs + (1-alpha)*terminal_states_values
-ACTION_COST_ALPHA = 0.5
-
 # After a change of TP costs run the following test:
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
 
