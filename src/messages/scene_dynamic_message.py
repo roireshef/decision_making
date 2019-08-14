@@ -100,7 +100,8 @@ class HostHypothesis(PUBSUB_MSG_IMPL):
     def __init__(self, e_i_road_segment_id, e_i_lane_segment_id, a_lane_frenet_pose, e_b_off_lane):
         # type: (int, int, np.ndarray, bool)->None
         """
-        Host-localization information
+        Host-Hypothesis information
+        :param e_i_road_segment_id: The ID of the road-segment that the host is in
         :param e_i_lane_segment_id: The ID of the lane-segment that the host is in
         :param a_lane_frenet_pose: The host's pose, expressed in the the Frenet-Serret frame of the host's lane-segment
         :param e_b_off_lane: indicates if the vehicle is located off the map
@@ -193,6 +194,7 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         """
         Actors-hypotheses information
         :param e_r_probability: Probability of this hypothesis (not relevant for M0)
+        :param e_i_road_segment_id: The road-segment ID that this actor-hypothesis is in
         :param e_i_lane_segment_id: The lane-segment ID that this actor-hypothesis is in
         :param e_e_dynamic_status:
         :param e_Pct_location_uncertainty_x: Not relevant for M0
