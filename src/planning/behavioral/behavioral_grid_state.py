@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 import numpy as np
+import copy
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
@@ -116,8 +117,20 @@ class BehavioralGridState:
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
-            relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
-            rel_lanes_per_obj[relevant_objects] = rel_lane
+            relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
+
+            # assign object to lane if it hasn't already been assigned
+            unassigned_obj_mask = rel_lanes_per_obj == None
+            rel_lanes_per_obj[np.logical_and(unassigned_obj_mask, relevant_object_mask)] = rel_lane
+
+            # create duplicate objects if they belong to more than one rel_lane
+            # invert <unassigned_obj_mask> instead of recalculating since rel_lanes_per_obj has been changed
+            assigned_obj_indicies = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
+            if len(assigned_obj_indicies) > 0:
+                duplicate_objs = copy.deepcopy(on_map_dynamic_objects[assigned_obj_indicies])
+                # append duplicate objs and the current lane to the list of objs and lanes
+                on_map_dynamic_objects.extend(duplicate_objs)
+                np.append(rel_lanes_per_obj, [rel_lane] * len(duplicate_objs))
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(

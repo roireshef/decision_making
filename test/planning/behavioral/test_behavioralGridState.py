@@ -56,3 +56,10 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         target_gff_fstate = behavioral_grid_state.extended_lane_frames[rel_lane].convert_from_segment_state(
             map_state.lane_fstate, map_state.lane_id)
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
+
+def test_createFromState_objLaneIdInMultipleGFFs_assignedToAll():
+    """
+    TODO: Create this test once Augmented GFFS are brought in
+    :return:
+    """
+    pass
