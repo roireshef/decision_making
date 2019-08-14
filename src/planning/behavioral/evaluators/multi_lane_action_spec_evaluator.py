@@ -9,7 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, A
     StaticActionRecipe
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.global_constants import EPS, LANE_END_COST_IND
+from decision_making.src.global_constants import LANE_END_COST_IND
 from decision_making.src.messages.route_plan_message import RoutePlan
 
 
@@ -52,7 +52,7 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
             # get costs for next lane
             for rel_lane in behavioral_state.extended_lane_frames:
                 lane_costs_dict[rel_lane] += route_costs_dict[
-                    behavioral_state.extended_lane_frames[rel_lane].segment_ids[lane_index[rel_lane]]]
+                    behavioral_state.extended_lane_frames[rel_lane].segment_ids[lane_index[rel_lane]]][LANE_END_COST_IND]
                 lane_index[rel_lane] += 1
 
             # check if there is a minimum cost lane (if only one element equals the minimum, it is a unique minimum)
