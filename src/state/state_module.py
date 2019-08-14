@@ -127,7 +127,7 @@ class StateModule(DmModule):
 
         if len(host_hyp_lane_ids) > 1 and len(last_gff_segment_ids) > 0:
 
-            # find all common lae ids in host hypotheses and last gff segments
+            # find all common lane ids in host hypotheses and last gff segments
             common_lane_ids = np.intersect1d(host_hyp_lane_ids, last_gff_segment_ids)
 
             if len(common_lane_ids) == 1:
@@ -141,7 +141,6 @@ class StateModule(DmModule):
                 # there are no common ids between localization and prev. gff
                 # raise a warning and choose the closet lane
                 logger.warning("None of the host localization hypotheses matches the previous planning action")
-                selected_host_hyp_idx = 0
 
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
                                  as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
