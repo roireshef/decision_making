@@ -9,6 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, A
     StaticActionRecipe
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
+from decision_making.src.messages.route_plan_message import RoutePlan
 
 
 class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
@@ -16,7 +17,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         super().__init__(logger)
 
     def evaluate(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                 action_specs: List[ActionSpec], action_specs_mask: List[bool]) -> np.ndarray:
+                 action_specs: List[ActionSpec], action_specs_mask: List[bool], route_plan: RoutePlan) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
         * Only takes into account actions on RelativeLane.SAME_LANE

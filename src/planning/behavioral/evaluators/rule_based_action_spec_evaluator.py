@@ -14,6 +14,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.messages.route_plan_message import RoutePlan
 
 
 class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
@@ -24,7 +25,8 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
     def evaluate(self, behavioral_state: BehavioralGridState,
                  action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec],
-                 action_specs_mask: List[bool]) -> np.ndarray:
+                 action_specs_mask: List[bool],
+                 route_plan: RoutePlan) -> np.ndarray:
         """
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate and returns a vector representing their costs.

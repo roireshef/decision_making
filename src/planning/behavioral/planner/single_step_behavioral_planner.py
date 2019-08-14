@@ -66,7 +66,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
+        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask, route_plan)
 
         # approximate cost-to-go per terminal state
         terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
