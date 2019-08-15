@@ -79,7 +79,7 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                 nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
                     ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
 
-        return KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds)
+        return KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds, action_specs)
 
     @staticmethod
     def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
