@@ -397,9 +397,10 @@ class WerlingPlanner(TrajectoryPlanner):
             # if all trajectories violate lat_acc limits, get range of nominal points around the "worst" timestamp
             lat_acc_traj_s = ftrajectories[lat_acc_traj_idx, lat_acc_t_idx, FS_SX]
             nominal_idxs = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s]))[0]
-            if len(nominal_idxs) > 0:
-                init_idx = nominal_idxs[0] - 5
-                final_idx = nominal_idxs[0] + 5
+            nominal_points_around_worst_point = 11  # how many nominal points to print around the worst point
+            if len(nominal_idxs) > 0:  # get a range of at most 11 nominal points near the problematic trajectory point
+                init_idx = max(0, nominal_idxs[0] - nominal_points_around_worst_point//2)
+                final_idx = min(reference_route.k.shape[0] - 1, nominal_idxs[0] + nominal_points_around_worst_point//2)
         raise CartesianLimitsViolated("No valid trajectories. "
                                       "timestamp_in_sec: %f, time horizon: %f, "
                                       "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
