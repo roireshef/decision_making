@@ -23,6 +23,9 @@ PLANNING_LOOKAHEAD_DIST = 100.0
 # [m] Maximal horizon distance for building Generalized Frenet Frames
 MAX_HORIZON_DISTANCE = 400
 
+# [m] distance to the end of a partial GFF at which the vehicle must not be in
+PARTIAL_GFF_END_PADDING = 5
+
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 
