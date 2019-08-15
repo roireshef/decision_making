@@ -1,4 +1,3 @@
-import rte.python.profiler as prof
 from collections import defaultdict
 from itertools import compress
 
@@ -12,8 +11,7 @@ from typing import Optional
 
 from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, BoolArray
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -113,8 +111,7 @@ class ActionSpecFilter:
         spec_t_idxs[in_padding_mode] = 0
 
         # calculate trajectory time indices for t = max(spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
-        last_pad_idxs = (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(
-            int) + 1
+        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(T) + 1
 
         # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
         for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
@@ -126,6 +123,7 @@ class ActionSpecFilter:
                 trajectory_s[spec_t_idx:last_pad_idx] = np.c_[spec.s + times_beyond_spec * spec.v,
                                                               np.full(times_beyond_spec.shape, spec.v),
                                                               np.zeros_like(times_beyond_spec)]
+            # beyond spec.t and beyond MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON pad ftrajectories by 0
             trajectory_s[last_pad_idx:] = 0
             trajectory_d[spec_t_idx:] = 0
 
