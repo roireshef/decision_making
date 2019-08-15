@@ -1,13 +1,14 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
     FS_DX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
+from typing import List
 
 
 class KinematicUtils:
@@ -48,7 +49,6 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
-        :param desired_velocity: desired longitudinal speed [m/sec]
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
@@ -65,7 +65,8 @@ class KinematicUtils:
         return conforms_limits
 
     @staticmethod
-    def filter_by_nominal_velocity(ctrajectories: CartesianExtendedTrajectories, nominal_velocity: np.ndarray):
+    def filter_by_nominal_velocity(ctrajectories: CartesianExtendedTrajectories, nominal_velocity: np.ndarray,
+                                   action_specs: List[ActionSpec]):
         """
         validates the following behavior for each trajectory:
         (1) applies negative jerk to reduce initial positive acceleration, if necessary
@@ -74,18 +75,30 @@ class KinematicUtils:
         (3) keeps the velocity under the desired velocity limit.
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param nominal_velocity: 2D matrix [trajectories, timestamps] of nominal velocities to validate against
+        :param action_specs: list of action specs
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
         lon_velocity = ctrajectories[:, :, C_V]
+        spec_v = np.array([spec.v for spec in action_specs])
+        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(np.array([spec.t for spec in action_specs]))
+        # for each spec use the appropriate last time index (possibly after padding)
+        target_nominal_velocities = nominal_velocity[np.arange(len(action_specs)), last_pad_idxs]
 
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
-        conforms_desired = np.logical_or(
-            np.all(np.logical_or(lon_acceleration < 0, lon_velocity <= nominal_velocity + EPS), axis=1),
-            np.logical_and(lon_acceleration[:, 0] > lon_acceleration[:, 1],
-                           lon_velocity[:, -1] <= nominal_velocity[:, -1] + NEGLIGIBLE_VELOCITY))
+        conforms_desired = np.logical_and(
+            spec_v <= target_nominal_velocities + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
+            np.logical_or(
+                # either speed is below limit, or vehicle is slowing down when it doesn't
+                np.all(np.logical_or(lon_acceleration <= 0, lon_velocity <= nominal_velocity + EPS), axis=1),
+                # negative initial jerk
+                lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
         return conforms_desired
+
+    @staticmethod
+    def convert_padded_spec_time_to_index(T: np.array):
+        return (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(int)
 
     @staticmethod
     # TODO: add jerk to filter?

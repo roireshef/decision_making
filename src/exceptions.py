@@ -108,6 +108,10 @@ class LaneNotFound(MappingException):
     pass
 
 
+class IDAppearsMoreThanOnce(MappingException):
+    pass
+
+
 class ConstraintFilterHaltWithValue(Exception):
     """
     This is raised internally within ConstraintFilter when halt (stopping the filter without completing the entire execution)
@@ -119,6 +123,7 @@ class ConstraintFilterHaltWithValue(Exception):
     @property
     def value(self) -> bool:
         return self._value
+
 
 class NoActionsLeftForBPError(Exception):
     pass
@@ -141,38 +146,48 @@ class EgoStationBeyondLaneLength(MappingException):
 class RoutePlanningException(Exception):
     pass
 
+
 class RepeatedRoadSegments(RoutePlanningException):
     pass
+
 
 class EgoRoadSegmentNotFound(RoutePlanningException):
     pass
 
+
 class EgoLaneOccupancyCostIncorrect(RoutePlanningException):
     pass
+
 
 class RoadSegmentLaneSegmentMismatch(RoutePlanningException):
     pass
 
+
 class MissingInputInformation(RoutePlanningException):
     pass
+
 
 class NavigationSceneDataMismatch(RoutePlanningException):
     pass
 
+
 class LaneSegmentDataNotFound(RoutePlanningException):
     pass
+
 
 class RoadSegmentDataNotFound(RoutePlanningException):
     pass
 
+
 class LaneAttributeNotFound(RoutePlanningException):
     pass
+
 
 class DownstreamLaneDataNotFound(RoutePlanningException):
     pass
 
+
 def raises(*e):
-    # type: (Exception)
     """
     A decorator that determines that a function may raise a specific exception
     """
