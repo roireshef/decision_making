@@ -82,6 +82,7 @@ class KinematicUtils:
         lon_velocity = ctrajectories[:, :, C_V]
         spec_v = np.array([spec.v for spec in action_specs])
         last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(np.array([spec.t for spec in action_specs]))
+        last_pad_idxs = np.minimum(last_pad_idxs, nominal_velocity.shape[1] - 1)
         # for each spec use the appropriate last time index (possibly after padding)
         target_nominal_velocities = nominal_velocity[np.arange(len(action_specs)), last_pad_idxs]
 

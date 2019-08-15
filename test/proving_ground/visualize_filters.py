@@ -15,7 +15,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 def plot_filters_map(log_file_path: str):
     """
-    Plot various graphs concerning localization, BP and TP outputs
+    Plot which actions were filtered by which action_spec filters
     :param log_file_path: path to AV_Log_dm_main.log file
     :return: a showable matplotlib figure
     """
