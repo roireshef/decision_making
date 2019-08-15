@@ -122,9 +122,9 @@ class FilterForCurvature(ActionSpecFilter):
         :param ftrajectories: The Frenet trajectories to which to calculate the speed limits
         :return: A matrix of (Trajectories x Time_samples) of lane-based nominal speeds (by e_v_nominal_speed).
         """
-        # calculate point-wise maximal velocity according to frenet.k_pieces
-        k_pieces_idxs = frenet.get_k_piece_idxs_from_s(ftrajectories[..., FS_SX])
-        return np.sqrt(BP_LAT_ACC_STRICT_COEF) * frenet.k_pieces[k_pieces_idxs, 1]
+        # calculate point-wise maximal velocity according to frenet.k_blocks
+        k_blocks_idxs = frenet.get_k_block_idxs_from_s(ftrajectories[..., FS_SX])
+        return np.sqrt(BP_LAT_ACC_STRICT_COEF) * frenet.k_blocks[k_blocks_idxs, 1]
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
@@ -338,10 +338,10 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
     def _get_velocity_limits_of_points(self, action_spec: ActionSpec, frenet_frame: GeneralizedFrenetSerretFrame) -> \
             [np.array, np.array]:
         """
-        Returns s and velocity limits of the points that needs to slow down
+        Returns s and velocity limits of the points that needs to slow down according to k_blocks in GFF
         :param action_spec:
         :param frenet_frame:
-        :return:
+        :return: array of the points' s values, array of velocity limits at the points
         """
         # get the worst case braking distance from spec.v to 0
         max_braking_distance = self.braking_distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
@@ -349,9 +349,9 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
         # beyond_spec_range[0] must be BEYOND spec.s because the actual distances from spec.s to the
         # selected points have to be positive.
-        beyond_spec_range = frenet_frame.get_k_piece_idxs_from_s(np.array([action_spec.s, max_relevant_s])) + 1
-        relevant_k_pieces = frenet_frame.k_pieces[range(beyond_spec_range[0], beyond_spec_range[1])]
-        return relevant_k_pieces[:, 0], relevant_k_pieces[:, 1]
+        beyond_spec_range = frenet_frame.get_k_block_idxs_from_s(np.array([action_spec.s, max_relevant_s])) + 1
+        relevant_k_blocks = frenet_frame.k_blocks[range(beyond_spec_range[0], beyond_spec_range[1])]
+        return relevant_k_blocks[:, 0], relevant_k_blocks[:, 1]
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
         """

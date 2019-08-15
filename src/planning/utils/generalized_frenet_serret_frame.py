@@ -42,7 +42,7 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray,
-                 k: np.ndarray, k_tag: np.ndarray, k_pieces,
+                 k: np.ndarray, k_tag: np.ndarray, k_blocks,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
                  segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
@@ -51,7 +51,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
-        self.k_pieces = k_pieces
+        self.k_blocks = k_blocks
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
@@ -135,7 +135,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         N = np.empty(shape=[0, 2])
         k = np.empty(shape=[0, 1])
         k_tag = np.empty(shape=[0, 1])
-        k_pieces = np.empty(shape=[0, 2])
+        k_blocks = np.empty(shape=[0, 2])
 
         for i in range(len(frenet_frames)):
             frame = frenet_frames[i]
@@ -158,17 +158,17 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
             segments_num_points_so_far[i] = points.shape[0]
 
-            # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
-            frame_k_pieces = GeneralizedFrenetSerretFrame._divide_segment_to_curvature_pieces(
+            # if the segment is loo long, divide it to blocks and calculate maximal k for each block
+            frame_k_blocks = GeneralizedFrenetSerretFrame._divide_segment_to_curvature_blocks(
                 frame, segments_s_offsets[i] - segments_s_start[i])
-            k_pieces = np.vstack((k_pieces, frame_k_pieces))
+            k_blocks = np.vstack((k_blocks, frame_k_blocks))
 
         # The accumulated number of points participating in the generation of the generalized frenet frame
         # for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
         # plus the number of points taken from subsegment #1.
         segments_point_offset = np.insert(segments_num_points_so_far, 0, 0., axis=0)
 
-        return cls(points, T, N, k, k_tag, k_pieces, segments_id, segments_s_start, segments_s_offsets, segments_ds,
+        return cls(points, T, N, k, k_tag, k_blocks, segments_id, segments_s_start, segments_s_offsets, segments_ds,
                    segments_point_offset)
 
     def has_segment_id(self, segment_id: int) -> bool:
@@ -335,46 +335,46 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
         return O_idx, delta_s
 
-    def get_k_piece_idxs_from_s(self, s_values: np.ndarray):
+    def get_k_block_idxs_from_s(self, s_values: np.ndarray):
         """
-        for each longitudinal progress on the curve, s, return the index of the k_piece it belongs to from self.k_pieces
+        for each longitudinal progress on the curve, s, return the index of the k_block it belongs to from self.k_blocks
         :param s_values: an np.array object containing longitudinal progresses on the generalized frenet curve.
-        :return: the indices of the respective k_pieces
+        :return: the indices of the respective k_blocks
         """
-        segments_idxs = np.searchsorted(self.k_pieces[:, 0], s_values) - 1
+        segments_idxs = np.searchsorted(self.k_blocks[:, 0], s_values) - 1
         segments_idxs[s_values == 0] = 0
         return segments_idxs
 
     @staticmethod
-    def _divide_segment_to_curvature_pieces(frame: FrenetSerret2DFrame, segment_s_offset: float):
+    def _divide_segment_to_curvature_blocks(frame: FrenetSerret2DFrame, segment_s_offset: float):
         """
-        Divide lane segment to curvature pieces of nearly equal length, whose length depends on the mean curvature
-        of the lane segment. Velocity limit of each piece is based on the MAXIMAL curvature of the piece.
+        Divide lane segment to curvature blocks of nearly equal length, whose length depends on the mean curvature
+        of the lane segment. Velocity limit of each block is based on the MAXIMAL curvature of the block.
         :param frame: original Frenet frame from the map
         :param segment_s_offset: s offset of the full lane segment's starting point relatively to the GFF
-        :return: 2D array Nx2 of curvature pieces. The columns: s_offsets, vel_limits.
+        :return: 2D array Nx2 of curvature blocks. The columns: s_offsets, vel_limits.
         """
         segment_ds = frame.ds
-        # if the segment is loo long, divide it to pieces and calculate maximal k for each piece
+        # if the segment is loo long, divide it to blocks and calculate maximal k for each block
         segment_k = np.abs(frame.k[:-1, 0])
         segment_size = len(segment_k)
-        # calculate the size (in points) of one piece based on the velocity limit
+        # calculate the size (in points) of one block based on the velocity limit
         vel_limit = min(VELOCITY_LIMITS[1], np.sqrt(LAT_ACC_LIMITS[1] / np.mean(segment_k)))
-        desired_piece_size = int(vel_limit * 10 / segment_ds)  # desired piece size: 10 seconds
-        pieces_num = max(1, int(np.round(segment_size / desired_piece_size)))
-        piece_size = int(np.round(segment_size / pieces_num))
-        # calculate maximal k for each piece
-        if pieces_num * piece_size > segment_size:
-            full_pieces = np.concatenate((segment_k, np.zeros(pieces_num * piece_size - segment_size)))
-            k_max_per_piece = np.max(full_pieces.reshape(-1, piece_size), axis=1)
+        desired_block_size = int(vel_limit * 10 / segment_ds)  # desired block size: 10 seconds
+        blocks_num = max(1, int(np.round(segment_size / desired_block_size)))
+        block_size = int(np.round(segment_size / blocks_num))
+        # calculate maximal k for each block
+        if blocks_num * block_size > segment_size:
+            full_blocks = np.concatenate((segment_k, np.zeros(blocks_num * block_size - segment_size)))
+            k_max_per_block = np.max(full_blocks.reshape(-1, block_size), axis=1)
         else:  # the last segment is longer, deal with it separately
-            full_pieces = segment_k[:((pieces_num - 1) * piece_size)]
-            k_max_per_piece = np.concatenate((np.max(full_pieces.reshape(-1, piece_size), axis=1),
-                                              [np.max(segment_k[((pieces_num - 1) * piece_size):])]))
+            full_blocks = segment_k[:((blocks_num - 1) * block_size)]
+            k_max_per_block = np.concatenate((np.max(full_blocks.reshape(-1, block_size), axis=1),
+                                              [np.max(segment_k[((blocks_num - 1) * block_size):])]))
 
-        # pieces contains 3 columns: s_offset, vel_limit, length
-        all_sizes_but_last = np.full(pieces_num - 1, piece_size)
-        piece_lengths = np.concatenate((all_sizes_but_last, [segment_size - np.sum(all_sizes_but_last)])) * segment_ds
-        offsets_s = np.insert(np.cumsum(piece_lengths[:-1]), 0, 0) + segment_s_offset
-        vel_limits = np.minimum(np.sqrt(LAT_ACC_LIMITS[1] / np.maximum(EPS, k_max_per_piece)), VELOCITY_LIMITS[1])
+        # blocks contains 3 columns: s_offset, vel_limit, length
+        all_sizes_but_last = np.full(blocks_num - 1, block_size)
+        block_lengths = np.concatenate((all_sizes_but_last, [segment_size - np.sum(all_sizes_but_last)])) * segment_ds
+        offsets_s = np.insert(np.cumsum(block_lengths[:-1]), 0, 0) + segment_s_offset
+        vel_limits = np.minimum(np.sqrt(LAT_ACC_LIMITS[1] / np.maximum(EPS, k_max_per_block)), VELOCITY_LIMITS[1])
         return np.c_[offsets_s, vel_limits]
