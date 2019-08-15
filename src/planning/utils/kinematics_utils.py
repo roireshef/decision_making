@@ -65,8 +65,8 @@ class KinematicUtils:
         return conforms_limits
 
     @staticmethod
-    def filter_by_nominal_velocity(ctrajectories: CartesianExtendedTrajectories, nominal_velocity: np.ndarray,
-                                   action_specs: List[ActionSpec]):
+    def filter_by_velocity_limit(ctrajectories: CartesianExtendedTrajectories, velocity_limits: np.ndarray,
+                                 T: np.array) -> np.array:
         """
         validates the following behavior for each trajectory:
         (1) applies negative jerk to reduce initial positive acceleration, if necessary
@@ -74,23 +74,23 @@ class KinematicUtils:
         (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
         (3) keeps the velocity under the desired velocity limit.
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
-        :param nominal_velocity: 2D matrix [trajectories, timestamps] of nominal velocities to validate against
-        :param action_specs: list of action specs
+        :param velocity_limits: 2D matrix [trajectories, timestamps] of nominal velocities to validate against
+        :param T: array of target times for ctrajectories
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
         lon_velocity = ctrajectories[:, :, C_V]
-        spec_v = np.array([spec.v for spec in action_specs])
-        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(np.array([spec.t for spec in action_specs]))
-        # for each spec use the appropriate last time index (possibly after padding)
-        target_nominal_velocities = nominal_velocity[np.arange(len(action_specs)), last_pad_idxs]
+        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(T)
+        # for each trajectory use the appropriate last time index (possibly after padding)
+        end_velocities = ctrajectories[np.arange(ctrajectories.shape[0]), last_pad_idxs, C_V]
+        end_velocity_limits = velocity_limits[np.arange(ctrajectories.shape[0]), last_pad_idxs]
 
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_desired = np.logical_and(
-            spec_v <= target_nominal_velocities + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
+            end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
             np.logical_or(
                 # either speed is below limit, or vehicle is slowing down when it doesn't
-                np.all(np.logical_or(lon_acceleration <= 0, lon_velocity <= nominal_velocity + EPS), axis=1),
+                np.all(np.logical_or(lon_acceleration <= 0, lon_velocity <= velocity_limits + EPS), axis=1),
                 # negative initial jerk
                 lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
