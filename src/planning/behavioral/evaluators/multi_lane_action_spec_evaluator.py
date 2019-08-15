@@ -40,7 +40,8 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         # get index on each GFF from projected fstates
         lane_index = {rel_lane: behavioral_state.extended_lane_frames[rel_lane].
-                                get_closest_index_on_frame(behavioral_state.projected_ego_fstates[rel_lane][0])
+                                get_closest_index_on_frame(
+                                np.array([behavioral_state.projected_ego_fstates[rel_lane][0]]))[0]
                       for rel_lane in behavioral_state.extended_lane_frames}
 
         # initialize the SAME_LANE to be the one that is chosen
