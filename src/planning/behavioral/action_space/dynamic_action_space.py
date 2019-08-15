@@ -3,7 +3,7 @@ from typing import List, Type
 
 import numpy as np
 from decision_making.src.global_constants import LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
-from decision_making.src.planning.behavioral.action_space.distance_facing_action_space import DistanceFacingActionSpace
+from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, \
     ActionType, RelativeLongitudinalPosition
@@ -14,7 +14,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from sklearn.utils.extmath import cartesian
 
 
-class DynamicActionSpace(DistanceFacingActionSpace):
+class DynamicActionSpace(TargetActionSpace):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering):
         super().__init__(logger,
                          predictor=predictor,
@@ -34,41 +34,30 @@ class DynamicActionSpace(DistanceFacingActionSpace):
 
     @property
     def recipe_classes(self) -> List[Type]:
-        """a list of Recipe classes this action space can handle with"""
         return [DynamicActionRecipe]
 
     def perform_common(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState):
-        """ do any calculation necessary for several abstract methods, to avoid duplication """
         self.targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                         for action_recipe in action_recipes]
         self.target_map_states = [target.dynamic_object.map_state for target in self.targets]
 
     def get_target_length(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        """ Should return the length of the target object (e.g. cars) for the objects which the actions are
-        relative to """
         target_length = np.array([target.dynamic_object.size.length for target in self.targets])
         return target_length
 
     def get_target_velocities(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        """ Should return the velocities of the target object (e.g. cars) for the objects which the actions are
-        relative to """
         v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in self.target_map_states])
         return v_T
 
     def get_end_target_relative_position(self, action_recipes: List[DynamicActionRecipe]) -> np.ndarray:
-        """ Should return the relative longitudinal position of the target object (e.g. cars) relative to the ego at the
-        end of the action, for the objects which the actions are relative to
-        For example: -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)  """
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
         return margin_sign
 
     def get_distance_to_targets(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
-        """ Should return the distance of the ego from the target object (e.g. cars) for the objects which the actions
-        are relative to """
         longitudinal_differences = behavioral_state.calculate_longitudinal_differences(self.target_map_states)
         assert not np.isinf(longitudinal_differences).any()
         return longitudinal_differences

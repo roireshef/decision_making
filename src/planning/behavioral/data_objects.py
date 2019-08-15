@@ -66,9 +66,10 @@ class StaticActionRecipe(ActionRecipe):
         return 'StaticActionRecipe: %s' % self.__dict__
 
 
-class DynamicActionRecipe(ActionRecipe):
+class TargetActionRecipe(ActionRecipe):
     """"
-    Data object containing the fields needed for specifying a certain dynamic action, together with the state.
+    Data object containing the fields needed for specifying a certain target related action, together with the state.
+    Currently the supported targets are vehicles and road signs
     """
     def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
                  aggressiveness: AggressivenessLevel):
@@ -76,14 +77,26 @@ class DynamicActionRecipe(ActionRecipe):
         self.relative_lon = relative_lon
 
     def __str__(self):
+        return 'TargetActionRecipe: %s' % self.__dict__
+
+
+class DynamicActionRecipe(TargetActionRecipe):
+    """"
+    Data object containing the fields needed for specifying a certain dynamic action, together with the state.
+    Dynamic actions are actions defined with respect to target vehicles
+    """
+    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
+                 aggressiveness: AggressivenessLevel):
+        super().__init__(relative_lane, relative_lon, action_type, aggressiveness)
+
+    def __str__(self):
         return 'DynamicActionRecipe: %s' % self.__dict__
 
 
-class RoadSignActionRecipe(DynamicActionRecipe):
+class RoadSignActionRecipe(TargetActionRecipe):
     """"
     Data object containing the fields needed for specifying a certain road sign action, together with the state.
     """
-    #  Basically same as DynamicActionRecipe, but need a separate one, since every action space should deal with its recipes
     def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
                  aggressiveness: AggressivenessLevel):
         super().__init__(relative_lane, relative_lon, action_type, aggressiveness)

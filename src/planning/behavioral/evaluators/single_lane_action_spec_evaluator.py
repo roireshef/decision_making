@@ -21,10 +21,11 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         Evaluates Action-Specifications based on the following logic:
         * Only takes into account actions on RelativeLane.SAME_LANE
         * If there's a leading vehicle, try following it (ActionType.FOLLOW_VEHICLE, lowest aggressiveness possible)
-        * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_ROAD_SGN action with lowest
-        * aggressiveness.
-        * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_LANE action with maximal
-        allowed velocity and lowest aggressiveness possible.
+        * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_ROAD_SIGN action with lowest
+        * aggressiveness, and save it.
+        * Find the ActionType.FOLLOW_LANE action with maximal allowed velocity and lowest aggressiveness possible,
+        * and save it.
+        * Compare the saved FOLLOW_ROAD_SIGN and FOLLOW_LANE actions, and choose between them.
         :param behavioral_state: semantic behavioral state, containing the semantic grid.
         :param action_recipes: semantic actions list.
         :param action_specs: specifications of action_recipes.
@@ -33,7 +34,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         """
         costs = np.full(len(action_recipes), 1)
 
-        # first try to find a valid dynamic action of type FOLLOW_VEHICLE for SAME_LANE
+        # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE
         follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
                                             if action_specs_mask[i]
                                             and recipe.relative_lane == RelativeLane.SAME_LANE
@@ -44,18 +45,18 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action, which is least aggressive
             return costs
 
-        # next try to find a valid dynamic action of type FOLLOW_ROAD_SIGN for SAME_LANE. Only need to consider
-        # aggressiveness level, as all the target speeds are ZERO_SPEED.
+        # next try to find a valid road sign action (FOLLOW_ROAD_SIGN) for SAME_LANE.
+        # Selection only needs to consider aggressiveness level, as all the target speeds are ZERO_SPEED.
+        # Tentative decision is kept in selected_road_sign_idx, to be compared against STATIC actions
         follow_road_sign_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
                                               if action_specs_mask[i]
                                               and recipe.relative_lane == RelativeLane.SAME_LANE
                                               and recipe.action_type == ActionType.FOLLOW_ROAD_SIGN]
         if len(follow_road_sign_valid_action_idxs) > 0:
             # choose the found action, which is least aggressive.
-            # Will be used if no proper static action is found
-            tentative_road_sign_idx = follow_road_sign_valid_action_idxs[0]
+            selected_road_sign_idx = follow_road_sign_valid_action_idxs[0]
         else:
-            tentative_road_sign_idx = -1
+            selected_road_sign_idx = -1
 
         # last, look for valid static action
         filtered_indices = [i for i, recipe in enumerate(action_recipes)
@@ -73,24 +74,28 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         else:
             selected_follow_lane_idx = -1
 
-        # now decide between the road sign and the static action
-        if tentative_road_sign_idx < 0 and selected_follow_lane_idx < 0:
+        # finally decide between the road sign and the static action
+        if selected_road_sign_idx < 0 and selected_follow_lane_idx < 0:
+            # if no action of either type was found, raise an error
             raise NoActionsLeftForBPError()
-        elif tentative_road_sign_idx < 0:
+        elif selected_road_sign_idx < 0:
+            # if no road sign action is found, select the static action
             costs[selected_follow_lane_idx] = 0
             return costs
         elif selected_follow_lane_idx < 0:
-            costs[tentative_road_sign_idx] = 0
+            # if no static action is found, select the road sign action
+            costs[selected_road_sign_idx] = 0
             return costs
-        else:  # both road sign and static actions are valid - choose
-            if self._is_static_action_preferred(action_recipes, tentative_road_sign_idx, selected_follow_lane_idx):
+        else:
+            # if both road sign and static actions are valid - choose
+            if self._is_static_action_preferred(action_recipes, selected_road_sign_idx, selected_follow_lane_idx):
                 costs[selected_follow_lane_idx] = 0
                 return costs
             else:
-                costs[tentative_road_sign_idx] = 0
+                costs[selected_road_sign_idx] = 0
                 return costs
 
     def _is_static_action_preferred(self, action_recipes: List[ActionRecipe], road_sign_idx: int, follow_lane_idx: int):
         road_sign_action = action_recipes[road_sign_idx]
-        # Avoid AGGRESSIVE stop
+        # Avoid AGGRESSIVE stop. TODO relax the restriction of not selective an aggressive road sign
         return road_sign_action.aggressiveness == AggressivenessLevel.AGGRESSIVE

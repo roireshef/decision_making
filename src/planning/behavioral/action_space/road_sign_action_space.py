@@ -3,7 +3,7 @@ from typing import List, Type
 
 import numpy as np
 from decision_making.src.global_constants import ZERO_SPEED, ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR
-from decision_making.src.planning.behavioral.action_space.distance_facing_action_space import DistanceFacingActionSpace
+from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
     RoadSignActionRecipe
@@ -15,7 +15,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from sklearn.utils.extmath import cartesian
 
 
-class RoadSignActionSpace(DistanceFacingActionSpace):
+class RoadSignActionSpace(TargetActionSpace):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering):
         super().__init__(logger,
                          predictor=predictor,
@@ -30,41 +30,30 @@ class RoadSignActionSpace(DistanceFacingActionSpace):
 
     @property
     def recipe_classes(self) -> List[Type]:
-        """a list of Recipe classes this action space can handle with"""
         return [RoadSignActionRecipe]
 
     def perform_common(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState):
-        """ do any calculation necessary for several abstract methods, to avoid duplication """
         pass
 
     def get_target_length(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        """ Should return the length of the target object (e.g. cars) for the objects which the actions are
-        relative to """
         target_length = np.empty(len(action_recipes))
         target_length.fill(ROAD_SIGN_LENGTH)
         return target_length
 
     def get_target_velocities(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        """ Should return the velocities of the target object (e.g. cars) for the objects which the actions are
-        relative to """
         v_T = np.empty(len(action_recipes))
         v_T.fill(ZERO_SPEED)  # TODO: will need modification for other road signs
         return v_T
 
     def get_end_target_relative_position(self, action_recipes: List[RoadSignActionRecipe]) -> np.ndarray:
-        """ Should return the relative longitudinal position of the target object (e.g. cars) relative to the ego at the
-        end of the action, for the objects which the actions are relative to
-        For example: -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)  """
         margin_sign = np.empty(len(action_recipes))
         margin_sign.fill(-1)
         return margin_sign
 
     def get_distance_to_targets(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
-        """ Should return the distance of the ego from the target object (e.g. cars) for the objects which the actions
-        are relative to """
         longitudinal_differences = np.array([self._get_closest_stop_bar_distance(action_recipe, behavioral_state)
                                              for action_recipe in action_recipes])
         assert not np.isnan(longitudinal_differences).any()

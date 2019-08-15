@@ -9,7 +9,7 @@ from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATI
     BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.math_utils import Math
@@ -17,61 +17,87 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPol
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 
 
-class DistanceFacingActionSpace(ActionSpace):
-    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, recipes: List[DynamicActionRecipe],
+class TargetActionSpace(ActionSpace):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, recipes: List[TargetActionRecipe],
                  filtering: RecipeFiltering):
+        """
+        Abstract class for Target-Action-Space implementations. Implementations should include actions enumeration,
+        filtering and specification.
+        :param logger: dedicated logger implementation
+        :param predictor: a predictor of target state that is aware of the ego
+        :param recipes: list of recipes that define the scope of an ActionSpace implementation
+        :param filtering: RecipeFiltering object that holds the logic for filtering recipes
+        """
         super().__init__(logger,
                          recipes=recipes,
                          recipe_filtering=filtering)
         self.predictor = predictor
 
-    @property
-    def recipe_classes(self) -> List[Type]:
-        """a list of Recipe classes this action space can handle with"""
-        return [DynamicActionRecipe]
-
     @abstractmethod
-    def perform_common(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState):
-        """ do any calculation necessary for several abstract methods, to avoid duplication """
+    def perform_common(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState):
+        """
+        do any calculation necessary for several abstract methods, to avoid duplication
+        :param action_recipes: list of action recipes to be handled
+        :param behavioral_state: current state of the world
+        """
         pass
 
     @abstractmethod
-    def get_target_length(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
+    def get_target_length(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        """ Should return the length of the target object (e.g. cars) for the objects which the actions are
-        relative to """
+        """
+        Should return the length of the targets
+        :param action_recipes: list of action recipes from which the targets should be extracted
+        :param behavioral_state: current state of the world
+        :return: array of floats describing the length of the targets
+        """
         pass
 
     @abstractmethod
-    def get_target_velocities(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
+    def get_target_velocities(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        """ Should return the velocities of the target object (e.g. cars) for the objects which the actions are
-        relative to """
+        """
+        Should return the velocities of the targets
+        :param action_recipes: list of action recipes from which the targets should be extracted
+        :param behavioral_state: current state of the world
+        :return: array of floats describing the velocities of the targets
+        """
         pass
 
     @abstractmethod
-    def get_end_target_relative_position(self, action_recipes: List[DynamicActionRecipe]) -> np.ndarray:
-        """ Should return the relative longitudinal position of the target object (e.g. cars) relative to the ego at the
-        end of the action, for the objects which the actions are relative to
-        For example: -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)  """
+    def get_end_target_relative_position(self, action_recipes: List[TargetActionRecipe]) -> np.ndarray:
+        """
+        Should return the relative longitudinal position of the ego relative to the targets at the end of the action
+        For example: -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
+        :param action_recipes: list of action recipes from which the targets should be extracted
+        :return: array of ints describing the relative positions of the ego relative to the targets at the end of the action
+        """
         pass
 
     @abstractmethod
-    def get_distance_to_targets(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState)\
+    def get_distance_to_targets(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
-        """ Should return the distance of the ego from the target object (e.g. cars) for the objects which the actions
-        are relative to """
+        """
+        Should return the distance of the ego from the targets before the action is taken
+        :param action_recipes: list of action recipes from which the targets should be extracted
+        :param behavioral_state: current state of the world
+        :return: array of floats describing the distance of the ego from the targets before the action is taken
+        """
         pass
 
     @abstractmethod
-    def get_margin_to_keep_from_targets(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState)\
+    def get_margin_to_keep_from_targets(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState)\
             -> float:
-        """ Should return the margin the ego should keep from the target object for the objects which the actions
-        are relative to """
+        """
+        Should return the longitudinal margin to keep from the targets
+        :param action_recipes: list of action recipes from which the targets should be extracted
+        :param behavioral_state: current state of the world
+        :return: longitudinal margin in meters
+        """
         pass
 
     @prof.ProfileFunction()
-    def specify_goals(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> \
+    def specify_goals(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
         """
         This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
