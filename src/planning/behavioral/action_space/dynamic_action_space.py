@@ -11,6 +11,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, A
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.state.state import DynamicObject
 from sklearn.utils.extmath import cartesian
 
 
@@ -24,8 +25,6 @@ class DynamicActionSpace(TargetActionSpace):
                                                          [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE],
                                                          AggressivenessLevel])],
                          filtering=filtering)
-        self.targets = None
-        self.target_map_states = None
 
     # TODO FOLLOW_VEHICLE for REAR vehicle isn't really supported for 2 reasons:
     #   1. We have no way to guarantee the trajectory we construct does not collide with the rear vehicle
@@ -36,19 +35,27 @@ class DynamicActionSpace(TargetActionSpace):
     def recipe_classes(self) -> List[Type]:
         return [DynamicActionRecipe]
 
-    def perform_common(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState):
-        self.targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
-                        for action_recipe in action_recipes]
-        self.target_map_states = [target.dynamic_object.map_state for target in self.targets]
+    def _get_closest_target(self, action_recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> DynamicObject:
+        """
+        Get the closest target on the BGS for the grid state to which the action is pointing.
+        :param action_recipe: pointing to the relevant grid state
+        :param behavioral_state: from which the target object is taken
+        :return: the closest object for the given action
+        """
+        return behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0].\
+            dynamic_object
 
     def get_target_length(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        target_length = np.array([target.dynamic_object.size.length for target in self.targets])
+        target_length = np.array([self._get_closest_target(action_recipe, behavioral_state).size.length
+                                  for action_recipe in action_recipes])
+
         return target_length
 
     def get_target_velocities(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in self.target_map_states])
+        v_T = np.array([self._get_closest_target(action_recipe, behavioral_state).map_state.lane_fstate[FS_SV]
+                        for action_recipe in action_recipes])
         return v_T
 
     def get_end_target_relative_position(self, action_recipes: List[DynamicActionRecipe]) -> np.ndarray:
@@ -58,7 +65,9 @@ class DynamicActionSpace(TargetActionSpace):
 
     def get_distance_to_targets(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
-        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(self.target_map_states)
+        target_map_states = [self._get_closest_target(action_recipe, behavioral_state).map_state
+                             for action_recipe in action_recipes]
+        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_map_states)
         assert not np.isinf(longitudinal_differences).any()
         return longitudinal_differences
 

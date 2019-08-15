@@ -34,15 +34,6 @@ class TargetActionSpace(ActionSpace):
         self.predictor = predictor
 
     @abstractmethod
-    def perform_common(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState):
-        """
-        do any calculation necessary for several abstract methods, to avoid duplication
-        :param action_recipes: list of action recipes to be handled
-        :param behavioral_state: current state of the world
-        """
-        pass
-
-    @abstractmethod
     def get_target_length(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         """
@@ -110,7 +101,6 @@ class TargetActionSpace(ActionSpace):
         relative_lanes = np.array([recipe.relative_lane for recipe in action_recipes])
         projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[lane] for lane in relative_lanes])
 
-        self.perform_common(action_recipes, behavioral_state)
         # collect targets' lengths, lane_ids and fstates
         # Targets are other vehicles, on the target grid box that ego plans to enter, sorted by S
         target_length = self.get_target_length(action_recipes, behavioral_state)

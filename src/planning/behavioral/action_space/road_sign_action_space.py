@@ -32,9 +32,6 @@ class RoadSignActionSpace(TargetActionSpace):
     def recipe_classes(self) -> List[Type]:
         return [RoadSignActionRecipe]
 
-    def perform_common(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState):
-        pass
-
     def get_target_length(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         target_length = np.empty(len(action_recipes))

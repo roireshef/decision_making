@@ -59,15 +59,15 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             selected_road_sign_idx = -1
 
         # last, look for valid static action
-        filtered_indices = [i for i, recipe in enumerate(action_recipes)
+        filtered_follow_lane_idxs = [i for i, recipe in enumerate(action_recipes)
                             if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
                             and recipe.relative_lane == RelativeLane.SAME_LANE]
-        if len(filtered_indices) > 0:
+        if len(filtered_follow_lane_idxs) > 0:
             # find the minimal aggressiveness level among valid static recipes
-            min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_indices])
+            min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_follow_lane_idxs])
 
             # among the minimal aggressiveness level, find the fastest action
-            follow_lane_valid_action_idxs = [idx for idx in filtered_indices
+            follow_lane_valid_action_idxs = [idx for idx in filtered_follow_lane_idxs
                                              if action_recipes[idx].aggressiveness.value == min_aggr_level]
 
             selected_follow_lane_idx = follow_lane_valid_action_idxs[-1]
@@ -96,6 +96,13 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                 return costs
 
     def _is_static_action_preferred(self, action_recipes: List[ActionRecipe], road_sign_idx: int, follow_lane_idx: int):
+        """
+        Selects if a STATIC or ROAD_SIGN action is preferred.
+        :param action_recipes: of all possible actions
+        :param road_sign_idx: of calmest road sign action
+        :param follow_lane_idx: of calmest fastest static action
+        :return: True if static action is preferred, False otherwise
+        """
         road_sign_action = action_recipes[road_sign_idx]
         # Avoid AGGRESSIVE stop. TODO relax the restriction of not selective an aggressive road sign
         return road_sign_action.aggressiveness == AggressivenessLevel.AGGRESSIVE
