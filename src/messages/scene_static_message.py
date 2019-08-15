@@ -26,7 +26,6 @@ MAX_NOMINAL_PATH_POINT_FIELDS = 10
 
 class SceneRoadSegment(PUBSUB_MSG_IMPL):
     e_i_road_segment_id = int
-    e_i_road_id = int
     e_Cnt_lane_segment_id_count = int
     a_i_lane_segment_ids = np.ndarray
     e_e_road_segment_type = MapRoadSegmentType
@@ -35,14 +34,13 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
     e_Cnt_downstream_segment_count = int
     a_i_downstream_road_segment_ids = np.ndarray
 
-    def __init__(self, e_i_road_segment_id: int, e_i_road_id: int, e_Cnt_lane_segment_id_count: int,
+    def __init__(self, e_i_road_segment_id: int, e_Cnt_lane_segment_id_count: int,
                  a_i_lane_segment_ids: np.ndarray, e_e_road_segment_type: MapRoadSegmentType,
                  e_Cnt_upstream_segment_count: int, a_i_upstream_road_segment_ids: np.ndarray,
                  e_Cnt_downstream_segment_count: int, a_i_downstream_road_segment_ids: np.ndarray) -> None:
         """
         Road-segment information
         :param e_i_road_segment_id: ID of this Road-segment
-        :param e_i_road_id: Not relevant for M0
         :param e_Cnt_lane_segment_id_count: Total number of all lane-segments contained within this road-segment
         :param a_i_lane_segment_ids: Lane-segments contained within this road-segment
         :param e_e_road_segment_type:
@@ -52,7 +50,6 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         :param a_i_downstream_road_segment_ids: Downstream road-segments from this road-segment
         """
         self.e_i_road_segment_id = e_i_road_segment_id
-        self.e_i_road_id = e_i_road_id
         self.e_Cnt_lane_segment_id_count = e_Cnt_lane_segment_id_count
         self.a_i_lane_segment_ids = a_i_lane_segment_ids
         self.e_e_road_segment_type = e_e_road_segment_type
@@ -65,7 +62,6 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSSceneRoadSegment()
 
         pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
-        pubsub_msg.e_i_road_id = self.e_i_road_id
 
         pubsub_msg.e_Cnt_lane_segment_id_count = self.e_Cnt_lane_segment_id_count
         pubsub_msg.a_i_lane_segment_ids = self.a_i_lane_segment_ids
@@ -83,7 +79,6 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneRoadSegment):
         return cls(pubsubMsg.e_i_road_segment_id,
-                   pubsubMsg.e_i_road_id,
                    pubsubMsg.e_Cnt_lane_segment_id_count,
                    pubsubMsg.a_i_lane_segment_ids[:pubsubMsg.e_Cnt_lane_segment_id_count],
                    MapRoadSegmentType(pubsubMsg.e_e_road_segment_type),
@@ -91,6 +86,7 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.a_i_upstream_road_segment_ids[:pubsubMsg.e_Cnt_upstream_segment_count],
                    pubsubMsg.e_Cnt_downstream_segment_count,
                    pubsubMsg.a_i_downstream_road_segment_ids[:pubsubMsg.e_Cnt_downstream_segment_count])
+
 
 class AdjacentLane(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
