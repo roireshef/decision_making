@@ -71,9 +71,9 @@ class FilterIfAggressive(RecipeFilter):
 class FilterLaneChangingIfNotAugmented(RecipeFilter):
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [recipe.relative_lane == RelativeLane.SAME_LANE
-                or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFF_Type.Augmented, GFF_Type.AugmentedPartial]
+                or (behavioral_state.extended_lane_frames[recipe.relative_lane]
+                and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFF_Type.Augmented, GFF_Type.AugmentedPartial])
                 if recipe is not None else False for recipe in recipes]
-
 
 class FilterSpeedingOverDesiredVelocityStatic(RecipeFilter):
     def filter(self, recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:

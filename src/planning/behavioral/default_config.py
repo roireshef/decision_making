@@ -1,7 +1,8 @@
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone as ASpecFilterIfNone, \
     FilterForKinematics, FilterForSafetyTowardsTargetVehicle, StaticTrafficFlowControlFilter, \
-    BeyondSpecStaticTrafficFlowControlFilter, BeyondSpecCurvatureFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter
+    BeyondSpecStaticTrafficFlowControlFilter, BeyondSpecCurvatureFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter, \
+    BeyondSpecPartialGffFilter
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as RecipeFilterIfNone, \
     FilterActionsTowardsNonOccupiedCells, FilterActionsTowardBackAndParallelCells, FilterOvertakeActions, \
@@ -32,5 +33,6 @@ DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone()
                                                              BeyondSpecStaticTrafficFlowControlFilter(),
                                                              BeyondSpecSpeedLimitFilter(),
                                                              BeyondSpecCurvatureFilter(),
+                                                             BeyondSpecPartialGffFilter()
                                                              ],
                                                     logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))

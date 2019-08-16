@@ -2,11 +2,11 @@ import numpy as np
 from logging import Logger
 
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, ValidLaneAheadTooShort, \
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, \
     MultipleDownstreamLanes, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, IDAppearsMoreThanOnce, \
     ManeuverNotFound
 from decision_making.src.global_constants import EPS, PLANNING_LOOKAHEAD_DIST, \
-    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE
+    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE, LANE_END_COST_IND
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
@@ -589,12 +589,9 @@ class MapUtils:
                                              (route_plan.s_Data.a_i_road_segment_ids, lookahead_distance - cumulative_distance,
                                               current_segment_end_s, lookahead_distance))
 
-            try:
-                valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
-            except (DownstreamLaneNotFound, NavigationPlanDoesNotFitMap):
-                # These exceptions result in a partial GFF
-                is_partial = True
-                break
+            valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
+
+            route_costs_dict = route_plan.to_costs_dict()
 
             if len(valid_downstream_lanes.keys()) == 0:
                 is_partial = True
@@ -602,12 +599,21 @@ class MapUtils:
             elif len(valid_downstream_lanes.keys()) == 1:
                 # Turn the return of values() into list and access the lane segment ID
                 current_lane_id = list(valid_downstream_lanes.values())[0]
+                # check to see if cost isn't saturated
+                if route_costs_dict[current_lane_id][LANE_END_COST_IND] >= 1:
+                    is_partial = True
+                    break
             else:
                 # If there are multiple valid downstream lanes, used the forced maneuver specified.
-                # If no maneuver was specified, default to straight
+                # If no maneuver was specified, default to straight if it exists. Otherwise take first valid move
                 force_maneuver = force_maneuver or ManeuverType.STRAIGHT_CONNECTION
                 # only take the maneuver once, continue via straight_connection after
                 force_maneuver = force_maneuver if not maneuver_taken else ManeuverType.STRAIGHT_CONNECTION
+
+                # if there is no straight_connection available (likely due to saturated costs), take first valid maneuver
+                if force_maneuver == ManeuverType.STRAIGHT_CONNECTION and ManeuverType.STRAIGHT_CONNECTION not in valid_downstream_lanes:
+                    force_maneuver = list(valid_downstream_lanes.keys())[0]
+
                 try:
                     current_lane_id = valid_downstream_lanes[force_maneuver]
                     maneuver_taken = True
@@ -620,7 +626,6 @@ class MapUtils:
         return lane_subsegments, is_partial
 
     @staticmethod
-    @raises(DownstreamLaneNotFound, NavigationPlanDoesNotFitMap)
     def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, int]:
         """
         TODO: Fill this in
@@ -644,18 +649,21 @@ class MapUtils:
         if len(downstream_lanes_ids) == 0:
             return {}
 
+        route_cost_dict = route_plan.to_costs_dict()
+
         # Collect downstream lanes whose road_segment_id is next_road_segment_id_on_plan
-        downstream_lane_ids_on_plan = [lid for lid in downstream_lanes_ids
-                                       if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
+        valid_downstream_ids = [lid for lid in downstream_lanes_ids
+                                if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan
+                                and route_cost_dict[lid][LANE_END_COST_IND] < 1]
 
         # Verify that there is a downstream lane that continues along the navigation plan
-        if len(downstream_lane_ids_on_plan) == 0:
+        if len(valid_downstream_ids) == 0:
             return {}
 
         downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
         return {downstream_lane_maneuver_types[downstream_lane_id]: downstream_lane_id
-                for downstream_lane_id in downstream_lane_ids_on_plan}
+                for downstream_lane_id in valid_downstream_ids}
 
     @staticmethod
     @raises(UpstreamLaneNotFound)
