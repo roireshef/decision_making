@@ -7,10 +7,10 @@ import numpy as np
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe
-from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
-    ActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator
 from decision_making.src.global_constants import LANE_END_COST_IND
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 
 
 
@@ -34,33 +34,50 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
 
-        route_costs_dict = route_plan.to_costs_dict()
-        # initialize dict to store costs for the different relative_lanes
-        lane_costs_dict = {rel_lane: 0. for rel_lane in behavioral_state.extended_lane_frames}
+        # route_costs_dict = route_plan.to_costs_dict()
+        # # initialize dict to store costs for the different relative_lanes
+        # lane_costs_dict = {rel_lane: 0. for rel_lane in behavioral_state.extended_lane_frames}
 
-        # get index on each GFF from projected fstates
-        lane_index = {rel_lane: behavioral_state.extended_lane_frames[rel_lane].
-                                get_closest_index_on_frame(
-                                np.array([behavioral_state.projected_ego_fstates[rel_lane][0]]))[0]
-                      for rel_lane in behavioral_state.extended_lane_frames}
+        # # get index on each GFF from projected fstates
+        # lane_index = {rel_lane: behavioral_state.extended_lane_frames[rel_lane].
+        #                         get_closest_index_on_frame(
+        #                         np.array([behavioral_state.projected_ego_fstates[rel_lane][0]]))[0]
+        #               for rel_lane in behavioral_state.extended_lane_frames}
 
-        # initialize the SAME_LANE to be the one that is chosen
-        minimum_cost_lane = RelativeLane.SAME_LANE
+        # # initialize the SAME_LANE to be the one that is chosen
+        # minimum_cost_lane = RelativeLane.SAME_LANE
 
-        # loop until all segment_ids inside each gff have been looked at
-        while np.all([lane_index[rel_lane] < len(behavioral_state.extended_lane_frames[rel_lane].segment_ids)
-                      for rel_lane in behavioral_state.extended_lane_frames]):
-            # get costs for next lane
-            for rel_lane in behavioral_state.extended_lane_frames:
-                lane_costs_dict[rel_lane] += route_costs_dict[
-                    behavioral_state.extended_lane_frames[rel_lane].segment_ids[lane_index[rel_lane]]][LANE_END_COST_IND]
-                lane_index[rel_lane] += 1
+        # # loop until all segment_ids inside each gff have been looked at
+        # while np.all([lane_index[rel_lane] < len(behavioral_state.extended_lane_frames[rel_lane].segment_ids)
+        #               for rel_lane in behavioral_state.extended_lane_frames]):
+        #     # get costs for next lane
+        #     for rel_lane in behavioral_state.extended_lane_frames:
+        #         lane_costs_dict[rel_lane] += route_costs_dict[
+        #             behavioral_state.extended_lane_frames[rel_lane].segment_ids[lane_index[rel_lane]]][LANE_END_COST_IND]
+        #         lane_index[rel_lane] += 1
 
-            # check if there is a minimum cost lane (if only one element equals the minimum, it is a unique minimum)
-            lane_cost_values = list(lane_costs_dict.values())
-            if [cost == min(lane_cost_values) for cost in lane_cost_values].count(True) == 1:
-                minimum_cost_lane = min(lane_costs_dict, key=lane_costs_dict.get)
-                break
+        #     # check if there is a minimum cost lane (if only one element equals the minimum, it is a unique minimum)
+        #     lane_cost_values = list(lane_costs_dict.values())
+        #     if [cost == min(lane_cost_values) for cost in lane_cost_values].count(True) == 1:
+        #         minimum_cost_lane = min(lane_costs_dict, key=lane_costs_dict.get)
+        #         break
+
+        gffs = behavioral_state.extended_lane_frames
+
+        # Check if left lane is augmented
+        if RelativeLane.LEFT_LANE in gffs and (gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented or
+                                               gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.AugmentedPartial):
+            # Find where gffs[RelativeLane.LEFT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
+            pass
+
+        # Check if right lane augmented
+        if RelativeLane.RIGHT_LANE in gffs and (gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented or
+                                                gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial):
+            # Find where gffs[RelativeLane.RIGHT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
+            pass
+
+        # After determing if the left or right lane diverges first, look at the lane end costs for the lanes where the divergence occurs.
+        # Target the lane with the lower cost.
 
         # look at the actions that are in the minimum cost lane
         costs = np.full(len(action_recipes), 1)
