@@ -38,7 +38,7 @@ class SceneStaticUtils:
             downstream_roads = np.array([road_segment_ids[road_idx - 1]]) if road_idx > 0 else np.array([])
 
             local_lane_ids = lane_ids[road_idx]
-            scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_segment_id, e_i_road_id=0,
+            scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_segment_id,
                                                   e_Cnt_lane_segment_id_count=num_lanes,
                                                   a_i_lane_segment_ids=local_lane_ids,
                                                   e_e_road_segment_type=MapRoadSegmentType.Normal,

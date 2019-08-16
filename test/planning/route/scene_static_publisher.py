@@ -156,7 +156,6 @@ class SceneStaticPublisher:
         if bool(self._downstream_road_segment_ids):
             # _downstream_road_segment_ids is NOT empty
             return [SceneRoadSegment(e_i_road_segment_id=road_segment_id,
-                                     e_i_road_id=1,
                                      e_Cnt_lane_segment_id_count=len(self._lane_segment_ids[i]),
                                      a_i_lane_segment_ids=np.array(self._lane_segment_ids[i]),
                                      e_e_road_segment_type=MapRoadSegmentType.Normal,
@@ -168,7 +167,6 @@ class SceneStaticPublisher:
         else:
             # _downstream_road_segment_ids is empty
             return [SceneRoadSegment(e_i_road_segment_id=road_segment_id,
-                                     e_i_road_id=1,
                                      e_Cnt_lane_segment_id_count=len(self._lane_segment_ids[i]),
                                      a_i_lane_segment_ids=np.array(self._lane_segment_ids[i]),
                                      e_e_road_segment_type=MapRoadSegmentType.Normal,
