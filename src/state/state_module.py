@@ -8,7 +8,6 @@ import rte.python.profiler as prof
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
@@ -18,7 +17,6 @@ from decision_making.src.planning.types import C_V, FS_SV, C_A, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
-from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 
 
 class DynamicObjectsData:
@@ -48,7 +46,6 @@ class StateModule(DmModule):
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC, self._scene_dynamic_callback)
-        self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
@@ -56,7 +53,6 @@ class StateModule(DmModule):
         Unsubscribe from process communication services.
         """
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
-        self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
 
     def _periodic_action_impl(self) -> None:
         pass
@@ -68,9 +64,7 @@ class StateModule(DmModule):
 
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
 
-                last_gff_segment_ids = self._get_last_action_gff()
-
-                state = self.create_state_from_scene_dynamic(self._scene_dynamic, last_gff_segment_ids, self.logger)
+                state = self.create_state_from_scene_dynamic(self._scene_dynamic)
 
                 postprocessed_state = self._handle_negative_velocities(state)
 
@@ -108,12 +102,10 @@ class StateModule(DmModule):
         return state
 
     @staticmethod
-    def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic, last_gff_segment_ids: np.ndarray, logger: Logger) -> State:
+    def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic) -> State:
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
-        :param scene_dynamic:
-        :param last_gff_segment_ids: list of GFF segment ids for the last selected action
-        :param logger: Logging module
+        :param scene_dynamic: scene_dynamic data
         :return: valid State object
         """
 
@@ -121,26 +113,6 @@ class StateModule(DmModule):
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
 
         selected_host_hyp_idx = 0
-
-        host_hyp_lane_ids = [hyp.e_i_lane_segment_id
-                             for hyp in scene_dynamic.s_Data.s_host_localization.as_host_hypothesis]
-
-        if len(host_hyp_lane_ids) > 1 and len(last_gff_segment_ids) > 0:
-
-            # find all common lane ids in host hypotheses and last gff segments
-            common_lane_ids = np.intersect1d(host_hyp_lane_ids, last_gff_segment_ids)
-
-            if len(common_lane_ids) == 1:
-                selected_host_hyp_idx = np.argwhere(host_hyp_lane_ids == common_lane_ids[0])[0][0]
-            elif len(common_lane_ids) > 1:
-                # take the hyp. whose lane has the least distance from the host, i.e.,
-                # the min. index in host_hyp_lane_ids since it is sorted based on the distance
-                selected_host_hyp_idx = min([np.argwhere(host_hyp_lane_ids == common_lane_ids[i])[0][0]
-                                             for i in range(len(common_lane_ids))])
-            else:
-                # there are no common ids between localization and prev. gff
-                # raise a warning and choose the closet lane
-                logger.warning("None of the host localization hypotheses matches the previous planning action")
 
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
                                  as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
@@ -193,19 +165,4 @@ class StateModule(DmModule):
 
         return objects_list
 
-    def _get_last_action_gff(self) -> np.ndarray:
-        """
-        Returns the array of GFF lane segments from the last action sent to trajectory planner.
-        If no valid action is available, returns an empty array
-        :return: array of GFF lane segments
-        """
-        last_gff_segment_ids = np.array([])
-
-        is_success, serialized_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS)
-        # TODO: Do we need a timeout here in the case trajectory parameters is empty for a while
-        if serialized_params is not None:
-            trajectory_params = TrajectoryParams.deserialize(serialized_params)
-            last_gff_segment_ids = trajectory_params.reference_route.segment_ids
-
-        return last_gff_segment_ids
 
