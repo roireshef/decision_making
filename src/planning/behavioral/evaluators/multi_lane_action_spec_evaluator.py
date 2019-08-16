@@ -31,6 +31,7 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
         :param action_recipes: semantic actions list.
         :param action_specs: specifications of action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
+        :param route_plan: the route plan which contains lane costs
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
 

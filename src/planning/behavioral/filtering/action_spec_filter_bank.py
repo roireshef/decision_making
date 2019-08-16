@@ -2,7 +2,7 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.global_constants import EPS
+from decision_making.src.global_constants import EPS, PARTIAL_GFF_END_PADDING
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
@@ -425,7 +425,7 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
         :return: points that require braking after the spec
         """
 
-        # skip checking speed limits if the vehicle will be stopped
+        # skip checking for end of Partial GFF if vehicle will be stopped
         if action_spec.v == 0:
             self._raise_true()
 
@@ -435,8 +435,12 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
         if target_gff.gff_type not in [GFF_Type.Partial, GFF_Type.AugmentedPartial]:
             self._raise_true()
 
-        gff_end_s = target_gff.s_max
+        # pad end of GFF with PARTIAL_GFF_END_PADDING as the host should not be at the very end of the Partial GFF
+        gff_end_s = target_gff.s_max - PARTIAL_GFF_END_PADDING \
+            if target_gff.s_max - PARTIAL_GFF_END_PADDING > 0 \
+            else target_gff.s_max
 
-        return gff_end_s, 0
+        # must be able to achieve 0 velocity before the end of the GFF
+        return np.array([gff_end_s]), np.array([0])
 
 

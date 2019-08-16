@@ -123,7 +123,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :param frenet_frames: a list of all frenet frames involved in creating the new generalized frame.
         :param sub_segments: a list of FrenetSubSegment objects, used for segmenting the respective elements from
         the frenet_frames parameter.
-        :param gff_type:
+        :param gff_type: type of GFF (Normal, Partial, Augmented, AugmentedPartial)
         :return: A new GeneralizedFrenetSerretFrame built out of different other frenet frames.
         """
         # If the GFF type is not provided, default to Normal
@@ -171,9 +171,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         # plus the number of points taken from subsegment #1.
         segments_point_offset = np.insert(segments_num_points_so_far, 0, 0., axis=0)
 
-        gff =  cls(points, T, N, k, k_tag, segments_id, segments_s_start, segments_s_offsets, segments_ds,
+        return cls(points, T, N, k, k_tag, segments_id, segments_s_start, segments_s_offsets, segments_ds,
                    segments_point_offset, gff_type)
-        return gff
 
     def has_segment_id(self, segment_id: int) -> bool:
         """see has_segment_ids"""
