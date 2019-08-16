@@ -196,18 +196,18 @@ class BehavioralGridState:
 
         # Create generalized Frenet frame for the host's lane
         try:
-            lane_gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(relative_lane=RelativeLane.SAME_LANE,
-                                                                        lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
-                                                                        station=state.ego_state.map_state.lane_fstate[FS_SX],
-                                                                        route_plan=route_plan, logger=logger, can_augment=can_augment)
+            lane_gff_dict = MapUtils.get_lookahead_frenet_frame(relative_lane=RelativeLane.SAME_LANE,
+                                                                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
+                                                                station=state.ego_state.map_state.lane_fstate[FS_SX],
+                                                                route_plan=route_plan, logger=logger, can_augment=can_augment)
             extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
             raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
 
-        host_cartesion_point = np.array([state.ego_state.cartesian_state[C_X],
+        host_cartesian_point = np.array([state.ego_state.cartesian_state[C_X],
                                          state.ego_state.cartesian_state[C_Y]])
-        host_station_on_same_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE].cpoint_to_fpoint(host_cartesion_point)[FP_SX]
+        host_station_on_same_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE].cpoint_to_fpoint(host_cartesian_point)[FP_SX]
 
         # If an adjacent lane exists, create a generalized Frenet frame for it
         for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
@@ -232,10 +232,10 @@ class BehavioralGridState:
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
-                    lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(relative_lane=relative_lane,
-                                                                            lane_id=closest_lanes_dict[relative_lane],
-                                                                            station=host_station_in_adjacent_lane, route_plan=route_plan,
-                                                                            logger=logger)
+                    lane_gffs = MapUtils.get_lookahead_frenet_frame(relative_lane=relative_lane,
+                                                                    lane_id=closest_lanes_dict[relative_lane],
+                                                                    station=host_station_in_adjacent_lane, route_plan=route_plan,
+                                                                    logger=logger)
 
                     # Index by [RelativeLane.SAME_LANE] because the dict is keyed by [augmented_left, same, augmented_right]
                     # These lanes are relative to the lane_id that is passed in, not the vehicle's actual position

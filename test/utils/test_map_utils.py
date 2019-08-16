@@ -1,5 +1,6 @@
 import numpy as np
 from unittest.mock import patch
+import pytest
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, \
@@ -100,7 +101,7 @@ def test_getLookaheadFrenetFrameByCost_leftLaneEnds(scene_static_left_lane_ends,
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[-1]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
 
-    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2)
+    gff_dict = MapUtils.get_lookahead_frenet_frame(starting_lane, starting_lon, route_plan_1_2)
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [12])
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Partial
 
@@ -111,7 +112,7 @@ def test_getLookaheadFrenetFrameByCost_RightSplitAugmentedGFFCreated(right_lane_
     starting_lane = 11
     can_augment = {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
+    gff_dict = MapUtils.get_lookahead_frenet_frame(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented
 
@@ -132,7 +133,7 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
-    gff = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id, station, route_plan_20_30)[RelativeLane.SAME_LANE]
+    gff = MapUtils.get_lookahead_frenet_frame(lane_id, station, route_plan_20_30)[RelativeLane.SAME_LANE]
 
     # validate the length of the obtained frenet frame
     assert abs(gff.s_max - (PLANNING_LOOKAHEAD_DIST + MAX_HORIZON_DISTANCE)) < SMALL_DISTANCE_ERROR
@@ -149,35 +150,8 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
-def test_getLookaheadFrenetByCosts_correctLaneAddedInGFFInSplit(right_lane_split_scene_static, route_plan_1_2):
-    """
-    tests the method get_lookahead_frenet_frame_by_cost
-    The straight connection will have a higher cost, so vehicle should take the exit (to lane 20)
-    :param right_lane_split_scene_static:
-    :param route_plan_1_2:
-    :return:
-    """
-    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
-
-    # Modify the route plan
-    # In order to match the scene static data, the right lane in the first road segment needs to be deleted
-    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
-    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
-
-    # Set cost of straight connection lanes (lanes 21 and 22) to be 1
-    route_plan_1_2.s_Data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1
-    route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1
-
-    # set cost of straight connection lane (lane 21) to be 1
-    [lane for lane in route_plan_1_2.s_Data.as_route_plan_lane_segments[1] if lane.e_i_lane_segment_id == 21][
-        0].e_cst_lane_end_cost = 1
-
-    gff = MapUtils.get_lookahead_frenet_frame_by_cost(11, 800, route_plan_1_2)[RelativeLane.SAME_LANE]
-    chosen_lane = gff.segment_ids[-1]
-    assert chosen_lane == 20
-
 @patch('decision_making.src.utils.map_utils.MAX_HORIZON_DISTANCE', 900)
-def test_getLookaheadFrenetByCosts_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
+def test_getLookaheadFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
     """
     Make sure that partial/augmentedPartial GFFS are created when the lookahead distance is set to be very far ahead
     :param left_right_lane_split_scene_static:
@@ -194,7 +168,7 @@ def test_getLookaheadFrenetByCosts_AugmentedPartialCreatedWhenSplitEnds(left_rig
     del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2_3.s_Data.a_Cnt_num_lane_segments[0] = 1
 
-    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(11, 900, route_plan_1_2_3, can_augment=can_augment)
+    gff_dict = MapUtils.get_lookahead_frenet_frame(11, 900, route_plan_1_2_3, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.AugmentedPartial
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial
@@ -217,13 +191,13 @@ def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     starting_lon = 20.
     lookahead_dist = 500.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    sub_segments, status = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)[RelativeLane.SAME_LANE]
+    sub_segments, is_partial = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)
     assert len(sub_segments) == 5
     for seg in sub_segments:
         assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
     tot_length = sum([seg.e_i_SEnd - seg.e_i_SStart for seg in sub_segments])
     assert np.isclose(tot_length, lookahead_dist)
-    assert status == GFF_Type.Normal
+    assert is_partial == False
 
 def test_advanceByCost_navPlanDoesNotFitMap_partialLookahead(scene_static_pg_split, route_plan_20_30):
     """
@@ -257,9 +231,8 @@ def test_advanceByCost_navPlanDoesNotFitMap_partialLookahead(scene_static_pg_spl
 
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
     # validate getting the relevant exception
-    subsegs_dict = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
+    subsegs, is_partial = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, route_plan)
 
-    subsegs = subsegs_dict[RelativeLane.SAME_LANE][0]
     subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
 
     # verify the wrong road segment is not added
@@ -270,7 +243,7 @@ def test_advanceByCost_navPlanDoesNotFitMap_partialLookahead(scene_static_pg_spl
     # make sure the lanes are in the correct order
     assert np.array_equal(subseg_ids, [231, 241, 251, 261, 271])
     # make sure the GFF created was of type Partial since it should not extend the entire route plan
-    assert subsegs_dict[RelativeLane.SAME_LANE][1] == GFF_Type.Partial
+    assert is_partial == True
 
 def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
     """
@@ -296,7 +269,7 @@ def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg
 
     # test the case when the navigation plan is too short; validate the relevant exception
     try:
-        MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
+        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, route_plan)
         assert False
     except NavigationPlanTooShort:
         assert True
@@ -325,191 +298,13 @@ def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialLookahead(scene
                                                           RoutePlanLaneSegment(302,0,0)])
 
     # test the case when the map is too short; validate partial lookahead is done
-    subsegs_dict = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookadhead_dist, route_plan)
-    subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs_dict[RelativeLane.SAME_LANE][0]]
+    subsegs, is_partial = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookadhead_dist, route_plan)
+    subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
 
     # make sure the subsegments are in the correct order
     assert np.array_equal(subseg_ids, [291])
     # make sure the the gff is marked as partial
-    assert subsegs_dict[RelativeLane.SAME_LANE][1] == GFF_Type.Partial
-
-def test_advanceByCost_notEnoughLaneAhead_ThrowsException(scene_static_short_testable, route_plan_1_2):
-    """
-    test the method _advance_by_cost
-        test that an exception is thrown when the there is not enough valid space ahead to create a GFF
-        minimum space is defined by the global constant MINIMUM_REQUIRED_DIST_LANE_AHEAD
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
-    road_ids = MapUtils.get_road_segment_ids()
-    current_road_idx = 1
-    current_ordinal = 1
-    starting_lon = 599.
-    lookahead_dist = 0.1
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    try:
-        _ = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan_1_2)[RelativeLane.SAME_LANE]
-        assert False
-    except ValidLaneAheadTooShort:
-        assert True
-
-def test_advanceByCost_canAugmentButNoSplits_noSplitsCreated(scene_static_short_testable, route_plan_1_2):
-    """
-    test the method _advance_by_cost
-        test that splits will not be created if can_augment is True but there are no splits ahead
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
-    road_ids = MapUtils.get_road_segment_ids()
-    current_road_idx = 0
-    current_ordinal = 1
-    starting_lon = 500.
-    lookahead_dist = 500
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    subsegs_dict = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan_1_2)
-    assert subsegs_dict[RelativeLane.LEFT_LANE][0] == None
-    assert subsegs_dict[RelativeLane.RIGHT_LANE][0] == None
-
-def test_advanceByCost_chooseLowerCostLaneInSplit(right_lane_split_scene_static, route_plan_1_2):
-    """
-    tests the method _advance_by_cost
-    The straight connection will have a higher cost, so vehicle should take the exit (to lane 20)
-    :param right_lane_split_scene_static:
-    :param route_plan_1_2:
-    :return:
-    """
-    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
-
-    # Modify the route plan
-    # In order to match the scene static data, the right lane in the first road segment needs to be deleted
-    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
-    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
-
-    # Set cost of straight connection lanes (lanes 21 and 22) to be 1
-    route_plan_1_2.s_Data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1
-    route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1
-
-    sub_segments_dict = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
-    assert sub_segments_dict[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 20
-
-
-def test_advanceByCost_chooseStraightLaneInSplitWithSameCosts(right_lane_split_scene_static, route_plan_1_2):
-    """
-    Tests the method _advance_by_cost
-    A two-lane road opens up to a three-lane road where all lanes have identical end costs. Since the can_augment argument
-    is not passed in, splits should not be considered.
-    :param right_lane_split_scene_static:
-    :param route_plan_1_2:
-    :return:
-    """
-    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
-
-    # Modify the route plan
-    # In order to match the scene static data, the right lane in the first road segment needs to be deleted since
-    # it does not exist in right_lane_split_scene_static.
-    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
-    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
-
-    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2)
-    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE][0] == None
-    assert sub_segments[RelativeLane.RIGHT_LANE][0] == None
-    assert sub_segments[RelativeLane.SAME_LANE][1] == GFF_Type.Normal
-
-def test_advanceByCost_rightSplitConsideredIfCanAugment(right_lane_split_scene_static, route_plan_1_2):
-    """
-    Tests the method _advance_by_cost
-    If the right lane can be augmented, subsegments including the split should be returned for the right augmented lane
-    :param right_lane_split_scene_static:
-    :param route_plan_1_2:
-    :return:
-    """
-    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
-    can_augment = {RelativeLane.LEFT_LANE:False, RelativeLane.RIGHT_LANE:True}
-
-    # Modify the route plan
-    # In order to match the scene static data, the right lane in the first road segment needs to be deleted since
-    # it does not exist in right_lane_split_scene_static.
-    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
-    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
-
-    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2, can_augment=can_augment)
-    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE][0] == None
-    assert sub_segments[RelativeLane.RIGHT_LANE][0][1].e_i_SegmentID == 20
-
-def test_advanceByCost_leftRightSplitBothConsideredIfCanAugment(left_right_lane_split_scene_static, route_plan_1_2):
-    """
-       Tests the method _advance_by_cost
-       If the both the left and right lane can be augmented,
-       subsegments including the split should be returned for both lanes
-       :param right_lane_split_scene_static:
-       :param route_plan_1_2:
-       :return:
-       """
-    SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static)
-    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
-
-    # Modify the route plan
-    # In order to match the scene static data, the left and right lane in the first road segment needs to be deleted since
-    # it does not exist in left_right_lane_split_scene_static.
-    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
-    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][1]
-    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 1
-
-    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2,
-                                             can_augment=can_augment)
-    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE][0][1].e_i_SegmentID == 22
-    assert sub_segments[RelativeLane.RIGHT_LANE][0][1].e_i_SegmentID == 20
-
-def test_advanceByCost_rightSplitNoneIfCannotAugment(right_lane_split_scene_static, route_plan_1_2):
-    """
-    Tests the method _advance_by_cost
-    If a right split is not allowed, subsegments should only be returned for SAME_LANE using straight connections
-    :param right_lane_split_scene_static:
-    :param route_plan_1_2:
-    :return:
-    """
-    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
-    can_augment = {RelativeLane.LEFT_LANE:False, RelativeLane.RIGHT_LANE:False}
-
-    # Modify the route plan
-    # In order to match the scene static data, the right lane in the first road segment needs to be deleted since
-    # it does not exist in right_lane_split_scene_static.
-    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
-    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 2
-
-    sub_segments = MapUtils._advance_by_cost(11, 0, MapUtils.get_lane_length(11) + 1, route_plan_1_2, can_augment=can_augment)
-    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE][0] == None
-    assert sub_segments[RelativeLane.RIGHT_LANE][0] == None
-
-
-def test_advanceByCost_leftRightAugmentedPartialIfSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
-    """
-       Tests the method _advance_by_cost
-       If the both the left and right lane can be augmented but the splits are dead ends,
-       subsegments including the split should be returned for both lanes and they should be marked AugmentedPartial
-       :param right_lane_split_scene_static:
-       :param route_plan_1_2:
-       :return:
-       """
-    SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static)
-    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
-
-    # Modify the route plan
-    # In order to match the scene static data, the left and right lane in the first road segment needs to be deleted since
-    # it does not exist in left_right_lane_split_scene_static.
-    del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][0]
-    del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][1]
-    route_plan_1_2_3.s_Data.a_Cnt_num_lane_segments[0] = 1
-
-    sub_segments = MapUtils._advance_by_cost(11, 500, 1500, route_plan_1_2_3,
-                                             can_augment=can_augment)
-    assert sub_segments[RelativeLane.SAME_LANE][0][1].e_i_SegmentID == 21
-    assert sub_segments[RelativeLane.LEFT_LANE][0][1].e_i_SegmentID == 22
-    assert sub_segments[RelativeLane.RIGHT_LANE][0][1].e_i_SegmentID == 20
-    assert sub_segments[RelativeLane.LEFT_LANE][1] == GFF_Type.AugmentedPartial
-    assert sub_segments[RelativeLane.RIGHT_LANE][1] == GFF_Type.AugmentedPartial
+    assert is_partial == True
 
 
 def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength(scene_static_pg_split):

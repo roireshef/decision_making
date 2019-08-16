@@ -124,7 +124,7 @@ class IDAppearsMoreThanOnce(MappingException):
     pass
 
 
-class StraightConnectionNotFound(MappingException):
+class ManeuverNotFound(MappingException):
     pass
 
 
