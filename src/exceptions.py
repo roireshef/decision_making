@@ -95,8 +95,10 @@ class NavigationPlanTooShort(MappingException):
 class NavigationPlanDoesNotFitMap(MappingException):
     pass
 
+
 class ValidLaneAheadTooShort(MappingException):
     pass
+
 
 class MultipleDownstreamLanes(MappingException):
     pass
@@ -119,6 +121,10 @@ class EquivalentStationNotFound(MappingException):
 
 
 class IDAppearsMoreThanOnce(MappingException):
+    pass
+
+
+class StraightConnectionNotFound(MappingException):
     pass
 
 
