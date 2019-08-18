@@ -81,12 +81,13 @@ class KinematicUtils:
         lon_acceleration = ctrajectories[:, :, C_A]
         lon_velocity = ctrajectories[:, :, C_V]
         last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(T)
+        last_pad_idxs = np.minimum(last_pad_idxs, ctrajectories.shape[1] - 1)
         # for each trajectory use the appropriate last time index (possibly after padding)
         end_velocities = ctrajectories[np.arange(ctrajectories.shape[0]), last_pad_idxs, C_V]
         end_velocity_limits = velocity_limits[np.arange(ctrajectories.shape[0]), last_pad_idxs]
 
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
-        conforms_desired = np.logical_and(
+        conforms_velocity_limits = np.logical_and(
             end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
             np.logical_or(
                 # either speed is below limit, or vehicle is slowing down when it doesn't
@@ -94,7 +95,7 @@ class KinematicUtils:
                 # negative initial jerk
                 lon_acceleration[:, 0] > lon_acceleration[:, 1]))
 
-        return conforms_desired
+        return conforms_velocity_limits
 
     @staticmethod
     def convert_padded_spec_time_to_index(T: np.array):
