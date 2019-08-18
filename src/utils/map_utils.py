@@ -489,6 +489,7 @@ class MapUtils:
                 lane_ids.append(lane_id)
                 stations_s_coordinates.append(static_traffic_flow_control.e_l_station)
         frenet_states = np.zeros((len(stations_s_coordinates), 6))
-        frenet_states[:, FS_SX] = stations_s_coordinates
-        result = lane_frenet.convert_from_segment_states(frenet_states, lane_ids)[:, FS_SX]
-        return result.sort()
+        frenet_states[:, FS_SX] = np.asarray(stations_s_coordinates)
+        result = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
+        result.sort()
+        return result
