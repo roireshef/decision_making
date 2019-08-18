@@ -6,7 +6,7 @@ from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, 
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel, ActionSpec
-from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState2D, FS_2D_LEN
+from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FS_2D_LEN, FrenetState1D
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.state.state import State, ObjectSize
@@ -18,15 +18,14 @@ MERGE_LOOKAHEAD = 300    # on the ego road
 
 
 class ActorState:
-    def __init__(self, size: ObjectSize, fstate: FrenetState2D):
+    def __init__(self, size: ObjectSize, fstate: FrenetState1D):
         self.size = size
         self.fstate = fstate
 
 
 class LaneMergeState:
-    def __init__(self, dist_to_red_line: float, dist_to_yellow_line: float, actors: List[ActorState]):
-        self.dist_to_red_line = dist_to_red_line
-        self.dist_to_yellow_line = dist_to_yellow_line
+    def __init__(self, host_fstate: FrenetState1D, actors: List[ActorState]):
+        self.host_fstate = host_fstate  # SX is negative: -dist_to_red_line
         self.actors = actors
 
 
@@ -61,12 +60,6 @@ class RuleBasedLaneMerge:
         dist_to_red_line = gff.convert_from_segment_state(np.zeros(FS_2D_LEN), merge_lane_id)[FS_SX] - \
                            ego_fstate[FS_SX] - state.ego_state.size.length/2
 
-        # calculate distance from ego to the yellow line
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
-        braking_dist = BrakingDistances.calc_actions_distances_for_given_weights(
-            w_T, w_J, np.array([ego_fstate[FS_SV]]), np.array([0]), np.array([ego_fstate[FS_SA]]))[0]
-        dist_to_yellow_line = dist_to_red_line - braking_dist
-
         # check existence of cars on the upstream main road
         actors = []
         main_lane_ids_arr = np.array(main_lane_ids)
@@ -78,7 +71,8 @@ class RuleBasedLaneMerge:
                     obj_fstate = np.concatenate(([obj_s], obj.map_state.lane_fstate[FS_SV:]))
                     actors.append(ActorState(obj.size, obj_fstate))
 
-        return LaneMergeState(dist_to_red_line, dist_to_yellow_line, actors)  # a car was found on the main road
+        host_fstate = np.array([-dist_to_red_line, ego_fstate[FS_SV], ego_fstate[FS_SA]])
+        return LaneMergeState(host_fstate, actors)  # a car was found on the main road
 
     @staticmethod
     def create_safe_merge_actions(behavioral_state: BehavioralGridState, lane_merge_state: LaneMergeState) -> List[ActionSpec]:
@@ -96,7 +90,7 @@ class RuleBasedLaneMerge:
         T, v_T = t_arr[ti], v_arr[vi]
 
         # calculate the actions' distance (the same for all actions)
-        dx = lane_merge_state.dist_to_red_line - behavioral_state.ego_state.size.length / 2
+        dx = -lane_merge_state.host_fstate[FS_SX] - behavioral_state.ego_state.size.length / 2
 
         # calculate s_profile coefficients for all actions
         ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]

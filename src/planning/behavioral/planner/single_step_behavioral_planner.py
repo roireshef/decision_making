@@ -99,14 +99,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         if lane_merge_state is None or len(lane_merge_state.actors) == 0:  # no merge ahead or no cars on the main road
             return ActionEvaluationStrategyType.DEFAULT_RULE_BASED, self._specify_default_action_space(behavioral_state)
 
-        # yellow line condition: if braking distance is greater or equal than distance to the red line
-        if lane_merge_state.dist_to_yellow_line <= 0:
-            merge_specs = RuleBasedLaneMerge.create_safe_merge_actions(behavioral_state, lane_merge_state)
-            if len(merge_specs) > 0:
-                return ActionEvaluationStrategyType.MERGE_RB, merge_specs
-            else:
-                return ActionEvaluationStrategyType.BRAKING, [stop_sign_spec]
+        merge_specs = RuleBasedLaneMerge.create_safe_merge_actions(behavioral_state, lane_merge_state)
+        if len(merge_specs) > 0:
+            return ActionEvaluationStrategyType.MERGE_RB, merge_specs
         else:  # not arrived to the yellow line
+            add stop bar
             return ActionEvaluationStrategyType.LANE_MERGE_RL, self._specify_default_action_space(behavioral_state)
 
     def _specify_default_action_space(self, behavioral_state: BehavioralGridState) -> List[ActionSpec]:
