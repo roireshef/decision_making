@@ -1,4 +1,3 @@
-import rte.python.profiler as prof
 from collections import defaultdict
 from itertools import compress
 
@@ -122,8 +121,7 @@ class ActionSpecFilter:
         spec_t_idxs[in_padding_mode] = 0
 
         # calculate trajectory time indices for t = max(spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
-        last_pad_idxs = (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(
-            int) + 1
+        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(T) + 1
 
         # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
         for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
@@ -135,6 +133,7 @@ class ActionSpecFilter:
                 trajectory_s[spec_t_idx:last_pad_idx] = np.c_[spec.s + times_beyond_spec * spec.v,
                                                               np.full(times_beyond_spec.shape, spec.v),
                                                               np.zeros_like(times_beyond_spec)]
+            # beyond spec.t and beyond MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON pad ftrajectories by 0
             trajectory_s[last_pad_idx:] = 0
             trajectory_d[spec_t_idx:] = 0
 

@@ -13,7 +13,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
-    MAX_VIS_TRAJECTORIES_NUMBER
+    MAX_VIS_TRAJECTORIES_NUMBER, NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
@@ -157,9 +157,14 @@ class TrajectoryPlanningFacade(DmModule):
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
         # TODO: understand if padding with zeros is necessary
-        waypoints = np.vstack((np.hstack((trajectory_points, np.zeros(shape=[TRAJECTORY_NUM_POINTS,
-                                                                             TRAJECTORY_WAYPOINT_SIZE -
-                                                                             trajectory_points.shape[1]]))),
+        allowed_tracking_errors = np.ones(shape=[TRAJECTORY_NUM_POINTS, 4]) * [NEGLIGIBLE_DISPOSITION_LAT,  # left
+                                                                               NEGLIGIBLE_DISPOSITION_LAT,  # right
+                                                                               NEGLIGIBLE_DISPOSITION_LON,  # front
+                                                                               NEGLIGIBLE_DISPOSITION_LON]  # rear
+        waypoints = np.vstack((np.hstack((trajectory_points, allowed_tracking_errors,
+                                          np.zeros(shape=[TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE -
+                                                          trajectory_points.shape[1] - allowed_tracking_errors.shape[1]]
+                                                   ))),
                                np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS,
                                                TRAJECTORY_WAYPOINT_SIZE])))
 
@@ -278,6 +283,8 @@ class TrajectoryPlanningFacade(DmModule):
                                                                       prediction_horizons)[0][:, [FS_SX, FS_DX]]
                 # skip objects having predictions out of reference_route
                 valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
+                if len(valid_obj_fpredictions) == 0:
+                    continue
                 obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
                 objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
 
