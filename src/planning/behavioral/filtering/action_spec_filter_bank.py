@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, SIGN_DISTANCE
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, SIGN_S
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -158,7 +158,7 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_locations = np.asarray([sign[SIGN_DISTANCE] for sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
+        stop_bar_locations = np.asarray([stop_sign[SIGN_S] for stop_sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
 
         return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any() \
@@ -271,7 +271,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
         """
         stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
-        distances = [stop_sign[SIGN_DISTANCE] for stop_sign in stop_signs if stop_sign[SIGN_DISTANCE] >= action_spec_s]
+        distances = [stop_sign[SIGN_S] for stop_sign in stop_signs if stop_sign[SIGN_S] >= action_spec_s]
         return distances[0] if len(distances) > 0 else None
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:

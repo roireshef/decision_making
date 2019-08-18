@@ -8,7 +8,7 @@ from decision_making.src.messages.scene_static_message import SceneLaneSegmentGe
     SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D, FS_SX, SIGN_TYPE, SIGN_DISTANCE
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX, SIGN_TYPE, SIGN_S
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -510,7 +510,7 @@ class MapUtils:
                 road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
         frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
         frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
-        distances = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
-        road_sign_s_on_gff = list(zip(road_sign_types, distances))  # order of elements in zip must match types.py SIGN_TYPE, SIGN_DISTANCE
-        road_sign_s_on_gff.sort(key=lambda x: x[SIGN_DISTANCE])  # sort by distance after the conversion to real distance
-        return road_sign_s_on_gff
+        road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
+        road_sign_info_on_gff = list(zip(road_sign_types, road_sign_s_on_gff))  # order of elements in zip must match types.py SIGN_TYPE, SIGN_DISTANCE
+        road_sign_info_on_gff.sort(key=lambda x: x[SIGN_S])  # sort by distance after the conversion to real distance
+        return road_sign_info_on_gff

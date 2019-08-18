@@ -105,4 +105,4 @@ NumpyIndicesArray = np.ndarray
 BoolArray = np.ndarray
 
 # Info on road signs
-SIGN_TYPE, SIGN_DISTANCE = 0, 1
+SIGN_TYPE, SIGN_S = 0, 1
