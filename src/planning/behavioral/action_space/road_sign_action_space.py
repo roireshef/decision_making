@@ -2,7 +2,7 @@ from logging import Logger
 from typing import List, Type
 
 import numpy as np
-from decision_making.src.global_constants import ZERO_SPEED, ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR
+from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
@@ -25,29 +25,24 @@ class RoadSignActionSpace(TargetActionSpace):
                                                          [ActionType.FOLLOW_ROAD_SIGN],
                                                          AggressivenessLevel])
                                   ],
-                         filtering=filtering)
+                         filtering=filtering,
+                         margin_to_keep_from_targets=LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR)
 
 
     @property
     def recipe_classes(self) -> List[Type]:
         return [RoadSignActionRecipe]
 
-    def get_target_length(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
+    def get_target_lengths(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        target_length = np.empty(len(action_recipes))
-        target_length.fill(ROAD_SIGN_LENGTH)
-        return target_length
+        return np.full(len(action_recipes), ROAD_SIGN_LENGTH)
 
     def get_target_velocities(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        v_T = np.empty(len(action_recipes))
-        v_T.fill(ZERO_SPEED)  # TODO: will need modification for other road signs
-        return v_T
+        return np.zeros(len(action_recipes))  # TODO: will need modification for other road signs
 
     def get_end_target_relative_position(self, action_recipes: List[RoadSignActionRecipe]) -> np.ndarray:
-        margin_sign = np.empty(len(action_recipes))
-        margin_sign.fill(-1)
-        return margin_sign
+        return np.full(len(action_recipes), -1)
 
     def get_distance_to_targets(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
@@ -68,7 +63,3 @@ class RoadSignActionSpace(TargetActionSpace):
         target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
         return MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)[0] - \
                behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
-
-    def get_margin_to_keep_from_targets(self, action_recipes: List[RoadSignActionRecipe],
-                                        behavioral_state: BehavioralGridState) -> float:
-        return LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR

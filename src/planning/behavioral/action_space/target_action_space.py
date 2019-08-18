@@ -19,7 +19,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 
 class TargetActionSpace(ActionSpace):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, recipes: List[TargetActionRecipe],
-                 filtering: RecipeFiltering):
+                 filtering: RecipeFiltering, margin_to_keep_from_targets: float):
         """
         Abstract class for Target-Action-Space implementations. Implementations should include actions enumeration,
         filtering and specification.
@@ -27,14 +27,16 @@ class TargetActionSpace(ActionSpace):
         :param predictor: a predictor of target state that is aware of the ego
         :param recipes: list of recipes that define the scope of an ActionSpace implementation
         :param filtering: RecipeFiltering object that holds the logic for filtering recipes
+        :param margin_to_keep_from_targets: longitudinal margin to keep from the targets in meters
         """
         super().__init__(logger,
                          recipes=recipes,
                          recipe_filtering=filtering)
         self.predictor = predictor
+        self.margin_to_keep_from_targets = margin_to_keep_from_targets
 
     @abstractmethod
-    def get_target_length(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
+    def get_target_lengths(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         """
         Should return the length of the targets
@@ -76,17 +78,6 @@ class TargetActionSpace(ActionSpace):
         """
         pass
 
-    @abstractmethod
-    def get_margin_to_keep_from_targets(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState)\
-            -> float:
-        """
-        Should return the longitudinal margin to keep from the targets
-        :param action_recipes: list of action recipes from which the targets should be extracted
-        :param behavioral_state: current state of the world
-        :return: longitudinal margin in meters
-        """
-        pass
-
     @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
@@ -103,7 +94,7 @@ class TargetActionSpace(ActionSpace):
 
         # collect targets' lengths, lane_ids and fstates
         # Targets are other vehicles, on the target grid box that ego plans to enter, sorted by S
-        target_length = self.get_target_length(action_recipes, behavioral_state)
+        target_lengths = self.get_target_lengths(action_recipes, behavioral_state)
         v_T = self.get_target_velocities(action_recipes, behavioral_state)
         margin_sign = self.get_end_target_relative_position(action_recipes)
 
@@ -118,8 +109,7 @@ class TargetActionSpace(ActionSpace):
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
         # irrelevant due to 0 velocity
         ds = longitudinal_differences + margin_sign * (
-                self.get_margin_to_keep_from_targets(action_recipes, behavioral_state) +
-                behavioral_state.ego_state.size.length / 2 + target_length / 2)
+                self.margin_to_keep_from_targets + behavioral_state.ego_state.size.length / 2 + target_lengths / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(

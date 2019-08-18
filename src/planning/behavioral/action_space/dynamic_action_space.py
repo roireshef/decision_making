@@ -24,7 +24,8 @@ class DynamicActionSpace(TargetActionSpace):
                                                          RelativeLongitudinalPosition,
                                                          [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE],
                                                          AggressivenessLevel])],
-                         filtering=filtering)
+                         filtering=filtering,
+                         margin_to_keep_from_targets=LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT)
 
     # TODO FOLLOW_VEHICLE for REAR vehicle isn't really supported for 2 reasons:
     #   1. We have no way to guarantee the trajectory we construct does not collide with the rear vehicle
@@ -45,12 +46,12 @@ class DynamicActionSpace(TargetActionSpace):
         return behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0].\
             dynamic_object
 
-    def get_target_length(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
+    def get_target_lengths(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        target_length = np.array([self._get_closest_target(action_recipe, behavioral_state).size.length
+        target_lengths = np.array([self._get_closest_target(action_recipe, behavioral_state).size.length
                                   for action_recipe in action_recipes])
 
-        return target_length
+        return target_lengths
 
     def get_target_velocities(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
@@ -70,7 +71,3 @@ class DynamicActionSpace(TargetActionSpace):
         longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_map_states)
         assert not np.isinf(longitudinal_differences).any()
         return longitudinal_differences
-
-    def get_margin_to_keep_from_targets(self, action_recipes: List[DynamicActionRecipe],
-                                        behavioral_state: BehavioralGridState) -> float:
-        return LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
