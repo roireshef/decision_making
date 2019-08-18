@@ -84,7 +84,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param left_road_cost: defines the sigmoid cost of the left-side of the road
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
-        :param dist_from_goal_cost: cost of squared distance from the target
+        :param dist_from_goal_cost: weight of squared distance cost from the target
         :param deviation_from_target_time_cost: Weight of deviation from the target horizon time.
         :param lon_jerk_cost_weight: longitudinal jerk cost
         :param lat_jerk_cost_weight: lateral jerk cost
