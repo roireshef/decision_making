@@ -6,9 +6,9 @@ from decision_making.src.global_constants import EPS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
-from decision_making.src.messages.scene_static_enums import NominalPathPoint
+from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D, FS_SX
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX, SIGN_TYPE, SIGN_DISTANCE
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -473,23 +473,44 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
-    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> np.array:
+    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame) -> []:
         """
-        Returns a the locations (s coordinates) of Static_Traffic_flow_controls on the GFF
-        The list if ordered from closest traffic flow control to farthest.
+        Returns a list of the locations (s coordinates) of stop signs and stop bars on the GFF, with their type
+        The list is ordered from closest traffic flow control to farthest.
         :param lane_frenet: The GFF on which to retrieve the static flow controls.
-        :return: A list of static flow contronls on the the GFF, ordered from closest traffic flow control to farthest.
+        :return: A list of distances to stop signs and stop bars on the the GFF, ordered from closest traffic flow
+        control to farthest, along with the type of the control.
+        """
+        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)
+        stop_bars_and_signs = []
+        for road_sign in road_signs:
+            # TODO verify these are the correct stop bar enums
+            if road_sign[SIGN_TYPE] in [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]:
+                stop_bars_and_signs.append(road_sign)
+        return stop_bars_and_signs
+
+    @staticmethod
+    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> []:
+        """
+        Returns a list of the locations (s coordinates) of Static_Traffic_flow_controls on the GFF, with their type
+        The list is ordered from closest traffic flow control to farthest.
+        :param lane_frenet: The GFF on which to retrieve the static flow controls.
+        :return: A list of distances to static flow controls on the the GFF, ordered from closest traffic flow control
+        to farthest, along with the type of the control.
         """
         lane_ids = []
-        # stations are s coordinates
+        # s coordinates
         road_signs_s_on_lane_segments = []
+        road_sign_types = []
         for lane_id in lane_frenet.segment_ids:
             lane_segment = MapUtils.get_lane(lane_id)
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
+                road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
                 road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
         frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
         frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
-        road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
-        road_sign_s_on_gff.sort()
+        distances = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
+        road_sign_s_on_gff = list(zip(road_sign_types, distances))  # order of elements in zip must match types.py SIGN_TYPE, SIGN_DISTANCE
+        road_sign_s_on_gff.sort(key=lambda x: x[SIGN_DISTANCE])  # sort by distance after the conversion to real distance
         return road_sign_s_on_gff

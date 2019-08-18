@@ -11,7 +11,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic, Stati
     RoadObjectType
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
+from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX, SIGN_DISTANCE
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound
@@ -36,9 +36,9 @@ def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split:
                                          e_Pct_confidence=1.0)
     MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
     gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
-    actual = MapUtils.get_static_traffic_flow_controls_s(gff)
+    actual = MapUtils.get_stop_bar_and_stop_sign(gff)
     assert len(actual) == 1
-    assert actual[0] == 12.0
+    assert actual[0][SIGN_DISTANCE] == 12.0
 
 
 def test_getRoadSegmentIdFromLaneId_correct(scene_static_pg_split):

@@ -103,3 +103,6 @@ NumpyIndicesArray = np.ndarray
 
 # boolean array
 BoolArray = np.ndarray
+
+# Info on road signs
+SIGN_TYPE, SIGN_DISTANCE = 0, 1
