@@ -482,14 +482,14 @@ class MapUtils:
         """
         lane_ids = []
         # stations are s coordinates
-        stations_s_coordinates = []
+        road_signs_s_on_lane_segments = []
         for lane_id in lane_frenet.segment_ids:
             lane_segment = MapUtils.get_lane(lane_id)
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
-                stations_s_coordinates.append(static_traffic_flow_control.e_l_station)
-        frenet_states = np.zeros((len(stations_s_coordinates), 6))
-        frenet_states[:, FS_SX] = np.asarray(stations_s_coordinates)
-        result = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
-        result.sort()
-        return result
+                road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
+        frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
+        frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
+        road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
+        road_sign_s_on_gff.sort()
+        return road_sign_s_on_gff
