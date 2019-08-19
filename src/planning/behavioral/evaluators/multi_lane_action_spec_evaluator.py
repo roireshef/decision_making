@@ -60,12 +60,11 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         # After determining if the left or right lane diverges first, look at the lane occupancy costs for the lanes where the divergence occurs.
         # Target the lane with the lower cost.
-        lane_costs = {rel_lane: route_costs_dict[gffs[rel_lane].segment_ids[rel_lane]][LANE_OCCUPANCY_COST_IND] for rel_lane
-                      in diverging_indicies}
-
         if is_left_augmented and is_right_augmented:
             # splits are at the same point
             if diverging_indicies[RelativeLane.LEFT_LANE] == diverging_indicies[RelativeLane.RIGHT_LANE]:
+                lane_costs = {rel_lane: route_costs_dict[gffs[rel_lane].segment_ids[diverging_indicies[RelativeLane.RIGHT_LANE]]]
+                              for rel_lane in [RelativeLane]}
                 minimum_cost_lane = min(lane_costs, key=lane_costs.get)
 
                 # if minimum isn't unique, prefer same_lane if it is a minimum
@@ -78,10 +77,28 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
                     else:
                         minimum_cost_lane = RelativeLane.RIGHT_LANE
 
-        elif is_left_augmented and lane_costs[RelativeLane.LEFT_LANE] < lane_costs[RelativeLane.SAME_LANE]:
+            # splits are at different places
+            # left lane splits off first
+            elif diverging_indicies[RelativeLane.LEFT_LANE] < diverging_indicies[RelativeLane.RIGHT_LANE]:
+                if route_costs_dict[gffs[RelativeLane.LEFT_LANE].segment_ids[diverging_indicies[RelativeLane.LEFT_LANE]]] < \
+                    route_costs_dict[gffs[RelativeLane.SAME_LANE].segment_ids[diverging_indicies[RelativeLane.LEFT_LANE]]]:
+                    minimum_cost_lane = RelativeLane.LEFT_LANE
+            # right lane splits off first
+            elif diverging_indicies[RelativeLane.RIGHT_LANE] < diverging_indicies[RelativeLane.LEFT_LANE]:
+                if route_costs_dict[gffs[RelativeLane.RIGHT_LANE].segment_ids[diverging_indicies[RelativeLane.RIGHT_LANE]]] < \
+                    route_costs_dict[gffs[RelativeLane.SAME_LANE].segment_ids[diverging_indicies[RelativeLane.RIGHT_LANE]]]:
+                    minimum_cost_lane = RelativeLane.RIGHT_LANE
+
+        # only the left lane is augmented
+        elif is_left_augmented and \
+                route_costs_dict[gffs[RelativeLane.LEFT_LANE].segment_ids[diverging_indicies[RelativeLane.LEFT_LANE]]] < \
+                route_costs_dict[gffs[RelativeLane.SAME_LANE].segment_ids[diverging_indicies[RelativeLane.LEFT_LANE]]]:
                 minimum_cost_lane = RelativeLane.LEFT_LANE
 
-        elif is_right_augmented and lane_costs[RelativeLane.RIGHT_LANE] < lane_costs[RelativeLane.SAME_LANE]:
+        # only the right lane is augmented
+        elif is_right_augmented and \
+                route_costs_dict[gffs[RelativeLane.RIGHT_LANE].segment_ids[diverging_indicies[RelativeLane.RIGHT_LANE]]] < \
+                route_costs_dict[gffs[RelativeLane.SAME_LANE].segment_ids[diverging_indicies[RelativeLane.RIGHT_LANE]]]:
                 minimum_cost_lane = RelativeLane.RIGHT_LANE
 
         # look at the actions that are in the minimum cost lane
