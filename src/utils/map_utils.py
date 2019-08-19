@@ -481,13 +481,25 @@ class MapUtils:
         :return: A list of distances to stop signs and stop bars on the the GFF, ordered from closest traffic flow
         control to farthest, along with the type of the control.
         """
-        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)
-        stop_bars_and_signs = []
-        for road_sign in road_signs:
-            # TODO verify these are the correct stop bar enums
-            if road_sign[SIGN_TYPE] in [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]:
-                stop_bars_and_signs.append(road_sign)
+        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)  # ensures the returned value is sorted
+        # TODO verify these are the correct stop bar enums
+        desired_sign_types = [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]
+        stop_bars_and_signs = MapUtils.filter_flow_control_by_type(road_signs, desired_sign_types)
         return stop_bars_and_signs
+
+    @staticmethod
+    def filter_flow_control_by_type(road_signs: [], road_sign_types: []) -> []:
+        """
+        Filters the given road signs list to the desired road sign types
+        :param road_signs: list of road signs to filter
+        :param road_sign_types: list of desired road sign types
+        :return: filtered list of road signs
+        """
+        selected_road_signs = []
+        for road_sign in road_signs:
+            if road_sign[SIGN_TYPE] in road_sign_types:
+                selected_road_signs.append(road_sign)
+        return selected_road_signs
 
     @staticmethod
     def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> []:

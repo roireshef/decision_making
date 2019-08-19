@@ -8,10 +8,9 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
     RoadSignActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
+from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterStopActionIfTooSoon
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import FS_SX, SIGN_S
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.utils.map_utils import MapUtils
 from sklearn.utils.extmath import cartesian
 
 
@@ -27,7 +26,6 @@ class RoadSignActionSpace(TargetActionSpace):
                                   ],
                          filtering=filtering,
                          margin_to_keep_from_targets=LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR)
-
 
     @property
     def recipe_classes(self) -> List[Type]:
@@ -46,20 +44,8 @@ class RoadSignActionSpace(TargetActionSpace):
 
     def get_distance_to_targets(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
-        longitudinal_differences = np.array([self._get_closest_stop_bar_distance(action_recipe, behavioral_state)
+        longitudinal_differences = np.array([FilterStopActionIfTooSoon.get_closest_stop_bar_distance(action_recipe,
+                                                                                                     behavioral_state)
                                              for action_recipe in action_recipes])
         assert not np.isnan(longitudinal_differences).any()
         return longitudinal_differences
-
-    def _get_closest_stop_bar_distance(self, action: RoadSignActionRecipe, behavioral_state: BehavioralGridState) -> \
-            float:
-        """
-        Returns the s value of the closest StaticTrafficFlow.
-        No existence checks necessary, as it was already tested by FilterActionsTowardsCellsWithoutRoadSigns
-        :param action: the action recipe to be considered
-        :param behavioral_state: BehavioralGridState in context
-        :return: distance to closest stop bar
-        """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
-        return MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)[0][SIGN_S] - \
-               behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]

@@ -6,7 +6,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as RecipeFilterIfNone, \
     FilterActionsTowardsNonOccupiedCells, FilterActionsTowardBackAndParallelCells, FilterOvertakeActions, \
     FilterIfNoLane, FilterLaneChanging, FilterSpeedingOverDesiredVelocityDynamic, \
-    FilterSpeedingOverDesiredVelocityStatic, FilterActionsTowardsCellsWithoutRoadSigns
+    FilterSpeedingOverDesiredVelocityStatic, FilterActionsTowardsCellsWithoutRoadSigns, FilterStopActionIfTooSoon
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -27,6 +27,7 @@ DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone()
 DEFAULT_ROAD_SIGN_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                               FilterActionsTowardsCellsWithoutRoadSigns(),
                                                               FilterLaneChanging(),
+                                                              FilterStopActionIfTooSoon()
                                                               ],
                                                      logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone(),
