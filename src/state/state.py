@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+from logging import Logger
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicObject import TsSYSDynamicObject
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_EgoState import TsSYSEgoState
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectSize import TsSYSObjectSize
@@ -7,11 +8,20 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_OccupancyState 
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_State import TsSYSState
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
-from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
+    EGO_HEIGHT
+from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List, Optional
+from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
+
+
+class DynamicObjectsData:
+    def __init__(self, num_objects: int, objects_localization: List[ObjectLocalization], timestamp: int):
+        self.num_objects = num_objects
+        self.objects_localization = objects_localization
+        self.timestamp = timestamp
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
@@ -357,3 +367,115 @@ class State(PUBSUB_MSG_IMPL):
         """
         selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id in target_obj_ids]
         return selected_objects
+
+    def _handle_negative_velocities(self):
+        """
+        Handles cases of ego state or dynamic objects with negative velocities.
+        It modifies their velocities so they will equal zero and writes a warning in the log.
+        :param state: Possibly containing objects with negative velocities
+        :return: State containing objects with non-negative velocities
+        """
+        if self.ego_state.cartesian_state[C_V] < 0:
+            self.ego_state.cartesian_state[C_V] = 0
+            self.ego_state.map_state.lane_fstate[FS_SV] = 0
+            self.logger.warning('Ego was received with negative velocity %f' % self.ego_state.cartesian_state[C_V])
+        elif self.ego_state.cartesian_state[C_V] == 0 and self.ego_state.cartesian_state[C_A] < 0:
+            self.ego_state.cartesian_state[C_A] = 0
+            self.ego_state.map_state.lane_fstate[FS_SA] = 0
+            self.logger.warning('Ego was received with zero velocity and negative acceleration %f' % self.ego_state.cartesian_state[C_A])
+
+        for i in range(len(self.dynamic_objects)):
+            if self.dynamic_objects[i].cartesian_state[C_V] < 0:
+                self.dynamic_objects[i].cartesian_state[C_V] = 0
+                self.dynamic_objects[i].map_state.lane_fstate[FS_SV] = 0
+                self.logger.warning(
+                    'Dynamic object with obj_id %s was received with negative velocity %f',
+                    self.dynamic_objects[i].obj_id, self.dynamic_objects[i].cartesian_state[C_V])
+        return None
+
+    @staticmethod
+    def create_state_from_scene_dynamic(scene_dynamic, last_gff_segment_ids, logger):
+        # type: (SceneDynamic, np.ndarray, Logger) -> State
+        """
+        This methods takes an already deserialized SceneDynamic message and converts it to a State object
+        :param scene_dynamic:
+        :param last_gff_segment_ids: list of GFF segment ids for the last selected action
+        :param logger: Logging module
+        :return: valid State object
+        """
+
+        timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
+        occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
+
+        selected_host_hyp_idx = 0
+
+        host_hyp_lane_ids = [hyp.e_i_lane_segment_id
+                             for hyp in scene_dynamic.s_Data.s_host_localization.as_host_hypothesis]
+
+        if len(host_hyp_lane_ids) > 1 and len(last_gff_segment_ids) > 0:
+
+            # find all common lane ids in host hypotheses and last gff segments
+            common_lane_ids = np.intersect1d(host_hyp_lane_ids, last_gff_segment_ids)
+
+            if len(common_lane_ids) == 1:
+                selected_host_hyp_idx = np.argwhere(host_hyp_lane_ids == common_lane_ids[0])[0][0]
+            elif len(common_lane_ids) > 1:
+                # take the hyp. whose lane has the least distance from the host, i.e.,
+                # the min. index in host_hyp_lane_ids since it is sorted based on the distance
+                selected_host_hyp_idx = min([np.argwhere(host_hyp_lane_ids == common_lane_ids[i])[0][0]
+                                             for i in range(len(common_lane_ids))])
+            else:
+                # there are no common ids between localization and prev. gff
+                # raise a warning and choose the closet lane
+                logger.warning("None of the host localization hypotheses matches the previous planning action")
+
+        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
+                                 as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
+                                 lane_id=scene_dynamic.s_Data.s_host_localization.
+                                 as_host_hypothesis[selected_host_hyp_idx].e_i_lane_segment_id)
+        ego_state = EgoState(obj_id=0,
+                             timestamp=timestamp,
+                             cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
+                             map_state=ego_map_state,
+                             size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
+                             confidence=1.0, off_map=False)
+
+        dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
+                                          objects_localization=scene_dynamic.s_Data.as_object_localization,
+                                          timestamp=timestamp)
+        dynamic_objects = State.create_dyn_obj_list(dyn_obj_data)
+        return State(False, occupancy_state, dynamic_objects, ego_state)
+
+    @staticmethod
+    def create_dyn_obj_list(dyn_obj_data: DynamicObjectsData) -> List[DynamicObject]:
+        """
+        Convert serialized object perception and global localization data into a DM object (This also includes
+        computation of the object's road localization). Additionally store the object in memory as preparation for
+        the case where it will leave the field of view.
+        :param dyn_obj_data:
+        :return: List of dynamic object in DM format.
+        """
+        timestamp = dyn_obj_data.timestamp
+        objects_list = []
+        for obj_idx in range(dyn_obj_data.num_objects):
+            obj_loc = dyn_obj_data.objects_localization[obj_idx]
+            id = obj_loc.e_Cnt_object_id
+            cartesian_state = obj_loc.a_cartesian_pose
+            # TODO: Handle multiple hypotheses
+            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
+            size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
+                              obj_loc.s_bounding_box.e_l_width,
+                              obj_loc.s_bounding_box.e_l_height)
+            confidence = obj_loc.as_object_hypothesis[0].e_r_probability
+            off_map = obj_loc.as_object_hypothesis[0].e_b_off_lane
+            dyn_obj = DynamicObject(obj_id=id,
+                                    timestamp=timestamp,
+                                    cartesian_state=cartesian_state,
+                                    map_state=map_state if map_state.lane_id > 0 else None,
+                                    size=size,
+                                    confidence=confidence,
+                                    off_map=off_map)
+
+            objects_list.append(dyn_obj)  # update the list of dynamic objects
+
+        return objects_list
