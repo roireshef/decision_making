@@ -9,7 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType, Rel
     RoadSignActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import FS_SX
+from decision_making.src.planning.types import FS_SX, SIGN_S
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.utils.map_utils import MapUtils
 from sklearn.utils.extmath import cartesian
@@ -61,5 +61,5 @@ class RoadSignActionSpace(TargetActionSpace):
         :return: distance to closest stop bar
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
-        return MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)[0] - \
+        return MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)[0][SIGN_S] - \
                behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
