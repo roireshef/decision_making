@@ -33,6 +33,7 @@ class TrajectoryPlannerCosts:
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
         :param dt: time step of ctrajectories
+        :param reference_route: the reference route is GFF from BP
         :return: point-wise cost components: obstacles_costs, deviations_costs, jerk_costs.
         The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
         """
