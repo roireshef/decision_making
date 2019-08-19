@@ -54,7 +54,8 @@ LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
+# original velocities in [mph] are converted into [m/s]
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 80/2.23694  # TODO - get this value from the map
 
 # [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
 # we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
