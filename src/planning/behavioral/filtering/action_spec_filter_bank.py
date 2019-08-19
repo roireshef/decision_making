@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, SIGN_S
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -71,7 +71,8 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                 nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
                     ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
 
-        return KinematicUtils.filter_by_nominal_velocity(ctrajectories, nominal_speeds, action_specs)
+        T = np.array([spec.t for spec in action_specs])
+        return KinematicUtils.filter_by_velocity_limit(ctrajectories, nominal_speeds, T)
 
     @staticmethod
     def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
@@ -157,10 +158,11 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_locations = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
+        stop_bar_locations = np.asarray([stop_sign[SIGN_S] for stop_sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
 
-        return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any()
+        return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any() \
+            if len(stop_bar_locations) > 0 else False
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
@@ -268,9 +270,9 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         :param action_spec_s:
         :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
         """
-        traffic_control_s = MapUtils.get_static_traffic_flow_controls_s(target_lane_frenet)
-        traffic_control_s = traffic_control_s[traffic_control_s >= action_spec_s]
-        return traffic_control_s[0] if len(traffic_control_s) > 0 else None
+        stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
+        distances = [stop_sign[SIGN_S] for stop_sign in stop_signs if stop_sign[SIGN_S] >= action_spec_s]
+        return distances[0] if len(distances) > 0 else None
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
         """
