@@ -24,7 +24,6 @@ from decision_making.src.planning.trajectory.trajectory_planning_facade import T
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state_module import StateModule
 import os
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
@@ -37,15 +36,6 @@ class DmInitialization:
     """
     This class contains the module initializations
     """
-
-    @staticmethod
-    def create_state_module() -> StateModule:
-        logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-
-        pubsub = PubSub()
-        state_module = StateModule(pubsub, logger, None)
-        return state_module
-
     @staticmethod
     def create_route_planner() -> RoutePlanningFacade:
         logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)
@@ -116,11 +106,6 @@ def main():
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD},
                       name='RP'),
-
-            DmProcess(lambda: DmInitialization.create_state_module(),
-                      trigger_type=DmTriggerType.DM_TRIGGER_NONE,
-                      trigger_args={},
-                      name='SM'),
 
             DmProcess(lambda: DmInitialization.create_behavioral_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
