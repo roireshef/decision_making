@@ -6,7 +6,7 @@ from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneN
     MultipleDownstreamLanes, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, IDAppearsMoreThanOnce, \
     ManeuverNotFound
 from decision_making.src.global_constants import EPS, PLANNING_LOOKAHEAD_DIST, \
-    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE, LANE_END_COST_IND
+    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE, LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
@@ -291,7 +291,7 @@ class MapUtils:
     @raises(LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
     @prof.ProfileFunction()
     def get_lookahead_frenet_frame(lane_id: int, station: float, route_plan: RoutePlan,
-                                   logger: Optional[Logger] = None, can_augment: Optional[Dict[RelativeLane, bool]] = None, relative_lane = None) -> \
+                                   logger: Optional[Logger] = None, can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
                                            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         Create Generalized Frenet frame along lane center, starting from given lane and station.
@@ -334,8 +334,8 @@ class MapUtils:
 
         # If augmented lanes can't be made, advance only using straight connections
         if not np.any(can_augment.values()):
-            lane_subsegments_dict[RelativeLane.SAME_LANE], is_partial = MapUtils._advance_on_plan(lane_id, starting_station, lookahead_distance,
-                                                                                      route_plan, force_maneuver=ManeuverType.STRAIGHT_CONNECTION)
+            lane_subsegments_dict[RelativeLane.SAME_LANE], is_partial = MapUtils._advance_by_cost(lane_id, starting_station, lookahead_distance,
+                                                                                                  route_plan, force_maneuver=ManeuverType.STRAIGHT_CONNECTION)
             gff_types_dict[RelativeLane.SAME_LANE] = GFF_Type.Partial if is_partial else GFF_Type.Normal
 
         # If augmented lanes can be made, first find common subsegments, then continue after taking a maneuver
@@ -360,7 +360,7 @@ class MapUtils:
                 lane_subsegments_dict[RelativeLane.SAME_LANE] = common_subsegments
                 gff_types_dict[RelativeLane.SAME_LANE] = GFF_Type.Normal
             elif ManeuverType.STRAIGHT_CONNECTION in downstream_maneuver_lanes:
-                same_lane_subsegs, is_straight_partial = MapUtils._advance_on_plan(downstream_maneuver_lanes[ManeuverType.STRAIGHT_CONNECTION], starting_station, lookahead_distance_remaining,
+                same_lane_subsegs, is_straight_partial = MapUtils._advance_by_cost(downstream_maneuver_lanes[ManeuverType.STRAIGHT_CONNECTION], starting_station, lookahead_distance_remaining,
                                                                                    route_plan)
                 lane_subsegments_dict[RelativeLane.SAME_LANE] = common_subsegments + same_lane_subsegs
                 gff_types_dict[RelativeLane.SAME_LANE] = GFF_Type.Partial if (is_common_partial or is_straight_partial) else GFF_Type.Normal
@@ -372,7 +372,7 @@ class MapUtils:
             if found_multiple_downstreams:
                 # continue lookahead for left augmented
                 if can_augment[RelativeLane.LEFT_LANE] and ManeuverType.LEFT_SPLIT in downstream_maneuver_lanes:
-                    left_augmented_subsegs, is_left_partial = MapUtils._advance_on_plan(downstream_maneuver_lanes[ManeuverType.LEFT_SPLIT],
+                    left_augmented_subsegs, is_left_partial = MapUtils._advance_by_cost(downstream_maneuver_lanes[ManeuverType.LEFT_SPLIT],
                                                                                         starting_station, lookahead_distance_remaining,
                                                                                         route_plan)
                     lane_subsegments_dict[RelativeLane.LEFT_LANE] = common_subsegments + left_augmented_subsegs
@@ -380,7 +380,7 @@ class MapUtils:
 
                 # continue lookahead for right augmented
                 if can_augment[RelativeLane.RIGHT_LANE] and ManeuverType.RIGHT_SPLIT in downstream_maneuver_lanes:
-                    right_augmented_subsegs, is_right_partial = MapUtils._advance_on_plan(downstream_maneuver_lanes[ManeuverType.RIGHT_SPLIT],
+                    right_augmented_subsegs, is_right_partial = MapUtils._advance_by_cost(downstream_maneuver_lanes[ManeuverType.RIGHT_SPLIT],
                                                                                           starting_station, lookahead_distance_remaining,
                                                                                           route_plan)
                     lane_subsegments_dict[RelativeLane.RIGHT_LANE] = common_subsegments + right_augmented_subsegs
@@ -530,7 +530,7 @@ class MapUtils:
     @staticmethod
     @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
     @prof.ProfileFunction()
-    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+    def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                          route_plan: RoutePlan, force_maneuver: Optional[ManeuverType] = None) -> \
                          Tuple[List[FrenetSubSegment], bool]:
         """
@@ -599,10 +599,6 @@ class MapUtils:
             elif len(valid_downstream_lanes.keys()) == 1:
                 # Turn the return of values() into list and access the lane segment ID
                 current_lane_id = list(valid_downstream_lanes.values())[0]
-                # check to see if cost isn't saturated
-                if route_costs_dict[current_lane_id][LANE_END_COST_IND] >= 1:
-                    is_partial = True
-                    break
             else:
                 # If there are multiple valid downstream lanes, used the forced maneuver specified.
                 # If no maneuver was specified, default to straight if it exists. Otherwise take first valid move
@@ -651,10 +647,15 @@ class MapUtils:
 
         route_cost_dict = route_plan.to_costs_dict()
 
-        # Collect downstream lanes whose road_segment_id is next_road_segment_id_on_plan
+        # Don't look at end costs when there is only a single downstream lane
         valid_downstream_ids = [lid for lid in downstream_lanes_ids
-                                if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan
-                                and route_cost_dict[lid][LANE_END_COST_IND] < 1]
+                                if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
+
+        # if there are multiple downstream lanes, filter the lanes further by lane end cost
+        if len(valid_downstream_ids) > 1:
+            valid_downstream_ids = [lid for lid in downstream_lanes_ids
+                                    if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan
+                                    and route_cost_dict[lid][LANE_END_COST_IND] < 1]
 
         # Verify that there is a downstream lane that continues along the navigation plan
         if len(valid_downstream_ids) == 0:

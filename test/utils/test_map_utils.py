@@ -191,7 +191,7 @@ def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     starting_lon = 20.
     lookahead_dist = 500.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    sub_segments, is_partial = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)
+    sub_segments, is_partial = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)
     assert len(sub_segments) == 5
     for seg in sub_segments:
         assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
@@ -231,7 +231,7 @@ def test_advanceByCost_navPlanDoesNotFitMap_partialLookahead(scene_static_pg_spl
 
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
     # validate getting the relevant exception
-    subsegs, is_partial = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, route_plan)
+    subsegs, is_partial = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
 
     subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
 
@@ -269,7 +269,7 @@ def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg
 
     # test the case when the navigation plan is too short; validate the relevant exception
     try:
-        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, route_plan)
+        MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
         assert False
     except NavigationPlanTooShort:
         assert True
@@ -298,7 +298,7 @@ def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialLookahead(scene
                                                           RoutePlanLaneSegment(302,0,0)])
 
     # test the case when the map is too short; validate partial lookahead is done
-    subsegs, is_partial = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookadhead_dist, route_plan)
+    subsegs, is_partial = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookadhead_dist, route_plan)
     subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
 
     # make sure the subsegments are in the correct order

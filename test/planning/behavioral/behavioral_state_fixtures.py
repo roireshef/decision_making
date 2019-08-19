@@ -212,7 +212,7 @@ def state_with_surrounding_objects(route_plan_20_30: RoutePlan):
         parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
-        next_sub_segments, _ = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, route_plan_20_30)
+        next_sub_segments, _ = MapUtils._advance_by_cost(parallel_lane_id, ego_lane_lon, 20, route_plan_20_30)
         obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].e_i_SEnd]
         obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].e_i_SegmentID]
 
@@ -259,8 +259,8 @@ def state_with_surrounding_objects_and_off_map_objects(route_plan_20_30: RoutePl
         parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
-        next_sub_segments, _ = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20,
-                                                      route_plan=route_plan_20_30)
+        next_sub_segments, _ = MapUtils._advance_by_cost(parallel_lane_id, ego_lane_lon, 20,
+                                                         route_plan=route_plan_20_30)
         obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].e_i_SEnd]
         obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].e_i_SegmentID]
         for i, obj_lane_lon in enumerate(obj_lane_lons):
@@ -312,7 +312,7 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
-    next_sub_segments, _ = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20, route_plan_20_30)
+    next_sub_segments, _ = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 20, route_plan_20_30)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 10.2
@@ -387,7 +387,7 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
-    next_sub_segments, _ = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, route_plan_20_30)
+    next_sub_segments, _ = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 3.8, route_plan_20_30)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
@@ -430,7 +430,7 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
-    next_sub_segments, _ = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, route_plan_20_30)
+    next_sub_segments, _ = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 3.8, route_plan_20_30)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
@@ -638,7 +638,7 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
-    next_sub_segments, _ = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, route_plan_20_30)
+    next_sub_segments, _ = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 58, route_plan_20_30)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 30
@@ -677,7 +677,7 @@ def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
-    next_sub_segments, _ = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, route_plan_20_30)
+    next_sub_segments, _ = MapUtils._advance_by_cost(lane_id, ego_lane_lon, 3.8, route_plan_20_30)
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
