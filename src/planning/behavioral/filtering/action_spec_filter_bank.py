@@ -2,13 +2,13 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.global_constants import EPS
+from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, AggressivenessLevel
+    RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
@@ -405,4 +405,31 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
             self._raise_true()
 
         return lane_s_start_ahead[slow_points], speed_limits[slow_points]
+
+
+class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
+    SPEED_THRESHOLDS = [3, 6, 9, 12, 14, 100]  # in [m/s]
+    TIME_THRESHOLDS = [7, 8, 10, 13, 15, 19]  # in [s]
+
+    @staticmethod
+    def stop_time_for_speed(speed: float) -> float:
+        """ defined by the system requirements """
+        assert max(FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
+        for idx, speed_threshold in enumerate(FilterStopActionIfTooSoonByTime.SPEED_THRESHOLDS):
+            if speed < speed_threshold:
+                return FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS[idx]
+
+    @staticmethod
+    def is_time_to_stop(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
+        ego_speed = behavioral_state.projected_ego_fstates[action_spec.recipe.relative_lane][FS_SV]
+        maximal_stop_time = FilterStopActionIfTooSoonByTime.stop_time_for_speed(ego_speed)
+
+        action_stop_time = action_spec.t
+
+        return action_stop_time < maximal_stop_time
+
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
+        return np.array([(not isinstance(action_spec.recipe, RoadSignActionRecipe)) or
+                         FilterStopActionIfTooSoonByTime.is_time_to_stop(action_spec, behavioral_state)
+                         if (action_spec is not None) else False for action_spec in action_specs])
 
