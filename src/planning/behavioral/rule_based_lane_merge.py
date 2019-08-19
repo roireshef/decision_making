@@ -24,9 +24,12 @@ class ActorState:
 
 
 class LaneMergeState:
-    def __init__(self, host_fstate: FrenetState1D, actors: List[ActorState]):
-        self.host_fstate = host_fstate  # SX is negative: -dist_to_red_line
+    def __init__(self, ego_fstate: FrenetState1D, ego_size: ObjectSize, actors: List[ActorState],
+                 merge_point_red_line_dist: float):
+        self.ego_fstate = ego_fstate  # SX is negative: -dist_to_red_line
+        self.ego_size = ego_size
         self.actors = actors
+        self.merge_point_red_line_dist = merge_point_red_line_dist
 
 
 class RuleBasedLaneMerge:
@@ -35,30 +38,32 @@ class RuleBasedLaneMerge:
     VEL_GRID_RESOLUTION = 0.5
 
     @staticmethod
-    def create_lane_merge_state(state: State, behavioral_state: BehavioralGridState) -> Optional[LaneMergeState]:
+    def create_lane_merge_state(state: State, behavioral_state: BehavioralGridState) -> [Optional[LaneMergeState], float]:
         """
         Given the current state, find the lane merge ahead and cars on the main road upstream the merge point.
         :param state: current state
         :param behavioral_state: current behavioral grid state
-        :return: lane_id having merge connectivity (and overlap with other lanes) or None if there is no merge;
-                 list of actors on the main road
+        :return: lane merge state or None (if no merge), s of merge-point in GFF
         """
         gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-        ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
+        ego_fstate_on_gff = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
 
         # Find the lanes before and after the merge point
-        merge_lane_id = MapUtils.get_closest_lane_merge(gff, ego_fstate[FS_SX], merge_lookahead=MERGE_LOOKAHEAD)
+        merge_lane_id = MapUtils.get_closest_lane_merge(gff, ego_fstate_on_gff[FS_SX], merge_lookahead=MERGE_LOOKAHEAD)
         if merge_lane_id is None:
-            return None
+            return None, 0
         after_merge_lane_id = MapUtils.get_downstream_lanes(merge_lane_id)[0]
         main_lane_ids, main_lanes_s = MapUtils.get_straight_upstream_downstream_lanes(
             after_merge_lane_id, max_back_horizon=MAX_BACK_HORIZON, max_ahead_horizon=MAX_AHEAD_HORIZON)
         if len(main_lane_ids) == 0:
-            return None
+            return None, 0
 
-        # calculate distance from ego to the red line
-        dist_to_red_line = gff.convert_from_segment_state(np.zeros(FS_2D_LEN), merge_lane_id)[FS_SX] - \
-                           ego_fstate[FS_SX] - state.ego_state.size.length/2
+        # calculate s of the red line, as s on GFF of the merge lane segment origin
+        red_line_in_gff = gff.convert_from_segment_state(np.zeros(FS_2D_LEN), merge_lane_id)[FS_SX]
+        # calculate s of the merge point, as s on GFF of segment origin of after-merge lane
+        merge_point_in_gff = gff.convert_from_segment_state(np.zeros(FS_2D_LEN), after_merge_lane_id)[FS_SX]
+        # calculate distance from ego to the merge point
+        dist_to_merge_point = merge_point_in_gff - ego_fstate_on_gff[FS_SX]
 
         # check existence of cars on the upstream main road
         actors = []
@@ -71,29 +76,31 @@ class RuleBasedLaneMerge:
                     obj_fstate = np.concatenate(([obj_s], obj.map_state.lane_fstate[FS_SV:]))
                     actors.append(ActorState(obj.size, obj_fstate))
 
-        host_fstate = np.array([-dist_to_red_line, ego_fstate[FS_SV], ego_fstate[FS_SA]])
-        return LaneMergeState(host_fstate, actors)  # a car was found on the main road
+        ego_in_lane_merge = np.array([-dist_to_merge_point, ego_fstate_on_gff[FS_SV], ego_fstate_on_gff[FS_SA]])
+        return LaneMergeState(ego_in_lane_merge, behavioral_state.ego_state.size, actors,
+                              merge_point_in_gff - red_line_in_gff), merge_point_in_gff
 
     @staticmethod
-    def create_safe_merge_actions(behavioral_state: BehavioralGridState, lane_merge_state: LaneMergeState) -> List[ActionSpec]:
+    def create_safe_merge_actions(lane_merge_state: LaneMergeState, merge_point_in_gff: float) -> List[ActionSpec]:
         """
         Create all possible actions to the merge point, filter unsafe actions, filter actions exceeding vel-acc limits,
         calculate time-jerk cost for the remaining actions.
-        :param behavioral_state: behavioral grid state for the ego road
         :param lane_merge_state: LaneMergeState containing distance to merge and actors
+        :param merge_point_in_gff: s of merge point on GFF
         :return: list of action specs
         """
         t_arr = np.arange(0, BP_ACTION_T_LIMITS[1], RuleBasedLaneMerge.TIME_GRID_RESOLUTION)
         v_arr = np.arange(0, VELOCITY_LIMITS[1], RuleBasedLaneMerge.VEL_GRID_RESOLUTION)
+        # TODO: check safety also on the red line, besides the merge point
         safety_matrix = RuleBasedLaneMerge._create_safety_matrix(lane_merge_state.actors, t_arr, v_arr)
         vi, ti = np.where(safety_matrix)
         T, v_T = t_arr[ti], v_arr[vi]
 
         # calculate the actions' distance (the same for all actions)
-        dx = -lane_merge_state.host_fstate[FS_SX] - behavioral_state.ego_state.size.length / 2
+        dx = -lane_merge_state.ego_fstate[FS_SX] - lane_merge_state.ego_size.length / 2
 
         # calculate s_profile coefficients for all actions
-        ego_fstate = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
+        ego_fstate = lane_merge_state.ego_fstate
         initial_fstates = np.c_[np.zeros_like(T), np.full(T.shape, ego_fstate[FS_SV]), np.full(T.shape, ego_fstate[FS_SA])]
         terminal_fstates = np.c_[np.full(T.shape, dx), v_T, np.zeros_like(T)]
         poly_coefs, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates, terminal_fstates, T < TRAJECTORY_TIME_RESOLUTION)
@@ -103,7 +110,8 @@ class RuleBasedLaneMerge:
         valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], VELOCITY_LIMITS)
         valid_idxs = np.where(valid_acc)[0][valid_vel]
 
-        actions = [ActionSpec(t, v_T, ego_fstate[FS_SX] + dx, 0, None) for t, v_T in zip(T[valid_idxs], v_T[valid_idxs])]
+        actions = [ActionSpec(t, v_T, merge_point_in_gff + ego_fstate[FS_SX] + dx, 0, None)
+                   for t, v_T in zip(T[valid_idxs], v_T[valid_idxs])]
         return actions
 
     @staticmethod
@@ -168,8 +176,10 @@ class RuleBasedLaneMerge:
         back_accel = 0  # maximal acceleration of back actor during the merge
 
         front_v = np.maximum(0, actor_v - T * front_decel)  # target velocity of the front actor
+        front_decel_T = T[actor_v > T * front_decel]
+        front_decel_T = np.concatenate((front_decel_T, [actor_v/front_decel] * (T.shape[0] - front_decel_T.shape[0])))
         back_v = actor_v + T * back_accel  # target velocity of the front actor
-        front_s = actor_s + T * actor_v - 0.5 * front_decel * T * T - cars_margin  # s of front actor at time t
+        front_s = actor_s + T * actor_v - 0.5 * front_decel * front_decel_T * front_decel_T - cars_margin  # s of front actor at time t
         back_s = actor_s + T * actor_v + 0.5 * back_accel * T * T + cars_margin  # s of back actor at time t
         front_disc = a * a * td * td + 2 * a * front_s + front_v * front_v  # discriminant for front actor
         back_disc = back_v * back_v + 2 * a * (tda * back_v + back_s)  # discriminant for back actor
