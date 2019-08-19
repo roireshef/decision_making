@@ -89,7 +89,7 @@ class RuleBasedLaneMerge:
         :param merge_point_in_gff: s of merge point on GFF
         :return: list of action specs
         """
-        t_arr = np.arange(0, BP_ACTION_T_LIMITS[1], RuleBasedLaneMerge.TIME_GRID_RESOLUTION)
+        t_arr = np.arange(RuleBasedLaneMerge.TIME_GRID_RESOLUTION, BP_ACTION_T_LIMITS[1], RuleBasedLaneMerge.TIME_GRID_RESOLUTION)
         v_arr = np.arange(0, VELOCITY_LIMITS[1], RuleBasedLaneMerge.VEL_GRID_RESOLUTION)
         # TODO: check safety also on the red line, besides the merge point
         safety_matrix = RuleBasedLaneMerge._create_safety_matrix(lane_merge_state.actors, t_arr, v_arr)
@@ -176,10 +176,10 @@ class RuleBasedLaneMerge:
         back_accel = 0  # maximal acceleration of back actor during the merge
 
         front_v = np.maximum(0, actor_v - T * front_decel)  # target velocity of the front actor
-        front_decel_T = T[actor_v > T * front_decel]
-        front_decel_T = np.concatenate((front_decel_T, [actor_v/front_decel] * (T.shape[0] - front_decel_T.shape[0])))
+        front_T = T[actor_v > T * front_decel]
+        front_T = np.concatenate((front_T, [actor_v/front_decel] * (T.shape[0] - front_T.shape[0])))
         back_v = actor_v + T * back_accel  # target velocity of the front actor
-        front_s = actor_s + T * actor_v - 0.5 * front_decel * front_decel_T * front_decel_T - cars_margin  # s of front actor at time t
+        front_s = actor_s + front_T * actor_v - 0.5 * front_decel * front_T * front_T - cars_margin  # s of front actor at time t
         back_s = actor_s + T * actor_v + 0.5 * back_accel * T * T + cars_margin  # s of back actor at time t
         front_disc = a * a * td * td + 2 * a * front_s + front_v * front_v  # discriminant for front actor
         back_disc = back_v * back_v + 2 * a * (tda * back_v + back_s)  # discriminant for back actor
