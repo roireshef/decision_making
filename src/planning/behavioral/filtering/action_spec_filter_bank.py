@@ -408,28 +408,23 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
 
 
 class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
-    SPEED_THRESHOLDS = [3, 6, 9, 12, 14, 100]  # in [m/s]
-    TIME_THRESHOLDS = [7, 8, 10, 13, 15, 19]  # in [s]
+    # thresholds are defined by the system requirements
+    SPEED_THRESHOLDS = np.array([3, 6, 9, 12, 14, 100])  # in [m/s]
+    TIME_THRESHOLDS = np.array([7, 8, 10, 13, 15, 19.8])  # in [s]
 
     @staticmethod
-    def stop_time_for_speed(speed: float) -> float:
-        """ defined by the system requirements """
+    def _is_time_to_stop(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
         assert max(FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
-        for idx, speed_threshold in enumerate(FilterStopActionIfTooSoonByTime.SPEED_THRESHOLDS):
-            if speed < speed_threshold:
-                return FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS[idx]
-
-    @staticmethod
-    def is_time_to_stop(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
         ego_speed = behavioral_state.projected_ego_fstates[action_spec.recipe.relative_lane][FS_SV]
-        maximal_stop_time = FilterStopActionIfTooSoonByTime.stop_time_for_speed(ego_speed)
+        # lookup maximal time threshold
+        indices = np.where(FilterStopActionIfTooSoonByTime.SPEED_THRESHOLDS > ego_speed)[0]
+        maximal_stop_time = FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS[indices[0]] \
+            if len(indices) > 0 else BP_ACTION_T_LIMITS[1]
 
-        action_stop_time = action_spec.t
-
-        return action_stop_time < maximal_stop_time
+        return action_spec.t < maximal_stop_time
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         return np.array([(not isinstance(action_spec.recipe, RoadSignActionRecipe)) or
-                         FilterStopActionIfTooSoonByTime.is_time_to_stop(action_spec, behavioral_state)
+                         FilterStopActionIfTooSoonByTime._is_time_to_stop(action_spec, behavioral_state)
                          if (action_spec is not None) else False for action_spec in action_specs])
 

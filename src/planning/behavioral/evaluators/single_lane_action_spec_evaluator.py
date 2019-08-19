@@ -105,4 +105,4 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         """
         road_sign_action = action_recipes[road_sign_idx]
         # Avoid AGGRESSIVE stop. TODO relax the restriction of not selective an aggressive road sign
-        return road_sign_action.aggressiveness == AggressivenessLevel.AGGRESSIVE
+        return road_sign_action.aggressiveness != AggressivenessLevel.CALM
