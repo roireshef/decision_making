@@ -32,6 +32,9 @@ LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 # Minimum cost difference required to prefer one lane over another
 MINIMUM_REQUIRED_COST_DIFFERENCE = 0.1
 
+# Prefer left or right split when the costs are the same
+PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = 0
+
 # After a change of TP costs run the following test:
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
 
