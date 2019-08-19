@@ -1,6 +1,7 @@
 import numpy as np
 
 import rte.python.profiler as prof
+from decision_making.src.exceptions import OutOfSegmentFront, OutOfSegmentBack
 from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST, EPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
@@ -65,12 +66,16 @@ class TrajectoryPlannerCosts:
                          if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
 
         with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(close_objects), ctrajectories.shape)):
-            if len(close_objects) == 0:
-                return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
-
             # calculate objects' map_state
-            objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
-                                                 for obj in close_objects])
+            objects_relative_fstates = []
+            for obj in close_objects:
+                try:
+                    objects_relative_fstates.append(reference_route.cstate_to_fstate(obj.cartesian_state))
+                except (OutOfSegmentBack, OutOfSegmentFront) as e:
+                    continue
+            if len(objects_relative_fstates) == 0:
+                return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
+            objects_relative_fstates = np.array(objects_relative_fstates)
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
