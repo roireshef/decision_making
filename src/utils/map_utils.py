@@ -551,7 +551,12 @@ class MapUtils:
     @raises(DownstreamLaneNotFound, NavigationPlanDoesNotFitMap)
     def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, int]:
         """
-        TODO: Fill this in
+        Find's downstream lanes from the current_lane_id lane that are on the route_plan.
+        Lanes with saturated end costs are not valid when there are multiple downstreams
+        Lanes with saturated costs are accepted when it is the only downstream lane
+        :param current_lane_id: Lane ID of current lane
+        :param route_plan: Route plan that contains desired roads and lane costs
+        :return: Dictionary mapping the maneuver type to the downstream lane ID
         """
         # Get next road segment on route_plan
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(current_lane_id)
