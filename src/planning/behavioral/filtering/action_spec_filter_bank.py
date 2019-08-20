@@ -414,6 +414,13 @@ class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
 
     @staticmethod
     def _is_time_to_stop(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
+        """
+        Checks whether a stop action should start, or if it is too early for it to act.
+        The allowed values are defined by the system requirements. See R14 in UltraCruise use cases
+        :param action_spec: the action spec to test
+        :param behavioral_state: state of the world
+        :return: True if the action should start, False otherwise
+        """
         assert max(FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
         ego_speed = behavioral_state.projected_ego_fstates[action_spec.recipe.relative_lane][FS_SV]
         # lookup maximal time threshold
