@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, ROUTE_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
@@ -20,14 +20,13 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
-from decision_making.src.state.state_module import DynamicObjectsData
+from decision_making.src.state.state import DynamicObjectsData
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.route.route_planner_mock import RoutePlannerMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
-from decision_making.test.state.state_module_mock import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
@@ -324,16 +323,6 @@ def route_planner_facade(state, pubsub, route_plan_1_2):
     route_plan_mock.start()
     yield route_plan_mock
     route_plan_mock.stop()
-
-
-@pytest.fixture(scope='function')
-def state_module(state, pubsub):
-    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-
-    state_mock = StateModuleMock(pubsub, logger, state)
-    state_mock.start()
-    yield state_mock
-    state_mock.stop()
 
 
 @pytest.fixture(scope='function')

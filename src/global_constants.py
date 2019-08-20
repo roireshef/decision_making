@@ -259,7 +259,6 @@ TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
 ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
-STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 
 #### MetricLogger
 METRIC_LOGGER_DELIMITER = '_'
@@ -276,7 +275,6 @@ LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action 
 LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
 LOG_MSG_RECEIVED_STATE = "Received state"
-LOG_MSG_STATE_MODULE_PUBLISH_STATE = "Publishing State"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
 LOG_MSG_ROUTE_PLANNER_IMPL_TIME = "ROUTE Facade._periodic_action_impl time"

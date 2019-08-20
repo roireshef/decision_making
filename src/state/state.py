@@ -292,7 +292,7 @@ class State(PUBSUB_MSG_IMPL):
         # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> None
         """
         main class for the world state. deep copy is required by self.clone_with!
-        :param is_sampled: indicates if this state is sampled from a trajectory (and wasn't received from state_module)
+        :param is_sampled: indicates if this state is sampled from a trajectory (and wasn't received from scene_dynamic)
         :param occupancy_state: free space
         :param dynamic_objects:
         :param ego_state:

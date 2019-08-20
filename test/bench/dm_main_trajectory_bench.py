@@ -4,7 +4,7 @@ from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization, DEFAULT_MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
-    FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN, STATE_MODULE_NAME_FOR_LOGGING
+    FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
@@ -14,7 +14,6 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.types import C_Y
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
-from decision_making.src.state.state_module import StateModule
 from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
 from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
@@ -24,21 +23,6 @@ from rte.python.os import catch_interrupt_signals
 
 
 class DmMockInitialization:
-
-    @staticmethod
-    def create_state_module() -> StateModule:
-        """
-        The purpose of this initialization is to generate a state module holding an initial empty list of dynamic object.
-        The purpose here is to continuously publish localization (as long as it is available from the IMU) without waiting
-        for a dynamic object update.
-        :return:
-        """
-        logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-
-        pubsub = PubSub()
-
-        state_module = StateModule(pubsub, logger, None)
-        return state_module
 
     @staticmethod
     def create_trajectory_planner(fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
@@ -72,10 +56,6 @@ def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE):
     """
     modules_list = \
         [
-            DmProcess(lambda: DmMockInitialization.create_state_module(map_file),
-                      trigger_type=DmTriggerType.DM_TRIGGER_NONE,
-                      trigger_args={}),
-
             DmProcess(lambda: DmInitialization.create_behavioral_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),

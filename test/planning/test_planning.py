@@ -23,12 +23,10 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
-from decision_making.src.state.state_module import StateModule
-
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
 
-from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
+from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, \
     state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2
 
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
