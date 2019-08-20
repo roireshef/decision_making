@@ -26,6 +26,14 @@ class FilterIfNone(ActionSpecFilter):
                          for action_spec in action_specs])
 
 
+class FilterForSLimit(ActionSpecFilter):
+    """
+    Check if target s value of action spec is inside s limit of the appropriate GFF.
+    """
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [spec.s <= behavioral_state.extended_lane_frames[spec.relative_lane].s_max for spec in action_specs]
+
+
 class FilterForKinematics(ActionSpecFilter):
     @prof.ProfileFunction()
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
