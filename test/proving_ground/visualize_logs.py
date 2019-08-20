@@ -58,7 +58,6 @@ def plot_dynamics(log_file_path: str):
 
         if 'Received state' in text:
             state_str = text.split('Received state: ')[1]
-            # state_str = split_str[1]
             state_dict = ast.literal_eval(state_str)
             ego_cv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_V])
             ego_ca.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_A])

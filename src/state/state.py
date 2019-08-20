@@ -408,6 +408,9 @@ class State(PUBSUB_MSG_IMPL):
         :return: valid State object
         """
 
+        if scene_dynamic is None:
+            return
+
         timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
 

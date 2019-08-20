@@ -27,6 +27,7 @@ from decision_making.test.planning.behavioral.mock_behavioral_facade import Beha
 from decision_making.test.planning.route.route_planner_mock import RoutePlannerMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
+from decision_making.test.state.scene_dynamic_mock import SceneDynamicMock
 from rte.python.logger.AV_logger import AV_Logger
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
@@ -326,7 +327,17 @@ def route_planner_facade(state, pubsub, route_plan_1_2):
 
 
 @pytest.fixture(scope='function')
-def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg):
+def scene_dynamic_mock(scene_dynamic_fix_single_host_hypothesis, pubsub):
+    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+
+    scene_dynamic_mock = SceneDynamicMock(pubsub, logger, scene_dynamic_fix_single_host_hypothesis)
+    scene_dynamic_mock.start()
+    yield scene_dynamic_mock
+    scene_dynamic_mock.stop()
+
+
+@pytest.fixture(scope='function')
+def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg, state):
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
     behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trajectory_params=trajectory_params,

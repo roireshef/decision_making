@@ -6,6 +6,7 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTOR
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
+from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
@@ -26,12 +27,12 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
 
-from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, \
+from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, scene_dynamic_mock, \
     state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2
 
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
-                                                                        state_module: StateModule,
+                                                                        scene_dynamic_mock,
                                                                         scene_static_short_testable):
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
 
@@ -52,13 +53,13 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
     pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PLAN, trajectory_publish_mock)
 
-    state_module.periodic_action()
+    scene_dynamic_mock.periodic_action()
     trajectory_facade.start()
 
     pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_testable.serialize())
 
     behavioral_facade.periodic_action()
-    state_module.periodic_action()
+    scene_dynamic_mock.periodic_action()
     trajectory_facade.periodic_action()
 
     # if this fails, that means BP did not publish a message - debug exceptions in TrajectoryPlanningFacade
@@ -73,7 +74,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_publish_mock.assert_called_once()
 
 
-def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module:StateModule,
+def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, scene_dynamic_mock,
                                                                   route_planner_facade: RoutePlanningFacade,
                                                                   scene_static_short_testable):
 
@@ -96,7 +97,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
                                           value_approximator=ZeroValueApproximator(bp_logger),
                                           predictor=predictor, logger=bp_logger)
 
-    state_module.periodic_action()
+    scene_dynamic_mock.periodic_action()
     route_planner_facade.periodic_action()
 
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
@@ -114,7 +115,6 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_testable.serialize())
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
-
 
     # if this fails, that means BP did not publish a message - debug exceptions in BehavioralFacade
     behavioral_publish_mock.assert_called_once()
