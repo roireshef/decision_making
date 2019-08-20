@@ -37,7 +37,7 @@ MINIMUM_REQUIRED_COST_DIFFERENCE = 0.1
 MINIMUM_REQUIRED_DIST_LANE_AHEAD = 1
 
 # Prefer left or right split when the costs are the same
-PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = 0
+PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False
 
 # After a change of TP costs run the following test:
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
