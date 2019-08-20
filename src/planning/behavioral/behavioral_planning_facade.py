@@ -82,6 +82,8 @@ class BehavioralPlanningFacade(DmModule):
 
             state = preprocessed_state.handle_negative_velocities(preprocessed_state, self.logger)
 
+            self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
+
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
