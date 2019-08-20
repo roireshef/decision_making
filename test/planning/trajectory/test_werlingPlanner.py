@@ -519,42 +519,44 @@ def test_computeObstacleCosts_actorOnLeftLaneTouchesSameLane_trajectoryDeviatesF
     end_d = init_d
     v = 10
     T = 4
+    obj_size = ObjectSize(4, 2, 0)
+
     # Ego has same-lane trajectory, moves with constant longitudinal velocity 10 m/s during 8 seconds.
     init_fstate = np.array([s, v, 0, init_d, 0, 0])
     target_fstate = np.array([s + T * v, v, 0, end_d, 0, 0])
 
-    # Actor moves on the left lane, such that it touches the border of the same lane
-    obj_size = ObjectSize(4, 2, 0)
-    obj_map_state = MapState(np.array([s, v, 0, -lane_width/2 + obj_size.width/2, 0, 0]), left_lane_id)
+    for obj_d in np.arange(-lane_width/2 + obj_size.width/4, 0, obj_size.width/4):
+        # Actor moves on the left lane, but deviates to the same lane
+        obj_map_state = MapState(np.array([s, v, 0, obj_d, 0, 0]), left_lane_id)
 
-    # create State
-    ego_map_state = MapState(init_fstate, lane_id)
-    ego = EgoState.create_from_map_state(0, 0, ego_map_state, obj_size, 0, off_map=False)
-    ego_size = ego.size
-    obj = DynamicObject.create_from_map_state(1, 0, obj_map_state, obj_size, 0, off_map=False)
-    state = State(False, None, [obj], ego)
+        # create State
+        ego_map_state = MapState(init_fstate, lane_id)
+        ego = EgoState.create_from_map_state(0, 0, ego_map_state, obj_size, 0, off_map=False)
+        ego_size = ego.size
+        obj = DynamicObject.create_from_map_state(1, 0, obj_map_state, obj_size, 0, off_map=False)
+        state = State(False, None, [obj], ego)
 
-    frenet_frame = MapUtils.get_lane_frenet_frame(ego.map_state.lane_id)
-    sub_segment = FrenetSubSegment(ego.map_state.lane_id, 0, frenet_frame.s_max)
-    reference_route = GeneralizedFrenetSerretFrame.build([frenet_frame], [sub_segment])
+        frenet_frame = MapUtils.get_lane_frenet_frame(ego.map_state.lane_id)
+        sub_segment = FrenetSubSegment(ego.map_state.lane_id, 0, frenet_frame.s_max)
+        reference_route = GeneralizedFrenetSerretFrame.build([frenet_frame], [sub_segment])
 
-    goal = reference_route.fstate_to_cstate(target_fstate)
+        goal = reference_route.fstate_to_cstate(target_fstate)
 
-    # calculate obstacle costs for each trajectory
-    predictor = RoadFollowingPredictor(logger)
-    cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego_map_state, ego_size)
+        # calculate obstacle costs for each trajectory
+        predictor = RoadFollowingPredictor(logger)
+        cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego_map_state, ego_size)
 
-    # run Werling planner
-    planner = WerlingPlanner(logger, predictor)
-    _, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route,
-                                           goal=goal, T_target_horizon=T, T_trajectory_end_horizon=T,
-                                           cost_params=cost_params)
+        # run Werling planner
+        planner = WerlingPlanner(logger, predictor)
+        _, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route,
+                                               goal=goal, T_target_horizon=T, T_trajectory_end_horizon=T,
+                                               cost_params=cost_params)
 
-    final_state = ctrajectories[0][-1]
-    final_cstate = np.concatenate((final_state, np.array([0, 0])))
-    final_ego_latitude = reference_route.cstate_to_fstate(final_cstate)[FS_DX]
-    dist_between_vehicles = obj_map_state.lane_fstate[FS_DX] + lane_width - final_ego_latitude - obj_size.width
-    assert 1 <= dist_between_vehicles <= lane_width - obj_size.width
+        final_state = ctrajectories[0][-1]
+        final_cstate = np.concatenate((final_state, np.array([0, 0])))
+        final_ego_latitude = reference_route.cstate_to_fstate(final_cstate)[FS_DX]
+        dist_between_vehicles = obj_map_state.lane_fstate[FS_DX] + lane_width - final_ego_latitude - obj_size.width
+        assert 1 <= dist_between_vehicles <= lane_width - obj_size.width
 
 
 def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
