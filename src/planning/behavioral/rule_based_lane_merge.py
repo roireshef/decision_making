@@ -161,7 +161,7 @@ class RuleBasedLaneMerge:
         T_init, s_init = RuleBasedLaneMerge._specify(v_0, a_0, VELOCITY_LIMITS[1], w_T_grid, w_J_grid)
 
         # calculate final quartic actions
-        v_T_unique, unique_inverse = np.unique(v_T, return_inverse=True)
+        v_T_unique, unique_indices, unique_inverse = np.unique(v_T, return_index=True, return_inverse=True)
         v_T_meshgrid, _ = np.meshgrid(v_T_unique, w_J_grid, indexing='ij')
         v_T_meshgrid = v_T_meshgrid.ravel()
         w_J_meshgrid = np.tile(w_J_grid, v_T_unique.shape[0])
@@ -177,6 +177,7 @@ class RuleBasedLaneMerge:
         valid_actions = np.logical_and(~np.isnan(s_mid), s_mid >= 0)
         if not valid_actions.any():
             return []
+
         T_mid = s_mid / VELOCITY_LIMITS[1]
         T_total = T_init + T_mid + T_end
 
