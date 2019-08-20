@@ -13,7 +13,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     state_with_same_lane_ending_no_right_lane, state_with_lane_split_on_right, state_with_lane_split_on_left, \
     state_with_lane_split_on_left_and_right, state_with_lane_split_on_right_ending, route_plan_lane_split_on_right_ends, \
     state_with_lane_split_on_left_ending, route_plan_lane_split_on_left_ends, state_with_lane_split_on_left_and_right_ending, \
-    route_plan_lane_splits_on_left_and_right_end
+    route_plan_lane_splits_on_left_and_right_end, route_plan_lane_splits_offset, state_with_lane_split_on_left_and_right_offset
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_left_lane_ends, route_plan_right_lane_ends, \
     route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
@@ -203,6 +203,22 @@ def test_createFromState_laneSplitOnLeftAndRight_augmentedPartialGffOnLeftAndRig
     assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
     assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial
 
+
+def test_createFromState_laneSplitOnLeftAndRight_augmentedGffOnLeftAndRightOffset(state_with_lane_split_on_left_and_right_offset,
+                                                                                   route_plan_lane_splits_offset):
+    """
+    Host is on one-lane road, lane splits on the left and right are ahead, and the new lanes end shortly thereafter.
+    The left split comes before the right split.
+    The left and right GFFs should be augmented, and the same lane GFF should be normal.
+    """
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_and_right_offset,
+                                                                  route_plan_lane_splits_offset, None)
+    gffs = behavioral_grid_state.extended_lane_frames
+
+    # Check GFF Types
+    assert gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
+    assert gffs[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented
 
 def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_surrounding_objects, behavioral_grid_state):
     """
