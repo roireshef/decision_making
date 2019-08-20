@@ -2,8 +2,7 @@ import pytest
 import numpy as np
 import pickle
 from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, PG_PICKLE_FILE_NAME, \
-    ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME, \
-    OVAL_WITH_SPLITS_PICKLE_FILE_NAME
+    ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME
 from decision_making.paths import Paths
 from decision_making.src.messages.scene_static_message import MapRoadSegmentType, LaneSegmentConnectivity, ManeuverType, SceneRoadSegment
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
@@ -28,10 +27,6 @@ def scene_static_pg_split():
 @pytest.fixture
 def scene_static_accel_towards_vehicle():
     return pickle.load(open(Paths.get_scene_static_absolute_path_filename(ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME), 'rb'))
-
-@pytest.fixture
-def scene_static_oval_with_splits():
-    return pickle.load(open(Paths.get_scene_static_absolute_path_filename(OVAL_WITH_SPLITS_PICKLE_FILE_NAME), 'rb'))
 
 
 @pytest.fixture
@@ -189,7 +184,7 @@ def scene_static_left_fork():
     ssb = scene.s_Data.s_SceneStaticBase
 
     # add a 3rd road segment
-    ssb.as_scene_road_segment.append(SceneRoadSegment(3, 0, 1, np.array([30]), MapRoadSegmentType.Normal,
+    ssb.as_scene_road_segment.append(SceneRoadSegment(3, 1, np.array([30]), MapRoadSegmentType.Normal,
                                                                                  1, np.array([2]), 0, np.array([])))
     ssb.e_Cnt_num_road_segments += 1
 
