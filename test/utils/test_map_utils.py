@@ -18,7 +18,8 @@ from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound, ValidLaneAheadTooShort
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
-    left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends
+    left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
+    left_lane_split_scene_static, scene_static_lane_split_on_left_ends
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 
 
@@ -44,14 +45,12 @@ def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split:
     assert len(actual) == 1
     assert actual[0] == 12.0
 
-
 def test_getRoadSegmentIdFromLaneId_correct(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     lane_id = 222
     expected_result = 22
     actual_result = MapUtils.get_road_segment_id_from_lane_id(lane_id)
     assert actual_result == expected_result
-
 
 def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate(scene_static_pg_split):
     """
@@ -87,7 +86,7 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static_pg_spl
     dist_to_right, dist_to_left = MapUtils.get_dist_to_lane_borders(lane_ids[0], 0)
     assert dist_to_right == dist_to_left
 
-def test_getLookaheadFrenetFrameByCost_leftLaneEnds(scene_static_left_lane_ends, route_plan_1_2):
+def test_getLookaheadFrenetFrameByCost_onEndingLane_PartialGFFCreated(scene_static_left_lane_ends, route_plan_1_2):
     """
     Make sure a partial GFF is created when the left lane suddenly ends
     :param scene_static_left_lane_ends:
@@ -98,12 +97,39 @@ def test_getLookaheadFrenetFrameByCost_leftLaneEnds(scene_static_left_lane_ends,
     starting_lon = 800
     starting_lane = 12
 
-    del route_plan_1_2.s_Data.as_route_plan_lane_segments[-1]
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
 
     gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2)
+    # check partial SAME_LANE
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [12])
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Partial
+
+def test_getLookaheadFrenetFrameByCost_onFullLane_NormalGFFCreated(scene_static_right_lane_ends, route_plan_1_2):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_right_lane_ends)
+
+    starting_lon = 800
+    starting_lane = 11
+
+    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2)
+    assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [11,21])
+    assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+
+def test_getLookaheadFrenetFrameByCost_LeftSplitAugmentedGFFCreated(left_lane_split_scene_static, route_plan_1_2):
+    SceneStaticModel.get_instance().set_scene_static(left_lane_split_scene_static)
+
+    starting_lon = 700.
+    starting_lane = 11
+    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: False}
+
+    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment = can_augment)
+
+    # check same_lane
+    assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [11, 21])
+    # check augmented right lane
+    assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
+    assert np.array_equal(gff_dict[RelativeLane.LEFT_LANE].segment_ids, [11, 22])
 
 def test_getLookaheadFrenetFrameByCost_RightSplitAugmentedGFFCreated(right_lane_split_scene_static, route_plan_1_2):
     SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
@@ -114,7 +140,47 @@ def test_getLookaheadFrenetFrameByCost_RightSplitAugmentedGFFCreated(right_lane_
 
     gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
 
+    # check same_lane
+    assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [11, 21])
+    # check augmented right lane
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented
+    assert np.array_equal(gff_dict[RelativeLane.RIGHT_LANE].segment_ids, [11, 20])
+
+def test_getLookaheadFrenetFrameByCost_LeftRightSplitAugmentedGFFsCreated(left_right_lane_split_scene_static, route_plan_1_2):
+    SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static)
+    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
+
+    # Modify the route plan
+    # In order to match the scene static data, the left and right lane in the first road segment needs to be deleted since
+    # it does not exist in left_right_lane_split_scene_static.
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+    # delete index [0][1] instead of [0][2] since the first delete shifts all the indicies
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][1]
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 1
+
+    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(11, 600, route_plan_1_2, can_augment=can_augment)
+
+    assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
+    assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented
+    assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert gff_dict[RelativeLane.LEFT_LANE].has_segment_id(22)
+    assert gff_dict[RelativeLane.RIGHT_LANE].has_segment_id(20)
+    assert gff_dict[RelativeLane.SAME_LANE].has_segment_id(21)
+
+def test_getLookaheadFrenetFrameByCost_CanAugmentButNoSplit_NoAugmentedCreated(scene_static_short_testable, route_plan_1_2):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+    starting_lon = 700.
+    starting_lane = 11
+    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
+
+    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
+
+    # check same_lane
+    assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [11, 21])
+    assert RelativeLane.LEFT_LANE not in gff_dict
+    assert RelativeLane.RIGHT_LANE not in gff_dict
 
 def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(
         scene_static_pg_split, route_plan_20_30):
@@ -149,7 +215,6 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
     ff_cpoint = MapUtils.get_lane_frenet_frame(segment_id).fpoint_to_cpoint(segment_fstate[[FS_SX, FS_DX]])
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
-
 @patch('decision_making.src.utils.map_utils.MAX_HORIZON_DISTANCE', 900)
 def test_getLookaheadFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
     """
@@ -165,6 +230,7 @@ def test_getLookaheadFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_lane
     # In order to match the scene static data, the left and right lane in the first road segment needs to be deleted since
     # it does not exist in left_right_lane_split_scene_static.
     del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][0]
+    # delete index [0][1] instead of [0][2] since the first delete shifts all the indicies
     del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2_3.s_Data.a_Cnt_num_lane_segments[0] = 1
 
@@ -176,7 +242,6 @@ def test_getLookaheadFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_lane
     assert gff_dict[RelativeLane.LEFT_LANE].has_segment_id(22)
     assert gff_dict[RelativeLane.RIGHT_LANE].has_segment_id(20)
     assert gff_dict[RelativeLane.SAME_LANE].has_segment_id(21)
-
 
 def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static_pg_split, route_plan_20_30):
     """
@@ -308,7 +373,6 @@ def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialLookahead(scene
     assert is_partial == True
     assert is_augmented == False
 
-
 def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength(scene_static_pg_split):
     """
      test the method _get_upstream_lanes_from_distance
@@ -329,7 +393,6 @@ def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLengt
         tot_length += MapUtils.get_lane_length(lane_id)
     assert np.isclose(tot_length, backward_dist)
 
-
 def test_getUpstreamLanesFromDistance_smallBackwardDist_validateLaneIdAndLength(scene_static_pg_split):
     """
      test the method _get_upstream_lanes_from_distance
@@ -348,7 +411,6 @@ def test_getUpstreamLanesFromDistance_smallBackwardDist_validateLaneIdAndLength(
                                                                      backward_dist=small_backward_dist)
     assert lane_ids == [starting_lane_id]
     assert final_lon == starting_lon - small_backward_dist
-
 
 def test_getUpstreamLanesFromDistance_backwardDistForFullMap_validateSegmentsNumberAndFinalLon(scene_static_pg_split):
     """
@@ -369,7 +431,6 @@ def test_getUpstreamLanesFromDistance_backwardDistForFullMap_validateSegmentsNum
     # validate the number of segments and final longitude
     assert len(lane_ids) == len(road_segment_ids)
     assert final_lon == 0
-
 
 def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantException(scene_static_pg_split):
     """
@@ -410,14 +471,12 @@ def test_getUpstreamLanes_upstreamMatch(scene_static_pg_split):
     upstream_lane_ids = MapUtils.get_upstream_lane_ids(lane_id=current_lane_id)
     assert upstream_lane_ids[0] == upstream_of_current
 
-
 def test_getDownstreamLanes_downstreamMatch(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     current_lane_id = 212
     downstream_of_current = 222
     downstream_lane_ids = MapUtils.get_downstream_lane_ids(lane_id=current_lane_id)
     assert downstream_lane_ids[0] == downstream_of_current
-
 
 def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_static_pg_split):
     """
@@ -438,7 +497,6 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_
     closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2])
     assert lane_id == closest_lane_id
 
-
 def test_getClosestLane_nearLanesSeam_closestPointIsInternal(scene_static_pg_split):
     # take a far input point, such that there are two closest lanes from the point and
     # the closest point in one of them is internal point (not start/end point)
@@ -458,7 +516,6 @@ def test_getClosestLane_nearLanesSeam_closestPointIsInternal(scene_static_pg_spl
     cpoint = point_xy + distance_to_point * np.array([np.cos(normal_angle), np.sin(normal_angle)])
     lane = MapUtils.get_closest_lane(cpoint)
     MapUtils.get_lane_frenet_frame(lane).cpoint_to_fpoint(cpoint)  # verify that the conversion does not crash
-
 
 def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static_pg_split):
     # take an input point close to the lanes seam, such that there are two closest lanes from the point
@@ -486,7 +543,6 @@ def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static_pg_split):
     assert lane2 == lane_id2
     MapUtils.get_lane_frenet_frame(lane2).cpoint_to_fpoint(cpoint2)  # verify that the conversion does not crash
 
-
 def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene_static_pg_split):
     """
     test method get_lanes_ids_from_road_segment_id
@@ -499,7 +555,6 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[0])
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[-1])
 
-
 def test_getUpstreamLaneSubsegments_backwardHorizonOnLane_NoUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
     """
     Test _get_upstream_lane_subsegments
@@ -509,7 +564,6 @@ def test_getUpstreamLaneSubsegments_backwardHorizonOnLane_NoUpstreamLaneSubsegme
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(200, 100, 50)
     assert upstream_lane_subsegments == []
-
 
 def test_getUpstreamLaneSubsegments_backwardHorizonPassesBeginningOfLane_CorrectUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
     """
@@ -545,7 +599,6 @@ def test_getUpstreamLaneSubsegments_backwardHorizonPassesBeginningOfLane_Correct
 
     assert upstream_lane_subsegments[1].e_i_SStart == 0.0
     assert upstream_lane_subsegments[1].e_i_SEnd == 119.64304560784024
-
 
 def test_getUpstreamLaneSubsegments_NoUpstreamLane_CorrectUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
     """
