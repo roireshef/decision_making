@@ -8,7 +8,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic, Stati
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
+from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX, SIGN_S
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
@@ -40,11 +40,18 @@ def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split:
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
                                          e_Pct_confidence=1.0)
+    yield_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield, e_l_station=segment_s-1.0,
+                                         e_Pct_confidence=1.0)
+    stop_bar = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopBar_Right, e_l_station=segment_s-2.0,
+                                         e_Pct_confidence=1.0)
     MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(yield_sign)
+    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_bar)
     gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
-    actual = MapUtils.get_static_traffic_flow_controls_s(gff)
-    assert len(actual) == 1
-    assert actual[0] == 12.0
+    actual = MapUtils.get_stop_bar_and_stop_sign(gff)
+    assert len(actual) == 2
+    assert actual[0][SIGN_S] == 10.0
+    assert actual[1][SIGN_S] == 12.0
 
 def test_getRoadSegmentIdFromLaneId_correct(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)

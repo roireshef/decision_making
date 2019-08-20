@@ -111,3 +111,6 @@ LaneSegmentID = int
 
 # boolean array
 BoolArray = np.ndarray
+
+# Info on road signs
+SIGN_TYPE, SIGN_S = 0, 1
