@@ -13,18 +13,19 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
-    route_plan_20_30, create_route_plan_msg
+    route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_offset
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
     UpstreamLaneNotFound, ValidLaneAheadTooShort
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
-    left_lane_split_scene_static, scene_static_lane_split_on_left_ends
+    left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_offset
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 
 
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
+
 
 def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split: SceneStatic,
                                                           behavioral_grid_state_with_objects_for_filtering_too_aggressive):
@@ -181,6 +182,21 @@ def test_getLookaheadFrenetFrameByCost_CanAugmentButNoSplit_NoAugmentedCreated(s
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [11, 21])
     assert RelativeLane.LEFT_LANE not in gff_dict
     assert RelativeLane.RIGHT_LANE not in gff_dict
+
+def test_getLookaheadFrenetFrameByCost_OffsetSplits_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_offset, route_plan_lane_splits_offset):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_offset)
+    starting_lon = 10.
+    starting_lane = 211
+    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
+
+    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_lane_splits_offset, can_augment=can_augment)
+
+    assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
+    assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
+    assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented
+    assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [201, 211, 221, 231, 241])
+    assert np.array_equal(gff_dict[RelativeLane.LEFT_LANE].segment_ids, [201, 211, 222, 232, 242])
+    assert np.array_equal(gff_dict[RelativeLane.RIGHT_LANE].segment_ids, [201, 211, 221, 230, 240])
 
 def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(
         scene_static_pg_split, route_plan_20_30):

@@ -70,6 +70,22 @@ def route_plan_lane_splits_on_left_and_right_end(route_plan_20_30):
 
     yield route_plan_20_30
 
+@pytest.fixture(scope='function')
+def route_plan_lane_splits_offset(route_plan_20_30):
+    # Delete all right and left lanes, except for lanes 220, 222, 230, 232, 240, 242
+    for index in [0, 1]:
+        route_plan_20_30.s_Data.a_Cnt_num_lane_segments[index] -= 2
+        del route_plan_20_30.s_Data.as_route_plan_lane_segments[index][2]
+        del route_plan_20_30.s_Data.as_route_plan_lane_segments[index][0]
+    # delete  220, 242
+    del route_plan_20_30.s_Data.as_route_plan_lane_segments[2][0]
+    route_plan_20_30.s_Data.a_Cnt_num_lane_segments[2] -= 1
+    del route_plan_20_30.s_Data.as_route_plan_lane_segments[4][2]
+    route_plan_20_30.s_Data.a_Cnt_num_lane_segments[4] -= 1
+
+    yield route_plan_20_30
+
+
 
 @pytest.fixture(scope='function')
 def route_plan_20():
