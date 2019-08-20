@@ -8,7 +8,8 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel, ActionSpec
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FS_2D_LEN, FrenetState1D
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.math_utils import Math
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.state.state import State, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
 
@@ -89,6 +90,9 @@ class RuleBasedLaneMerge:
         :param merge_point_in_gff: s of merge point on GFF
         :return: list of action specs
         """
+        import time
+        st = time.time()
+
         t_arr = np.arange(RuleBasedLaneMerge.TIME_GRID_RESOLUTION, BP_ACTION_T_LIMITS[1], RuleBasedLaneMerge.TIME_GRID_RESOLUTION)
         v_arr = np.arange(0, VELOCITY_LIMITS[1], RuleBasedLaneMerge.VEL_GRID_RESOLUTION)
         # TODO: check safety also on the red line, besides the merge point
@@ -97,22 +101,87 @@ class RuleBasedLaneMerge:
         T, v_T = t_arr[ti], v_arr[vi]
 
         # calculate the actions' distance (the same for all actions)
-        dx = -lane_merge_state.ego_fstate[FS_SX] - lane_merge_state.ego_size.length / 2
+        ds = -lane_merge_state.ego_fstate[FS_SX] - lane_merge_state.ego_size.length / 2
+        ego_fstate = lane_merge_state.ego_fstate
 
         # calculate s_profile coefficients for all actions
-        ego_fstate = lane_merge_state.ego_fstate
+        quintic_actions, violates_high_vel_limit, violates_low_vel_limit = \
+            RuleBasedLaneMerge._create_quintic_actions(ego_fstate, T, v_T, ds, merge_point_in_gff)
+        max_vel_actions = stop_actions = []
+
+        # create sequences of actions, such that each sequence includes quartic + const_max_vel + quartic
+        if violates_high_vel_limit:
+            max_vel_actions = RuleBasedLaneMerge._create_max_vel_actions(ego_fstate, T, v_T, ds, merge_point_in_gff)
+
+        # create sequences of actions, such that each sequence includes quartic + zero_vel + quartic
+        if violates_low_vel_limit:
+            stop_actions = RuleBasedLaneMerge._create_stop_actions(ego_fstate, T, v_T, ds, merge_point_in_gff)
+        actions = quintic_actions + max_vel_actions + stop_actions
+
+        print('time = %f' % (time.time() - st))
+        return actions
+
+    @staticmethod
+    def _create_quintic_actions(ego_fstate: FrenetState1D, T: np.array, v_T: np.array, ds: float,
+                                merge_point_in_gff: float) -> [List[ActionSpec], bool, bool]:
+        # calculate s_profile coefficients for all actions
         initial_fstates = np.c_[np.zeros_like(T), np.full(T.shape, ego_fstate[FS_SV]), np.full(T.shape, ego_fstate[FS_SA])]
-        terminal_fstates = np.c_[np.full(T.shape, dx), v_T, np.zeros_like(T)]
+        terminal_fstates = np.c_[np.full(T.shape, ds), v_T, np.zeros_like(T)]
         poly_coefs, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates, terminal_fstates, T < TRAJECTORY_TIME_RESOLUTION)
 
         # the fast analytic kinematic filter reduce the load on the regular kinematic filter
+        # calculate actions that don't violate acceleration limits
         valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
-        valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], VELOCITY_LIMITS)
+
+        # calculate separately actions that don't violate maximal vel_limit and minimal vel_limit
+        not_too_high_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc],
+                                                                  np.array([-np.inf, VELOCITY_LIMITS[1]]))
+        non_negative_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc],
+                                                                  np.array([VELOCITY_LIMITS[0], np.inf]))
+        valid_vel = np.logical_and(non_negative_vel, not_too_high_vel)
         valid_idxs = np.where(valid_acc)[0][valid_vel]
 
-        actions = [ActionSpec(t, v_T, merge_point_in_gff + ego_fstate[FS_SX] + dx, 0, None)
+        # create specs of valid actions
+        actions = [ActionSpec(t, v_T, merge_point_in_gff + ego_fstate[FS_SX] + ds, 0, None)
                    for t, v_T in zip(T[valid_idxs], v_T[valid_idxs])]
-        return actions
+
+        return actions, (~not_too_high_vel).any(), (~non_negative_vel).any()
+
+    @staticmethod
+    def _create_max_vel_actions(ego_fstate: FrenetState1D, T: np.array, v_T: np.array, ds: float,
+                                merge_point_in_gff: float) -> List[ActionSpec]:
+
+        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS
+        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+        cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 0], a_0=ego_fstate[FS_SA], v_0=ego_fstate[FS_SV], v_T=VELOCITY_LIMITS[1])
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+        T_init = np.fmin.reduce(roots_s, axis=-1)
+        s_init = QuarticPoly1D.distance_profile_function(a_0=ego_fstate[FS_SA], v_0=ego_fstate[FS_SV],
+                                                         v_T=VELOCITY_LIMITS[1], T=T_init)(T_init)
+
+        v_T_unique = np.unique(v_T)
+        v_T_meshgrid, _ = np.meshgrid(v_T_unique, weights[:, 0], indexing='ij')
+        v_T_meshgrid = v_T_meshgrid.ravel()
+        w_J_meshgrid = np.tile(weights[:, 0], v_T_unique.shape[0])
+        w_T_meshgrid = np.tile(weights[:, 2], v_T_unique.shape[0])
+        cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
+            w_T=w_T_meshgrid, w_J=w_J_meshgrid, a_0=0, v_0=VELOCITY_LIMITS[1], v_T=v_T_meshgrid)
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+        T_end = np.fmin.reduce(roots_s, axis=-1)
+        s_end = QuarticPoly1D.distance_profile_function(a_0=0, v_0=VELOCITY_LIMITS[1], v_T=v_T_meshgrid, T=T_end)(T_end)
+        T_end = T_end.reshape(v_T_unique.shape[0], -1)
+        s_end = s_end.reshape(v_T_unique.shape[0], -1)
+
+        s_mid = ds - s_init - s_end
+        valid_idxs = np.logical_and(~np.isnan(s_mid), s_mid >= 0)
+
+        return []
+
+    @staticmethod
+    def _create_stop_actions(ego_fstate: FrenetState1D, T: np.array, v_T: np.array, dx: float,
+                             merge_point_in_gff: float) -> List[ActionSpec]:
+        return []
 
     @staticmethod
     def calc_actions_costs(behavioral_state: BehavioralGridState, action_specs: List[ActionSpec]) -> np.array:
