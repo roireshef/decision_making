@@ -138,10 +138,12 @@ class TrajectoryPlannerCosts:
     @staticmethod
     def _project_close_objects_on_ref_route(state: State, reference_route: FrenetSerret2DFrame) -> [FrenetStates2D, np.array]:
         """
-        Calculate close objects' map_states and sizes
+        Calculate map_states and sizes of close objects. An object is considered close if its cartesian distance from
+        ego is at most PLANNING_LOOKAHEAD_DIST and it can be projected on the reference route.
         :param state: the current state
         :param reference_route: reference route from BP
-        :return: array of the close objects' Frenet 2D states and array of their sizes
+        :return: 1. Nx6 matrix of Frenet 2D states of close objects, where N is the number of close objects
+                 2. Nx2 matrix of sizes of the close objects, where N is the number of close objects
         """
         # Filter close objects according to their cartesian distance
         close_objects = [obs for obs in state.dynamic_objects
