@@ -296,11 +296,11 @@ class MapUtils:
                                            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         Create Generalized Frenet frame along lane center, starting from given lane and station.
-        :param relative_lane:
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
         :param logger:
+        :param relative_lane:
         :param can_augment:
         :return: Dict of generalized Frenet frame for the given route part
                  Keys are RelativeLane types. The dict will only contain the key if the lane or augmented lane was created.
