@@ -197,8 +197,9 @@ class BehavioralGridState:
         try:
             lane_gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
                                                                         station=state.ego_state.map_state.lane_fstate[FS_SX],
-                                                                        route_plan=route_plan, logger=logger,
-                                                                        relative_lane=RelativeLane.SAME_LANE, can_augment=can_augment)
+                                                                        route_plan=route_plan,
+                                                                        logger=logger,
+                                                                        can_augment=can_augment)
             extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
@@ -232,10 +233,15 @@ class BehavioralGridState:
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
                     lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[relative_lane],
-                                                                            station=host_station_in_adjacent_lane, route_plan=route_plan,
-                                                                            logger=logger, relative_lane=relative_lane)
+                                                                            station=host_station_in_adjacent_lane,
+                                                                            route_plan=route_plan,
+                                                                            logger=logger)
 
-                    extended_lane_frames[relative_lane] = lane_gffs[relative_lane]
+                    # Note that the RelativeLane keys that are in the returned dictionary from get_lookahead_frenet_frame_by_cost are
+                    # with respect to the lane ID provided to the function. Therefore, since the lane ID for the left/right lane is
+                    # provided to the function above, the RelativeLane.SAME_LANE key in the returned dictionary actually refers to the
+                    # left/right lane. That makes the use of this key below correct.
+                    extended_lane_frames[relative_lane] = lane_gffs[RelativeLane.SAME_LANE]
                 except MappingException as e:
                     logger.warning("Trying to fetch data for %s, but data is unavailable. %s" % (relative_lane, str(e)))
 
