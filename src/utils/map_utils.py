@@ -454,7 +454,6 @@ class MapUtils:
         current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
         lane_subsegments_dict = {}
         is_partial = False
-        is_augmented = False
 
         while True:
             current_lane_length = MapUtils.get_lane(current_lane_id).e_l_length  # a lane's s_max
@@ -539,7 +538,7 @@ class MapUtils:
             current_road_idx_on_plan = next_road_idx_on_plan
 
         # Assign subsegments to dictionary for relative lane
-        lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, is_partial, is_augmented)
+        lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, is_partial, False)
 
         return lane_subsegments_dict
 
