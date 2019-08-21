@@ -6,7 +6,7 @@ from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanT
     UpstreamLaneNotFound, LaneNotFound, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, \
     IDAppearsMoreThanOnce, StraightConnectionNotFound
 from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, PLANNING_LOOKAHEAD_DIST, \
-    MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE
+    MAX_HORIZON_DISTANCE, FLOAT_MAX, MAX_STATION_DIFFERENCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
