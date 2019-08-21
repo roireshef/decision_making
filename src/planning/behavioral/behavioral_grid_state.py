@@ -8,7 +8,6 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, EquivalentStationNotFound
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
