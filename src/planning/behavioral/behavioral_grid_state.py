@@ -120,14 +120,14 @@ class BehavioralGridState:
             relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
 
             # assign object to lane if it hasn't already been assigned
-            unassigned_obj_mask = rel_lanes_per_obj == None
+            unassigned_obj_mask = (rel_lanes_per_obj == None)
             rel_lanes_per_obj[np.logical_and(unassigned_obj_mask, relevant_object_mask)] = rel_lane
 
             # create duplicate objects if they belong to more than one rel_lane
             # invert <unassigned_obj_mask> instead of recalculating since rel_lanes_per_obj has been changed
-            assigned_obj_indices = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
-            if len(assigned_obj_indices) > 0:
-                duplicate_objs = copy.deepcopy(on_map_dynamic_objects[assigned_obj_indices])
+            previously_assigned_obj_indices = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
+            if len(previously_assigned_obj_indices) > 0:
+                duplicate_objs = copy.deepcopy(on_map_dynamic_objects[previously_assigned_obj_indices])
                 # append duplicate objs and the current lane to the list of objs and lanes
                 np.append(on_map_dynamic_objects, duplicate_objs)
                 np.append(rel_lanes_per_obj, [rel_lane] * len(duplicate_objs))
