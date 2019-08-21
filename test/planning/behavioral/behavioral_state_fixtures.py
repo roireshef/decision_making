@@ -24,7 +24,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
     scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     right_lane_split_scene_static, left_lane_split_scene_static, left_right_lane_split_scene_static, \
     scene_static_lane_split_on_right_ends, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_end, \
-    scene_static_lane_splits_on_left_and_right_offset
+    scene_static_lane_splits_on_left_and_right_left_first
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
 from decision_making.test.planning.custom_fixtures import route_plan_1_2
 
@@ -72,17 +72,16 @@ def route_plan_lane_splits_on_left_and_right_end(route_plan_20_30):
     yield route_plan_20_30
 
 @pytest.fixture(scope='function')
-def route_plan_lane_splits_offset(route_plan_20_30):
-    # Delete all right and left lanes, except for lanes 220, 222, 230, 232, 240, 242
+def route_plan_lane_splits_on_left_and_right_left_first(route_plan_20_30):
+    # Delete lanes 200, 202, 210, and 212
     for index in [0, 1]:
         route_plan_20_30.s_Data.a_Cnt_num_lane_segments[index] -= 2
         del route_plan_20_30.s_Data.as_route_plan_lane_segments[index][2]
         del route_plan_20_30.s_Data.as_route_plan_lane_segments[index][0]
-    # delete  220, 242
+
+    # Delete lane 220
     del route_plan_20_30.s_Data.as_route_plan_lane_segments[2][0]
     route_plan_20_30.s_Data.a_Cnt_num_lane_segments[2] -= 1
-    del route_plan_20_30.s_Data.as_route_plan_lane_segments[4][2]
-    route_plan_20_30.s_Data.a_Cnt_num_lane_segments[4] -= 1
 
     yield route_plan_20_30
 
@@ -584,8 +583,8 @@ def state_with_lane_split_on_left_and_right():
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_left_and_right_offset():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_offset())
+def state_with_lane_split_on_left_and_right_left_first():
+    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
     ego_vel = 10

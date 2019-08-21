@@ -13,12 +13,12 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
-    route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_offset
+    route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_on_left_and_right_left_first
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3
 from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
-    left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_offset
+    left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_left_first
 from decision_making.src.global_constants import MAX_BACKWARD_HORIZON, MAX_FORWARD_HORIZON
 
 
@@ -197,13 +197,15 @@ def test_getLookaheadFrenetFrameByCost_CanAugmentButNoSplit_NoAugmentedCreated(s
     assert RelativeLane.RIGHT_LANE not in gff_dict
 
 
-def test_getLookaheadFrenetFrameByCost_OffsetSplits_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_offset, route_plan_lane_splits_offset):
-    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_offset)
+def test_getLookaheadFrenetFrameByCost_OffsetSplitsLeftFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_left_first,
+                                                                                  route_plan_lane_splits_on_left_and_right_left_first):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first)
     starting_lon = 10.
     starting_lane = 211
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_lane_splits_offset, can_augment=can_augment)
+    gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(starting_lane, starting_lon,route_plan_lane_splits_on_left_and_right_left_first,
+                                                           can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
