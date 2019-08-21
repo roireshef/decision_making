@@ -2,10 +2,9 @@ import numpy as np
 from logging import Logger
 import copy
 
-from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, \
-    OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, IDAppearsMoreThanOnce, \
-    StraightConnectionNotFound
+from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, NavigationPlanDoesNotFitMap, \
+    UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, \
+    IDAppearsMoreThanOnce, StraightConnectionNotFound
 from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, PLANNING_LOOKAHEAD_DIST, \
     MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -289,7 +288,7 @@ class MapUtils:
         return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
-    @raises(LaneNotFound, RoadNotFound, DownstreamLaneNotFound, LaneCostNotFound)
+    @raises(LaneNotFound, RoadNotFound, LaneCostNotFound)
     @prof.ProfileFunction()
     def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan,
                                            logger: Optional[Logger] = None, relative_lane: Optional[RelativeLane] = None,
@@ -409,7 +408,7 @@ class MapUtils:
         return upstream_lane_subsegments
 
     @staticmethod
-    @raises(RoadNotFound, LaneNotFound, DownstreamLaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
+    @raises(RoadNotFound, LaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
     @prof.ProfileFunction()
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                          route_plan: RoutePlan, lane_subsegments: Optional[List[FrenetSubSegment]] = None,
@@ -548,7 +547,7 @@ class MapUtils:
         return lane_subsegments_dict
 
     @staticmethod
-    @raises(DownstreamLaneNotFound, NavigationPlanDoesNotFitMap)
+    @raises(NavigationPlanDoesNotFitMap)
     def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, int]:
         """
         Find's downstream lanes from the current_lane_id lane that are on the route_plan.

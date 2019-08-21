@@ -84,10 +84,6 @@ class UpstreamLaneNotFound(MappingException):
     pass
 
 
-class DownstreamLaneNotFound(MappingException):
-    pass
-
-
 class NavigationPlanTooShort(MappingException):
     pass
 
