@@ -479,3 +479,63 @@ def scene_static_lane_splits_on_left_and_right_left_first():
         scene_static_geometry.e_Cnt_num_lane_segments -= 1
 
     return scene_static
+
+@pytest.fixture(scope='function')
+def scene_static_lane_splits_on_left_and_right_right_first():
+    """
+    Creates map where lane split on right occurs before lane split on left
+                     ,-> 232 -> 242 -> 252 -> 262 -> 272 -> 282 -> 292
+    201 -> 211 -> 221 -> 231 -> 241 -> 251 -> 261 -> 271 -> 281 -> 291
+              `-> 220 -> 230 -> 240 -> 250 -> 260 -> 270 -> 280 -> 290
+    """
+    scene_static = scene_static_pg_split()
+    scene_static_base = scene_static.s_Data.s_SceneStaticBase
+    scene_static_geometry = scene_static.s_Data.s_SceneStaticGeometry
+
+    # Disconnect right lanes up to right split
+    for lane_segment in scene_static_base.as_scene_lane_segments[1:5:3]:
+        lane_segment.as_right_adjacent_lanes = []
+        lane_segment.e_Cnt_right_adjacent_lane_count = 0
+
+    # Disconnect left lanes up to left split
+    for lane_segment in scene_static_base.as_scene_lane_segments[1:8:3]:
+        lane_segment.as_left_adjacent_lanes = []
+        lane_segment.e_Cnt_left_adjacent_lane_count = 0
+
+    # Connect 211 to 220 and vice versa
+    scene_static_base.as_scene_lane_segments[4].as_downstream_lanes.append(LaneSegmentConnectivity(220, ManeuverType.RIGHT_SPLIT))
+    scene_static_base.as_scene_lane_segments[4].e_Cnt_downstream_lane_count += 1
+
+    scene_static_base.as_scene_lane_segments[6].as_upstream_lanes = LaneSegmentConnectivity(211, ManeuverType.RIGHT_SPLIT)
+
+    # Connect 221 to 232 and vice versa
+    scene_static_base.as_scene_lane_segments[7].as_downstream_lanes.append(LaneSegmentConnectivity(232, ManeuverType.LEFT_SPLIT))
+    scene_static_base.as_scene_lane_segments[7].e_Cnt_downstream_lane_count += 1
+
+    scene_static_base.as_scene_lane_segments[11].as_upstream_lanes = LaneSegmentConnectivity(221, ManeuverType.LEFT_SPLIT)
+
+    # Change third and fourth road segment type
+    scene_static_base.as_scene_road_segment[2].e_e_road_segment_type = MapRoadSegmentType.Intersection
+    scene_static_base.as_scene_road_segment[3].e_e_road_segment_type = MapRoadSegmentType.Intersection
+
+    # Delete all right and left lanes before splits
+    for lane_segment_index, road_segment_index in zip([8, 5, 3, 2, 0],
+                                                      [2, 1, 1, 0, 0]):
+        # Remove lane segment from road segment info
+        lane_segment_id_mask = scene_static_base.as_scene_road_segment[road_segment_index].a_i_lane_segment_ids != \
+                               scene_static_base.as_scene_lane_segments[lane_segment_index].e_i_lane_segment_id
+
+        scene_static_base.as_scene_road_segment[road_segment_index].a_i_lane_segment_ids = \
+            scene_static_base.as_scene_road_segment[road_segment_index].a_i_lane_segment_ids[lane_segment_id_mask]
+
+        scene_static_base.as_scene_road_segment[road_segment_index].e_Cnt_lane_segment_id_count -= 1
+
+        # Delete lane segment base data
+        del scene_static_base.as_scene_lane_segments[lane_segment_index]
+        scene_static_base.e_Cnt_num_lane_segments -= 1
+
+        # Delete lane segment geometry data
+        del scene_static_geometry.as_scene_lane_segments[lane_segment_index]
+        scene_static_geometry.e_Cnt_num_lane_segments -= 1
+
+    return scene_static
