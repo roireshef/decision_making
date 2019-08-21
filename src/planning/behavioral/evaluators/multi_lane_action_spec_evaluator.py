@@ -90,7 +90,7 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
                     minimum_cost_lane = RelativeLane.LEFT_LANE
 
             # right lane splits off first
-            elif diverging_indices[RelativeLane.RIGHT_LANE] < diverging_indices[RelativeLane.LEFT_LANE]:
+            else:
                 if route_costs_dict[gffs[RelativeLane.RIGHT_LANE].segment_ids[diverging_indices[RelativeLane.RIGHT_LANE]]][LANE_END_COST_IND] < \
                     route_costs_dict[gffs[RelativeLane.SAME_LANE].segment_ids[diverging_indices[RelativeLane.RIGHT_LANE]]][LANE_END_COST_IND]:
                     minimum_cost_lane = RelativeLane.RIGHT_LANE
