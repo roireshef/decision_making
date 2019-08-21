@@ -8,10 +8,9 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator
-from decision_making.src.global_constants import LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT
+from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
-from decision_making.src.messages.scene_static_enums import ManeuverType
 
 
 
