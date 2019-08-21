@@ -292,7 +292,7 @@ class MapUtils:
     @prof.ProfileFunction()
     def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan,
                                            logger: Optional[Logger] = None, relative_lane: Optional[RelativeLane] = None,
-                                            can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
+                                           can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
                                            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         Create Generalized Frenet frame along lane center, starting from given lane and station.
@@ -433,15 +433,12 @@ class MapUtils:
                  The left-augmented and right-augmented values will be None, unless an augmented GFF can be created.
                  The values are a list of FrenetSubSegments that will be used to create the GFF.
         """
-
-
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
 
         try:
             current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
         except IndexError:
-            raise RoadNotFound("Road ID {} is not in not found in the route plan road segment list"
-                               .format(initial_road_segment_id))
+            raise RoadNotFound("Road ID {} is not in the route plan road segment list".format(initial_road_segment_id))
 
         # Assign arguments that are default to None
         can_augment = copy.deepcopy(can_augment) or {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
@@ -471,19 +468,20 @@ class MapUtils:
                 break
 
             next_road_idx_on_plan = current_road_idx_on_plan + 1
-            if next_road_idx_on_plan > len(route_plan.s_Data.a_i_road_segment_ids) - 1:
+
+            if next_road_idx_on_plan == route_plan.s_Data.e_Cnt_num_road_segments:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
                                              "current_segment_end_s=%f lookahead_distance=%f" %
                                              (route_plan.s_Data.a_i_road_segment_ids, lookahead_distance - cumulative_distance,
                                               current_segment_end_s, lookahead_distance))
 
             valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
-            if len(valid_downstream_lanes) == 0:
-                # These exceptions result in a partial GFF
+            num_valid_downstream_lanes = len(valid_downstream_lanes.keys())
+
+            if num_valid_downstream_lanes == 0:
                 is_partial = True
                 break
-
-            if len(valid_downstream_lanes.keys()) == 1:
+            elif num_valid_downstream_lanes == 1:
                 # Turn the return of values() into list and access the lane segment ID
                 current_lane_id = list(valid_downstream_lanes.values())[0]
             else:
@@ -563,40 +561,40 @@ class MapUtils:
         try:
             current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
         except IndexError:
-            raise RoadNotFound("Road ID {} is not in not found in the route plan road segment list"
-                               .format(initial_road_segment_id))
+            raise RoadNotFound("Road ID {} is not in the route plan road segment list".format(initial_road_segment_id))
+
         next_road_idx_on_plan = current_road_idx_on_plan + 1
 
-        if next_road_idx_on_plan > len(route_plan.s_Data.a_i_road_segment_ids) - 1:
+        if next_road_idx_on_plan == route_plan.s_Data.e_Cnt_num_road_segments:
             return {}
 
         # Get next road segment from the navigation plan, then look for the downstream lane segments on this road segment.
         next_road_segment_id_on_plan = route_plan.s_Data.a_i_road_segment_ids[next_road_idx_on_plan]
-        downstream_lanes_ids = MapUtils.get_downstream_lane_ids(current_lane_id)
+        downstream_lane_ids = MapUtils.get_downstream_lane_ids(current_lane_id)
 
-        if len(downstream_lanes_ids) == 0:
+        if len(downstream_lane_ids) == 0:
             return {}
 
         route_cost_dict = route_plan.to_costs_dict()
 
         # Don't look at end costs when there is only a single downstream lane
-        valid_downstream_ids = [lid for lid in downstream_lanes_ids
-                                if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
+        valid_downstream_lane_ids = [lid for lid in downstream_lane_ids
+                                     if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
 
         # if there are multiple downstream lanes, filter the lanes further by lane end cost
-        if len(valid_downstream_ids) > 1:
-            valid_downstream_ids = [lid for lid in downstream_lanes_ids
-                                    if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan
-                                    and route_cost_dict[lid][LANE_END_COST_IND] < 1]
+        if len(valid_downstream_lane_ids) > 1:
+            valid_downstream_lane_ids = [lid for lid in downstream_lane_ids
+                                         if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan
+                                         and route_cost_dict[lid][LANE_END_COST_IND] < 1]
 
         # Verify that there is a downstream lane that continues along the navigation plan
-        if len(valid_downstream_ids) == 0:
+        if len(valid_downstream_lane_ids) == 0:
             return {}
 
         downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
         return {downstream_lane_maneuver_types[downstream_lane_id]: downstream_lane_id
-                for downstream_lane_id in valid_downstream_ids}
+                for downstream_lane_id in valid_downstream_lane_ids}
 
 
     @staticmethod
