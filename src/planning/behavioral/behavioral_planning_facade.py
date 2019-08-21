@@ -4,6 +4,7 @@ import traceback
 import numpy as np
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
