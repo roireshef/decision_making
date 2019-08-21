@@ -65,7 +65,7 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
                 # Since the splits occur at the same location, the index where the split occurs in the right lane is just used below for
                 # all lanes.
                 lane_end_costs = {rel_lane: route_costs_dict[gffs[rel_lane].segment_ids[diverging_indices[RelativeLane.RIGHT_LANE]]][LANE_END_COST_IND]
-                              for rel_lane in RelativeLane}
+                                  for rel_lane in RelativeLane}
                 minimum_cost_lane = min(lane_end_costs, key=lane_end_costs.get)
 
                 # if minimum isn't unique, prefer same_lane if it is a minimum
