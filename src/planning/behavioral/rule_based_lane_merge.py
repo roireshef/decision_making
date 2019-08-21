@@ -167,29 +167,29 @@ class RuleBasedLaneMerge:
         w_J_meshgrid = np.tile(w_J_grid, v_T_unique.shape[0])
         w_T_meshgrid = np.full(w_J_meshgrid.shape, w_T)
         T_end, s_end = RuleBasedLaneMerge._specify(VELOCITY_LIMITS[1], 0, v_T_meshgrid, w_T_meshgrid, w_J_meshgrid)
-        T_end = T_end.reshape(v_T_unique.shape[0], -1)
-        s_end = s_end.reshape(v_T_unique.shape[0], -1)
 
-        # TODO: validate acc limits
+        T_end = T_end.reshape(v_T_unique.shape[0], w_J_grid.shape[0])
+        s_end = s_end.reshape(v_T_unique.shape[0], w_J_grid.shape[0])
 
         # calculate middle constant (maximal) velocity actions
-        s_mid = ds - s_init - s_end
-        valid_actions = np.logical_and(~np.isnan(s_mid), s_mid >= 0)
-        if not valid_actions.any():
+        s_mid = ds - s_init - s_end  # mid segment length
+        s_mid[s_mid < 0] = np.nan
+        if np.isnan(s_mid).all():
             return []
-
-        T_mid = s_mid / VELOCITY_LIMITS[1]
+        v_T_valid_unique_idxs = np.where(~(np.isnan(s_mid).all(axis=1)))[0]
+        unique_inverse_valid = unique_inverse[np.isin(unique_inverse, v_T_valid_unique_idxs)]
+        T_mid = s_mid / VELOCITY_LIMITS[1]  # mid segment time
         T_total = T_init + T_mid + T_end
 
         # for each pair v_T and T, choose w_J such that T_total is closest to T
-        T_error = np.abs(T_total[unique_inverse] - T[:, np.newaxis])
-        closest_w_idx = np.nanargmin(T_error, axis=1)
-        closest_T_error = T_error[np.arange(T_error.shape[0]), closest_w_idx]
+        T_error = np.abs(T_total[unique_inverse] - T[:, np.newaxis])  # T_error of shape |T| x |w_J_grid|
+        best_w_idx = np.nanargmin(T_error, axis=1)  # for each v_T, get w_J_grid index such that T_error is minimal
+        min_T_error = T_error[np.arange(T_error.shape[0]), best_w_idx]  # lowest T_error for each v_T
 
         # filter out pairs (v_T, T) with significant time error
-        chosen_pair_idxs = np.where(closest_T_error < 0.02)[0]
+        chosen_pair_idxs = np.where(min_T_error < 0.02)[0]
         chosen_v_T = v_T[chosen_pair_idxs]
-        chosen_w_J = w_J_grid[closest_w_idx[chosen_pair_idxs]]
+        chosen_w_J = w_J_grid[best_w_idx[chosen_pair_idxs]]
         chosen_w_T = np.full(chosen_w_J.shape, w_T)
 
         # specify actions for the chosen v_T & w_J
@@ -211,6 +211,14 @@ class RuleBasedLaneMerge:
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
         T = np.fmin.reduce(roots_s, axis=-1)
         s = QuarticPoly1D.distance_profile_function(a_0=a_0, v_0=v_0, v_T=v_T, T=T)(T)
+
+        # validate acceleration limits of the initial quartic action
+        poly_init = QuarticPoly1D.s_profile_coefficients(np.full(T.shape, a_0), np.full(T.shape, v_0), v_T, T)
+        valid_acc = np.zeros_like(T).astype(bool)
+        validT = ~np.isnan(T)
+        valid_acc[validT] = QuarticPoly1D.are_accelerations_in_limits(poly_init[validT], T[validT], LON_ACC_LIMITS)
+        s[~valid_acc] = np.nan
+
         return T, s
 
     @staticmethod
