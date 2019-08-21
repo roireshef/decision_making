@@ -88,10 +88,6 @@ class NavigationPlanTooShort(MappingException):
     pass
 
 
-class NavigationPlanDoesNotFitMap(MappingException):
-    pass
-
-
 class RoadNotFound(MappingException):
     pass
 

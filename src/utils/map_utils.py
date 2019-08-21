@@ -2,7 +2,7 @@ import numpy as np
 from logging import Logger
 import copy
 
-from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, NavigationPlanDoesNotFitMap, \
+from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
     UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, \
     IDAppearsMoreThanOnce, StraightConnectionNotFound
 from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, PLANNING_LOOKAHEAD_DIST, \
@@ -547,7 +547,6 @@ class MapUtils:
         return lane_subsegments_dict
 
     @staticmethod
-    @raises(NavigationPlanDoesNotFitMap)
     def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, int]:
         """
         Find's downstream lanes from the current_lane_id lane that are on the route_plan.
