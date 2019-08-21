@@ -16,7 +16,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_offset
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3
 from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
-    UpstreamLaneNotFound, ValidLaneAheadTooShort
+    UpstreamLaneNotFound
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_offset
