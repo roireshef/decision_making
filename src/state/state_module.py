@@ -52,7 +52,7 @@ class StateModule(DmModule):
         """
         Unsubscribe from process communication services.
         """
-        pass
+        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
 
     def _periodic_action_impl(self) -> None:
         pass
@@ -105,14 +105,19 @@ class StateModule(DmModule):
     def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic) -> State:
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
-        :param scene_dynamic:
+        :param scene_dynamic: scene_dynamic data
         :return: valid State object
         """
 
         timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
-        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
-                                 lane_id=scene_dynamic.s_Data.s_host_localization.e_i_lane_segment_id)
+
+        selected_host_hyp_idx = 0
+
+        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
+                                 as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
+                                 lane_id=scene_dynamic.s_Data.s_host_localization.
+                                 as_host_hypothesis[selected_host_hyp_idx].e_i_lane_segment_id)
         ego_state = EgoState(obj_id=0,
                              timestamp=timestamp,
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
@@ -140,14 +145,14 @@ class StateModule(DmModule):
         for obj_idx in range(dyn_obj_data.num_objects):
             obj_loc = dyn_obj_data.objects_localization[obj_idx]
             id = obj_loc.e_Cnt_object_id
+            cartesian_state = obj_loc.a_cartesian_pose
             # TODO: Handle multiple hypotheses
-            cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
             map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
                               obj_loc.s_bounding_box.e_l_width,
                               obj_loc.s_bounding_box.e_l_height)
             confidence = obj_loc.as_object_hypothesis[0].e_r_probability
-            off_map = obj_loc.as_object_hypothesis[0].e_b_off_map
+            off_map = obj_loc.as_object_hypothesis[0].e_b_off_lane
             dyn_obj = DynamicObject(obj_id=id,
                                     timestamp=timestamp,
                                     cartesian_state=cartesian_state,
@@ -159,3 +164,5 @@ class StateModule(DmModule):
             objects_list.append(dyn_obj)  # update the list of dynamic objects
 
         return objects_list
+
+
