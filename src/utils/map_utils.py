@@ -234,7 +234,7 @@ class MapUtils:
         return border_right + border_left
 
     @staticmethod
-    def get_upstream_lane_ids(lane_id: int) -> List[int]:
+    def get_upstream_lane_ids(lane_id: int) -> List[LaneSegmentID]:
         """
         Get upstream lane ids (incoming) of the given lane.
         This is referring only to the previous road-segment, and the returned list is there for many-to-1 connection.
@@ -245,7 +245,7 @@ class MapUtils:
         return [connectivity.e_i_lane_segment_id for connectivity in upstream_connectivity]
 
     @staticmethod
-    def get_downstream_lane_ids(lane_id: int) -> List[int]:
+    def get_downstream_lane_ids(lane_id: int) -> List[LaneSegmentID]:
         """
         Get downstream lane ids (outgoing) of the given lane.
         This is referring only to the next road-segment, and the returned list is there for 1-to-many connection.
@@ -548,7 +548,7 @@ class MapUtils:
 
     @staticmethod
     @raises(RoadNotFound)
-    def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, int]:
+    def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, LaneSegmentID]:
         """
         Find's downstream lanes from the current_lane_id lane that are on the route_plan.
         Lanes with saturated end costs are not valid when there are multiple downstreams
