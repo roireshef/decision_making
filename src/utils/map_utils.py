@@ -3,7 +3,7 @@ from logging import Logger
 import copy
 
 from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
-    UpstreamLaneNotFound, LaneNotFound, LaneCostNotFound, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, \
+    UpstreamLaneNotFound, LaneNotFound, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, \
     IDAppearsMoreThanOnce, StraightConnectionNotFound
 from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, PLANNING_LOOKAHEAD_DIST, \
     MAX_HORIZON_DISTANCE, MINIMUM_REQUIRED_COST_DIFFERENCE, FLOAT_MAX, MAX_STATION_DIFFERENCE
@@ -288,7 +288,7 @@ class MapUtils:
         return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
-    @raises(LaneNotFound, RoadNotFound, LaneCostNotFound)
+    @raises(LaneNotFound, RoadNotFound)
     @prof.ProfileFunction()
     def get_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan,
                                            logger: Optional[Logger] = None, relative_lane: Optional[RelativeLane] = None,
@@ -408,7 +408,7 @@ class MapUtils:
         return upstream_lane_subsegments
 
     @staticmethod
-    @raises(RoadNotFound, LaneNotFound, LaneCostNotFound, NavigationPlanTooShort, StraightConnectionNotFound)
+    @raises(RoadNotFound, LaneNotFound, NavigationPlanTooShort, StraightConnectionNotFound)
     @prof.ProfileFunction()
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                          route_plan: RoutePlan, lane_subsegments: Optional[List[FrenetSubSegment]] = None,

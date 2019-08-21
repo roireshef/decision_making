@@ -96,10 +96,6 @@ class LaneNotFound(MappingException):
     pass
 
 
-class LaneCostNotFound(MappingException):
-    pass
-
-
 class EquivalentStationNotFound(MappingException):
     pass
 
