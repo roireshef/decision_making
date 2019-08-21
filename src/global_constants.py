@@ -8,6 +8,7 @@ EPS = np.finfo(np.float32).eps
 FLOAT_MAX  = np.finfo(np.float32).max
 TRUE_COST = 1.0
 FALSE_COST = 0.0
+SATURATED_COST = 1.0
 MPH_TO_MPS = 2.23694
 
 # Communication Layer

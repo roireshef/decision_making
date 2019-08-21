@@ -6,7 +6,7 @@ from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanT
     UpstreamLaneNotFound, LaneNotFound, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, \
     IDAppearsMoreThanOnce, StraightConnectionNotFound
 from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, MAX_BACKWARD_HORIZON, \
-    MAX_FORWARD_HORIZON, FLOAT_MAX, MAX_STATION_DIFFERENCE
+    MAX_FORWARD_HORIZON, FLOAT_MAX, MAX_STATION_DIFFERENCE, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
@@ -545,51 +545,26 @@ class MapUtils:
         return lane_subsegments_dict
 
     @staticmethod
-    @raises(RoadNotFound)
     def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, LaneSegmentID]:
         """
-        Find's downstream lanes from the current_lane_id lane that are on the route_plan.
-        Lanes with saturated end costs are not valid when there are multiple downstreams
-        Lanes with saturated costs are accepted when it is the only downstream lane
+        Finds the valid downstream lanes from the current_lane_id lane that are on the route_plan.
+        Lanes with a saturated occupancy cost are not valid.
+        Lanes with a saturated end cost are not valid when there are multiple downstream lanes.
         :param current_lane_id: Lane ID of current lane
         :param route_plan: Route plan that contains desired roads and lane costs
         :return: Dictionary mapping the maneuver type to the downstream lane ID
+                 The dictionary is empty when there are no valid downstream lanes.
         """
-        # Get next road segment on route_plan
-        initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(current_lane_id)
-
-        try:
-            current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
-        except IndexError:
-            raise RoadNotFound("Road ID {} is not in the route plan road segment list".format(initial_road_segment_id))
-
-        next_road_idx_on_plan = current_road_idx_on_plan + 1
-
-        if next_road_idx_on_plan == route_plan.s_Data.e_Cnt_num_road_segments:
-            return {}
-
-        # Get next road segment from the navigation plan, then look for the downstream lane segments on this road segment.
-        next_road_segment_id_on_plan = route_plan.s_Data.a_i_road_segment_ids[next_road_idx_on_plan]
-        downstream_lane_ids = MapUtils.get_downstream_lane_ids(current_lane_id)
-
-        if len(downstream_lane_ids) == 0:
-            return {}
-
         route_cost_dict = route_plan.to_costs_dict()
 
-        # Don't look at end costs when there is only a single downstream lane
-        valid_downstream_lane_ids = [lid for lid in downstream_lane_ids
-                                     if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
+        # Get all downstream lanes that do not have a saturated lane occupancy cost
+        valid_downstream_lane_ids = [lane_id for lane_id in MapUtils.get_downstream_lane_ids(current_lane_id)
+                                     if route_cost_dict[lane_id][LANE_OCCUPANCY_COST_IND] < SATURATED_COST]
 
-        # if there are multiple downstream lanes, filter the lanes further by lane end cost
+        # If there are multiple valid downstream lanes, then filter the lanes further by lane end cost.
         if len(valid_downstream_lane_ids) > 1:
-            valid_downstream_lane_ids = [lid for lid in downstream_lane_ids
-                                         if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan
-                                         and route_cost_dict[lid][LANE_END_COST_IND] < 1]
-
-        # Verify that there is a downstream lane that continues along the navigation plan
-        if len(valid_downstream_lane_ids) == 0:
-            return {}
+            valid_downstream_lane_ids = [lane_id for lane_id in valid_downstream_lane_ids
+                                         if route_cost_dict[lane_id][LANE_END_COST_IND] < SATURATED_COST]
 
         downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
