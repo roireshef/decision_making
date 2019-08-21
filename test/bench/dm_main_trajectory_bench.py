@@ -20,23 +20,9 @@ from decision_making.src.planning.trajectory.fixed_trajectory_planner import Fix
 from decision_making.test.utils_for_tests import Utils
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
-from decision_making.test.state.scene_dynamic_mock import SceneDynamicMock
 
 
 class DmMockInitialization:
-
-    @staticmethod
-    def create_scene_dynamic_publisher() -> SceneDynamicMock:
-        """
-        The purpose of this initialization is to generate a scene dynamic mock holding an initial empty data
-        :return:
-        """
-        logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-
-        pubsub = PubSub()
-
-        scene_dynamic_mock = SceneDynamicMock(pubsub, logger, None)
-        return scene_dynamic_mock
 
     @staticmethod
     def create_trajectory_planner(fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:

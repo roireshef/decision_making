@@ -3,6 +3,7 @@ import time
 import numpy as np
 import traceback
 from logging import Logger
+import rte.python.profiler as prof
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
