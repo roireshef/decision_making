@@ -420,12 +420,12 @@ class MapUtils:
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
         If <desired_lon> is more than the distance to end of the plan, a LongitudeOutOfRoad exception is thrown.
-        :param relative_lane:
         :param initial_lane_id: the initial lane_id (the vehicle is current on)
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
         :param lane_subsegments:
+        :param relative_lane:
         :param can_augment:
         :param cumulative_distance:
         :return: a dict with keys [RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
