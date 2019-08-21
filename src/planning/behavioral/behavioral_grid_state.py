@@ -217,7 +217,7 @@ class BehavioralGridState:
                 # Even though a lane augmentation is possible, it may not exist
                 # (e.g. right lane doesn't exist allowing for an augmented GFF, but there are no right splits ahead)
                 # Need to check if the augmented GFF was actually created
-                if lane_gff_dict.get(relative_lane):
+                if relative_lane in lane_gff_dict:
                     extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
             else:
                 # Find station in the relative lane that is adjacent to the host's station in the lane it is occupying
