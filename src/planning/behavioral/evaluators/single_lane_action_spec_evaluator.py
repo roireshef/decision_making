@@ -77,7 +77,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         # finally decide between the road sign and the static action
         if selected_road_sign_idx < 0 and selected_follow_lane_idx < 0:
             # if no action of either type was found, raise an error
-            raise NoActionsLeftForBPError()
+            raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
+                                          behavioral_state.ego_state.timestamp_in_sec)
         elif selected_road_sign_idx < 0:
             # if no road sign action is found, select the static action
             costs[selected_follow_lane_idx] = 0
