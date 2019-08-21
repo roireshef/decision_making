@@ -34,9 +34,6 @@ PARTIAL_GFF_END_PADDING = 5.0
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 
-# The minimum distance in [m] of valid lane for a GFF to exist
-MINIMUM_REQUIRED_DIST_LANE_AHEAD = 1.0
-
 # Prefer left or right split when the costs are the same
 PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False
 

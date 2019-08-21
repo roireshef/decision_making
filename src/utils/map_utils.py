@@ -5,7 +5,7 @@ import copy
 from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
     UpstreamLaneNotFound, LaneNotFound, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, \
     IDAppearsMoreThanOnce, StraightConnectionNotFound
-from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, MAX_BACKWARD_HORIZON, \
+from decision_making.src.global_constants import EPS, LANE_END_COST_IND, MAX_BACKWARD_HORIZON, \
     MAX_FORWARD_HORIZON, FLOAT_MAX, MAX_STATION_DIFFERENCE, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
