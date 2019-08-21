@@ -266,7 +266,7 @@ class BrakingDistances:
 
         # Distances for accelerations which are not in limits are defined as infinity. This implied that braking on
         # invalid accelerations would take infinite distance, which in turn filters out these (invalid) action specs.
-        distances = Math.zip_polyval2d(s_profile_coefs, T)
+        distances = Math.zip_polyval2d(s_profile_coefs, T[:, np.newaxis])[:, 0]
 
         # TODO: remove the following two lines (for DEBUG)
         old_distances = T * (v_0 + v_T) / 2  # for a_0 = 0
