@@ -106,7 +106,7 @@ class BehavioralGridState:
         """
 
         # filter out off map dynamic objects
-        on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
+        on_map_dynamic_objects = np.array([obj for obj in dynamic_objects if not obj.off_map])
 
         # calculate objects' segment map_states
         object_map_states = [obj.map_state for obj in on_map_dynamic_objects]
@@ -125,11 +125,11 @@ class BehavioralGridState:
 
             # create duplicate objects if they belong to more than one rel_lane
             # invert <unassigned_obj_mask> instead of recalculating since rel_lanes_per_obj has been changed
-            assigned_obj_indicies = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
-            if len(assigned_obj_indicies) > 0:
-                duplicate_objs = copy.deepcopy(on_map_dynamic_objects[assigned_obj_indicies])
+            assigned_obj_indices = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
+            if len(assigned_obj_indices) > 0:
+                duplicate_objs = copy.deepcopy(on_map_dynamic_objects[assigned_obj_indices])
                 # append duplicate objs and the current lane to the list of objs and lanes
-                on_map_dynamic_objects.extend(duplicate_objs)
+                np.append(on_map_dynamic_objects, duplicate_objs)
                 np.append(rel_lanes_per_obj, [rel_lane] * len(duplicate_objs))
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
