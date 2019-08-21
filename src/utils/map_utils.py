@@ -5,8 +5,8 @@ import copy
 from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
     UpstreamLaneNotFound, LaneNotFound, OutOfSegmentBack, OutOfSegmentFront, EquivalentStationNotFound, \
     IDAppearsMoreThanOnce, StraightConnectionNotFound
-from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, PLANNING_LOOKAHEAD_DIST, \
-    MAX_HORIZON_DISTANCE, FLOAT_MAX, MAX_STATION_DIFFERENCE
+from decision_making.src.global_constants import EPS, MINIMUM_REQUIRED_DIST_LANE_AHEAD, LANE_END_COST_IND, MAX_BACKWARD_HORIZON, \
+    MAX_FORWARD_HORIZON, FLOAT_MAX, MAX_STATION_DIFFERENCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
@@ -306,15 +306,15 @@ class MapUtils:
                  Keys are RelativeLane types. The dict will only contain the key if the lane or augmented lane was created.
         """
         # Get the lane subsegments
-        upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, PLANNING_LOOKAHEAD_DIST, logger)
+        upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON, logger)
 
-        if station < PLANNING_LOOKAHEAD_DIST:
+        if station < MAX_BACKWARD_HORIZON:
             # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane. In this
             # case, the starting station for the forward lookahead should be the beginning of the current lane, and the forward lookahead
             # distance should include the maximum forward horizon ahead of the given station and the backward distance to the beginning of
             # the lane (i.e. the station).
             starting_station = 0.0
-            lookahead_distance = MAX_HORIZON_DISTANCE + station
+            lookahead_distance = MAX_FORWARD_HORIZON + station
         else:
             # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
             # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
@@ -322,8 +322,8 @@ class MapUtils:
             # other words, if we're at station = 150 m on a lane and the maximum forward and backward horizons are 400 m and 100 m,
             # respectively, then starting station = 50 m and forward lookahead distance = 400 + 100 = 500 m. This is the case where the GFF
             # does not include any upstream lanes.
-            starting_station = station - PLANNING_LOOKAHEAD_DIST
-            lookahead_distance = MAX_HORIZON_DISTANCE + PLANNING_LOOKAHEAD_DIST
+            starting_station = station - MAX_BACKWARD_HORIZON
+            lookahead_distance = MAX_FORWARD_HORIZON + MAX_BACKWARD_HORIZON
 
         # <lane_subsegments_dict> is a dict of tuples: {RelativeLane: ([FrenetSubsegments], GFF_Type)}
         # RelativeLane in this case refers to the augmented GFFs that can be created from <lane_id>

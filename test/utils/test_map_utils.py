@@ -19,7 +19,7 @@ from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneN
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_offset
-from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
+from decision_making.src.global_constants import MAX_BACKWARD_HORIZON, MAX_FORWARD_HORIZON
 
 
 MAP_SPLIT = "PG_split.bin"
@@ -233,9 +233,9 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
     gff = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id, station, route_plan_20_30)[RelativeLane.SAME_LANE]
 
     # validate the length of the obtained frenet frame
-    assert abs(gff.s_max - (PLANNING_LOOKAHEAD_DIST + MAX_HORIZON_DISTANCE)) < SMALL_DISTANCE_ERROR
+    assert abs(gff.s_max - (MAX_BACKWARD_HORIZON + MAX_FORWARD_HORIZON)) < SMALL_DISTANCE_ERROR
     # calculate cartesian state of the origin of lane_id using GFF and using original frenet of lane_id and compare them
-    gff_cpoint = gff.fpoint_to_cpoint(np.array([PLANNING_LOOKAHEAD_DIST - station, 0]))
+    gff_cpoint = gff.fpoint_to_cpoint(np.array([MAX_BACKWARD_HORIZON - station, 0]))
     ff_cpoint = MapUtils.get_lane_frenet_frame(lane_id).fpoint_to_cpoint(np.array([0, 0]))
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
@@ -247,7 +247,7 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
-@patch('decision_making.src.utils.map_utils.MAX_HORIZON_DISTANCE', 900)
+@patch('decision_making.src.utils.map_utils.MAX_FORWARD_HORIZON', 900)
 def test_getLookaheadFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
     """
     Make sure that partial/augmentedPartial GFFS are created when the lookahead distance is set to be very far ahead
