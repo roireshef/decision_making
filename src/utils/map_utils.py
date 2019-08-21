@@ -445,9 +445,9 @@ class MapUtils:
             raise RoadNotFound("Road ID {} is not in the route plan road segment list".format(initial_road_segment_id))
 
         # Assign arguments that are default to None
+        lane_subsegments = copy.deepcopy(lane_subsegments) or []
         can_augment = copy.deepcopy(can_augment) or {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
         cumulative_distance = cumulative_distance or 0.0
-        lane_subsegments = copy.deepcopy(lane_subsegments) or []
 
         # Set initial values
         current_lane_id = initial_lane_id
