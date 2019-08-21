@@ -6,7 +6,6 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTOR
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
-from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
@@ -28,7 +27,10 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
     DEFAULT_STATIC_RECIPE_FILTERING
 
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, scene_dynamic_mock, \
-    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2
+    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2, \
+    scene_dynamic_fix_single_host_hypothesis
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+
 
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,

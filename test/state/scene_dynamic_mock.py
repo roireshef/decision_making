@@ -8,11 +8,11 @@ from decision_making.src.infra.dm_module import DmModule
 
 class SceneDynamicMock(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, scene_dynamic: SceneDynamic):
-        super().__init__(pubsub, logger, None)
-        self._scene_dynamic = scene_dynamic
+        super().__init__(pubsub, logger)
+        self.scene_dynamic = scene_dynamic
 
     def _periodic_action_impl(self) -> None:
-        self.pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, self._scene_dynamic.serialize())
+        self.pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, self.scene_dynamic.serialize())
 
     def _start_impl(self):
         pass

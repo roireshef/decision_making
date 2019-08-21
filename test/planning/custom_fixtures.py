@@ -337,7 +337,7 @@ def scene_dynamic_mock(scene_dynamic_fix_single_host_hypothesis, pubsub):
 
 
 @pytest.fixture(scope='function')
-def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg, state):
+def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg):
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
     behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trajectory_params=trajectory_params,

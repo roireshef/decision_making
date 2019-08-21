@@ -37,7 +37,6 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
                          last_trajectory=None)
         self._trajectory_params = trajectory_params
         self._visualization_msg = visualization_msg
-
         self._trigger_pos = trigger_pos
         if self._trigger_pos is None:
             self._triggered = True
