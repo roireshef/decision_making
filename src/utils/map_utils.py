@@ -408,7 +408,7 @@ class MapUtils:
         return upstream_lane_subsegments
 
     @staticmethod
-    @raises(RoadNotFound, LaneNotFound, LaneCostNotFound, NavigationPlanTooShort)
+    @raises(RoadNotFound, LaneNotFound, LaneCostNotFound, NavigationPlanTooShort, StraightConnectionNotFound)
     @prof.ProfileFunction()
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                          route_plan: RoutePlan, lane_subsegments: Optional[List[FrenetSubSegment]] = None,
@@ -547,6 +547,7 @@ class MapUtils:
         return lane_subsegments_dict
 
     @staticmethod
+    @raises(RoadNotFound)
     def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, int]:
         """
         Find's downstream lanes from the current_lane_id lane that are on the route_plan.
