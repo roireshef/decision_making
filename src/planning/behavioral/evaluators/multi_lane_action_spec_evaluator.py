@@ -73,7 +73,10 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
                 # otherwise, choose between left and right based on global_constant
                 if lane_end_costs[RelativeLane.SAME_LANE] == lane_end_costs[minimum_cost_lane]:
                     minimum_cost_lane = RelativeLane.SAME_LANE
-                elif lane_end_costs[RelativeLane.LEFT_LANE] == lane_end_costs[RelativeLane.RIGHT_LANE] == lane_end_costs[minimum_cost_lane]:
+                elif lane_end_costs[RelativeLane.LEFT_LANE] == lane_end_costs[RelativeLane.RIGHT_LANE]:
+                    # If the lane end cost for SAME_LANE is not equal to the minimum lane end cost, then either the left or right lane was returned
+                    # above as the lane with the minimum lane end cost. Therefore, if the left and right lane end costs are equal, they are both
+                    # minimums, and one of the lanes needs to be chosen.
                     if PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT:
                         minimum_cost_lane = RelativeLane.LEFT_LANE
                     else:
