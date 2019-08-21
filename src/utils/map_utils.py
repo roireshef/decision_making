@@ -555,9 +555,10 @@ class MapUtils:
         """
         route_cost_dict = route_plan.to_costs_dict()
 
-        # Get all downstream lanes that do not have a saturated lane occupancy cost
+        # Get all downstream lanes in the route plan that do not have a saturated lane occupancy cost
         valid_downstream_lane_ids = [lane_id for lane_id in MapUtils.get_downstream_lane_ids(current_lane_id)
-                                     if route_cost_dict[lane_id][LANE_OCCUPANCY_COST_IND] < SATURATED_COST]
+                                     if (lane_id in route_cost_dict
+                                         and route_cost_dict[lane_id][LANE_OCCUPANCY_COST_IND] < SATURATED_COST)]
 
         # If there are multiple valid downstream lanes, then filter the lanes further by lane end cost.
         if len(valid_downstream_lane_ids) > 1:
