@@ -51,11 +51,15 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         if is_left_augmented:
             # Find where gffs[RelativeLane.LEFT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
-            diverging_indices[RelativeLane.LEFT_LANE] = np.argwhere(gffs[RelativeLane.LEFT_LANE].segment_ids != gffs[RelativeLane.SAME_LANE].segment_ids)[0][0]
+            max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids), len(gffs[RelativeLane.LEFT_LANE].segment_ids))
+            diverging_indices[RelativeLane.LEFT_LANE] = np.argwhere(gffs[RelativeLane.LEFT_LANE].segment_ids[:max_index] !=
+                                                                    gffs[RelativeLane.SAME_LANE].segment_ids[:max_index])[0][0]
 
         if is_right_augmented:
             # Find where gffs[RelativeLane.RIGHT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
-            diverging_indices[RelativeLane.RIGHT_LANE] = np.argwhere(gffs[RelativeLane.RIGHT_LANE].segment_ids != gffs[RelativeLane.SAME_LANE].segment_ids)[0][0]
+            max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids), len(gffs[RelativeLane.RIGHT_LANE].segment_ids))
+            diverging_indices[RelativeLane.RIGHT_LANE] = np.argwhere(gffs[RelativeLane.RIGHT_LANE].segment_ids[:max_index] !=
+                                                                     gffs[RelativeLane.SAME_LANE].segment_ids[:max_index])[0][0]
 
         # After determining if the left or right lane diverges first, look at the lane end costs for the lanes where the divergence occurs.
         # Target the lane with the lower cost.
