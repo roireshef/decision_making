@@ -1,7 +1,6 @@
-from unittest.mock import patch
-
 import numpy as np
 import pytest
+from unittest.mock import patch
 
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.global_constants import VELOCITY_MINIMAL_THRESHOLD, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
