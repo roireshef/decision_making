@@ -1,18 +1,17 @@
-import rte.python.profiler as prof
 from collections import defaultdict
 from itertools import compress
 
 import numpy as np
 import six
 from abc import ABCMeta, abstractmethod
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from logging import Logger
 from typing import List
 from typing import Optional
 
-from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN
+from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, BoolArray
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
-    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -27,7 +26,7 @@ class ActionSpecFilter:
     (or one of its children) and  BehavioralGridState (or one of its children) even if they don't actually use them.
     """
     @abstractmethod
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         pass
 
     @staticmethod
@@ -112,8 +111,7 @@ class ActionSpecFilter:
         spec_t_idxs[in_padding_mode] = 0
 
         # calculate trajectory time indices for t = max(spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
-        last_pad_idxs = (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(
-            int) + 1
+        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(T) + 1
 
         # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
         for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
@@ -125,6 +123,7 @@ class ActionSpecFilter:
                 trajectory_s[spec_t_idx:last_pad_idx] = np.c_[spec.s + times_beyond_spec * spec.v,
                                                               np.full(times_beyond_spec.shape, spec.v),
                                                               np.zeros_like(times_beyond_spec)]
+            # beyond spec.t and beyond MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON pad ftrajectories by 0
             trajectory_s[last_pad_idx:] = 0
             trajectory_d[spec_t_idx:] = 0
 
@@ -151,8 +150,10 @@ class ActionSpecFiltering:
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :return: A boolean List , True where the respective action_spec is valid and false where it is filtered
         """
+        filtering_map = np.zeros(len(action_specs))
         mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
-        for action_spec_filter in self._filters:
+
+        for filter_idx, action_spec_filter in enumerate(self._filters):
             if ~np.any(mask):
                 break
 
@@ -164,6 +165,15 @@ class ActionSpecFiltering:
 
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
+
+            # When an action survives the current filter, the appropriate cell of filtering_map advances to the next
+            # filter. This way it stores the index of the first filter on which it failed.
+            # Update cells of actions that survived the current filter.
+            filtering_map[mask] = filter_idx + 1
+
+        self.logger.debug('\nFiltering_map at timestamp_in_sec %f: %s' %
+                          (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(filtering_map.astype(int))))
+
         return mask.tolist()
 
     @prof.ProfileFunction()

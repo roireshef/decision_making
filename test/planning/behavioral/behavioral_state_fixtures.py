@@ -380,25 +380,36 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
     # Ego state
     ego_lane_lon = EGO_LANE_LON
     ego_vel = 10
-    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
+    right_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
+    mid_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
-    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), mid_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=ego_map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
-    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, route_plan_20_30.s_Data.a_i_road_segment_ids)
-    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
-    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
-    obj_vel = 30
+    mid_next_sub_segments = MapUtils._advance_on_plan(mid_lane_id, ego_lane_lon, 58, route_plan_20_30.s_Data.a_i_road_segment_ids)
+    mid_obj_lane_lon = mid_next_sub_segments[-1].e_i_SEnd
+    mid_obj_lane_id = mid_next_sub_segments[-1].e_i_SegmentID
+    mid_obj_vel = 30
+
+    right_next_sub_segments = MapUtils._advance_on_plan(right_lane_id, ego_lane_lon, 58, route_plan_20_30.s_Data.a_i_road_segment_ids)
+    right_obj_lane_lon = right_next_sub_segments[-1].e_i_SEnd
+    right_obj_lane_id = right_next_sub_segments[-1].e_i_SegmentID
+    right_obj_vel = 20
 
     dynamic_objects: List[DynamicObject] = list()
-    obj_id = 1
 
-    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
-    dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
-                                                    size=car_size, confidence=1., off_map=False)
+    mid_obj_id = 1
+    mid_map_state = MapState(np.array([mid_obj_lane_lon, mid_obj_vel, 0, 0, 0, 0]), mid_obj_lane_id)
+    mid_dynamic_object = DynamicObject.create_from_map_state(obj_id=mid_obj_id, timestamp=0, map_state=mid_map_state,
+                                                             size=car_size, confidence=1., off_map=False)
+    right_obj_id = 2
+    right_map_state = MapState(np.array([right_obj_lane_lon, right_obj_vel, 0, 0, 0, 0]), right_obj_lane_id)
+    right_dynamic_object = DynamicObject.create_from_map_state(obj_id=right_obj_id, timestamp=0, map_state=right_map_state,
+                                                               size=car_size, confidence=1., off_map=False)
 
-    dynamic_objects.append(dynamic_object)
+    dynamic_objects.append(mid_dynamic_object)
+    dynamic_objects.append(right_dynamic_object)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
@@ -421,7 +432,7 @@ def state_for_testing_lanes_speed_limits_violations():
     ego_vel = 10
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
 
-    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, -0.1, 0, 0, 0]), lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:

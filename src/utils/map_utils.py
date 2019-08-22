@@ -1,13 +1,14 @@
 import numpy as np
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound, \
+    IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
-from decision_making.src.messages.scene_static_enums import NominalPathPoint
+from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D, FS_SX
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX, SIGN_TYPE, SIGN_S
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -16,6 +17,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
 from decision_making.src.messages.scene_static_enums import ManeuverType
+
 
 class MapUtils:
 
@@ -100,7 +102,8 @@ class MapUtils:
         elif relative_lane == RelativeLane.LEFT_LANE:
             adj_lanes = lane.as_left_adjacent_lanes
         else:
-            raise ValueError('Relative lane must be either right or left')
+            raise ValueError('Relative lane must be either right or left: lane_id %d, relative_lane %s'
+                             % (lane_id, relative_lane))
         return [adj_lane.e_i_lane_segment_id for adj_lane in adj_lanes]
 
     @staticmethod
@@ -268,7 +271,7 @@ class MapUtils:
         try:
             MapUtils._get_upstream_lanes_from_distance(lane_id, 0, backward_dist)
             return True
-        except UpstreamLaneNotFound:
+        except UpstreamLaneNotFound as e:
             return False
 
     @staticmethod
@@ -308,8 +311,6 @@ class MapUtils:
         # create GFF
         gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
         return gff
-
-
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
@@ -358,9 +359,9 @@ class MapUtils:
             next_road_idx_on_plan = current_road_idx_on_plan + 1
             if next_road_idx_on_plan > len(route_plan_road_ids) - 1:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
-                                             "current_segment_end_s=%f lookahead_distance=%f" %
+                                             "initial_road_segment_id=%d current_segment_end_s=%f lookahead_distance=%f" %
                                              (route_plan_road_ids, lookahead_distance - cumulative_distance,
-                                              current_segment_end_s, lookahead_distance))
+                                              initial_road_segment_id, current_segment_end_s, lookahead_distance))
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
             # road segment. This assumes a single correct downstream segment.
@@ -368,8 +369,8 @@ class MapUtils:
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
             # TODO: what if lane is deadend or it is the last road segment in the nav. plan (destination reached)
             if len(downstream_lanes_ids) == 0:
-                raise DownstreamLaneNotFound(
-                    "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
+                raise DownstreamLaneNotFound("_advance_on_plan: Downstream lane not found "
+                                             "for lane_id=%d" % (current_lane_id))
 
             # collect downstream lanes, whose road_segment_id is next_road_segment_id_on_plan
             downstream_lanes_ids_on_plan = \
@@ -378,12 +379,12 @@ class MapUtils:
 
             # verify that there is exactly one downstream lane, whose road_segment_id is next_road_segment_id_on_plan
             if len(downstream_lanes_ids_on_plan) == 0:
-                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current_lane %d, "
-                                                  "downstream_lanes %s, next_road_segment_id_on_plan %d" %
+                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan: current lane: %d,"
+                                                  " downstream_lanes: %s, next_road_segment_on_plan: %d" %
                                                   (current_lane_id, downstream_lanes_ids, next_road_segment_id_on_plan))
             if len(downstream_lanes_ids_on_plan) > 1:
-                raise AmbiguousNavigationPlan("More than 1 downstream lanes with STRAIGHT CONNECTION type according %s,"
-                                              " to the nav. plan downstream_lanes_ids_on_plan %s" %
+                raise AmbiguousNavigationPlan("More than 1 downstream lanes with STRAIGHT CONNECTION "
+                                              "type according %s, to the nav. plan downstream_lanes_ids_on_plan: %s" %
                                               (route_plan_road_ids, downstream_lanes_ids_on_plan))
 
             current_lane_id = downstream_lanes_ids_on_plan[0]
@@ -412,8 +413,8 @@ class MapUtils:
             if len(prev_lane_ids) == 0:
                 # TODO: the lane can actually have no upstream; should we continue with the existing path instead of
                 #   raising exception, if total_dist > TBD
-                raise UpstreamLaneNotFound(
-                    "MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % (prev_lane_id))
+                raise UpstreamLaneNotFound("_get_upstream_lanes_from_distance: Upstream lane not "
+                                           "found for lane_id=%d" % prev_lane_id)
             # TODO: how to choose between multiple upstreams if all of them belong to route plan road segment
             prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
@@ -432,8 +433,9 @@ class MapUtils:
         lanes = [lane for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
-            raise LaneNotFound('lane {0} not found'.format(lane_id))
-        assert len(lanes) == 1
+            raise LaneNotFound('lane %d not found' % lane_id)
+        if len(lanes) > 1:
+            raise IDAppearsMoreThanOnce('lane %d appears more than once' % lane_id)
         return lanes[0]
 
     @staticmethod
@@ -448,8 +450,9 @@ class MapUtils:
         lanes = [lane for lane in scene_static_lane_geo.s_Data.s_SceneStaticGeometry.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
-            raise LaneNotFound('lane %d not found' % lane_id)
-        assert len(lanes) == 1
+            raise LaneNotFound('lane %d not found in lane geometry' % lane_id)
+        if len(lanes) > 1:
+            raise IDAppearsMoreThanOnce('lane %d appears more than once in lane geometry' % lane_id)
         return lanes[0]
 
     @staticmethod
@@ -465,31 +468,49 @@ class MapUtils:
                          road_segment.e_i_road_segment_id == road_id]
         if len(road_segments) == 0:
             raise RoadNotFound('road %d not found' % road_id)
-        assert len(road_segments) == 1
+        if len(road_segments) > 1:
+            raise IDAppearsMoreThanOnce('road %d appears more than once' % road_id)
         return road_segments[0]
 
-
-
+    @staticmethod
+    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame) -> []:
+        """
+        Returns a list of the locations (s coordinates) of stop signs and stop bars on the GFF, with their type
+        The list is ordered from closest traffic flow control to farthest.
+        :param lane_frenet: The GFF on which to retrieve the static flow controls.
+        :return: A list of distances to stop signs and stop bars on the the GFF, ordered from closest traffic flow
+        control to farthest, along with the type of the control.
+        """
+        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)
+        stop_bars_and_signs = []
+        for road_sign in road_signs:
+            # TODO verify these are the correct stop bar enums
+            if road_sign[SIGN_TYPE] in [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]:
+                stop_bars_and_signs.append(road_sign)
+        return stop_bars_and_signs
 
     @staticmethod
-    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> np.array:
+    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> []:
         """
-        Returns a the locations (s coordinates) of Static_Traffic_flow_controls on the GFF
-        The list if ordered from closest traffic flow control to farthest.
+        Returns a list of the locations (s coordinates) of Static_Traffic_flow_controls on the GFF, with their type
+        The list is ordered from closest traffic flow control to farthest.
         :param lane_frenet: The GFF on which to retrieve the static flow controls.
-        :return: A list of static flow contronls on the the GFF, ordered from closest traffic flow control to farthest.
+        :return: A list of distances to static flow controls on the the GFF, ordered from closest traffic flow control
+        to farthest, along with the type of the control.
         """
         lane_ids = []
-        # stations are s coordinates
-        stations_s_coordinates = []
+        # s coordinates
+        road_signs_s_on_lane_segments = []
+        road_sign_types = []
         for lane_id in lane_frenet.segment_ids:
             lane_segment = MapUtils.get_lane(lane_id)
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
-                stations_s_coordinates.append(static_traffic_flow_control.e_l_station)
-        frenet_states = np.zeros((len(stations_s_coordinates), 6))
-        frenet_states[:, FS_SX] = sorted(stations_s_coordinates)
-        return lane_frenet.convert_from_segment_states(frenet_states, lane_ids)[:, FS_SX]
-
-
-
+                road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
+                road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
+        frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
+        frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
+        road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
+        road_sign_info_on_gff = list(zip(road_sign_types, road_sign_s_on_gff))  # order of elements in zip must match types.py SIGN_TYPE, SIGN_DISTANCE
+        road_sign_info_on_gff.sort(key=lambda x: x[SIGN_S])  # sort by distance after the conversion to real distance
+        return road_sign_info_on_gff

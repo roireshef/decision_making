@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
     ActionRecipe, RelativeLane, ActionType, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, \
     FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle, StaticTrafficFlowControlFilter, \
-    BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter
+    BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter, FilterForSLimit
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as FilterRecipeIfNone
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -168,7 +168,6 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.SAFETY_HEADWAY', 0.7)
 @patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
 @patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
-@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED', 100 / 3.6)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.SPECIFICATION_HEADWAY', 1.5)
 @patch.multiple('decision_making.src.planning.behavioral.action_space.dynamic_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))
@@ -382,3 +381,99 @@ def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimits_filterResul
 
     np.testing.assert_array_equal(filter_results, expected_filter_results)
 
+def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimitsWhenSlowing_filterResultsMatchExpected(
+        behavioral_grid_state_with_segments_limits,
+        follow_lane_recipes: List[StaticActionRecipe]):
+
+    logger = AV_Logger.get_logger()
+    # The scene_static that is being used, is in accordance to whatever happens in behavioral_grid_state_
+    # with_segments_limits fixture
+    scene_static_with_limits = SceneStaticModel.get_instance().get_scene_static()
+    # The following are 4 consecutive lane segments with varying speed limits (ego starts at the end of [0])
+    # These are the s-values that correspond to lane transitions on the GFF:
+    # [0.0, 100.84134201631973, 220.48438762415998, 343.9575891327402, 466.0989153990629]
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].e_v_nominal_speed = 4
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_v_nominal_speed = 4
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[6].e_v_nominal_speed = 4
+    scene_static_with_limits.s_Data.s_SceneStaticBase.as_scene_lane_segments[9].e_v_nominal_speed = 4
+    SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
+
+    filtering = RecipeFiltering(filters=[], logger=logger)
+    # note: first lane segment speed limit is almost irrelevant because we start at the end of this segment
+    expected_filter_results = np.array([True, True, True,      # v_T=0 (Calm, Standard, Aggressive)  - All Pass (not arriving at [9])
+                                        False, False, False,   # v_T=6 - Fail  <<-- This was fixed by checking the final velocity is met
+                                        False, False, False,   # v_T=12 - Fail
+                                        False, False, False,   # v_T=18 - Fail
+                                        False, False, False,   # v_T=24 - Fail
+                                        False, False, False    # v_T=30 - Fail
+                                        ], dtype=bool)
+
+    static_action_space = StaticActionSpace(logger, filtering=filtering)
+
+    action_specs = static_action_space.specify_goals(follow_lane_recipes,
+                                                     behavioral_grid_state_with_segments_limits)
+
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForLaneSpeedLimits()], logger=logger)
+
+    filter_results = action_spec_filter.filter_action_specs(action_specs,
+                                                            behavioral_grid_state_with_segments_limits)
+
+    np.testing.assert_array_equal(filter_results, expected_filter_results)
+
+
+def test_filter_filterForSLimit_dontFilterValidAction(
+        behavioral_grid_state_with_objects_for_filtering_too_aggressive,
+        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
+    """
+    State leads to two dynamic actions: {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE), {a0=0,v0=10,sT=53.5,vT=20} (RIGHT_LANE).
+    The action on the right lane (with slow dynamic object) ends inside RIGHT_LANE Frenet frame and is not filtered.
+    All ground truths checked with desmos - https://www.desmos.com/calculator/exizg3iuhs
+    """
+    logger = AV_Logger.get_logger()
+    predictor = RoadFollowingPredictor(logger)
+
+    filtering = RecipeFiltering(filters=[FilterRecipeIfNone()], logger=logger)
+
+    actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[:3]
+
+    expected_filter_results = np.array([False, False, True], dtype=bool)
+    dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
+
+    action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
+                                                                   behavioral_grid_state_with_objects_for_filtering_too_aggressive)
+
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForSLimit()], logger=logger)
+
+    filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
+                                                            behavioral_grid_state_with_objects_for_filtering_too_aggressive)
+
+    np.testing.assert_array_equal(filter_results, expected_filter_results)
+
+
+def test_filter_filterForSLimit_filterTooLongAction(
+        behavioral_grid_state_with_objects_for_filtering_too_aggressive,
+        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
+    """
+    State leads to two dynamic actions: {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE), {a0=0,v0=10,sT=53.5,vT=20} (RIGHT_LANE).
+    The action on the same lane ends beyond SAME_LANE Frenet frame and therefore is filtered.
+    All ground truths checked with desmos - https://www.desmos.com/calculator/exizg3iuhs
+    """
+    logger = AV_Logger.get_logger()
+    predictor = RoadFollowingPredictor(logger)
+
+    filtering = RecipeFiltering(filters=[FilterRecipeIfNone()], logger=logger)
+
+    actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
+
+    expected_filter_results = np.array([False, False, False], dtype=bool)
+    dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
+
+    action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
+                                                                   behavioral_grid_state_with_objects_for_filtering_too_aggressive)
+
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForSLimit()], logger=logger)
+
+    filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
+                                                            behavioral_grid_state_with_objects_for_filtering_too_aggressive)
+
+    np.testing.assert_array_equal(filter_results, expected_filter_results)
