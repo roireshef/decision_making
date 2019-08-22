@@ -177,6 +177,25 @@ class Poly1D:
         return cls.are_derivatives_in_limits(degree=2, poly_coefs=poly_coefs, T_vals=T_vals, limits=acc_limits)
 
     @classmethod
+    def are_derivatives_in_limits_zero_coef(cls, degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray,
+                                            limits: Limits) -> np.ndarray:
+        """
+        check acceleration limits with polynomials, whose leading coefficients may be zero
+        :param degree: degree of derivative: 2 for acceleration, 1 for velocity
+        :param poly_coefs:
+        :param T_vals:
+        :param limits:
+        :return: boolean 1D array of accelerations validity for each polynomial
+        """
+        valid_acc = np.zeros(poly_coefs.shape[0]).astype(bool)
+        for coef_idx in range(poly_coefs.shape[1]):
+            poly_of_degree = np.isclose(poly_coefs[:, :coef_idx], 0).all(axis=1) & ~np.isclose(poly_coefs[:, coef_idx], 0)
+            if poly_of_degree.any():
+                valid_acc[poly_of_degree] = cls.are_derivatives_in_limits(
+                    degree=degree, poly_coefs=poly_coefs[poly_of_degree, coef_idx:], T_vals=T_vals[poly_of_degree], limits=limits)
+        return valid_acc
+
+    @classmethod
     def is_acceleration_in_limits(cls, poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:
         """
         given coefficients vector of a polynomial x(t), and restrictions on the acceleration values,

@@ -99,7 +99,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         if lane_merge_state is None or len(lane_merge_state.actors) == 0:  # no merge ahead or no cars on the main road
             return ActionEvaluationStrategyType.DEFAULT_RULE_BASED, self._specify_default_action_space(behavioral_state)
 
-        merge_specs = RuleBasedLaneMerge.create_safe_merge_actions(lane_merge_state, merge_point_in_gff)
+        merge_specs = RuleBasedLaneMerge.create_safe_actions(lane_merge_state, merge_point_in_gff)
         if len(merge_specs) > 0:
             return ActionEvaluationStrategyType.MERGE_RB, merge_specs
         else:  # not arrived to the yellow line
