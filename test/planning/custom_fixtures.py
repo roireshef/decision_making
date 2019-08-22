@@ -174,6 +174,28 @@ def state_with_old_object(request) -> State:
 
 
 @pytest.fixture(scope='function')
+def scene_dynamic(scene_static_short_testable) -> SceneDynamic:
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+
+    lane_id = 11
+    road_id = 1
+    fstate = np.array([1., 1., 0., 0., 0., 0.])
+    host_hypotheses = [HostHypothesis(road_id, lane_id, fstate, False)]
+
+    frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    cstate = frenet.fstate_to_cstate(fstate)
+    ego_localization = HostLocalization(cstate, 1, host_hypotheses)
+
+    timestamp = Timestamp.from_seconds(5.0)
+    header = Header(0, timestamp, 0)
+    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
+
+    yield scene_dynamic
+
+
+@pytest.fixture(scope='function')
 def scene_dynamic_fix_single_host_hypothesis(scene_static_pg_split):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)

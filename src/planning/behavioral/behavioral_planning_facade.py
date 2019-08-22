@@ -3,7 +3,6 @@ import time
 import numpy as np
 import traceback
 from logging import Logger
-import rte.python.profiler as prof
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
@@ -244,7 +243,7 @@ class BehavioralPlanningFacade(DmModule):
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_DYNAMIC)
         scene_dynamic = SceneDynamic.deserialize(serialized_scene_dynamic)
-        if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count == 0 :
+        if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count == 0:
             raise MsgDeserializationError("SceneDynamic was received without any host localization")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_dynamic

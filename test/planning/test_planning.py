@@ -28,15 +28,14 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
     DEFAULT_STATIC_RECIPE_FILTERING
 
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, \
-    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2, \
-    scene_dynamic_fix_single_host_hypothesis
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2, scene_dynamic
+from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 
 
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         scene_static_short_testable,
-                                                                        scene_dynamic_fix_single_host_hypothesis):
+                                                                        scene_dynamic):
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
 
     # Using logger-mock here because facades catch exceptions and redirect them to logger
@@ -56,13 +55,13 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
     pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PLAN, trajectory_publish_mock)
 
-    pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic_fix_single_host_hypothesis.serialize())
+    pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic.serialize())
     trajectory_facade.start()
 
     pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_testable.serialize())
 
     behavioral_facade.periodic_action()
-    pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic_fix_single_host_hypothesis.serialize())
+    pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic.serialize())
     trajectory_facade.periodic_action()
 
     # if this fails, that means BP did not publish a message - debug exceptions in TrajectoryPlanningFacade
@@ -80,7 +79,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub,
                                                                   route_planner_facade: RoutePlanningFacade,
                                                                   scene_static_short_testable,
-                                                                  scene_dynamic_fix_single_host_hypothesis):
+                                                                  scene_dynamic):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
 
@@ -101,7 +100,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
                                           value_approximator=ZeroValueApproximator(bp_logger),
                                           predictor=predictor, logger=bp_logger)
 
-    pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic_fix_single_host_hypothesis.serialize())
+    pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic.serialize())
     route_planner_facade.periodic_action()
 
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
