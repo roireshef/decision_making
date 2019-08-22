@@ -3,7 +3,6 @@ from typing import Tuple
 
 import numpy as np
 import rte.python.profiler as prof
-
 from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
@@ -23,7 +22,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 
@@ -245,19 +244,7 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         return np.flip(np.linspace(T_s, T_d_low_bound, TD_STEPS), axis=0)
 
-    @staticmethod
-    def _solve_1d_poly(constraints: np.ndarray, T: float, poly_impl: Poly1D) -> np.ndarray:
-        """
-        Solves the two-point boundary value problem, given a set of constraints over the initial and terminal states.
-        :param constraints: 3D numpy array of a set of constraints over the initial and terminal states
-        :param T: longitudinal/lateral trajectory duration (sec.), relative to ego. T has to be a multiple of WerlingPlanner.dt
-        :param poly_impl: OptimalControlUtils 1d polynomial implementation class
-        :return: a poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s] or [c0_d, ..., c5_d]
-        """
-        A = poly_impl.time_constraints_matrix(T)
-        A_inv = np.linalg.inv(A)
-        poly_coefs = poly_impl.solve(A_inv, constraints)
-        return poly_coefs
+
 
     @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,
@@ -284,7 +271,7 @@ class WerlingPlanner(TrajectoryPlanner):
         constraints_d = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
 
         # solve for dimension s
-        poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T_s, QuinticPoly1D)
+        poly_s = QuinticPoly1D.solve_1d_bvp(constraints_s, T_s)
 
         # generate trajectories for the polynomials of dimension s
         solutions_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples_s)
@@ -300,7 +287,7 @@ class WerlingPlanner(TrajectoryPlanner):
             time_samples_d = np.arange(0, T_d + EPS, dt)
 
             # solve for dimension d (with time-horizon T_d)
-            partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
+            partial_poly_d = QuinticPoly1D.solve_1d_bvp(constraints_d, T_d)
 
             # generate the trajectories for the polynomials of dimension d - within the horizon T_d
             partial_solutions_d = QuinticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
