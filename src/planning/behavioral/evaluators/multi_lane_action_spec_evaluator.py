@@ -116,30 +116,39 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
         # look at the actions that are in the minimum cost lane
         costs = np.full(len(action_recipes), 1)
 
-        # first try to find a valid dynamic action for SAME_LANE
-        follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
-                                            if action_specs_mask[i]
-                                            and recipe.relative_lane == minimum_cost_lane
-                                            and recipe.action_type == ActionType.FOLLOW_VEHICLE]
-        if len(follow_vehicle_valid_action_idxs) > 0:
-            costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
-            return costs
+        # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
+        # on the straight lane if no actions are available on the augmented lane
+        lanes_to_try = [minimum_cost_lane, RelativeLane.SAME_LANE] if minimum_cost_lane != RelativeLane.SAME_LANE \
+            else [minimum_cost_lane]
 
-        filtered_indices = [i for i, recipe in enumerate(action_recipes)
-                            if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                            and recipe.relative_lane == minimum_cost_lane]
-        if len(filtered_indices) == 0:
-            raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
-                                          behavioral_state.ego_state.timestamp_in_sec)
+        for target_lane in lanes_to_try:
+            # first try to find a valid dynamic action for the target_lane
+            follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
+                                                if action_specs_mask[i]
+                                                and recipe.relative_lane == target_lane
+                                                and recipe.action_type == ActionType.FOLLOW_VEHICLE]
+            if len(follow_vehicle_valid_action_idxs) > 0:
+                costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
+                return costs
 
-        # find the minimal aggressiveness level among valid static recipes
-        min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_indices])
+            filtered_indices = [i for i, recipe in enumerate(action_recipes)
+                                if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                                and recipe.relative_lane == target_lane]
 
-        # find the most fast action with the minimal aggressiveness level
-        follow_lane_valid_action_idxs = [idx for idx in filtered_indices
-                                         if action_recipes[idx].aggressiveness.value == min_aggr_level]
+            if len(filtered_indices) > 0:
+                # find the minimal aggressiveness level among valid static recipes
+                min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_indices])
 
-        # choose the most fast action among the calmest actions;
-        # it's last in the recipes list since the recipes are sorted in the increasing order of velocities
-        costs[follow_lane_valid_action_idxs[-1]] = 0
-        return costs
+                # find the most fast action with the minimal aggressiveness level
+                follow_lane_valid_action_idxs = [idx for idx in filtered_indices
+                                                 if action_recipes[idx].aggressiveness.value == min_aggr_level]
+
+                # choose the most fast action among the calmest actions;
+                # it's last in the recipes list since the recipes are sorted in the increasing order of velocities
+                costs[follow_lane_valid_action_idxs[-1]] = 0
+                return costs
+
+        # if the for loop is exited without having returned anything, no valid actions were found in both
+        # minimum_cost_lane as well as the SAME_LANE
+        raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
+                                      behavioral_state.ego_state.timestamp_in_sec)
