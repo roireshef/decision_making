@@ -472,7 +472,7 @@ class MapUtils:
 
             next_road_idx_on_plan = current_road_idx_on_plan + 1
 
-            if next_road_idx_on_plan == route_plan.s_Data.e_Cnt_num_road_segments:
+            if next_road_idx_on_plan >= route_plan.s_Data.e_Cnt_num_road_segments:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
                                              "current_segment_end_s=%f lookahead_distance=%f" %
                                              (route_plan.s_Data.a_i_road_segment_ids, lookahead_distance - cumulative_distance,
