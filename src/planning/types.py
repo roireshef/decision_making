@@ -91,7 +91,9 @@ S5, S4, S3, S2, S1, S0, D5, D4, D3, D2, D1, D0 = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1
 
 
 ## ROUTE PLANNER ##
+# Cost to be in a lane
 LaneOccupancyCost = float
+# Cost to go past the end of a lane 
 LaneEndCost = float
 
 ## MISC ##
