@@ -205,9 +205,9 @@ class BehavioralGridState:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
             raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
 
-        host_cartesion_point = np.array([state.ego_state.cartesian_state[C_X],
+        host_cartesian_point = np.array([state.ego_state.cartesian_state[C_X],
                                          state.ego_state.cartesian_state[C_Y]])
-        host_station_on_same_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE].cpoint_to_fpoint(host_cartesion_point)[FP_SX]
+        host_station_on_same_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE].cpoint_to_fpoint(host_cartesian_point)[FP_SX]
 
         # If an adjacent lane exists, create a generalized Frenet frame for it
         for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
