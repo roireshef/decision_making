@@ -57,9 +57,9 @@ class FilterIfNoLane(RecipeFilter):
         lane_id = behavioral_state.ego_state.map_state.lane_id
         return [(recipe.relative_lane == RelativeLane.SAME_LANE
                  or len(MapUtils.get_adjacent_lane_ids(lane_id, recipe.relative_lane)) > 0
-                 or (recipe.relative_lane in behavioral_state.extended_lane_frames
-                     and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFF_Type.Augmented, GFF_Type.AugmentedPartial]))
-                if recipe is not None else False for recipe in recipes]
+                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFF_Type.Augmented, GFF_Type.AugmentedPartial])
+                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
+                else False for recipe in recipes]
 
 
 class FilterIfAggressive(RecipeFilter):
@@ -70,10 +70,12 @@ class FilterIfAggressive(RecipeFilter):
 
 class FilterLaneChangingIfNotAugmented(RecipeFilter):
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        # the if statement in the ternary operator is executed first and will short circuit if False,
+        # so a KeyError will not happen when accessing the extended_lane_frames dict
         return [(recipe.relative_lane == RelativeLane.SAME_LANE
-                 or (recipe.relative_lane in behavioral_state.extended_lane_frames
-                     and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFF_Type.Augmented, GFF_Type.AugmentedPartial]))
-                if recipe is not None else False for recipe in recipes]
+                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFF_Type.Augmented, GFF_Type.AugmentedPartial])
+                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
+                else False for recipe in recipes]
 
 class FilterSpeedingOverDesiredVelocityStatic(RecipeFilter):
     def filter(self, recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
