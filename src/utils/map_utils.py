@@ -360,10 +360,10 @@ class MapUtils:
                                        logger: Optional[Logger] = None) -> List[FrenetSubSegment]:
         """
         Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
-        :param initial_lane_id:
+        :param initial_lane_id: ID of lane to start from
         :param initial_station: Station on given lane
-        :param backward_distance:
-        :param logger:
+        :param backward_distance: Distance [m] to look backwards
+        :param logger: Logger object to log warning messages
         :return: List of upstream lane subsegments
         """
         lane_id = initial_lane_id
@@ -414,8 +414,9 @@ class MapUtils:
     @raises(RoadNotFound, LaneNotFound, NavigationPlanTooShort, StraightConnectionNotFound)
     @prof.ProfileFunction()
     def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         route_plan: RoutePlan, lane_subsegments: Optional[List[FrenetSubSegment]] = None,
+                         route_plan: RoutePlan,
                          can_augment: Optional[Dict[RelativeLane, bool]] = None,
+                         lane_subsegments: Optional[List[FrenetSubSegment]] = None,
                          cumulative_distance: Optional[float] = None) -> \
                          Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool]]:
         """
@@ -426,9 +427,9 @@ class MapUtils:
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :param lane_subsegments:
-        :param can_augment:
-        :param cumulative_distance:
+        :param can_augment: dict of RelativeLane to bool; if True, try to create an augmented lane for that RelativeLane
+        :param lane_subsegments: initial lane segments; further lane segments will be appended to this. Used for recursion.
+        :param cumulative_distance: cumulative_distance of lane_subsegments; further distance will be added to this. Used for recursion.
         :return: Dictionary with potential keys: [RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
                  These keys represent the non-augmented, left-augmented, and right-augmented gffs that can be created.
                  The key-value pair for the non-augmented lane (i.e. RelativeLane.SAME_LANE) will always exist, and it refers
