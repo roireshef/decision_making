@@ -696,11 +696,11 @@ class MapUtils:
 
     @staticmethod
     @raises(EquivalentStationNotFound)
-    def _find_equivalent_station(lane_segment_id: int, desired_station: float, gff: GeneralizedFrenetSerretFrame) -> float:
+    def _find_equivalent_station(lane_segment_id: int, gff_station: float, gff: GeneralizedFrenetSerretFrame) -> float:
         """
         Find the station on a lane that is equivalent to a given station in a GFF
         :param lane_segment_id: ID for the lane segment in question
-        :param desired_station: Station in given GFF
+        :param gff_station: Station in given GFF
         :param gff: Generalized Frenet frame
         :return: Equivalent station in given lane to given GFF station
         """
@@ -719,7 +719,7 @@ class MapUtils:
                 # If any of these errors were raised, then the nominal path point is not close to the desired station.
                 continue
 
-            station_difference = abs(desired_station - station)
+            station_difference = abs(gff_station - station)
 
             if station_difference < previous_station_difference:
                 # If station_difference is less than previous_station_difference, there is potentially a closer station to the desired
