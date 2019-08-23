@@ -13,7 +13,6 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
 
 
-
 class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
     def __init__(self, logger: Logger):
         super().__init__(logger)

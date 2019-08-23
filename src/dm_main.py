@@ -69,7 +69,7 @@ class DmInitialization:
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
-        action_spec_evaluator = MultiLaneActionSpecEvaluator(logger) #SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
+        action_spec_evaluator = MultiLaneActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
         action_spec_filtering = DEFAULT_ACTION_SPEC_FILTERING

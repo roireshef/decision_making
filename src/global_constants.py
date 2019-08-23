@@ -6,9 +6,6 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 # General constants
 EPS = np.finfo(np.float32).eps
 FLOAT_MAX  = np.finfo(np.float32).max
-TRUE_COST = 1.0
-FALSE_COST = 0.0
-SATURATED_COST = 1.0
 MPH_TO_MPS = 2.23694
 
 # Communication Layer
@@ -236,8 +233,19 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 # Route Planner #
 LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 
+# Indices for the route plan cost tuple
 LANE_OCCUPANCY_COST_IND = 0
 LANE_END_COST_IND = 1
+
+# TODO: Is this the same as SATURATED_COST?
+# Maximum cost: Lane cannot be occupied
+TRUE_COST = 1.0
+
+# Minimum cost for a lane: Lane is not blocked
+FALSE_COST = 0.0
+
+# Max cost a lane can have
+SATURATED_COST = 1.0
 
 
 # State #
