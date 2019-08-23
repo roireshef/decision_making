@@ -394,7 +394,7 @@ class MapUtils:
                         break
 
             # Second, determine the start and end stations for the subsegment
-            end_station = MapUtils.get_lane_length(chosen_upstream_lane_id)
+            end_station = MapUtils.get_lane(chosen_upstream_lane_id).e_l_length
             upstream_distance += end_station
             start_station = max(0.0, upstream_distance - backward_distance)
 
