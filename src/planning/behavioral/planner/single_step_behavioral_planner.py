@@ -99,9 +99,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
             return action_specs, action_costs
 
         # the safe lane merge can not be guaranteed, so add stop bar at red line and perform RL
-        add_stop_bar()
         action_specs = self._specify_default_action_space(behavioral_state)
         action_costs = LaneMergeRLPolicy.evaluate(lane_merge_state)
+        add_stop_bar()
         return action_specs, action_costs
 
     def _specify_default_action_space(self, behavioral_state: BehavioralGridState) -> List[Optional[ActionSpec]]:
