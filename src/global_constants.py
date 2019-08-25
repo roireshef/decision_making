@@ -7,6 +7,7 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 EPS = np.finfo(np.float32).eps
 TRUE_COST = 1.0
 FALSE_COST = 0.0
+MPH_TO_MPS = 2.23694
 
 # Communication Layer
 
@@ -54,11 +55,17 @@ LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 90/3.6  # TODO - get this value from the map
+# original velocities in [mph] are converted into [m/s]
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 75/MPH_TO_MPS # TODO - get this value from the map
+
+# [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
+# we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
+TP_DESIRED_VELOCITY_DEVIATION = 1
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
-VELOCITY_LIMITS = np.array([0.0, 100/3.6])
-VELOCITY_STEP = 10/3.6
+# original velocities in [mph] are converted into [m/s]
+VELOCITY_LIMITS = np.array([0.0, 80/MPH_TO_MPS])
+VELOCITY_STEP = 5/MPH_TO_MPS
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
@@ -66,16 +73,19 @@ BP_ACTION_T_LIMITS = np.array([0.0, 15.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [12, 0.15, 0.1],
-    [2, 0.15, 0.1],
-    [0.01, 0.15, 0.1]
+    [1, 0.15, 0.1],
+    [0.2, 0.15, 0.1],
+    [0.015, 0.15, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-4.0, 4.0])
+LAT_ACC_LIMITS = np.array([-2, 2])
+
+# BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
+BP_LAT_ACC_STRICT_COEF = 0.9
 
 # Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
 SPECIFICATION_HEADWAY = 1.5

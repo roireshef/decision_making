@@ -103,12 +103,16 @@ class BehavioralGridState:
                 corresponding extended_lane_frame
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
+
+        # filter out off map dynamic objects
+        on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
+
         # calculate objects' segment map_states
-        object_map_states = [obj.map_state for obj in dynamic_objects]
+        object_map_states = [obj.map_state for obj in on_map_dynamic_objects]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj = np.full(len(dynamic_objects), None)
+        rel_lanes_per_obj = np.full(len(on_map_dynamic_objects), None)
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
@@ -120,7 +124,7 @@ class BehavioralGridState:
             extended_lane_frames, projected_ego_fstates, object_map_states)
 
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
-                for i, obj in enumerate(dynamic_objects) if rel_lanes_per_obj[i] is not None]
+                for i, obj in enumerate(on_map_dynamic_objects) if rel_lanes_per_obj[i] is not None]
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
@@ -201,8 +205,12 @@ class BehavioralGridState:
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, route_plan=route_plan)
             except MappingException as e:
-                logger.warning(e)
-                continue
+                # TODO: when lane split activity will be resolved, GFF creation failure should not be ignored
+                error_message = "Trying to fetch data for %s, but data is unavailable. %s" % (rel_lane, str(e))
+                if rel_lane != RelativeLane.SAME_LANE:
+                    logger.warning(error_message)
+                else:  # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
+                    raise AssertionError(error_message)
 
         return extended_lane_frames
 

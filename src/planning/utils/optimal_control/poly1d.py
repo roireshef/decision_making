@@ -80,7 +80,7 @@ class Poly1D:
           1. position (evaluation of the polynomial)
           2. velocity (evaluation of the 1st derivative of the polynomial)
           2. acceleration (evaluation of the 2st derivative of the polynomial)
-        :param poly_coefs: 2d numpy array [MxL] of the quartic (position) polynomials coefficients, where
+        :param poly_coefs: 2d numpy array [MxL] of the (position) polynomials coefficients, where
          each row out of the M is a different polynomial and contains L coefficients
         :param time_samples: 1d numpy array [K] of the time stamps for the evaluation of the polynomials
         :return: 3d numpy array [M,K,3] with the following dimensions:
@@ -94,6 +94,31 @@ class Poly1D:
         x_vals = Math.polyval2d(poly_coefs, time_samples)
         x_dot_vals = Math.polyval2d(poly_dot_coefs, time_samples)
         x_dotdot_vals = Math.polyval2d(poly_dotdot_coefs, time_samples)
+
+        return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+
+    @staticmethod
+    def zip_polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
+        """
+        For n-th position polynomial and k-th element in n-th row of time-samples matrix (where n runs on all
+        polynomials), it generates 3 values:
+          1. position (evaluation of the polynomial)
+          2. velocity (evaluation of the 1st derivative of the polynomial)
+          3. acceleration (evaluation of the 2st derivative of the polynomial)
+        :param poly_coefs: 2d numpy array [NxL] of the (position) polynomials coefficients, where
+         each row out of the N is a different polynomial and contains L coefficients
+        :param time_samples: 2d numpy array [NxK] of the time stamps for the evaluation of the polynomials
+        :return: 3d numpy array [N,K,3] with the following dimensions:
+            [position value, velocity value, acceleration value]
+        """
+        # compute the coefficients of the polynom's 1st derivative (m=1)
+        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
+        # compute the coefficients of the polynom's 2nd derivative (m=2)
+        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
+
+        x_vals = Math.zip_polyval2d(poly_coefs, time_samples)
+        x_dot_vals = Math.zip_polyval2d(poly_dot_coefs, time_samples)
+        x_dotdot_vals = Math.zip_polyval2d(poly_dotdot_coefs, time_samples)
 
         return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
 

@@ -25,7 +25,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
-from os import getpid
+import os
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
@@ -102,9 +102,13 @@ class DmInitialization:
 def main():
     av_argument_parser.parse_arguments()
     # register termination signal handler
+    AV_Logger.init_group("PLAN")
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-    logger.debug('%d: (DM main) registered signal handler', getpid())
+    logger.debug('%d: (DM main) registered signal handler', os.getpid())
     catch_interrupt_signals()
+
+    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
 
     modules_list = \
         [
@@ -134,7 +138,7 @@ def main():
     try:
         manager.wait_for_submodules()
     except KeyboardInterrupt:
-        logger.info('%d: (DM main) interrupted by signal', getpid())
+        logger.info('%d: (DM main) interrupted by signal', os.getpid())
         pass
     finally:
         manager.stop_modules()

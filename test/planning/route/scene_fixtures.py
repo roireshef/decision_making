@@ -481,7 +481,7 @@ def combined_scene_and_expected_output(request):
 def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState :
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
     map_state = MapState(np.array([ego_lane_station, 10, 0, 0, 0, 0]), ego_lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
     return ego_state
 
 
@@ -607,7 +607,7 @@ def construction_scene_for_takeover_test(request):
         car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
         map_state = MapState(np.array([ego_lane_station, 10, 0, 0, 0, 0]), ego_lane_id)
-        ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
+        ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
         # expected output
         expected_takover = True

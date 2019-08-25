@@ -121,12 +121,13 @@ class WerlingPlanner(TrajectoryPlanner):
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
 
+        # TODO: desired velocity is dynamically changing when transitioning between road/lane segments
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
-                                                                             cost_params.lat_acceleration_limits,
-                                                                             cost_params.desired_velocity)
+                                                                             cost_params.lat_acceleration_limits)
+
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
         ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
@@ -134,29 +135,8 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories_filtered) == 0:
-            lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            lat_acc[ctrajectories[:, :, C_V] == 0] = 0
-            raise CartesianLimitsViolated("No valid trajectories. "
-                                          "timestamp_in_sec: %f, time horizon: %f, "
-                                          "extrapolated time horizon: %f. goal: %s, state: %s.\n"
-                                          "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s); "
-                                          "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s); "
-                                          "planned lat. accelerations range [%s, %s] (limits: %s); "
-                                          "number of trajectories passed according to Cartesian limits: %s/%s;"
-                                          "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
-                                          (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
-                                           NumpyUtils.str_log(goal), str(state).replace('\n', ''),
-                                           np.max(np.min(ctrajectories[:, :, C_V], axis=1)),
-                                           np.min(np.max(ctrajectories[:, :, C_V], axis=1)),
-                                           NumpyUtils.str_log(cost_params.velocity_limits),
-                                           np.max(np.min(ctrajectories[:, :, C_A], axis=1)),
-                                           np.min(np.max(ctrajectories[:, :, C_A], axis=1)),
-                                           NumpyUtils.str_log(cost_params.lon_acceleration_limits),
-                                           np.min(lat_acc), np.max(lat_acc),
-                                           NumpyUtils.str_log(cost_params.lat_acceleration_limits),
-                                           len(cartesian_filtered_indices), len(ctrajectories),
-                                           goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                           T_target_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5))
+            WerlingPlanner._raise_error(state, ftrajectories, ctrajectories, reference_route, T_target_horizon,
+                                        planning_horizon, goal, ego_frenet_state, goal_frenet_state, cost_params)
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
@@ -351,3 +331,66 @@ class WerlingPlanner(TrajectoryPlanner):
         valid_traj_slice = horizons[:, FP_SX] >= horizons[:, FP_DX]
 
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]
+
+    @staticmethod
+    def _raise_error(state: State, ftrajectories: FrenetTrajectories2D,ctrajectories: CartesianExtendedTrajectories,
+                     reference_route: FrenetSerret2DFrame, T_target_horizon: float, planning_horizon: float,
+                     goal: CartesianExtendedState, ego_frenet_state: FrenetState2D, goal_frenet_state: FrenetState2D,
+                     cost_params: TrajectoryCostParams) -> None:
+        """
+        Raise error and print error message, when all trajectories were filtered in Werling.
+        See the parameters description in function plan().
+        :param state:
+        :param ftrajectories:
+        :param ctrajectories:
+        :param reference_route:
+        :param T_target_horizon:
+        :param planning_horizon:
+        :param goal:
+        :param ego_frenet_state:
+        :param goal_frenet_state:
+        :param cost_params:
+        :return:
+        """
+        np.set_printoptions(suppress=True)
+        lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
+        lat_acc[ctrajectories[:, :, C_V] == 0] = 0
+        # find the "best" trajectory, whose maximal lateral acceleration among all timestamps is minimal
+        lat_acc_traj_idx = np.argmin(np.max(np.abs(lat_acc), axis=1))
+        # find the "worst" timestamp in the "best" trajectory, for which the lateral acceleration is maximal
+        lat_acc_t_idx = np.argmax(np.abs(lat_acc[lat_acc_traj_idx]))
+        lat_acc_v = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_V]
+        lat_acc_k = ctrajectories[lat_acc_traj_idx, lat_acc_t_idx, C_K]
+        init_idx = final_idx = 0
+        if not NumpyUtils.is_in_limits(lat_acc, cost_params.lat_acceleration_limits).all(axis=1).any():
+            # if all trajectories violate lat_acc limits, get range of nominal points around the "worst" timestamp
+            lat_acc_traj_s = ftrajectories[lat_acc_traj_idx, lat_acc_t_idx, FS_SX]
+            nominal_idxs = reference_route.get_closest_index_on_frame(np.array([lat_acc_traj_s]))[0]
+            nominal_points_around_worst_point = 11  # how many nominal points to print around the worst point
+            if len(nominal_idxs) > 0:  # get a range of at most 11 nominal points near the problematic trajectory point
+                init_idx = max(0, nominal_idxs[0] - nominal_points_around_worst_point//2)
+                final_idx = min(reference_route.k.shape[0] - 1, nominal_idxs[0] + nominal_points_around_worst_point//2)
+        raise CartesianLimitsViolated("No valid trajectories. "
+                                      "timestamp_in_sec: %f, time horizon: %f, "
+                                      "extrapolated time horizon: %f\ngoal: %s\nstate: %s.\n"
+                                      "[highest minimal velocity, lowest maximal velocity] [%s, %s] (limits: %s)\n"
+                                      "[highest minimal lon_acc, lowest maximal lon_acc] [%s, %s] (limits: %s)\n"
+                                      "[highest minimal lat_acc, lowest maximal lat_acc] [%s, %s] (limits: %s)\n"
+                                      "original trajectories #: %s\nego_frenet = %s\ngoal_frenet = %s\n"
+                                      "distance from ego to goal = %f, time*approx_velocity = %f\n"
+                                      "worst_lat_acc: t=%.1f v=%.3f k=%f; nominal_points.k=%s" %
+                                      (state.ego_state.timestamp_in_sec, T_target_horizon, planning_horizon,
+                                       NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                       np.max(np.min(ctrajectories[:, :, C_V], axis=1)),
+                                       np.min(np.max(ctrajectories[:, :, C_V], axis=1)),
+                                       NumpyUtils.str_log(cost_params.velocity_limits),
+                                       np.max(np.min(ctrajectories[:, :, C_A], axis=1)),
+                                       np.min(np.max(ctrajectories[:, :, C_A], axis=1)),
+                                       NumpyUtils.str_log(cost_params.lon_acceleration_limits),
+                                       np.max(np.min(lat_acc, axis=1)), np.min(np.max(lat_acc, axis=1)),
+                                       NumpyUtils.str_log(cost_params.lat_acceleration_limits), len(ctrajectories),
+                                       NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
+                                       goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
+                                       T_target_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV]) * 0.5,
+                                       lat_acc_t_idx * WERLING_TIME_RESOLUTION, lat_acc_v, lat_acc_k,
+                                       reference_route.k[init_idx:final_idx + 1, 0]))

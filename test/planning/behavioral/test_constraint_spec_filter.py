@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
-from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import ConstraintSpecFilter
+from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 
 
 class DummyConstraintSpecFilter(ConstraintSpecFilter):
@@ -78,5 +78,3 @@ def test_raiseTrue_filterAlwaysTrue():
     dummy_filter = RaiseTrueDummyConstraintSpecFilter(constraint_value, points)
     v = dummy_filter.filter(behavioral_state=None, action_specs=[1])
     assert v[0]
-
-

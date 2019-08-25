@@ -80,6 +80,10 @@ FrenetTrajectories1D = np.ndarray
 # frenet-frame 1D state: [x, x-dot, x-dotdot]
 FS_X, FS_V, FS_A, = 0, 1, 2
 FS_1D_LEN = 3
+FS_2D_LEN = 6
+
+
+CRT_LEN = 6
 
 
 # [s,d] Polynomials
@@ -96,3 +100,9 @@ LAT_CELL, LON_CELL = 0, 1
 
 # 1D Numpy array of indices (dtype = np.int)
 NumpyIndicesArray = np.ndarray
+
+# boolean array
+BoolArray = np.ndarray
+
+# Info on road signs
+SIGN_TYPE, SIGN_S = 0, 1

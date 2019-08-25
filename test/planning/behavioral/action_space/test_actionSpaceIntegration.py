@@ -37,12 +37,14 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_pg_no_split,
     # verify the peak acceleration does not exceed the limit by calculating the average acceleration from 0 to 50 km/h
     ego_vel = 10
     ego_cstate = frenet.fstate_to_cstate(np.array([ego_lon, ego_vel, 0, lane_lat, 0, 0]))
-    ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=ego_cstate, size=size, confidence=0)
+    ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=ego_cstate, size=size,
+                                               confidence=0, off_map=False)
 
     obj_vel = 10
     obj_lon = ego_lon + 20
     obj_cstate = frenet.fstate_to_cstate(np.array([obj_lon, obj_vel, 0, lane_lat, 0, 0]))
-    obj = DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=obj_cstate, size=size, confidence=0)
+    obj = DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=obj_cstate, size=size,
+                                                    confidence=0, off_map=False)
 
     state = State(False, None, [obj], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20, logger)

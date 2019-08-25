@@ -49,6 +49,7 @@ def plot_dynamics(log_file_path: str):
     trajectory = []
     trajectory_time = []
     no_valid_traj_timestamps = []
+    no_action_in_bp_timestamps = []
 
     while True:
         text = f.readline()
@@ -56,7 +57,11 @@ def plot_dynamics(log_file_path: str):
             break
 
         if '_scene_dynamic_callback' in text:
-            state_str = text.split('Publishing State ')[1]
+            split_str = text.split('Publishing State ')
+            if len(split_str) < 2:
+                cnt += 1
+                continue
+            state_str = split_str[1]
             try:
                 state_dict = ast.literal_eval(state_str)
             except ValueError as e:
@@ -78,8 +83,12 @@ def plot_dynamics(log_file_path: str):
                 euclid_dist.append(0.0)
             else:
                 other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
-                other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
-                other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
+                if dyn_obj_list[0]['_cached_map_state'] is not None:
+                    other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
+                    other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
+                else:
+                    other_sv.append(0)
+                    other_sx.append(0)
                 ego_cx_cy = np.array(state_dict['ego_state']['_cached_cartesian_state']['array'][C_X: C_Y + 1])
                 other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
                 euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
@@ -94,6 +103,9 @@ def plot_dynamics(log_file_path: str):
             spec_v.append(float(spec_dict['v']))
             spec_s.append(float(spec_dict['s']))
             spec_time.append(float(time))
+
+        if 'NoActionsLeftForBP' in text:
+            no_action_in_bp_timestamps.append(float(text.split('timestamp_in_sec: ')[1]))
 
         if 'Chosen behavioral action recipe' in text:
             recipe_str = text.split('Chosen behavioral action recipe')[1].split('Recipe: ')[1].replace("<", "'<").replace(">", ">'")
@@ -165,10 +177,11 @@ def plot_dynamics(log_file_path: str):
     ax5 = plt.subplot(5, 2, 9, sharex=ax1)
     spec_t_plot,  = plt.plot(spec_time, spec_t, 'o-')
     spec_v_plot,  = plt.plot(spec_time, spec_v, 'o-')
+    bp_no_actions_plot = plt.scatter(no_action_in_bp_timestamps, [1]*len(no_action_in_bp_timestamps), s=5, c='k')
 
     plt.xlabel('time[s]')
     plt.ylabel('spec_time/spec_velocity')
-    plt.legend([spec_t_plot, spec_v_plot], ['spec_t [s]', 'spec_v [m/s]'])
+    plt.legend([spec_t_plot, spec_v_plot, bp_no_actions_plot], ['spec_t [s]', 'spec_v [m/s]', 'no_actions_bp'])
 
     ax6 = plt.subplot(5, 2, 2, sharex=ax1)
     bp_if_lon,  = plt.plot(bp_if_time, bp_if_lon_err, 'o-.')
