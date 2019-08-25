@@ -4,27 +4,21 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.rule_based_lane_merge import RuleBasedLaneMerge
+from decision_making.src.planning.behavioral.evaluators.action_evaluator_by_policy import LaneMergeRLPolicy
+from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
+    SingleLaneActionsEvaluator
+from decision_making.src.planning.behavioral.rule_based_lane_merge import RuleBasedLaneMerge, ScenarioParams, \
+    LaneMergeState, RuleBasedLaneMergeEvaluator
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
     ActionSpec
-from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
-    ActionSpecEvaluator
-from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
+from decision_making.src.planning.types import FS_SX
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from logging import Logger
 from typing import Optional, List
-from enum import Enum
-
-
-class ActionEvaluationStrategyType(Enum):
-    DEFAULT_RB = 0
-    BRAKING = 1
-    MERGE_RB = 2
-    LANE_MERGE_RL = 3
 
 
 class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
@@ -37,12 +31,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator],
-                 action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
-        super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator,
-                         value_approximator, predictor, logger)
+    def __init__(self, action_space: ActionSpace, action_spec_validator: Optional[ActionSpecFiltering],
+                 predictor: EgoAwarePredictor, logger: Logger):
+        super().__init__(action_space, action_spec_validator, predictor, logger)
 
     @prof.ProfileFunction()
     def plan(self, state: State, route_plan: RoutePlan):
@@ -52,10 +43,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
         # choose action evaluation strategy according to the current state (e.g. rule-based or RL policy)
-        eval_strategy, action_specs = self._choose_strategy(state, behavioral_state)
-
-        # State-Action Evaluation
-        action_costs = self.actions_evaluator[eval_strategy].evaluate(state, behavioral_state, action_specs)
+        action_specs, action_costs = self._choose_strategy(state, behavioral_state)
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
@@ -73,20 +61,19 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
             state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
-        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
-                          action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
+        # self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
+        #                   action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
                           selected_action_spec, state.ego_state.timestamp_in_sec)
 
-        self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
-                          % (behavioral_state.ego_state.timestamp_in_sec,
-                             action_recipes[selected_action_index],
-                             selected_action_spec.t))
+        # self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
+        #                   % (behavioral_state.ego_state.timestamp_in_sec,
+        #                      action_recipes[selected_action_index],
+        #                      selected_action_spec.t))
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
-    def _choose_strategy(self, state: State, behavioral_state: BehavioralGridState) -> \
-            [ActionEvaluationStrategyType, List[ActionSpec]]:
+    def _choose_strategy(self, state: State, behavioral_state: BehavioralGridState) -> [List[ActionSpec], np.array]:
         """
         Given the current state, choose the strategy for actions evaluation in BP.
         Currently, perform evaluation by RL policy only if there is a lane merge ahead and there are cars on the
@@ -95,18 +82,29 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         :param behavioral_state: current behavioral grid state
         :return: action evaluation strategy
         """
-        lane_merge_state, merge_point_in_gff = RuleBasedLaneMerge.create_lane_merge_state(state, behavioral_state)
-        if lane_merge_state is None or len(lane_merge_state.actors) == 0:  # no merge ahead or no cars on the main road
-            return ActionEvaluationStrategyType.DEFAULT_RULE_BASED, self._specify_default_action_space(behavioral_state)
+        # first check if there is a lane merge ahead
+        lane_merge_state = LaneMergeState.build(state, behavioral_state)
+        if lane_merge_state is None or len(lane_merge_state.actors) == 0:
+            # there is no lane merge ahead, then perform the default strategy with the default action space and
+            # the default rule-based policy
+            action_specs = self._specify_default_action_space(behavioral_state)
+            action_costs = SingleLaneActionsEvaluator.evaluate(action_specs)
+            return action_specs, action_costs
 
-        merge_specs = RuleBasedLaneMerge.create_safe_actions(lane_merge_state, merge_point_in_gff)
-        if len(merge_specs) > 0:
-            return ActionEvaluationStrategyType.MERGE_RB, merge_specs
-        else:  # not arrived to the yellow line
-            add_stop_bar()
-            return ActionEvaluationStrategyType.LANE_MERGE_RL, self._specify_default_action_space(behavioral_state)
+        # there is a merge ahead with cars on the main road
+        # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
+        lane_merge_actions, action_specs = RuleBasedLaneMerge.create_safe_actions(lane_merge_state, ScenarioParams())
+        action_costs = RuleBasedLaneMergeEvaluator.evaluate(lane_merge_actions)
+        if len(lane_merge_actions) > 0:  # then the safe lane merge was found
+            return action_specs, action_costs
 
-    def _specify_default_action_space(self, behavioral_state: BehavioralGridState) -> List[ActionSpec]:
+        # the safe lane merge can not be guaranteed, so add stop bar at red line and perform RL
+        add_stop_bar()
+        action_specs = self._specify_default_action_space(behavioral_state)
+        action_costs = LaneMergeRLPolicy.evaluate(lane_merge_state)
+        return action_specs, action_costs
+
+    def _specify_default_action_space(self, behavioral_state: BehavioralGridState) -> List[Optional[ActionSpec]]:
         action_recipes = self.default_action_space.recipes
 
         # Recipe filtering

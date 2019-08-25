@@ -14,10 +14,6 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING
-from decision_making.src.planning.behavioral.evaluators.action_evaluator_by_policy import LaneMergeRLPolicy
-from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
-    SingleLaneActionSpecEvaluator
-from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
@@ -70,13 +66,8 @@ class DmInitialization:
                                                      DynamicActionSpace(logger, predictor,
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
-        recipe_evaluator = LaneMergeRLPolicy(logger)
-        action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
-        value_approximator = ZeroValueApproximator(logger)
-
         action_spec_filtering = DEFAULT_ACTION_SPEC_FILTERING
-        planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
-                                              action_spec_filtering, value_approximator, predictor, logger)
+        planner = SingleStepBehavioralPlanner(action_space, action_spec_filtering, predictor, logger)
 
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
                                                      behavioral_planner=planner, last_trajectory=None)

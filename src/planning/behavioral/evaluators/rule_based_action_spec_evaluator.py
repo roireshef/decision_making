@@ -9,22 +9,18 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DES
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, SemanticGridCell
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
-    ActionSpecEvaluator
 from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.utils.map_utils import MapUtils
 
 
-class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
+class RuleBasedActionSpecEvaluator:
 
-    def __init__(self, logger: Logger):
-        super().__init__(logger)
-
-    def evaluate(self, behavioral_state: BehavioralGridState,
+    @staticmethod
+    def evaluate(behavioral_state: BehavioralGridState,
                  action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec],
-                 action_specs_mask: List[bool]) -> np.ndarray:
+                 action_specs_mask: List[bool], logger: Logger) -> np.ndarray:
         """
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate and returns a vector representing their costs.
@@ -35,11 +31,12 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         :param action_recipes: semantic actions list.
         :param action_specs: specifications of action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
+        :param logger:
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
 
         if len(action_recipes) != len(action_specs):
-            self.logger.error(
+            logger.error(
                 "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
                 len(action_recipes), len(action_specs))
             raise BehavioralPlanningException(
@@ -90,10 +87,8 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         dist_to_backright, safe_right_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, lane_frenet, ego_fpoint, RelativeLane.RIGHT_LANE)
 
-        self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft,
-                          safe_left_dist_behind_ego)
-        self.logger.debug("Distance\safe distance to back right car: %s\%s.", dist_to_backright,
-                          safe_right_dist_behind_ego)
+        logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft, safe_left_dist_behind_ego)
+        logger.debug("Distance\safe distance to back right car: %s\%s.", dist_to_backright, safe_right_dist_behind_ego)
 
         # boolean whether the left cell near ego is occupied
         is_left_occupied = len(MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE)) == 0 or \

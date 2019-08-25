@@ -2,7 +2,6 @@ import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.planning.behavioral.rule_based_lane_merge import ActionEvaluationStrategyType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
 from typing import Optional, List
@@ -20,9 +19,6 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams,
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
-from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
-    ActionRecipeEvaluator
-from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -37,16 +33,10 @@ from decision_making.src.utils.map_utils import MapUtils
 
 @six.add_metaclass(ABCMeta)
 class CostBasedBehavioralPlanner:
-    def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator],
-                 action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
+    def __init__(self, action_space: ActionSpace, action_spec_validator: Optional[ActionSpecFiltering],
+                 predictor: EgoAwarePredictor, logger: Logger):
         self.default_action_space = action_space
-        self.recipe_evaluator = recipe_evaluator
         self.action_spec_validator = action_spec_validator or ActionSpecFiltering(filters=None, logger=logger)
-        self.actions_evaluator = {ActionEvaluationStrategyType.DEFAULT_RULE_BASED: action_spec_evaluator,
-                                  ActionEvaluationStrategyType.RL_POLICY: recipe_evaluator}
-        self.value_approximator = value_approximator
         self.predictor = predictor
         self.logger = logger
 
