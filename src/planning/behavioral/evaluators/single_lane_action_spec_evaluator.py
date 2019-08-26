@@ -44,12 +44,18 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             # choose aggressiveness level for dynamic action according to the headway safety margin from the front car
             dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
             safety_margins = SingleLaneActionSpecEvaluator.calc_headway_safety_margins(dynamic_specs, behavioral_state)
-            chosen_level = 0  # calm
-            if safety_margins[0] < 0.3:
-                if safety_margins[1] < 0.2:
-                    chosen_level = 2  # aggressive
-                else:
-                    chosen_level = 1  # standard
+            aggr_levels = [action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs]
+            print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS: ", aggr_levels, safety_margins)
+            calm_idx = np.where(aggr_levels == 0)[0]
+            standard_idx = np.where(aggr_levels == 1)[0]
+            if len(calm_idx) > 0 and safety_margins[calm_idx[0]] > 0.7:
+                chosen_level = calm_idx[0]
+            elif len(standard_idx) > 0 and safety_margins[standard_idx[0]] > 0.5:
+                chosen_level = standard_idx[0]
+            else:
+                chosen_level = -1  # the most aggressive
+
+            print(">>>>>>> SAFETY MARGINS chosen level", action_recipes[follow_vehicle_valid_action_idxs[chosen_level]].aggressiveness)
             costs[follow_vehicle_valid_action_idxs[chosen_level]] = 0  # choose the found dynamic action
             return costs
 
@@ -91,7 +97,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
 
-        poly_coefs_s, _ = QuinticPoly1D.s_profile_coefficients(
+        poly_coefs_s = QuinticPoly1D.s_profile_coefficients(
             initial_fstates[:, FS_SA], initial_fstates[:, FS_SV], terminal_fstates[:, FS_SV],
             terminal_fstates[:, FS_DX] - initial_fstates[:, FS_DX], T)
 
