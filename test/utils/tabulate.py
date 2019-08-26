@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """Pretty-print tabular data."""
+# TODO: install this package as part of the dependencies, and remove this file
 
 from __future__ import print_function
 from __future__ import unicode_literals
