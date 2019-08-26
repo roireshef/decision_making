@@ -23,17 +23,19 @@ def scene_static_pg_no_split():
 def scene_static_pg_split():
     return pickle.load(open(Paths.get_scene_static_absolute_path_filename(PG_SPLIT_PICKLE_FILE_NAME), 'rb'))
 
+
 @pytest.fixture
 def scene_static_accel_towards_vehicle():
-    return pickle.load(
-        open(Paths.get_scene_static_absolute_path_filename(
-            ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME), 'rb'))
+    return pickle.load(open(Paths.get_scene_static_absolute_path_filename(
+                        ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME), 'rb'))
+
 
 @pytest.fixture
 def scene_dynamic_accel_towards_vehicle():
     return pickle.load(
         open(Paths.get_scene_dynamic_absolute_path_filename(
             ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME), 'rb'))
+
 
 @pytest.fixture()
 def scene_static_testable():

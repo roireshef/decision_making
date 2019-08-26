@@ -104,7 +104,7 @@ def plot_dynamics(log_file_path: str):
             spec_s.append(float(spec_dict['s']))
             spec_time.append(float(time))
 
-        if 'NoActionsLeftForBP' in text:
+        if 'NoActionsLeftForBPError:' in text:
             no_action_in_bp_timestamps.append(float(text.split('timestamp_in_sec: ')[1]))
 
         if 'Chosen behavioral action recipe' in text:
