@@ -77,9 +77,9 @@ class BehavioralPlanningFacade(DmModule):
 
             scene_dynamic = self._get_current_scene_dynamic()
 
-            preprocessed_state = State.create_state_from_scene_dynamic(scene_dynamic, self._last_gff_segment_ids, self.logger)
+            state = State.create_state_from_scene_dynamic(scene_dynamic, self._last_gff_segment_ids, self.logger)
 
-            state = preprocessed_state.handle_negative_velocities(preprocessed_state, self.logger)
+            state.handle_negative_velocities()
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
