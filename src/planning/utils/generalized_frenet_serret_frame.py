@@ -39,6 +39,7 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSFrenetSubsegment):
         return cls(pubsubMsg.e_i_SegmentID, pubsubMsg.e_i_SStart, pubsubMsg.e_i_SEnd)
 
+
 class GFF_Type(Enum):
     Normal = 0
     Augmented = 1
