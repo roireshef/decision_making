@@ -46,6 +46,9 @@ def plot_profiler(label_pattern):
 
 
 def get_start_time():
+    """
+    :return: start time of the run
+    """
     with open(PROF_FILE, 'r') as f:
         for line in f:
             if line.find('START_TIME') != -1:
@@ -53,6 +56,9 @@ def get_start_time():
 
 
 def summarize_profiler():
+    """
+    Outputs statistics summary table for all profiled code-snippets
+    """
     profs = get_profs()
     print(f' Profiling data date: {get_start_time()}')
     data = []
