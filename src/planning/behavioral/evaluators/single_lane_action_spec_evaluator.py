@@ -3,12 +3,16 @@ from logging import Logger
 from typing import List
 
 import numpy as np
+from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, EPS
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
-    StaticActionRecipe
+    StaticActionRecipe, DynamicActionRecipe, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
+from decision_making.src.planning.types import LAT_CELL, FS_SA, FS_SV, FS_DX, C_V
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
 class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
@@ -37,7 +41,16 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                             and recipe.relative_lane == RelativeLane.SAME_LANE
                                             and recipe.action_type == ActionType.FOLLOW_VEHICLE]
         if len(follow_vehicle_valid_action_idxs) > 0:
-            costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
+            # choose aggressiveness level for dynamic action according to the headway safety margin from the front car
+            dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
+            safety_margins = SingleLaneActionSpecEvaluator.calc_headway_safety_margins(dynamic_specs, behavioral_state)
+            chosen_level = 0  # calm
+            if safety_margins[0] < 0.3:
+                if safety_margins[1] < 0.2:
+                    chosen_level = 2  # aggressive
+                else:
+                    chosen_level = 1  # standard
+            costs[follow_vehicle_valid_action_idxs[chosen_level]] = 0  # choose the found dynamic action
             return costs
 
         filtered_indices = [i for i, recipe in enumerate(action_recipes)
@@ -58,3 +71,46 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         # it's last in the recipes list since the recipes are sorted in the increasing order of velocities
         costs[follow_lane_valid_action_idxs[-1]] = 0
         return costs
+
+    @staticmethod
+    def calc_headway_safety_margins(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[int]:
+        """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
+         of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
+         maintaining the required safety-headway + constant safety-margin"""
+        # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
+        # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
+        relative_cells = [(spec.recipe.relative_lane,
+                           spec.recipe.relative_lon if isinstance(spec.recipe, DynamicActionRecipe) else RelativeLongitudinalPosition.FRONT)
+                          for spec in action_specs]
+        target_vehicles = [behavioral_state.road_occupancy_grid[cell][0]
+                           if len(behavioral_state.road_occupancy_grid[cell]) > 0 else None
+                           for cell in relative_cells]
+        T = np.array([spec.t for spec in action_specs])
+
+        # represent initial and terminal boundary conditions (for s axis)
+        initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
+        terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+
+        poly_coefs_s, _ = QuinticPoly1D.s_profile_coefficients(
+            initial_fstates[:, FS_SA], initial_fstates[:, FS_SV], terminal_fstates[:, FS_SV],
+            terminal_fstates[:, FS_DX] - initial_fstates[:, FS_DX], T)
+
+        safety_margins = []
+        for poly_s, cell, target, spec in zip(poly_coefs_s, relative_cells, target_vehicles, action_specs):
+            if target is None:
+                safety_margins.append(np.inf)
+                continue
+
+            target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
+                target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
+            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
+
+            # minimal margin used in addition to headway (center-to-center of both objects)
+            margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
+                     behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
+
+            # calculate safety margin (on frenet longitudinal axis)
+            safety_margin = KinematicUtils.calc_safety_margin(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, spec.t]))
+            safety_margins.append(safety_margin / max(behavioral_state.ego_state.cartesian_state[C_V], EPS))
+
+        return safety_margins

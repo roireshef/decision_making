@@ -25,6 +25,7 @@ def test_isMaintainingDistance_safeSettings_returnsTrue():
     poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
 
     assert KinematicUtils.is_maintaining_distance(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T]))
+    assert KinematicUtils.calc_safety_margin(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T])) > 0
 
 
 def test_isMaintainingDistance_unsafeSettings_returnsFalse():
@@ -47,6 +48,7 @@ def test_isMaintainingDistance_unsafeSettings_returnsFalse():
     poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
 
     assert not KinematicUtils.is_maintaining_distance(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T]))
+    assert KinematicUtils.calc_safety_margin(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T])) < 0
 
 
 def test_filterByVelocityLimit_velocityDecreasesTowardLimit_valid():

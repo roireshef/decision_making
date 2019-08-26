@@ -40,6 +40,34 @@ class KinematicUtils:
         return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
 
     @staticmethod
+    def calc_safety_margin(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):
+        """
+        Given two s(t) longitudinal polynomials (one for host, one for target), this function checks if host maintains
+        at least a distance of margin + headway (time * host_velocity) in the time range specified by <time_range>.
+        :param poly_host: 1d numpy array - coefficients of host's polynomial s(t)
+        :param poly_target: 1d numpy array - coefficients of target's polynomial s(t)
+        :param margin: the minimal stopping distance to keep in meters (in addition to headway, highly relevant for stopping)
+        :param headway: the time to use for the headway formula: time*velocity = distance to keep.
+        :param time_range: the relevant range of t for checking the polynomials, i.e. [0, T]
+        :return: minimal (on time axis) difference between min. safe distance and actual distance
+        """
+        # coefficients of host vehicle velocity v_h(t) of host
+        vel_poly = np.polyder(poly_host, 1)
+
+        # poly_diff is the polynomial of the distance between poly2 and poly1 with subtracting the required distance
+        poly_diff = poly_target - poly_host
+        poly_diff[-1] -= margin
+
+        # add headway
+        poly_diff[1:] -= vel_poly * headway
+
+        first_non_zero = np.argmin(np.equal(poly_diff, 0))
+        roots = Math.find_real_roots_in_limits(poly_diff[first_non_zero:], time_range)
+        suspected_times = np.concatenate((time_range, roots[~np.isnan(roots)]))
+
+        return np.min(np.polyval(poly_diff, suspected_times))
+
+    @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
                                    lon_acceleration_limits: Limits, lat_acceleration_limits: Limits) -> np.ndarray:
         """
