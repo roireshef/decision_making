@@ -398,12 +398,12 @@ class State(PUBSUB_MSG_IMPL):
         return state
 
     @staticmethod
-    def create_state_from_scene_dynamic(scene_dynamic, last_gff_segment_ids, logger):
+    def create_state_from_scene_dynamic(scene_dynamic, selected_gff_segment_ids, logger):
         # type: (SceneDynamic, np.ndarray, Logger) -> State
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic:
-        :param last_gff_segment_ids: list of GFF segment ids for the last selected action
+        :param selected_gff_segment_ids: list of GFF segment ids for the last selected action
         :param logger: Logging module
         :return: valid State object
         """
@@ -416,18 +416,15 @@ class State(PUBSUB_MSG_IMPL):
         host_hyp_lane_ids = [hyp.e_i_lane_segment_id
                              for hyp in scene_dynamic.s_Data.s_host_localization.as_host_hypothesis]
 
-        if len(host_hyp_lane_ids) > 1 and len(last_gff_segment_ids) > 0:
+        if len(host_hyp_lane_ids) > 1 and len(selected_gff_segment_ids) > 0:
 
-            # find all common lane ids in host hypotheses and last gff segments
-            common_lane_ids = np.intersect1d(host_hyp_lane_ids, last_gff_segment_ids)
+            # find all common lane indices in host hypotheses and last gff segments
+            # take the hyp. whose lane has the least distance from the host, i.e.,
+            # the min. index in host_hyp_lane_ids since it is sorted based on the distance
+            common_lanes_indices = np.where(np.isin(host_hyp_lane_ids, selected_gff_segment_ids))[0]
 
-            if len(common_lane_ids) == 1:
-                selected_host_hyp_idx = np.argwhere(host_hyp_lane_ids == common_lane_ids[0])[0][0]
-            elif len(common_lane_ids) > 1:
-                # take the hyp. whose lane has the least distance from the host, i.e.,
-                # the min. index in host_hyp_lane_ids since it is sorted based on the distance
-                selected_host_hyp_idx = min([np.argwhere(host_hyp_lane_ids == common_lane_id)[0][0]
-                                             for common_lane_id in common_lane_ids])
+            if len(common_lanes_indices) > 0:
+                selected_host_hyp_idx = common_lanes_indices[0]
             else:
                 # there are no common ids between localization and prev. gff
                 # raise a warning and choose the closet lane

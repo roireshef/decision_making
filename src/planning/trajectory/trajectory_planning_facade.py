@@ -56,7 +56,6 @@ class TrajectoryPlanningFacade(DmModule):
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
-        self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
 
     def _start_impl(self):
@@ -76,18 +75,16 @@ class TrajectoryPlanningFacade(DmModule):
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
+            params = self._get_mission_params()
+
             scene_dynamic = self._get_current_scene_dynamic()
 
-            preprocessed_state = State.create_state_from_scene_dynamic(scene_dynamic, self._last_gff_segment_ids,
+            preprocessed_state = State.create_state_from_scene_dynamic(scene_dynamic,
+                                                                       params.reference_route.segment_ids,
                                                                        self.logger)
-
             state = preprocessed_state.handle_negative_velocities(preprocessed_state, self.logger)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
-
-            params = self._get_mission_params()
-
-            self._last_gff_segment_ids = params.reference_route.segment_ids
 
             # Longitudinal planning horizon (Ts)
             T_target_horizon = params.target_time - state.ego_state.timestamp_in_sec
