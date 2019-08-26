@@ -5,7 +5,7 @@ from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
-from decision_making.src.exceptions import MappingException, EquivalentStationNotFound
+from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
@@ -221,14 +221,9 @@ class BehavioralGridState:
                     extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
             else:
                 # Find station in the relative lane that is adjacent to the host's station in the lane it is occupying
-                try:
-                    host_station_in_adjacent_lane = MapUtils._find_equivalent_station(closest_lanes_dict[relative_lane],
-                                                                                      host_station_on_same_lane_gff,
-                                                                                      extended_lane_frames[RelativeLane.SAME_LANE])
-                except EquivalentStationNotFound as e:
-                    # Since the host's equivalent station in the adjacent lane could not be found, a GFF cannot be created for that lane.
-                    logger.warning("Trying to fetch data for %s, but data is unavailable. %s" % (relative_lane, str(e)))
-                    continue
+                host_station_in_adjacent_lane = \
+                MapUtils.get_lane_frenet_frame(closest_lanes_dict[relative_lane]).cpoint_to_fpoint(
+                    host_cartesian_point)[FP_SX]
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:

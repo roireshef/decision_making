@@ -96,10 +96,6 @@ class LaneNotFound(MappingException):
     pass
 
 
-class EquivalentStationNotFound(MappingException):
-    pass
-
-
 class IDAppearsMoreThanOnce(MappingException):
     pass
 

@@ -5,8 +5,8 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
-FLOAT_MAX  = np.finfo(np.float32).max
 MPH_TO_MPS = 2.23694
+
 
 # Communication Layer
 
@@ -123,9 +123,6 @@ BEYOND_SPEC_INDEX_STEP = 4
 MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
 # Time threshold to raise takeover flag
 TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
-
-# [m] The maximum difference between two stations to say that they are "close".
-MAX_STATION_DIFFERENCE = 1.0
 
 
 # Trajectory Planner #
