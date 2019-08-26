@@ -298,8 +298,9 @@ class MapUtils:
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :param logger:
-        :param can_augment:
+        :param logger: Logger object to log warning messages
+        :param can_augment: Dict of RelativeLane to bool describing if a search for an augmented LEFT/RIGHT lane
+                            starting from the lane_id is needed.
         :return: Dict of generalized Frenet frames with the relative lane as keys
                  The relative lane key is with respect to the provided lane_id. The dictionary will always contain the GFF for the provided
                  lane_id, and the RelativeLane.SAME_LANE key can be used to access it. If possible, augmented GFFs will also be returned,
