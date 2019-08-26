@@ -408,9 +408,6 @@ class State(PUBSUB_MSG_IMPL):
         :return: valid State object
         """
 
-        if scene_dynamic is None:
-            return
-
         timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
 
@@ -429,8 +426,8 @@ class State(PUBSUB_MSG_IMPL):
             elif len(common_lane_ids) > 1:
                 # take the hyp. whose lane has the least distance from the host, i.e.,
                 # the min. index in host_hyp_lane_ids since it is sorted based on the distance
-                selected_host_hyp_idx = min([np.argwhere(host_hyp_lane_ids == common_lane_ids[i])[0][0]
-                                             for i in range(len(common_lane_ids))])
+                selected_host_hyp_idx = min([np.argwhere(host_hyp_lane_ids == common_lane_id)[0][0]
+                                             for common_lane_id in common_lane_ids])
             else:
                 # there are no common ids between localization and prev. gff
                 # raise a warning and choose the closet lane

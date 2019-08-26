@@ -83,6 +83,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             state = preprocessed_state.handle_negative_velocities(preprocessed_state, self.logger)
 
+            self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
+
             params = self._get_mission_params()
 
             self._last_gff_segment_ids = params.reference_route.segment_ids

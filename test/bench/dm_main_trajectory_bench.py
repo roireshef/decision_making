@@ -56,10 +56,6 @@ def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE):
     """
     modules_list = \
         [
-            DmProcess(lambda: DmMockInitialization.create_scene_dynamic_publisher(),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD}),
-
             DmProcess(lambda: DmInitialization.create_behavioral_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
