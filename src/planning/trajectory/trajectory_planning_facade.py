@@ -29,6 +29,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
@@ -73,7 +74,8 @@ class TrajectoryPlanningFacade(DmModule):
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
-            state = self._get_current_state()
+            with DMProfiler(self.__class__.__name__ + '.get_state'):
+                state = self._get_current_state()
 
             params = self._get_mission_params()
 
@@ -102,9 +104,10 @@ class TrajectoryPlanningFacade(DmModule):
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, T_target_horizon,
-                     T_trajectory_end_horizon, params.cost_params)
+            with DMProfiler(self.__class__.__name__ + '.plan'):
+                samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy].plan(
+                    updated_state, params.reference_route, params.target_state, T_target_horizon,
+                    T_trajectory_end_horizon, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
