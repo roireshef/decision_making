@@ -48,6 +48,11 @@ class FrenetLimitsViolated(TrajectoryPlanningException):
     pass
 
 
+# For tests
+class NotTriggeredException(TrajectoryPlanningException):
+    pass
+
+
 # BEHAVIORAL PLANNING
 @six.add_metaclass(ABCMeta)
 class BehavioralPlanningException(Exception):
