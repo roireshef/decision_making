@@ -44,15 +44,15 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             # choose aggressiveness level for dynamic action according to the headway safety margin from the front car
             dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
             print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS >>>>>")
-            safety_margins = SingleLaneActionSpecEvaluator.calc_headway_safety_margins(dynamic_specs, behavioral_state)
+            min_headways = SingleLaneActionSpecEvaluator.calc_minimal_headways(dynamic_specs, behavioral_state)
             aggr_levels = [action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs]
             spec_t = [action_specs[action_idx].t for action_idx in follow_vehicle_valid_action_idxs]
-            print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS: spec.t", aggr_levels, safety_margins, spec_t)
+            print(">>>>>>> AGGR_LEVELS & MIN_HEADWAYS: spec.t", aggr_levels, min_headways, spec_t)
             calm_idx = np.where(aggr_levels == 0)[0]
             standard_idx = np.where(aggr_levels == 1)[0]
-            if len(calm_idx) > 0 and safety_margins[calm_idx[0]] > 0.7:
+            if len(calm_idx) > 0 and min_headways[calm_idx[0]] > SAFETY_HEADWAY + 0.5:
                 chosen_level = calm_idx[0]
-            elif len(standard_idx) > 0 and safety_margins[standard_idx[0]] > 0.5:
+            elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > SAFETY_HEADWAY + 0.3:
                 chosen_level = standard_idx[0]
             else:
                 chosen_level = -1  # the most aggressive
@@ -81,7 +81,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         return costs
 
     @staticmethod
-    def calc_headway_safety_margins(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[int]:
+    def calc_minimal_headways(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[int]:
         """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
          of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
          maintaining the required safety-headway + constant safety-margin"""
@@ -104,10 +104,10 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             terminal_fstates[:, FS_SX] - initial_fstates[:, FS_SX], T)
         poly_coefs_s[:, -1] = initial_fstates[:, FS_SX]
 
-        safety_margins = []
+        min_headways = []
         for poly_s, cell, target, spec in zip(poly_coefs_s, relative_cells, target_vehicles, action_specs):
             if target is None:
-                safety_margins.append(np.inf)
+                min_headways.append(np.inf)
                 continue
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
@@ -119,7 +119,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                      behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # calculate safety margin (on frenet longitudinal axis)
-            safety_margin = KinematicUtils.calc_safety_margin(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, spec.t]))
-            safety_margins.append(safety_margin / max(behavioral_state.ego_state.cartesian_state[C_V], EPS))
+            min_headway = KinematicUtils.calc_safety_margin(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, spec.t]))
+            min_headways.append(min_headway / max(behavioral_state.ego_state.cartesian_state[C_V], EPS))
 
-        return safety_margins
+        return min_headways

@@ -58,35 +58,14 @@ class KinematicUtils:
         poly_diff = poly_target - poly_host
         poly_diff[-1] -= margin
 
-        # add headway
-        marginal_poly_diff = np.copy(poly_diff)
-        marginal_poly_diff[1:] -= vel_poly * headway
+        suspected_times = np.linspace(time_range[0], time_range[1], 64)
 
-        # calculate local minima of poly_diff by finding roots of its derivative
-        poly_diff_der = np.polyder(marginal_poly_diff, 1)
-        first_non_zero = np.argmin(np.equal(poly_diff_der, 0))
-        roots = Math.find_real_roots_in_limits(poly_diff_der[first_non_zero:], time_range)
-
-        suspected_times = np.concatenate((roots[~np.isnan(roots)], np.linspace(time_range[0], time_range[1], 10)))
-
-        # TODO DEBUG
-        # This calculates the margin in headway time by checking 10 points evenly spaced in the time range
+        # This calculates the margin in headway time by checking 64 points evenly spaced in the time range
         # selects the time at which the headway time is minimal
         distances = np.polyval(poly_diff, suspected_times)
         velocities = np.polyval(vel_poly, suspected_times)
-        min_headway_idx = np.argmin(distances / np.maximum(velocities, EPS))
-        min_distance_by_headway = distances[min_headway_idx] - velocities[min_headway_idx] * headway
-        min_distance_by_headway_time = suspected_times[min_headway_idx]
-
-        # This calculates the minimal distance between the vehicles, after the safety margin is subtracted from it.
-        # analytical calculation
-        margin_distance_idx = np.argmin(np.polyval(marginal_poly_diff, suspected_times))
-        margin_distance_time = suspected_times[margin_distance_idx]
-        margin_distance = np.min(np.polyval(marginal_poly_diff, suspected_times))
-
-        print(">>> min dist (t,d)", margin_distance_time, margin_distance, "min_dis_by_headway", min_distance_by_headway_time, min_distance_by_headway)
-
-        return margin_distance
+        min_headway = np.min(distances / np.maximum(velocities, EPS))
+        return min_headway
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
