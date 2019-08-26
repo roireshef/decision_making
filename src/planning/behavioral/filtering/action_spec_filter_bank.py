@@ -351,7 +351,7 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
 class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
     """
     Checks if the speed limit will be exceeded.
-    This filter assumes that the STANDARD aggressiveness will be used, and only checks the points that are before
+    This filter assumes that the CALM aggressiveness will be used, and only checks the points that are before
     the worst case stopping distance.
     The braking distances are calculated upon initialization and cached.
 
@@ -417,7 +417,7 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
     """
     Checks if an action will make the vehicle unable to stop before the end of a Partial GFF.
 
-    This filter assumes that the STANDARD aggressiveness will be used, and only checks the points that are before
+    This filter assumes that the CALM aggressiveness will be used, and only checks the points that are before
     the worst case stopping distance.
     The braking distances are calculated upon initialization and cached.
 
