@@ -3,7 +3,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 from decision_making.src.utils.dm_profiler import PROF_FILE, PROF_INDICATOR
-from decision_making.test.utils.tabulate import tabulate
+from decision_making.src.utils.tabulate import tabulate
 
 
 def plot_timed_series_labeled(timed_series, label):
