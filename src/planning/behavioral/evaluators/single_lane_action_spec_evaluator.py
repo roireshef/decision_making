@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, A
     StaticActionRecipe, DynamicActionRecipe, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.planning.types import LAT_CELL, FS_SA, FS_SV, FS_DX, C_V
+from decision_making.src.planning.types import LAT_CELL, FS_SA, FS_SV, FS_DX, C_V, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
@@ -43,9 +43,11 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         if len(follow_vehicle_valid_action_idxs) > 0:
             # choose aggressiveness level for dynamic action according to the headway safety margin from the front car
             dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
+            print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS >>>>>")
             safety_margins = SingleLaneActionSpecEvaluator.calc_headway_safety_margins(dynamic_specs, behavioral_state)
             aggr_levels = [action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs]
-            print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS: ", aggr_levels, safety_margins)
+            spec_t = [action_specs[action_idx].t for action_idx in follow_vehicle_valid_action_idxs]
+            print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS: spec.t", aggr_levels, safety_margins, spec_t)
             calm_idx = np.where(aggr_levels == 0)[0]
             standard_idx = np.where(aggr_levels == 1)[0]
             if len(calm_idx) > 0 and safety_margins[calm_idx[0]] > 0.7:
@@ -99,7 +101,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         poly_coefs_s = QuinticPoly1D.s_profile_coefficients(
             initial_fstates[:, FS_SA], initial_fstates[:, FS_SV], terminal_fstates[:, FS_SV],
-            terminal_fstates[:, FS_DX] - initial_fstates[:, FS_DX], T)
+            terminal_fstates[:, FS_SX] - initial_fstates[:, FS_SX], T)
+        poly_coefs_s[:, -1] = initial_fstates[:, FS_SX]
 
         safety_margins = []
         for poly_s, cell, target, spec in zip(poly_coefs_s, relative_cells, target_vehicles, action_specs):
