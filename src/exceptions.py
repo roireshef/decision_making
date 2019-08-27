@@ -74,6 +74,10 @@ class SceneModelIsEmpty(Exception):
     pass
 
 
+class AugmentedGffCreatedIncorrectly(BehavioralPlanningException):
+    pass
+
+
 # BEHAVIORAL PLANNING
 @six.add_metaclass(ABCMeta)
 class MappingException(Exception):

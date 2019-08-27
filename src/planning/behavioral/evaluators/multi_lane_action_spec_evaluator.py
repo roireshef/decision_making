@@ -4,6 +4,7 @@ from typing import List
 
 import numpy as np
 
+from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe
@@ -48,22 +49,27 @@ class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         diverging_indices = {}
 
-        try:
-            if is_left_augmented:
-                # Find where gffs[RelativeLane.LEFT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
-                max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids), len(gffs[RelativeLane.LEFT_LANE].segment_ids))
+        if is_left_augmented:
+            # Find where gffs[RelativeLane.LEFT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
+            max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids), len(gffs[RelativeLane.LEFT_LANE].segment_ids))
+
+            try:
                 diverging_indices[RelativeLane.LEFT_LANE] = np.argwhere(gffs[RelativeLane.LEFT_LANE].segment_ids[:max_index] !=
                                                                         gffs[RelativeLane.SAME_LANE].segment_ids[:max_index])[0][0]
+            except IndexError:
+                is_left_augmented = False
+                self.logger.warning(AugmentedGffCreatedIncorrectly(f"Augmented LEFT_LANE and SAME_LANE GFFs contain identical lane segments."))
 
-            if is_right_augmented:
-                # Find where gffs[RelativeLane.RIGHT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
-                max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids), len(gffs[RelativeLane.RIGHT_LANE].segment_ids))
+        if is_right_augmented:
+            # Find where gffs[RelativeLane.RIGHT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
+            max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids), len(gffs[RelativeLane.RIGHT_LANE].segment_ids))
+
+            try:
                 diverging_indices[RelativeLane.RIGHT_LANE] = np.argwhere(gffs[RelativeLane.RIGHT_LANE].segment_ids[:max_index] !=
                                                                          gffs[RelativeLane.SAME_LANE].segment_ids[:max_index])[0][0]
-        except IndexError:
-            is_left_augmented = False
-            is_right_augmented = False
-            self.logger.warning(f"No differing lane segments found within augmented lanes and SAME_LANE. Defaulting to actions on SAME_LANE.")
+            except IndexError:
+                is_right_augmented = False
+                self.logger.warning(AugmentedGffCreatedIncorrectly(f"Augmented RIGHT_LANE and SAME_LANE GFFs contain identical lane segments."))
 
         # Define lambda function to get route cost of lane
         cost_after_diverge = lambda target_lane, split_side: \
