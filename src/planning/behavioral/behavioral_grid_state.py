@@ -207,7 +207,6 @@ class BehavioralGridState:
 
         host_cartesian_point = np.array([state.ego_state.cartesian_state[C_X],
                                          state.ego_state.cartesian_state[C_Y]])
-        host_station_on_same_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE].cpoint_to_fpoint(host_cartesian_point)[FP_SX]
 
         # If an adjacent lane exists, create a generalized Frenet frame for it
         for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
@@ -222,8 +221,7 @@ class BehavioralGridState:
             else:
                 # Find station in the relative lane that is adjacent to the host's station in the lane it is occupying
                 host_station_in_adjacent_lane = \
-                MapUtils.get_lane_frenet_frame(closest_lanes_dict[relative_lane]).cpoint_to_fpoint(
-                    host_cartesian_point)[FP_SX]
+                    MapUtils.get_lane_frenet_frame(closest_lanes_dict[relative_lane]).cpoint_to_fpoint(host_cartesian_point)[FP_SX]
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
