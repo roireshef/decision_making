@@ -234,14 +234,15 @@ LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 LANE_OCCUPANCY_COST_IND = 0
 LANE_END_COST_IND = 1
 
-# TODO: Is this the same as SATURATED_COST?
 # Maximum cost: Lane cannot be occupied
 TRUE_COST = 1.0
 
 # Minimum cost for a lane: Lane is not blocked
 FALSE_COST = 0.0
 
-# Max cost a lane can have
+# Tunable parameter that defines the cost at which a lane is no longer considered to be valid. For example, a lane may
+# have an end or occupancy cost equal to 0.99, and it may be desirable to not consider it as a valid lane. This is
+# different from the actual maximum cost of 1.0.
 SATURATED_COST = 1.0
 
 
