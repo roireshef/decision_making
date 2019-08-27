@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType, Rel
     RoadSignActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import FS_SX, SIGN_S
+from decision_making.src.planning.types import FS_SX
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.utils.map_utils import MapUtils
 from sklearn.utils.extmath import cartesian
@@ -35,25 +35,25 @@ class RoadSignActionSpace(TargetActionSpace):
     def recipe_classes(self) -> List[Type]:
         return [RoadSignActionRecipe]
 
-    def get_target_lengths(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_lengths(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         return np.full(len(action_recipes), ROAD_SIGN_LENGTH)
 
-    def get_target_velocities(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_velocities(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         return np.zeros(len(action_recipes))  # TODO: will need modification for other road signs
 
-    def get_end_target_relative_position(self, action_recipes: List[RoadSignActionRecipe]) -> np.ndarray:
+    def _get_end_target_relative_position(self, action_recipes: List[RoadSignActionRecipe]) -> np.ndarray:
         return np.full(len(action_recipes), -1)
 
-    def get_distance_to_targets(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState)\
+    def _get_distance_to_targets(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
-        longitudinal_differences = np.array([self.get_closest_stop_bar_distance(action_recipe, behavioral_state)
+        longitudinal_differences = np.array([self._get_closest_stop_bar_distance(action_recipe, behavioral_state)
                                              for action_recipe in action_recipes])
         assert not np.isnan(longitudinal_differences).any()
         return longitudinal_differences
 
-    def get_closest_stop_bar_distance(self, action: RoadSignActionRecipe, behavioral_state: BehavioralGridState) -> float:
+    def _get_closest_stop_bar_distance(self, action: RoadSignActionRecipe, behavioral_state: BehavioralGridState) -> float:
         """
         Returns the s value of the closest Stop Bar or Stop sign.
         If both types exist, prefer stop bar, if close enough to stop sign.
@@ -75,11 +75,11 @@ class RoadSignActionSpace(TargetActionSpace):
             # only stop BAR exists
             closest_sign = stop_bars[0]
         # Both stop SIGN and BAR exist
-        elif stop_bars[0][FS_SX] < stop_signs[0][FS_SX] + RoadSignActionSpace.CLOSE_ENOUGH:
+        elif stop_bars[0].s < stop_signs[0].s + RoadSignActionSpace.CLOSE_ENOUGH:
             # stop BAR close to SIGN or closer than stop SIGN, select it
             closest_sign = stop_bars[0]
         else:
             # stop SIGN is closer
             closest_sign = stop_signs[0]
 
-        return closest_sign[SIGN_S] - behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
+        return closest_sign.s - behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]

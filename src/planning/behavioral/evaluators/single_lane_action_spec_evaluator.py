@@ -99,6 +99,11 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
     def _is_static_action_preferred(self, action_recipes: List[ActionRecipe], road_sign_idx: int, follow_lane_idx: int):
         """
         Selects if a STATIC or ROAD_SIGN action is preferred.
+        This can be based on any criteria.
+        For example:
+            always prefer 1 type of action,
+            select action type if aggressiveness is as desired
+            Toggle between the 2
         :param action_recipes: of all possible actions
         :param road_sign_idx: of calmest road sign action
         :param follow_lane_idx: of calmest fastest static action

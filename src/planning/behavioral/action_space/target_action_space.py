@@ -36,7 +36,7 @@ class TargetActionSpace(ActionSpace):
         self.margin_to_keep_from_targets = margin_to_keep_from_targets
 
     @abstractmethod
-    def get_target_lengths(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_lengths(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         """
         Should return the length of the targets
@@ -47,7 +47,7 @@ class TargetActionSpace(ActionSpace):
         pass
 
     @abstractmethod
-    def get_target_velocities(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_velocities(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         """
         Should return the velocities of the targets
@@ -58,7 +58,7 @@ class TargetActionSpace(ActionSpace):
         pass
 
     @abstractmethod
-    def get_end_target_relative_position(self, action_recipes: List[TargetActionRecipe]) -> np.ndarray:
+    def _get_end_target_relative_position(self, action_recipes: List[TargetActionRecipe]) -> np.ndarray:
         """
         Should return the relative longitudinal position of the ego relative to the targets at the end of the action
         For example: -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
@@ -68,7 +68,7 @@ class TargetActionSpace(ActionSpace):
         pass
 
     @abstractmethod
-    def get_distance_to_targets(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState)\
+    def _get_distance_to_targets(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
         """
         Should return the distance of the ego from the targets before the action is taken
@@ -94,12 +94,12 @@ class TargetActionSpace(ActionSpace):
 
         # collect targets' lengths, lane_ids and fstates
         # Targets are other vehicles, on the target grid box that ego plans to enter, sorted by S
-        target_lengths = self.get_target_lengths(action_recipes, behavioral_state)
-        v_T = self.get_target_velocities(action_recipes, behavioral_state)
-        margin_sign = self.get_end_target_relative_position(action_recipes)
+        target_lengths = self._get_target_lengths(action_recipes, behavioral_state)
+        v_T = self._get_target_velocities(action_recipes, behavioral_state)
+        margin_sign = self._get_end_target_relative_position(action_recipes)
 
         # calculate initial longitudinal differences between all target objects and ego along target lanes
-        longitudinal_differences = self.get_distance_to_targets(action_recipes, behavioral_state)
+        longitudinal_differences = self._get_distance_to_targets(action_recipes, behavioral_state)
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])

@@ -1,5 +1,7 @@
 import numpy as np
 import sys
+from typing import NamedTuple
+from decision_making.src.messages.scene_static_enums import RoadObjectType
 
 ## TIMESTAMPS ##
 GlobalTimeStamp = int                   # global timestamp in [nanosec] since given time
@@ -104,5 +106,8 @@ NumpyIndicesArray = np.ndarray
 # boolean array
 BoolArray = np.ndarray
 
-# Info on road signs
-SIGN_TYPE, SIGN_S = 0, 1
+
+class RoadSignInfo(NamedTuple):
+    # Info on road signs
+    sign_type: RoadObjectType  # type of road sign
+    s: float  # distance from road sign

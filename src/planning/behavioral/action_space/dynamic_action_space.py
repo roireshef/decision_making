@@ -46,25 +46,25 @@ class DynamicActionSpace(TargetActionSpace):
         return behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0].\
             dynamic_object
 
-    def get_target_lengths(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_lengths(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         target_lengths = np.array([self._get_closest_target(action_recipe, behavioral_state).size.length
                                   for action_recipe in action_recipes])
 
         return target_lengths
 
-    def get_target_velocities(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_velocities(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         v_T = np.array([self._get_closest_target(action_recipe, behavioral_state).map_state.lane_fstate[FS_SV]
                         for action_recipe in action_recipes])
         return v_T
 
-    def get_end_target_relative_position(self, action_recipes: List[DynamicActionRecipe]) -> np.ndarray:
+    def _get_end_target_relative_position(self, action_recipes: List[DynamicActionRecipe]) -> np.ndarray:
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
         return margin_sign
 
-    def get_distance_to_targets(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState)\
+    def _get_distance_to_targets(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState)\
             -> np.ndarray:
         target_map_states = [self._get_closest_target(action_recipe, behavioral_state).map_state
                              for action_recipe in action_recipes]
