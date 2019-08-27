@@ -142,20 +142,21 @@ class RuleBasedLaneMerge:
         time_safety = time.time() - st
 
         st = time.time()
-        # calculate s_profile coefficients for all actions
-        single_actions, violates_high_vel_limit, violates_low_vel_limit = \
-            RuleBasedLaneMerge._create_single_actions(ego_fstate, T, v_T, ds)
+        # create single-spec quintic safe actions
+        single_actions, violates_high_vel_limit = RuleBasedLaneMerge._create_single_actions(ego_fstate, T, v_T, ds)
 
         max_vel_actions = stop_actions = []
         time_quintic = time.time() - st
 
         st = time.time()
-        # create sequences of actions, such that each sequence includes quartic + const_max_vel + quartic
+        # create composite "max_velocity" actions, such that each sequence includes quartic + const_max_vel + quartic
         if violates_high_vel_limit:
             max_vel_actions = RuleBasedLaneMerge._create_composite_actions(ego_fstate, T, VELOCITY_LIMITS[1], v_T, ds)
 
-        # create sequences of actions, such that each sequence includes quartic + zero_vel + quartic
-        if violates_low_vel_limit:
+        # create composite "stop" actions, such that each sequence includes quartic + zero_vel + quartic
+        # create stop actions only if there are no single-spec actions, since quintic actions have lower time
+        # and lower jerk than composite stop action
+        if len(single_actions) == 0:
             stop_actions = RuleBasedLaneMerge._create_composite_actions(ego_fstate, T, 0, v_T, ds)
         time_quartic = time.time() - st
 
@@ -171,7 +172,7 @@ class RuleBasedLaneMerge:
 
     @staticmethod
     def _create_single_actions(ego_fstate: FrenetState1D, T: np.array, v_T: np.array, ds: float) -> \
-            [List[ActionSpec], bool, bool]:
+            [List[ActionSpec], bool]:
 
         # calculate s_profile coefficients for all actions
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
@@ -180,18 +181,17 @@ class RuleBasedLaneMerge:
         # the fast analytic kinematic filter reduce the load on the regular kinematic filter
         # calculate actions that don't violate acceleration limits
         valid_acc = QuinticPoly1D.are_derivatives_in_limits_zero_coef(2, poly_coefs, T, LON_ACC_LIMITS)
-
-        # calculate separately actions that don't violate maximal vel_limit and minimal vel_limit
-        not_too_high_vel = QuinticPoly1D.are_derivatives_in_limits_zero_coef(1, poly_coefs[valid_acc], T[valid_acc],
-                                                                             np.array([-np.inf, VELOCITY_LIMITS[1]]))
-        non_negative_vel = QuinticPoly1D.are_derivatives_in_limits_zero_coef(1, poly_coefs[valid_acc], T[valid_acc],
-                                                                             np.array([VELOCITY_LIMITS[0], np.inf]))
-        valid_idxs = np.where(valid_acc)[0][non_negative_vel & not_too_high_vel]
+        valid_vel = QuinticPoly1D.are_derivatives_in_limits_zero_coef(1, poly_coefs[valid_acc], T[valid_acc],
+                                                                      VELOCITY_LIMITS)
+        valid_idxs = np.where(valid_acc)[0][valid_vel]
 
         actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, ds, QuinticPoly1D.num_coefs())])
                    for t, vT in zip(T[valid_idxs], v_T[valid_idxs])]
 
-        return actions, (~not_too_high_vel).any(), (~non_negative_vel).any()
+        # check if there are actions that try to violate maximal vel_limit
+        not_too_high_vel = QuinticPoly1D.are_derivatives_in_limits_zero_coef(1, poly_coefs[valid_acc], T[valid_acc],
+                                                                             np.array([-np.inf, VELOCITY_LIMITS[1]]))
+        return actions, (~not_too_high_vel).any()
 
     @staticmethod
     def _create_composite_actions(ego_fstate: FrenetState1D, T: np.array, v_mid: float, v_T: np.array, ds: float) \
