@@ -21,14 +21,12 @@ def plot_filters_map(log_file_path: str):
     """
     file = open(log_file_path, 'r')
     f = plt.figure(1)
-    colors_num = len(DEFAULT_ACTION_SPEC_FILTERING._filters) + 1
-    map_idx_to_color = np.array([4, 6, 2, 0, 8, 7, 5, 1, 3]) / colors_num
     gray_color = np.array([0.75, 0.75, 0.75])
+    color_names = np.array(["gray", "r", "g", "b", "y", "k", "c", "m", "yellow", "lightblue", "peachpuff", "fuchsia", "papayawhip", "lightsalmon"])  # See https://matplotlib.org/examples/color/named_colors.html
 
     patches = []
     for idx, filter in enumerate(DEFAULT_ACTION_SPEC_FILTERING._filters + ['Passed']):
-        color = plt.cm.hsv(map_idx_to_color[idx]) if idx > 0 else gray_color
-        patches.append(mpatches.Patch(color=color, label=filter.__str__()))
+        patches.append(mpatches.Patch(color=color_names[idx], label=filter.__str__()))
     plt.legend(handles=patches)
 
     logger = AV_Logger.get_logger("Filters_visualizer")
@@ -53,9 +51,8 @@ def plot_filters_map(log_file_path: str):
             timestamp = float(colon_str[0])
             filters_result = np.array(list(map(int, colon_str[1].replace('array([', '').replace('])', '').split(', '))))
             # filtering_map.append((timestamp, filters_result))
-            colors = plt.cm.hsv(map_idx_to_color[filters_result])
             plt.scatter(np.full(len(filters_result), timestamp), np.array(range(len(filters_result))),
-                        c=colors, linestyle='None')
+                        c=color_names[filters_result], linestyle='None')
             # draw None actions with gray color which is not part of the color palette
             none_actions = np.where(filters_result == 0)[0]
             plt.scatter(np.full(len(none_actions), timestamp), none_actions,

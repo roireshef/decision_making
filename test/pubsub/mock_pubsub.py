@@ -24,7 +24,10 @@ class PubSubMock(PubSub):
 
     def unsubscribe(self, topic):
         """Unsubscribe (remove a callback) from the given topic"""
-        del self.topic_callback_mapping[topic]
+        if topic not in self.topic_callback_mapping.keys():
+            topic.unregister_cb(None)
+        else:
+            del self.topic_callback_mapping[topic]
 
     def publish(self, topic, msg):
         """

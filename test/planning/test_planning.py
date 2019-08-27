@@ -74,6 +74,8 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
     trajectory_publish_mock.assert_called_once()
 
+    pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PLAN)
+
 
 def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module:StateModule,
                                                                   route_planner_facade: RoutePlanningFacade,
@@ -120,3 +122,5 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
 
     # if this fails, that means BP did not publish a message - debug exceptions in BehavioralFacade
     behavioral_publish_mock.assert_called_once()
+
+    pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
