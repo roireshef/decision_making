@@ -1,3 +1,6 @@
+from rte.python.logger.AV_logger import AV_Logger
+AV_Logger.init_group("PLAN")
+
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
@@ -11,9 +14,10 @@ from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.action_space.road_sign_action_space import RoadSignActionSpace
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
-    DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING
+    DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.multi_lane_action_spec_evaluator import MultiLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
@@ -25,7 +29,6 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
 import os
-from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
 
@@ -66,7 +69,10 @@ class DmInitialization:
 
         action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                      DynamicActionSpace(logger, predictor,
-                                                                        DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+                                                                        DEFAULT_DYNAMIC_RECIPE_FILTERING),
+                                                     RoadSignActionSpace(logger, predictor,
+                                                                         DEFAULT_ROAD_SIGN_RECIPE_FILTERING)],
+                                            )
 
         recipe_evaluator = None
         action_spec_evaluator = MultiLaneActionSpecEvaluator(logger)
@@ -101,7 +107,6 @@ class DmInitialization:
 def main():
     av_argument_parser.parse_arguments()
     # register termination signal handler
-    AV_Logger.init_group("PLAN")
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (DM main) registered signal handler', os.getpid())
     catch_interrupt_signals()
