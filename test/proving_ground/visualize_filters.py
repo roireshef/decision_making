@@ -91,8 +91,15 @@ def plot_filters_map(log_file_path: str):
                                      recipe.aggressiveness.value == aggressiveness and
                                      recipe.relative_lane.value == relative_lane and
                                      np.isclose(recipe.velocity, velocity, atol=0.01)]
-            elif recipe_type == 4:
-                continue  # placeholder for RoadSign
+            elif recipe_type == ActionType.FOLLOW_ROAD_SIGN.value:
+                relative_lon = int(recipe_dict['relative_lon'].split(':')[1].replace('>',''))
+
+                # map it
+                chosen_recipe_idx = [idx for idx, recipe in enumerate(action_recipes) if
+                                     recipe.action_type == ActionType.FOLLOW_ROAD_SIGN and
+                                     recipe.aggressiveness.value == aggressiveness and
+                                     recipe.relative_lane.value == relative_lane and
+                                     recipe.relative_lon.value == relative_lon]
             else:
                 err_msg = "Unknown action %s" % recipe_dict
                 raise AssertionError(err_msg)
