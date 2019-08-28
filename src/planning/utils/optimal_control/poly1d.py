@@ -219,7 +219,6 @@ class Poly1D:
         Solves the two-point boundary value problem in 1D, given a set of constraints over the initial and terminal states.
         :param constraints: 3D numpy array of a set of constraints over the initial and terminal states
         :param T: longitudinal/lateral trajectory duration (sec.), relative to ego. T has to be a multiple of WerlingPlanner.dt
-        :param poly_impl: OptimalControlUtils 1d polynomial implementation class
         :return: a poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s] or [c0_d, ..., c5_d]
         """
         assert constraints.shape[-1] == cls.num_coefs(), "%s should get constraints of size %s (got %s)" % \
