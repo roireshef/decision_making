@@ -244,15 +244,19 @@ LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 LANE_OCCUPANCY_COST_IND = 0
 LANE_END_COST_IND = 1
 
-# Maximum cost: Lane cannot be occupied
-TRUE_COST = 1.0
+# Maximum value for RP's lane end and occupancy costs
+# Lane end cost = MAX_COST --> Do not leave the road segment in this lane
+# Lane occupancy cost = MAX_COST --> Do not drive in this lane
+MAX_COST = 1.0
 
-# Minimum cost for a lane: Lane is not blocked
-FALSE_COST = 0.0
+# Minimum value for RP's lane end and occupancy costs
+# Lane end cost = MIN_COST --> There is no penalty for being in this lane as we transition to the next road segment
+# Lane occupancy cost = MIN_COST --> We are allowed to drive in this lane
+MIN_COST = 0.0
 
 # Tunable parameter that defines the cost at which a lane is no longer considered to be valid. For example, a lane may
 # have an end or occupancy cost equal to 0.99, and it may be desirable to not consider it as a valid lane. This is
-# different from the actual maximum cost of 1.0.
+# different from the actual maximum cost (= MAX_COST).
 SATURATED_COST = 1.0
 
 
