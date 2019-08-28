@@ -5,7 +5,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
-    ActionSpec
+    ActionSpec, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -87,13 +87,19 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan):
+    def plan(self, orig_state: State, state: State, route_plan: RoutePlan):
 
         action_recipes = self.action_space.recipes
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
+
+        gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
+
+        map_state = orig_state.ego_state.map_state
+        gff_fstate = gff.convert_from_segment_state(map_state.lane_fstate, map_state.lane_id)
+        print('BP time', state.ego_state.timestamp_in_sec, 'orig', gff_fstate[:3], 'updated', behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE][:3])
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
