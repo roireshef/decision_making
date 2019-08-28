@@ -50,6 +50,7 @@ class RoadSignActionSpace(TargetActionSpace):
             -> np.ndarray:
         longitudinal_differences = np.array([self._get_closest_stop_bar_distance(action_recipe, behavioral_state)
                                              for action_recipe in action_recipes])
+        self.logger.debug("STOP RoadSign distance: %1.2f" % longitudinal_differences[0])
         assert not np.isnan(longitudinal_differences).any()
         return longitudinal_differences
 
