@@ -88,51 +88,43 @@ class BehavioralGridState:
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
-    def _create_mirror_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
+    def _project_actors_behind_ego(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
         """
-        Takes all the dynamic objects that are on intersections, and adds 'pseudo (mirror) -objects' that are located
-        on the matching lane segment. According to the intersection
+        Takes all the dynamic objects behind ego vehicle that are on intersections, and adds projected objects that are
+        located on the overlapping lanes.
         An 'overloaded' dynamic object looks like this:
 
-        map_states of overloaded should have the following:
-            obj_id:    the negative id of the original dynamic object
+        map_states of projected objects should have the following:
+            obj_id: the negative id of the original dynamic object id
             timestamp: same as original dynamic object
-            cartesian_state:same as original dynamic object
-            map_state:  (lane id as the pseudo-object), lane_fstate as None for lazy initialization)
-            size:same as original dynamic object
-            confidence:same as original dynamic object
-        :param dynamic_objects:
-        :return:
+            cartesian_state: same as original dynamic object
+            map_state:  (lane id as the overlapping lane), lane_fstate as None for lazy initialization)
+            size: same as original dynamic object
+            confidence: same as original dynamic object
+        :param dynamic_objects: list of DynamicObject
+        :return: list of all overloaded dynamic objects including both the original and  projected objects
         """
-        pseudo_dynamic_objects = []
+        projected_dynamic_objects = []
         for dynamic_object in dynamic_objects:
             map_state = dynamic_object.map_state
-            if map_state.is_on_road():
+            if map_state.is_on_road():  # and if behind the host
                 obj_lane_id = map_state.lane_id
                 obj_lane = MapUtils.get_lane(obj_lane_id)
-                # Only project if there is one upstream lane that has multiple downstreams
-                if obj_lane.e_Cnt_upstream_lane_count == 1:
-                    # TODO: what if the upstream lane is not part of the base horizon behind the ego - change the logic to find overlap area
-                    upstreamLane = MapUtils.get_lane(obj_lane.as_upstream_lanes[0].e_i_lane_segment_id)
-                    if upstreamLane.e_Cnt_downstream_lane_count > 1:
-                        downstreamLanes = [MapUtils.get_lane(downstream_lane.e_i_lane_segment_id)
-                                           for downstream_lane in upstreamLane.as_downstream_lanes]
+                # Only project if actor has overlapping lane
+                if obj_lane.e_Cnt_lane_overlap_count > 0:
+                    # Get overlapping lanes and create projected objects in those lanes
+                    #TODO: do we check the type and station for overlap to project?
+                    overlapping_lane_ids = [lane.e_i_other_lane_segment_id for lane in obj_lane.as_lane_overlaps]
+                    for lane_id in overlapping_lane_ids:
+                        projected_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
+                                                                       timestamp=dynamic_object.timestamp,
+                                                                       cartesian_state=dynamic_object.cartesian_state,
+                                                                       map_state=MapState(None, lane_id),
+                                                                       size=dynamic_object.size,
+                                                                       confidence=dynamic_object.confidence,
+                                                                       off_map=False))
 
-                        # Check if all downstream lanes are in the same road segment, otherwise it is a fork instead of a split
-                        if len(set([downstreamLane.e_i_road_segment_id for downstreamLane in downstreamLanes])) == 1:
-                            # Get overlapping lanes and create pseudo objects in those lanes
-                            other_lanes = [lane for lane in upstreamLane.as_downstream_lanes
-                                           if lane.e_i_lane_segment_id != obj_lane_id]
-                            for other_lane in other_lanes:
-                                pseudo_dynamic_objects.append(DynamicObject(obj_id = -dynamic_object.obj_id,
-                                                                            timestamp = dynamic_object.timestamp,
-                                                                            cartesian_state = dynamic_object.cartesian_state,
-                                                                            map_state = MapState(None, other_lane.e_i_lane_segment_id),
-                                                                            size = dynamic_object.size,
-                                                                            confidence = dynamic_object.confidence,
-                                                                            off_map = False))
-
-        return dynamic_objects + pseudo_dynamic_objects
+        return dynamic_objects + projected_dynamic_objects
 
     @staticmethod
     def _lazy_set_map_states(dynamic_objects: List[DynamicObject],
@@ -173,8 +165,8 @@ class BehavioralGridState:
         # filter out off map dynamic objects
         on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
 
-        # overload dynamic objects with projected actors which belong to the intersection road segments
-        overloaded_dynamic_objects = BehavioralGridState._create_mirror_objects(on_map_dynamic_objects)
+        # overload dynamic objects with projected actors behind ego vehicle which belong to the intersection
+        overloaded_dynamic_objects = BehavioralGridState._project_actors_behind_ego(on_map_dynamic_objects)
 
         # calculate objects' segment map_states
         objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
