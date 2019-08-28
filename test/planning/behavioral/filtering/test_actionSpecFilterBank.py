@@ -425,37 +425,8 @@ def test_filter_filterForSLimit_dontFilterValidAction(
         behavioral_grid_state_with_objects_for_filtering_too_aggressive,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     """
-    State leads to two dynamic actions: {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE), {a0=0,v0=10,sT=53.5,vT=20} (RIGHT_LANE).
-    The action on the right lane (with slow dynamic object) ends inside RIGHT_LANE Frenet frame and is not filtered.
-    All ground truths checked with desmos - https://www.desmos.com/calculator/exizg3iuhs
-    """
-    logger = AV_Logger.get_logger()
-    predictor = RoadFollowingPredictor(logger)
-
-    filtering = RecipeFiltering(filters=[FilterRecipeIfNone()], logger=logger)
-
-    actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[:3]
-
-    expected_filter_results = np.array([False, False, True], dtype=bool)
-    dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
-
-    action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
-                                                                   behavioral_grid_state_with_objects_for_filtering_too_aggressive)
-
-    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForSLimit()], logger=logger)
-
-    filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
-                                                            behavioral_grid_state_with_objects_for_filtering_too_aggressive)
-
-    np.testing.assert_array_equal(filter_results, expected_filter_results)
-
-
-def test_filter_filterForSLimit_filterTooLongAction(
-        behavioral_grid_state_with_objects_for_filtering_too_aggressive,
-        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
-    """
-    State leads to two dynamic actions: {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE), {a0=0,v0=10,sT=53.5,vT=20} (RIGHT_LANE).
-    The action on the same lane ends beyond SAME_LANE Frenet frame and therefore is filtered.
+    State leads to two dynamic actions: {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE), {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE).
+    The action on the right lane (with slow dynamic object) ends inside SAME_LANE Frenet frame and is not filtered.
     All ground truths checked with desmos - https://www.desmos.com/calculator/exizg3iuhs
     """
     logger = AV_Logger.get_logger()
@@ -465,7 +436,7 @@ def test_filter_filterForSLimit_filterTooLongAction(
 
     actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
 
-    expected_filter_results = np.array([False, False, False], dtype=bool)
+    expected_filter_results = np.array([False, False, True], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
 
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
