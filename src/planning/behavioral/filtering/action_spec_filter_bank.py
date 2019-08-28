@@ -2,17 +2,17 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.global_constants import EPS
+from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition
+    RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, SIGN_S
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -102,7 +102,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
          of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
-         maintaining the required safety-headway + constant safety-margin"""
+         maintaining the required safety-headway + constant safety-margin. Also used for action FOLLOW_ROAD_SIGN to
+         verify ego maintains enough safety towards closest vehicle"""
         # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
         # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
         relative_cells = [(spec.recipe.relative_lane,
@@ -166,7 +167,7 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_locations = np.asarray([stop_sign[SIGN_S] for stop_sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
+        stop_bar_locations = np.asarray([stop_sign.s for stop_sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
 
         return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any() \
@@ -194,9 +195,9 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
             _condition
         To terminate the filter calculation use _raise_true/_raise_false  at any stage.
     """
-    def __init__(self):
+    def __init__(self, aggresiveness_level: AggressivenessLevel = AggressivenessLevel.CALM):
         super(BeyondSpecBrakingFilter, self).__init__()
-        self.braking_distances = BrakingDistances.create_braking_distances()
+        self.braking_distances = BrakingDistances.create_braking_distances(aggresiveness_level=aggresiveness_level.value)
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
@@ -269,7 +270,11 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
     """
 
     def __init__(self):
-        super().__init__()
+        # Using a STANDARD aggressiveness. If we try to use CALM, then when testing FOLLOW_VEHICLE and failing,
+        # a CALM FOLLOW_ROAD_SIGN action will not be ready yet.
+        # TODO a better solution may be to calculate the BeyondSpecStaticTrafficFlowControlFilter relative to the
+        #  start of the action, or 1 BP cycle later, instead of relative to the end of the action.
+        super().__init__(aggresiveness_level=AggressivenessLevel.STANDARD)
 
     def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> Union[float, None]:
         """
@@ -279,7 +284,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
         """
         stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
-        distances = [stop_sign[SIGN_S] for stop_sign in stop_signs if stop_sign[SIGN_S] >= action_spec_s]
+        distances = [stop_sign.s for stop_sign in stop_signs if stop_sign.s >= action_spec_s]
         return distances[0] if len(distances) > 0 else None
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
@@ -368,7 +373,7 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
         Finds speed limits of the lanes ahead
         :param behavioral_state
         :param action_spec:
-        :return: tuple of (Frenet indicies of start points of lanes ahead, speed limits at those indicies)
+        :return: tuple of (Frenet indices of start points of lanes ahead, speed limits at those indices)
         """
         # get the lane the action_spec wants to drive in
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]
@@ -412,4 +417,33 @@ class BeyondSpecSpeedLimitFilter(BeyondSpecBrakingFilter):
             self._raise_true()
 
         return lane_s_start_ahead[slow_points], speed_limits[slow_points]
+
+
+class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
+    # thresholds are defined by the system requirements
+    SPEED_THRESHOLDS = np.array([3, 6, 9, 12, 14, 100])  # in [m/s]
+    TIME_THRESHOLDS = np.array([7, 8, 10, 13, 15, 19.8])  # in [s]
+
+    @staticmethod
+    def _is_time_to_stop(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
+        """
+        Checks whether a stop action should start, or if it is too early for it to act.
+        The allowed values are defined by the system requirements. See R14 in UltraCruise use cases
+        :param action_spec: the action spec to test
+        :param behavioral_state: state of the world
+        :return: True if the action should start, False otherwise
+        """
+        assert max(FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
+        ego_speed = behavioral_state.projected_ego_fstates[action_spec.recipe.relative_lane][FS_SV]
+        # lookup maximal time threshold
+        indices = np.where(FilterStopActionIfTooSoonByTime.SPEED_THRESHOLDS > ego_speed)[0]
+        maximal_stop_time = FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS[indices[0]] \
+            if len(indices) > 0 else BP_ACTION_T_LIMITS[1]
+
+        return action_spec.t < maximal_stop_time
+
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
+        return np.array([(not isinstance(action_spec.recipe, RoadSignActionRecipe)) or
+                         FilterStopActionIfTooSoonByTime._is_time_to_stop(action_spec, behavioral_state)
+                         if (action_spec is not None) else False for action_spec in action_specs])
 

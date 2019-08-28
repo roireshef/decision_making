@@ -38,6 +38,15 @@ class FilterOvertakeActions(RecipeFilter):
                 if recipe is not None else False for recipe in recipes]
 
 
+class FilterActionsTowardsCellsWithoutStopSignsOrStopBars(RecipeFilter):
+    def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [len(MapUtils.get_stop_bar_and_stop_sign(
+            behavioral_state.extended_lane_frames[recipe.relative_lane])) > 0
+                if ((recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames))
+                else False
+                for recipe in recipes]
+
+
 # General ActionRecipe Filters
 
 class FilterIfNone(RecipeFilter):
@@ -72,12 +81,20 @@ class FilterLaneChanging(RecipeFilter):
 
 
 class FilterSpeedingOverDesiredVelocityStatic(RecipeFilter):
+    """ This filter only compares the target lane speed with an absolute speed limit.
+    Does NOT compare against the lane's speed limit, as it is not clear at this stage, which lane segments are relevant.
+    This will be tested at the action spec filter FilterForLaneSpeedLimits
+    """
     def filter(self, recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                 if recipe is not None else False for recipe in recipes]
 
 
 class FilterSpeedingOverDesiredVelocityDynamic(RecipeFilter):
+    """ This filter only compares the target vehicle's speed with an absolute speed limit.
+    Does NOT compare against the lane's speed limit, as it is not clear at this stage, which lane segments are relevant.
+    This will be tested at the action spec filter FilterForLaneSpeedLimits
+    """
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [behavioral_state.road_occupancy_grid
                 [(recipe.relative_lane, recipe.relative_lon)][0].dynamic_object.velocity
