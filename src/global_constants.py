@@ -69,7 +69,7 @@ VELOCITY_STEP = 5/MPH_TO_MPS
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([0.0, 15.0])
+BP_ACTION_T_LIMITS = np.array([0.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -95,9 +95,19 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 # safety checks accordingly
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
+
+# [m/sec] zero speed
+ZERO_SPEED = 0.0
+
+# [m] road sign length
+ROAD_SIGN_LENGTH = 0
+
+# define acceptable distance [m] between stop_bar and stop_sign to be considered as related
+CLOSE_ENOUGH = 3.0
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
