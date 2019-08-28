@@ -2,7 +2,8 @@ from logging import Logger
 from typing import List, Type
 
 import numpy as np
-from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR
+from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR, \
+    CLOSE_ENOUGH
 from decision_making.src.messages.scene_static_enums import RoadObjectType
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -28,8 +29,6 @@ class RoadSignActionSpace(TargetActionSpace):
                                   ],
                          filtering=filtering,
                          margin_to_keep_from_targets=LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR)
-
-    CLOSE_ENOUGH = 3.0  # define acceptable distance [m] between stop_bar and stop_sign to be considered as related
 
     @property
     def recipe_classes(self) -> List[Type]:
@@ -76,7 +75,7 @@ class RoadSignActionSpace(TargetActionSpace):
             # only stop BAR exists
             closest_sign = stop_bars[0]
         # Both stop SIGN and BAR exist
-        elif stop_bars[0].s < stop_signs[0].s + RoadSignActionSpace.CLOSE_ENOUGH:
+        elif stop_bars[0].s < stop_signs[0].s + CLOSE_ENOUGH:
             # stop BAR close to SIGN or closer than stop SIGN, select it
             closest_sign = stop_bars[0]
         else:

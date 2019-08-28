@@ -106,6 +106,9 @@ ZERO_SPEED = 0.0
 # [m] road sign length
 ROAD_SIGN_LENGTH = 0
 
+# define acceptable distance [m] between stop_bar and stop_sign to be considered as related
+CLOSE_ENOUGH = 3.0
+
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 

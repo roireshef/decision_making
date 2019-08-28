@@ -115,15 +115,7 @@ class TargetActionSpace(ActionSpace):
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
             v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_HEADWAY)
-        # TODO may be a better idea to to keep actions even if they take "too long".
-        #  Instead, let the action evaluator reject such actions.
-        #  That is, use here a value larger than BP_ACTION_T_LIMITS[1] = 15 seconds,
-        #  or at least, keep the knowledge that this was why they were filtered. This is a weaker result, as the action spec may be filtered by other filters later on.
-        #  It will help the evaluator understand that the action may be taken later, and possibly base its decision on that.
-        #  For example, consider the case that a STOP at geolocation is possible when an aggressive action is taken, but not when a calm action is employed, due to the time restriction.
-        #  This can tell the evaluator that it is better to keep driving normally and start the stopping procedure later on.
-        #  On the other hand, if the calm STOP action was removed since the vehicle is too close to the geolocation,
-        #  then the evaluator can understand it should start the stopping procedure immediately.
+        # TODO see https://confluence.gm.com/display/ADS133317/Stop+at+Geo+location+remaining+issues for possibly extending the allowed action time
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
