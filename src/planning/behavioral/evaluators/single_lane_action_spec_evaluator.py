@@ -45,14 +45,14 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
             print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS >>>>>")
             min_headways = SingleLaneActionSpecEvaluator.calc_minimal_headways(dynamic_specs, behavioral_state)
-            aggr_levels = [action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs]
+            aggr_levels = np.array([action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs])
             spec_t = [action_specs[action_idx].t for action_idx in follow_vehicle_valid_action_idxs]
-            print(">>>>>>> AGGR_LEVELS & MIN_HEADWAYS: spec.t", aggr_levels, min_headways, spec_t)
             calm_idx = np.where(aggr_levels == 0)[0]
             standard_idx = np.where(aggr_levels == 1)[0]
-            if len(calm_idx) > 0 and min_headways[calm_idx[0]] > SAFETY_HEADWAY + 0.5:
+            print(">>>>>>> AGGR_LEVELS & MIN_HEADWAYS: spec.t", aggr_levels, min_headways, spec_t, "calm_idx", calm_idx, "standard_idx", standard_idx)
+            if len(calm_idx) > 0 and min_headways[calm_idx[0]] > SAFETY_HEADWAY + 0.7:
                 chosen_level = calm_idx[0]
-            elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > SAFETY_HEADWAY + 0.3:
+            elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > SAFETY_HEADWAY + 0.5:
                 chosen_level = standard_idx[0]
             else:
                 chosen_level = -1  # the most aggressive
@@ -120,6 +120,6 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
 
             # calculate safety margin (on frenet longitudinal axis)
             min_headway = KinematicUtils.calc_safety_margin(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, spec.t]))
-            min_headways.append(min_headway / max(behavioral_state.ego_state.cartesian_state[C_V], EPS))
+            min_headways.append(min_headway)
 
         return min_headways
