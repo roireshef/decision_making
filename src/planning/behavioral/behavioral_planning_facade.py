@@ -1,8 +1,6 @@
 import time
 
-import numpy as np
 import traceback
-from logging import Logger
 import numpy as np
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC

@@ -6,10 +6,11 @@ import numpy as np
 from decision_making.paths import Paths
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.road_sign_action_space import RoadSignActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLane
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING, \
-    DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_DYNAMIC_RECIPE_FILTERING
+    DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -25,7 +26,6 @@ def plot_filters_map(log_file_path: str):
     gray_color = np.array([0.75, 0.75, 0.75])
     color_names = np.array(["gray", "r", "g", "b", "y", "k", "c", "m", "yellow", "lightblue", "peachpuff", "fuchsia", "papayawhip", "lightsalmon"])  # See https://matplotlib.org/examples/color/named_colors.html
 
-
     patches = []
     for idx, filter in enumerate(DEFAULT_ACTION_SPEC_FILTERING._filters + ['Passed']):
         patches.append(mpatches.Patch(color=color_names[idx], label=filter.__str__()))
@@ -34,7 +34,8 @@ def plot_filters_map(log_file_path: str):
     logger = AV_Logger.get_logger("Filters_visualizer")
     predictor = RoadFollowingPredictor(logger)
     action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
-                                                 DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+                                                 DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
+                                                 RoadSignActionSpace(logger, predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
     # TODO in the future remove this limitation of SAME_LANE
     limit_relative_lane = [RelativeLane.SAME_LANE]  # currently limit to SAME_LANE to make visualization easier.
     action_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane in limit_relative_lane]
@@ -90,8 +91,15 @@ def plot_filters_map(log_file_path: str):
                                      recipe.aggressiveness.value == aggressiveness and
                                      recipe.relative_lane.value == relative_lane and
                                      np.isclose(recipe.velocity, velocity, atol=0.01)]
-            elif recipe_type == 4:
-                continue  # placeholder for RoadSign
+            elif recipe_type == ActionType.FOLLOW_ROAD_SIGN.value:
+                relative_lon = int(recipe_dict['relative_lon'].split(':')[1].replace('>',''))
+
+                # map it
+                chosen_recipe_idx = [idx for idx, recipe in enumerate(action_recipes) if
+                                     recipe.action_type == ActionType.FOLLOW_ROAD_SIGN and
+                                     recipe.aggressiveness.value == aggressiveness and
+                                     recipe.relative_lane.value == relative_lane and
+                                     recipe.relative_lon.value == relative_lon]
             else:
                 err_msg = "Unknown action %s" % recipe_dict
                 raise AssertionError(err_msg)
