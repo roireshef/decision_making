@@ -15,6 +15,7 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.messages.scene_static_enums import LaneOverlapType
 
 
 class DynamicObjectWithRoadSemantics:
@@ -113,8 +114,13 @@ class BehavioralGridState:
                 # Only project if actor has overlapping lane
                 if obj_lane.e_Cnt_lane_overlap_count > 0:
                     # Get overlapping lanes and create projected objects in those lanes
-                    # TODO: do we check the type and station for overlap to project?
-                    overlapping_lane_ids = [lane.e_i_other_lane_segment_id for lane in obj_lane.as_lane_overlaps]
+                    # TODO: add logic for actor projection for lane_overlap CROSS types
+                    # TODO: add logic to also project actor outside the intersection  with their bounding box inside
+                    overlapping_lane_ids = [lane_overlap.e_i_other_lane_segment_id for lane_overlap in obj_lane.as_lane_overlaps
+                                            if (lane_overlap.a_l_source_lane_overlap_stations[0] <= map_state.lane_fstate[FS_SX]
+                                                <= lane_overlap.a_l_source_lane_overlap_stations[1] and
+                                                lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
+                                                                                       LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
                         projected_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
                                                                        timestamp=dynamic_object.timestamp,
