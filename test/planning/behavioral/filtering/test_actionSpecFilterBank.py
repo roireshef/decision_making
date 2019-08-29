@@ -425,7 +425,7 @@ def test_filter_filterForSLimit_dontFilterValidAction(
         behavioral_grid_state_with_objects_for_filtering_too_aggressive,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     """
-    State leads to two dynamic actions: {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE), {a0=0,v0=10,sT=53.5,vT=20} (SAME_LANE).
+    State leads to two dynamic actions: {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE), {a0=0,v0=10,sT=53.5,vT=30} (SAME_LANE).
     The action on the same lane (with slow dynamic object) ends inside SAME_LANE Frenet frame and is not filtered.
     All ground truths checked with desmos - https://www.desmos.com/calculator/exizg3iuhs
     """
