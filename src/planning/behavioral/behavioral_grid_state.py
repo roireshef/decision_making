@@ -107,13 +107,13 @@ class BehavioralGridState:
         projected_dynamic_objects = []
         for dynamic_object in dynamic_objects:
             map_state = dynamic_object.map_state
-            if map_state.is_on_road():  # and if behind the host
+            if map_state.is_on_road():
                 obj_lane_id = map_state.lane_id
                 obj_lane = MapUtils.get_lane(obj_lane_id)
                 # Only project if actor has overlapping lane
                 if obj_lane.e_Cnt_lane_overlap_count > 0:
                     # Get overlapping lanes and create projected objects in those lanes
-                    #TODO: do we check the type and station for overlap to project?
+                    # TODO: do we check the type and station for overlap to project?
                     overlapping_lane_ids = [lane.e_i_other_lane_segment_id for lane in obj_lane.as_lane_overlaps]
                     for lane_id in overlapping_lane_ids:
                         projected_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
