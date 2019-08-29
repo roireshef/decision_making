@@ -220,21 +220,24 @@ def plot_dynamics(log_file_path: str):
     plt.grid(True)
 
     ax9 = plt.subplot(5, 2, 8, sharex=ax1)
+    ego_sv_plt, = plt.plot(timestamp_in_sec, ego_sv)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_V], '-.')
 
     plt.xlabel('time[s]')
     plt.ylabel('trajectories (vel.)')
+    plt.legend([ego_sv_plt], ['BP'])
     plt.grid(True)
 
     ax10 = plt.subplot(5, 2, 10, sharex=ax1)
+    ego_sa_plt, = plt.plot(timestamp_in_sec, ego_sa)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_A], '-.')
     no_valid_traj_plot = plt.scatter(no_valid_traj_timestamps, [1]*len(no_valid_traj_timestamps), s=5, c='k')
 
     plt.xlabel('time[s]')
     plt.ylabel('trajectories (acc.)')
-    plt.legend([no_valid_traj_plot], ['no_val_traj'])
+    plt.legend([ego_sa_plt, no_valid_traj_plot], ['BP', 'no_val_traj'])
     plt.grid(True)
 
     return f
