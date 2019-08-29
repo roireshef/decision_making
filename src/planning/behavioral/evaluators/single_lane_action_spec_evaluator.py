@@ -8,8 +8,7 @@ from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
-    StaticActionRecipe, DynamicActionRecipe, RelativeLongitudinalPosition
-    StaticActionRecipe, AggressivenessLevel
+    StaticActionRecipe, DynamicActionRecipe, RelativeLongitudinalPosition, AggressivenessLevel
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
 from decision_making.src.planning.types import LAT_CELL, FS_SA, FS_SV, FS_DX, C_V, FS_SX
@@ -48,7 +47,28 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         # The selection is only by aggressiveness, since it relies on the fact that we only follow a vehicle on the
         # SAME lane, which means there is only 1 possible vehicle to follow, so there is only 1 target vehicle speed.
         if len(follow_vehicle_valid_action_idxs) > 0:
-            costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action, which is least aggressive
+            # choose aggressiveness level for dynamic action according to the headway safety margin from the front car
+            dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
+            print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS >>>>>")
+            min_headways = SingleLaneActionSpecEvaluator.calc_minimal_headways(dynamic_specs, behavioral_state)
+            aggr_levels = np.array(
+                [action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs])
+            spec_t = [action_specs[action_idx].t for action_idx in follow_vehicle_valid_action_idxs]
+            calm_idx = np.where(aggr_levels == 0)[0]
+            standard_idx = np.where(aggr_levels == 1)[0]
+            print(">>>>>>> AGGR_LEVELS & MIN_HEADWAYS: spec.t", aggr_levels, min_headways, spec_t, "calm_idx", calm_idx,
+                  "standard_idx", standard_idx)
+            if len(calm_idx) > 0 and min_headways[calm_idx[0]] > SAFETY_HEADWAY + 0.7:
+                chosen_level = calm_idx[0]
+            elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > SAFETY_HEADWAY + 0.5:
+                chosen_level = standard_idx[0]
+            else:
+                chosen_level = -1  # the most aggressive
+            # chosen_level = -1       # TODO OVERRIDE FOR TESTING
+
+            print(">>>>>>> SAFETY MARGINS chosen level",
+                  action_recipes[follow_vehicle_valid_action_idxs[chosen_level]].aggressiveness)
+            costs[follow_vehicle_valid_action_idxs[chosen_level]] = 0  # choose the found dynamic action
             return costs
 
         # next try to find a valid road sign action (FOLLOW_ROAD_SIGN) for SAME_LANE.
