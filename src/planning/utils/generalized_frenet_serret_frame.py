@@ -50,7 +50,7 @@ class GFF_Type(Enum):
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
-                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: GFF_Type):
+                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: GFF_Type = GFF_Type.Normal):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
         self._segment_ids = segment_ids
         self._segments_s_start = segments_s_start
@@ -60,6 +60,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         self._gff_type = gff_type
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
+        # GFF Type information will be lost when serialized!
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
         pubsub_msg.s_Points = SerializationUtils.serialize_non_typed_array(self.O)
         pubsub_msg.s_T = SerializationUtils.serialize_non_typed_array(self.T)
@@ -71,12 +72,12 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         pubsub_msg.s_SegmentsSOffsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         pubsub_msg.s_SegmentsDS = SerializationUtils.serialize_non_typed_array(self._segments_ds)
         pubsub_msg.s_SegmentsPointOffset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
-        pubsub_msg.e_e_GFFType = self._gff_type.value
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSGeneralizedFrenetSerretFrame):
+        # GFF type defaults to Normal since type information is lost when serialized
         return cls(SerializationUtils.deserialize_any_array(pubsubMsg.s_Points),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_T),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_N),
@@ -87,7 +88,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsSOffsets),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsDS),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsPointOffset),
-                   GFF_Type(pubsubMsg.e_e_GFFType))
+                   GFF_Type.Normal)
 
     @property
     def segments(self) -> List[FrenetSubSegment]:
