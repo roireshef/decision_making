@@ -88,9 +88,9 @@ class BehavioralGridState:
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
-    def _project_actors_behind_ego(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
+    def _project_actors_inside_intersection(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
         """
-        Takes all the dynamic objects behind ego vehicle that are on intersections, and adds projected objects that are
+        Takes all the dynamic objects that are on intersections, and adds projected objects that are
         located on the overlapping lanes.
         An 'overloaded' dynamic object looks like this:
 
@@ -165,8 +165,8 @@ class BehavioralGridState:
         # filter out off map dynamic objects
         on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
 
-        # overload dynamic objects with projected actors behind ego vehicle which belong to the intersection
-        overloaded_dynamic_objects = BehavioralGridState._project_actors_behind_ego(on_map_dynamic_objects)
+        # overload dynamic objects with projected actors which belong to the intersection
+        overloaded_dynamic_objects = BehavioralGridState._project_actors_inside_intersection(on_map_dynamic_objects)
 
         # calculate objects' segment map_states
         objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
