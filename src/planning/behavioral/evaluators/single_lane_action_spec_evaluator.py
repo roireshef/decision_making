@@ -3,7 +3,8 @@ from logging import Logger
 from typing import List
 
 import numpy as np
-from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, EPS
+from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, EPS, \
+    LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
@@ -56,6 +57,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                 chosen_level = standard_idx[0]
             else:
                 chosen_level = -1  # the most aggressive
+            # chosen_level = -1       # TODO OVERRIDE FOR TESTING
 
             print(">>>>>>> SAFETY MARGINS chosen level", action_recipes[follow_vehicle_valid_action_idxs[chosen_level]].aggressiveness)
             costs[follow_vehicle_valid_action_idxs[chosen_level]] = 0  # choose the found dynamic action
@@ -114,8 +116,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
             target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
 
-            # minimal margin used in addition to headway (center-to-center of both objects)
-            margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
+            # minimal margin used in addition to headway (center-to-center of both objects) #LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            margin = LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT + \
                      behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # calculate safety margin (on frenet longitudinal axis)

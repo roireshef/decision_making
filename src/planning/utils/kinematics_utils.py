@@ -65,6 +65,7 @@ class KinematicUtils:
         distances = np.polyval(poly_diff, suspected_times)
         velocities = np.polyval(vel_poly, suspected_times)
         min_headway = np.min(distances / np.maximum(velocities, EPS))
+        # print('>>>>> d:', distances[::4], '\n v', velocities[::4], '\n headway', distances[::4] / np.maximum(velocities[::4], EPS))
         return min_headway
 
     @staticmethod
