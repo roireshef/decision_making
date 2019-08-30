@@ -111,7 +111,7 @@ def test_getLookaheadFrenetFrameByCost_onEndingLane_PartialGFFCreated(scene_stat
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2)
     # check partial SAME_LANE
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [12])
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Partial
@@ -123,7 +123,7 @@ def test_getLookaheadFrenetFrameByCost_onFullLane_NormalGFFCreated(scene_static_
     starting_lon = 800
     starting_lane = 11
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2)
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [11,21])
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
 
@@ -135,7 +135,7 @@ def test_getLookaheadFrenetFrameByCost_LeftSplitAugmentedGFFCreated(left_lane_sp
     starting_lane = 11
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: False}
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment = can_augment)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment = can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
@@ -152,7 +152,7 @@ def test_getLookaheadFrenetFrameByCost_RightSplitAugmentedGFFCreated(right_lane_
     starting_lane = 11
     can_augment = {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
@@ -174,7 +174,7 @@ def test_getLookaheadFrenetFrameByCost_LeftRightSplitAugmentedGFFsCreated(left_r
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 1
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(11, 600, route_plan_1_2, can_augment=can_augment)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(11, 600, route_plan_1_2, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented
@@ -190,7 +190,7 @@ def test_getLookaheadFrenetFrameByCost_CanAugmentButNoSplit_NoAugmentedCreated(s
     starting_lane = 11
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
@@ -206,8 +206,8 @@ def test_getLookaheadFrenetFrameByCost_OffsetSplitsLeftFirst_BothAugmentedCreate
     starting_lane = 211
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_left_first,
-                                                                          can_augment=can_augment)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_left_first,
+                                                             can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
@@ -224,8 +224,8 @@ def test_getLookaheadFrenetFrameByCost_OffsetSplitsRightFirst_BothAugmentedCreat
     starting_lane = 211
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_right_first,
-                                                                          can_augment=can_augment)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_right_first,
+                                                             can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented
@@ -252,7 +252,7 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
-    gff = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(lane_id, station, route_plan_20_30)[RelativeLane.SAME_LANE]
+    gff = MapUtils.get_generalized_frenet_frame_by_cost(lane_id, station, route_plan_20_30)[RelativeLane.SAME_LANE]
 
     # validate the length of the obtained frenet frame
     assert abs(gff.s_max - (MAX_BACKWARD_HORIZON + MAX_FORWARD_HORIZON)) < SMALL_DISTANCE_ERROR
@@ -288,7 +288,7 @@ def test_getLookaheadFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_lane
     del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2_3.s_Data.a_Cnt_num_lane_segments[0] = 1
 
-    gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(11, 900, route_plan_1_2_3, can_augment=can_augment)
+    gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(11, 900, route_plan_1_2_3, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFF_Type.AugmentedPartial
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial

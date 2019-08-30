@@ -289,8 +289,8 @@ class MapUtils:
     @staticmethod
     @raises(LaneNotFound, RoadNotFound)
     @prof.ProfileFunction()
-    def get_lookbehind_and_lookahead_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
-                                                          can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
+    def get_generalized_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
+                                             can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
                                            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         Create Generalized Frenet frame(s) along lane center, starting from given lane and station. If augmented lanes can be created, they will
