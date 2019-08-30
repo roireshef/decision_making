@@ -526,3 +526,4 @@ class MapUtils:
         road_sign_info_on_gff = [RoadSignInfo(sign_type=sign_type, s=s) for sign_type, s in zip(road_sign_types, road_sign_s_on_gff)]
         road_sign_info_on_gff.sort(key=lambda x: x.s)  # sort by distance after the conversion to real distance
         return road_sign_info_on_gff
+

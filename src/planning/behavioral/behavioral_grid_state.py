@@ -9,13 +9,14 @@ from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX, FrenetState2D
+from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.messages.scene_static_enums import LaneOverlapType
+from decision_making.src.planning.utils.math_utils import Math
 
 
 class DynamicObjectWithRoadSemantics:
@@ -344,3 +345,38 @@ class BehavioralGridState:
             return RelativeLongitudinalPosition.REAR
         else:
             return RelativeLongitudinalPosition.PARALLEL
+
+    @staticmethod
+    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int) -> bool:
+        """
+        Checks if any part of an object is inside another lane.
+        Takes the point of the object's bounding box that is closest to the lane.
+        Checks if the distance from that point to the nominal path point of the lane is less than
+        the nominal point's left/right offset.
+        :param dynamic_object:
+        :param lane_id:
+        :return:
+        """
+
+        lane_frame = MapUtils.get_lane_frenet_frame(lane_id)
+        bbox = dynamic_object.bounding_box()
+
+        nominal_path_coords = np.array([np.array([nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX],
+                                         nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY]])
+                               for nominal in MapUtils.get_lane_geometry(lane_id).a_nominal_path_points])
+
+        # find closest point
+        closest_nominal_points = [Math.find_closest_point_in_array(point, nominal_path_coords)
+                             for point in bbox]
+        distances_to_lane = [np.linalg.norm(bbox[i] - closest_nominal_points[i]) for i in range(len(bbox))]
+
+        min_distance = np.min(distances_to_lane)
+
+        closest_bbox_index = np.argmin(distances_to_lane)[0]
+
+        closest_s_on_lane = lane_frame.cpoint_to_fpoint(closest_nominal_points[closest_bbox_index])[FP_SX]
+
+        lane_width = MapUtils.get_lane_width(lane_id, closest_s_on_lane)
+
+        # if the closest distance to the nominal path is less than the lane's width, the vehicle must be in the lane.
+        return min_distance < lane_width/2.0

@@ -193,3 +193,22 @@ class Math:
         mod = np.subtract(a, np.multiply(div, b))
 
         return b * (np.fabs(mod - b) < precision) + mod * (np.fabs(mod - b) > precision) * (np.fabs(mod) > precision)
+
+
+    @staticmethod
+    def find_closest_point_in_array(point: np.ndarray, arr: np.ndarray):
+        """
+        Finds closest point in an array to a given point. Recursively checks only half of array to achieve log(n) time.
+        Assumes the distances to the point are monotonic.
+        :param point: cartesian point. [X, Y]
+        :param arr: array of cartesian points: [[X1, Y1], [X2, Y2], ...]
+        :return: [X, Y] point in arr that is the closest
+        """
+        if len(arr) == 1:
+            return arr[0]
+        midpoint = np.ceil(len(arr) / 2.0).astype(int)
+        # if right side of array has points closer than left side, use right side
+        if np.linalg.norm(point - arr[midpoint]) < np.linalg.norm(point - arr[midpoint - 1]):
+            return Math.find_closest_point_in_array(point, arr[midpoint:])
+        else:
+            return Math.find_closest_point_in_array(point, arr[:midpoint])

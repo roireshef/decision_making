@@ -136,6 +136,39 @@ class DynamicObject(PUBSUB_MSG_IMPL):
             self._cached_cartesian_state = lane_frenet.fstate_to_cstate(self.map_state.lane_fstate)
         return self._cached_cartesian_state
 
+    def bounding_box(self):
+        """
+        Gets the cartesian coordinates of the four corners of the object's bounding box
+        :return: [front left, front right, rear right, rear left]
+        [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]
+        """
+        # create matrix of homogeneous points, assuming zero heading. Each coordinate is a column vector
+        bbox = np.array([[self.x - self.size.width/2.0, self.y + self.size.length/2.0, 1],
+                         [self.x + self.size.width/2.0, self.y + self.size.length/2.0, 1],
+                         [self.x + self.size.width/2.0, self.y - self.size.length/2.0, 1],
+                         [self.x - self.size.width/2.0, self.y - self.size.length/2.0, 1]]).transpose()
+        # shift so that the center will be at [0,0]
+        translate_mat = np.array([[1, 0, -self.x],
+                                  [0, 1, -self.y],
+                                  [0, 0,  1]])
+
+        # rotate about the origin using the heading
+        # use clockwise rotation matrix since positive heading is clockwise
+        heading = self.yaw
+        rotation_mat = np.array([[np.cos(heading), np.sin(heading), 0],
+                                 [-np.sin(heading), np.cos(heading),  0],
+                                 [0,               0,                1]])
+
+        # translate back to original point
+        untranslate_mat = np.array([[1, 0, self.x],
+                                    [0, 1, self.y],
+                                    [0, 0, 1]])
+
+        # apply transformations to points
+        bbox = untranslate_mat.dot(rotation_mat).dot(translate_mat).dot(bbox)
+        return bbox
+
+
     @property
     def map_state(self):
         # type: () -> MapState
