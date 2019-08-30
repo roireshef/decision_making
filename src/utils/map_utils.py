@@ -293,7 +293,8 @@ class MapUtils:
                                            can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
                                            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
-        Create Generalized Frenet frame along lane center, starting from given lane and station.
+        Create Generalized Frenet frame(s) along lane center, starting from given lane and station. If augmented lanes can be created, they will
+        be returned in the dictionary under the RelativeLane.LEFT_LANE/RIGHT_LANE keys.
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.

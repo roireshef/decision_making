@@ -177,7 +177,7 @@ class BehavioralGridState:
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
-        contain multiple original lane segments.
+        contain multiple original lane segments. Augmented frenet frames may be created if there are lane splits ahead.
         :param state:
         :param route_plan:
         :param logger:
