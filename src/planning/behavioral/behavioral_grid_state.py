@@ -195,11 +195,11 @@ class BehavioralGridState:
 
         # Create generalized Frenet frame for the host's lane
         try:
-            lane_gff_dict = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
-                                                                        station=state.ego_state.map_state.lane_fstate[FS_SX],
-                                                                        route_plan=route_plan,
-                                                                        logger=logger,
-                                                                        can_augment=can_augment)
+            lane_gff_dict = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
+                                                                                       station=state.ego_state.map_state.lane_fstate[FS_SX],
+                                                                                       route_plan=route_plan,
+                                                                                       logger=logger,
+                                                                                       can_augment=can_augment)
             extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
@@ -225,10 +225,10 @@ class BehavioralGridState:
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
-                    lane_gffs = MapUtils.get_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[relative_lane],
-                                                                            station=host_station_in_adjacent_lane,
-                                                                            route_plan=route_plan,
-                                                                            logger=logger)
+                    lane_gffs = MapUtils.get_lookbehind_and_lookahead_frenet_frame_by_cost(lane_id=closest_lanes_dict[relative_lane],
+                                                                                           station=host_station_in_adjacent_lane,
+                                                                                           route_plan=route_plan,
+                                                                                           logger=logger)
 
                     # Note that the RelativeLane keys that are in the returned dictionary from get_lookahead_frenet_frame_by_cost are
                     # with respect to the lane ID provided to the function. Therefore, since the lane ID for the left/right lane is
