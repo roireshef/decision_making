@@ -8,11 +8,12 @@ from decision_making.src.planning.types import FrenetState2D
 
 class ActionType(Enum):
     """"
-    Type of Recipe, when "follow lane" is a static action while "follow vehicle" and "takeover vehicle" are dynamic ones.
+    Type of Recipe, when "follow lane" is a static action while "follow vehicle" and "takeover vehicle" and "follow_road_sign" are dynamic ones.
     """
     FOLLOW_LANE = 1
     FOLLOW_VEHICLE = 2
     OVERTAKE_VEHICLE = 3
+    FOLLOW_ROAD_SIGN = 4
 
 
 class AggressivenessLevel(Enum):
@@ -65,9 +66,10 @@ class StaticActionRecipe(ActionRecipe):
         return 'StaticActionRecipe: %s' % self.__dict__
 
 
-class DynamicActionRecipe(ActionRecipe):
+class TargetActionRecipe(ActionRecipe):
     """"
-    Data object containing the fields needed for specifying a certain dynamic action, together with the state.
+    Data object containing the fields needed for specifying a certain target related action, together with the state.
+    Currently the supported targets are vehicles and road signs
     """
     def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
                  aggressiveness: AggressivenessLevel):
@@ -75,7 +77,32 @@ class DynamicActionRecipe(ActionRecipe):
         self.relative_lon = relative_lon
 
     def __str__(self):
+        return 'TargetActionRecipe: %s' % self.__dict__
+
+
+class DynamicActionRecipe(TargetActionRecipe):
+    """"
+    Data object containing the fields needed for specifying a certain dynamic action, together with the state.
+    Dynamic actions are actions defined with respect to target vehicles
+    """
+    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
+                 aggressiveness: AggressivenessLevel):
+        super().__init__(relative_lane, relative_lon, action_type, aggressiveness)
+
+    def __str__(self):
         return 'DynamicActionRecipe: %s' % self.__dict__
+
+
+class RoadSignActionRecipe(TargetActionRecipe):
+    """"
+    Data object containing the fields needed for specifying a certain road sign action, together with the state.
+    """
+    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
+                 aggressiveness: AggressivenessLevel):
+        super().__init__(relative_lane, relative_lon, action_type, aggressiveness)
+
+    def __str__(self):
+        return 'RoadSignActionRecipe: %s' % self.__dict__
 
 
 class ActionSpec:

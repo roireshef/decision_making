@@ -1,10 +1,11 @@
 import numpy as np
 
 import rte.python.profiler as prof
+from decision_making.src.exceptions import OutOfSegmentFront, OutOfSegmentBack
 from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST, EPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
-    FrenetTrajectories2D, FS_DX, FS_SX
+    FrenetTrajectories2D, FS_DX, FS_SX, FrenetStates2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -32,6 +33,7 @@ class TrajectoryPlannerCosts:
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
         :param dt: time step of ctrajectories
+        :param reference_route: the reference route is GFF from BP
         :return: point-wise cost components: obstacles_costs, deviations_costs, jerk_costs.
         The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
         """
@@ -57,20 +59,16 @@ class TrajectoryPlannerCosts:
         :param state: the state object (that includes obstacles, etc.)
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
-        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
         """
-        # Filter close objects
-        close_objects = [obs for obs in state.dynamic_objects
-                         if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
-
-        with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(close_objects), ctrajectories.shape)):
-            if len(close_objects) == 0:
-                return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
-
+        with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(state.dynamic_objects),
+                                                                                           ctrajectories.shape)):
             # calculate objects' map_state
-            objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
-                                                 for obj in close_objects])
+            objects_relative_fstates, objects_sizes = TrajectoryPlannerCosts._project_close_objects_on_ref_route(
+                state, reference_route)
+            if len(objects_relative_fstates) == 0:
+                return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
@@ -84,7 +82,6 @@ class TrajectoryPlannerCosts:
 
             # convert the predictions from Frenet to cartesian trajectories
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
-            objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
             ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
             # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
@@ -137,6 +134,31 @@ class TrajectoryPlannerCosts:
         distances_from_ego_boundaries = np.abs(ego_centers_in_objs_frame) - 0.5 * (objects_sizes[:, np.newaxis] + ego_size)
 
         return distances_from_ego_boundaries
+
+    @staticmethod
+    def _project_close_objects_on_ref_route(state: State, reference_route: FrenetSerret2DFrame) -> [FrenetStates2D, np.array]:
+        """
+        Calculate map_states and sizes of close objects. An object is considered close if its cartesian distance from
+        ego is at most PLANNING_LOOKAHEAD_DIST and it can be projected on the reference route.
+        :param state: the current state
+        :param reference_route: reference route from BP
+        :return: 1. Nx6 matrix of Frenet 2D states of close objects, where N is the number of close objects
+                 2. Nx2 matrix of sizes of the close objects, where N is the number of close objects
+        """
+        # Filter close objects according to their cartesian distance
+        close_objects = [obs for obs in state.dynamic_objects
+                         if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
+
+        # calculate objects' map_states; filter out objects that can't be projected onto the reference route
+        objects_relative_fstates = []
+        objects_sizes = []
+        for obj in close_objects:
+            try:
+                objects_relative_fstates.append(reference_route.cstate_to_fstate(obj.cartesian_state))
+                objects_sizes.append([obj.size.length, obj.size.width])
+            except (OutOfSegmentBack, OutOfSegmentFront) as e:
+                continue
+        return np.array(objects_relative_fstates), np.array(objects_sizes)
 
     @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):
