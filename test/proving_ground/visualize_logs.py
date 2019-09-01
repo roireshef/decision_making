@@ -51,10 +51,25 @@ def plot_dynamics(log_file_path: str):
     no_valid_traj_timestamps = []
     no_action_in_bp_timestamps = []
 
+    headway = []
+    current_headway = []
+    desired_headway = []
+    headway_time = []
+
     while True:
         text = f.readline()
         if not text:
             break
+
+        if 'Headway set' in text:
+            try:
+                split_str = text.split('Headway set')[1].split(',')
+                desired_headway.append(float(split_str[0]))
+                current_headway.append(float(split_str[1]))
+                headway.append(float(split_str[2]))
+                headway_time.append(float(split_str[3]))
+            except:
+                pass
 
         if '_scene_dynamic_callback' in text:
             split_str = text.split('Publishing State ')
@@ -149,12 +164,13 @@ def plot_dynamics(log_file_path: str):
     f = plt.figure(1)
 
     ax1 = plt.subplot(5, 2, 1)
-    ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
+    # ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
+    # other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
     euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist)
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
-    plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
+    # plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
+    plt.legend([euclid_dist_plot], ['euclid_dist'])
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
@@ -205,11 +221,17 @@ def plot_dynamics(log_file_path: str):
     plt.ylabel('trajectories (x position)')
 
     ax8 = plt.subplot(5, 2, 6, sharex=ax1)
-    for t, traj in zip(trajectory_time, trajectory):
-        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_Y], '-.')
+    # for t, traj in zip(trajectory_time, trajectory):
+    #     plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_Y], '-.')
 
+    # plt.xlabel('time[s]')
+    # plt.ylabel('trajectories (y position)')
+    desired_headway_plot, = plt.plot(headway_time, desired_headway)
+    current_headway_plot, = plt.plot(headway_time, current_headway)
+    headway_plot, = plt.plot(headway_time, headway)
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (y position)')
+    plt.ylabel('headway')
+    plt.legend([headway_plot, current_headway_plot, desired_headway_plot],['set_headway', 'current_headway', 'desired_headway'])
 
     ax9 = plt.subplot(5, 2, 8, sharex=ax1)
     for t, traj in zip(trajectory_time, trajectory):
