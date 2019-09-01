@@ -56,6 +56,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             spec_t = [action_specs[action_idx].t for action_idx in follow_vehicle_valid_action_idxs]
             calm_idx = np.where(aggr_levels == 0)[0]
             standard_idx = np.where(aggr_levels == 1)[0]
+            aggr_idx = np.where(aggr_levels == 2)[0]
             print(">>>>>>> AGGR_LEVELS & MIN_HEADWAYS: spec.t", aggr_levels, min_headways, spec_t, "calm_idx", calm_idx,
                   "standard_idx", standard_idx)
             if len(calm_idx) > 0 and min_headways[calm_idx[0]] > SAFETY_HEADWAY + 0.7:
@@ -65,7 +66,13 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             else:
                 chosen_level = -1  # the most aggressive
             # chosen_level = -1       # TODO OVERRIDE FOR TESTING
+            chosen_level = follow_vehicle_valid_action_idxs[0]  # BASIC - calmest
 
+            self.logger.debug("Headway min %1.2f, %1.2f ,%1.2f,  %d, %f", -1 if len(calm_idx) == 0 else min_headways[calm_idx[0]],
+                              -1 if len(standard_idx) == 0 else min_headways[standard_idx[0]],
+                              -1 if len(aggr_idx) == 0 else min_headways[aggr_idx[0]],
+                              chosen_level,
+                              behavioral_state.ego_state.timestamp_in_sec)
             print(">>>>>>> SAFETY MARGINS chosen level",
                   action_recipes[follow_vehicle_valid_action_idxs[chosen_level]].aggressiveness)
             costs[follow_vehicle_valid_action_idxs[chosen_level]] = 0  # choose the found dynamic action

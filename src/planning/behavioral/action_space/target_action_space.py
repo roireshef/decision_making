@@ -113,34 +113,43 @@ class TargetActionSpace(ActionSpace):
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]
-        MIN_VEL = 0.1
-        MAX_VEL_RATIO = 3.0
-        EXTEND_RATIO = 3.0
-        MAX_VAL = ((MAX_VEL_RATIO - 1) * EXTEND_RATIO + 1)
-        accelerating_idxs = v_T + MIN_VEL <= v_0
-        T_m = np.full(len(v_0), SPECIFICATION_HEADWAY)
-        v_ratio = (v_0[accelerating_idxs] / (v_T[accelerating_idxs] + MIN_VEL))
-        headway_extension = ((np.minimum(v_ratio, MAX_VEL_RATIO) - 1) * EXTEND_RATIO + 1)
-        desired_headway = SPECIFICATION_HEADWAY * headway_extension
-        # make sure this is not longer than physically possible - keep 1 second margin for action
-        time_to_match_speed = (v_0[accelerating_idxs] - v_T[accelerating_idxs]) / 5.0 # this is the time it takes us to match target speed with max deceleraton
-        target_location_at_match_speed = ds[accelerating_idxs] + (time_to_match_speed *v_T[accelerating_idxs])
-        ego_location_at_match_speed = (v_0[accelerating_idxs] + v_T[accelerating_idxs]) / 2 *time_to_match_speed
-        current_headway = (target_location_at_match_speed - ego_location_at_match_speed) / (v_T[accelerating_idxs] + MIN_VEL)
-        T_m[accelerating_idxs] = np.maximum(np.minimum(desired_headway, current_headway), SAFETY_HEADWAY)
-        # if np.any(accelerating_idxs):
-        #     print("++++ v_0", v_0, "v_T", v_T, "T_m", T_m)
-        if len(desired_headway)>0:
-            des_hw = desired_headway[0]
-            curr_hw = max(current_headway[0], 0)
+        if False:
+            MIN_VEL = 0.1
+            MAX_VEL_RATIO = 3.0
+            EXTEND_RATIO = 3.0
+            MAX_VAL = ((MAX_VEL_RATIO - 1) * EXTEND_RATIO + 1)
+            accelerating_idxs = v_T + MIN_VEL <= v_0
+            T_m = np.full(len(v_0), SPECIFICATION_HEADWAY)
+            v_ratio = (v_0[accelerating_idxs] / (v_T[accelerating_idxs] + MIN_VEL))
+            headway_extension = ((np.minimum(v_ratio, MAX_VEL_RATIO) - 1) * EXTEND_RATIO + 1)
+            desired_headway = SPECIFICATION_HEADWAY * headway_extension
+            # make sure this is not longer than physically possible - keep 1 second margin for action
+            time_to_match_speed = (v_0[accelerating_idxs] - v_T[accelerating_idxs]) / 5.0 # this is the time it takes us to match target speed with max deceleraton
+            target_location_at_match_speed = ds[accelerating_idxs] + (time_to_match_speed *v_T[accelerating_idxs])
+            ego_location_at_match_speed = (v_0[accelerating_idxs] + v_T[accelerating_idxs]) / 2 *time_to_match_speed
+            current_headway = (target_location_at_match_speed - ego_location_at_match_speed) / (v_T[accelerating_idxs] + MIN_VEL)
+            T_m[accelerating_idxs] = np.maximum(np.minimum(desired_headway, current_headway), SAFETY_HEADWAY)
+            # if np.any(accelerating_idxs):
+            #     print("++++ v_0", v_0, "v_T", v_T, "T_m", T_m)
+            if len(desired_headway)>0:
+                des_hw = desired_headway[0]
+                curr_hw = max(current_headway[0], 0)
+            else:
+                des_hw = SPECIFICATION_HEADWAY
+                curr_hw = SPECIFICATION_HEADWAY
+            self.logger.debug("Headway set %1.2f, %1.2f ,%1.2f,  %f", des_hw, curr_hw, T_m[0], behavioral_state.ego_state.timestamp_in_sec)
         else:
-            des_hw = SPECIFICATION_HEADWAY
-            curr_hw = SPECIFICATION_HEADWAY
-        self.logger.debug("Headway set %1.2f, %1.2f ,%1.2f,  %f", des_hw, curr_hw, T_m[0], behavioral_state.ego_state.timestamp_in_sec)
+            T_m = SPECIFICATION_HEADWAY
+            SLOW_DOWN_FACTOR = 2
+            v_diff = v_T - v_0
+            mod_idx = np.where(v_diff < -0.1)  # where the head vehicle is slower than the ego
+            v_T_mod = v_T.copy()
+            v_T_mod[mod_idx] = np.maximum(0, v_T_mod[mod_idx] + (v_diff[mod_idx] * SLOW_DOWN_FACTOR))
+            self.logger.debug("SlowDown %1.2f, %1.2f, %1.2f, %f", v_T[0], v_0[0], v_T_mod[0], behavioral_state.ego_state.timestamp_in_sec)
         # T_m = SPECIFICATION_HEADWAY
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
-            v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=T_m)
+            v_0=projected_ego_fstates[:, FS_SV], v_T=v_T_mod, T_m=T_m)
         # TODO see https://confluence.gm.com/display/ADS133317/Stop+at+Geo+location+remaining+issues for possibly extending the allowed action time
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
         T_s = np.fmin.reduce(roots_s, axis=-1)
@@ -152,7 +161,7 @@ class TargetActionSpace(ActionSpace):
         # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
-        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, SPECIFICATION_HEADWAY)] = 0
+        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T_mod, a_0, ds, SPECIFICATION_HEADWAY)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -169,7 +178,7 @@ class TargetActionSpace(ActionSpace):
         # to keep from the target vehicle.
         distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
                                                              v_0=projected_ego_fstates[:, FS_SV],
-                                                             v_T=v_T, T=T, dx=ds,
+                                                             v_T=v_T_mod, T=T, dx=ds,
                                                              T_m=T_m)(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
@@ -177,6 +186,6 @@ class TargetActionSpace(ActionSpace):
         # lane center has latitude = 0, i.e. spec.d = 0
         action_specs = [ActionSpec(t, vt, st, 0, recipe)
                         if ~np.isnan(t) else None
-                        for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
+                        for recipe, t, vt, st in zip(action_recipes, T, v_T_mod, target_s)]
 
         return action_specs
