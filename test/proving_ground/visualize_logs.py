@@ -33,7 +33,8 @@ def plot_dynamics(log_file_path: str):
     spec_s = []
     spec_time = []
 
-    recipe_desc = []
+    recipe_action = []
+    recipe_aggresiveness = []
     recipe_time = []
 
     cnt = 0
@@ -113,7 +114,10 @@ def plot_dynamics(log_file_path: str):
 
             time = float(recipe_str.split(' (ego_timestamp: ')[1][:-2])
 
-            recipe_desc.append('%s\n%s' % (recipe_dict['action_type'], recipe_dict['aggressiveness']))
+            action_type = int(recipe_dict['action_type'].replace('>', '').split(':')[1]) + 2
+            aggressiveness = int(recipe_dict['aggressiveness'].replace('>', '').split(':')[1])
+            recipe_action.append(action_type)
+            recipe_aggresiveness.append(aggressiveness)
 
             recipe_time.append(float(time))
 
@@ -173,9 +177,11 @@ def plot_dynamics(log_file_path: str):
     plt.grid(True)
 
     ax4 = plt.subplot(5, 2, 7, sharex=ax1)
-    plt.plot(recipe_time, recipe_desc, 'o--')
+    ego_action_plt, = plt.plot(recipe_time, recipe_action, color='g')
+    ego_aggressiveness_plt, = plt.plot(recipe_time, recipe_aggresiveness, color='m')
     plt.xlabel('time[s]')
     plt.ylabel('recipe')
+    plt.legend([ego_action_plt, ego_aggressiveness_plt], ['action 3-Lane, 4-Vehicle, 5-Overtake, 6-RoadSign', 'aggr 0-Calm, 1-Standard, 2-Aggressive'])
     plt.grid(True)
 
     ax5 = plt.subplot(5, 2, 9, sharex=ax1)
