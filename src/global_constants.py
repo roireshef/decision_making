@@ -160,7 +160,7 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference 
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 15
+TRAJECTORY_NUM_POINTS = 20
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
