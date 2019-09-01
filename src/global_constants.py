@@ -167,7 +167,7 @@ TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.5
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 3.0
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
