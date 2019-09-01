@@ -5,6 +5,7 @@ import numpy as np
 from decision_making.paths import Paths
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, EPS
 from decision_making.src.messages.scene_common_messages import Timestamp
+from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y
 from decision_making.src.state.state import EgoState
 
@@ -114,7 +115,8 @@ def plot_dynamics(log_file_path: str):
 
             time = float(recipe_str.split(' (ego_timestamp: ')[1][:-2])
 
-            action_type = int(recipe_dict['action_type'].replace('>', '').split(':')[1]) + 2
+            action_type = int(recipe_dict['action_type'].replace('>', '').split(':')[1])
+            action_type = action_type + 2 if action_type < ActionType.OVERTAKE_VEHICLE.value else action_type + 1  # remove the OVERTAKE - not in use
             aggressiveness = int(recipe_dict['aggressiveness'].replace('>', '').split(':')[1])
             recipe_action.append(action_type)
             recipe_aggresiveness.append(aggressiveness)
@@ -177,11 +179,14 @@ def plot_dynamics(log_file_path: str):
     plt.grid(True)
 
     ax4 = plt.subplot(5, 2, 7, sharex=ax1)
-    ego_action_plt, = plt.plot(recipe_time, recipe_action, color='g')
-    ego_aggressiveness_plt, = plt.plot(recipe_time, recipe_aggresiveness, color='m')
+    plt.plot(recipe_time, recipe_action, color='g')
+    plt.plot(recipe_time, recipe_aggresiveness, color='m')
     plt.xlabel('time[s]')
     plt.ylabel('recipe')
-    plt.legend([ego_action_plt, ego_aggressiveness_plt], ['action 3-Lane, 4-Vehicle, 5-Overtake, 6-RoadSign', 'aggr 0-Calm, 1-Standard, 2-Aggressive'])
+    y_values = [str(aggressiveness).split('.')[1].lower() for aggressiveness in AggressivenessLevel] + \
+               [str(action).split('.')[1].lower() for action in ActionType if action != ActionType.OVERTAKE_VEHICLE]
+    y_axis = np.arange(len(y_values))
+    plt.yticks(y_axis, y_values)
     plt.grid(True)
 
     ax5 = plt.subplot(5, 2, 9, sharex=ax1)
