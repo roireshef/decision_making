@@ -142,7 +142,7 @@ class TargetActionSpace(ActionSpace):
             T_m = SPECIFICATION_HEADWAY
             SLOW_DOWN_FACTOR = 2
             v_diff = v_T - v_0
-            mod_idx = np.where(v_diff < -0.1)  # where the head vehicle is slower than the ego
+            mod_idx = np.where(v_diff < -0.1)[0]  # where the head vehicle is slower than the ego
             v_T_mod = v_T.copy()
             v_T_mod[mod_idx] = np.maximum(0, v_T_mod[mod_idx] + (v_diff[mod_idx] * SLOW_DOWN_FACTOR))
             self.logger.debug("SlowDown %1.2f, %1.2f, %1.2f, %f", v_T[0], v_0[0], v_T_mod[0], behavioral_state.ego_state.timestamp_in_sec)

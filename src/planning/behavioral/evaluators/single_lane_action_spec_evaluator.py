@@ -66,7 +66,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             else:
                 chosen_level = -1  # the most aggressive
             # chosen_level = -1       # TODO OVERRIDE FOR TESTING
-            chosen_level = follow_vehicle_valid_action_idxs[0]  # BASIC - calmest
+            # chosen_level = 0  # BASIC - calmest
 
             self.logger.debug("Headway min %1.2f, %1.2f ,%1.2f,  %d, %f", -1 if len(calm_idx) == 0 else min_headways[calm_idx[0]],
                               -1 if len(standard_idx) == 0 else min_headways[standard_idx[0]],

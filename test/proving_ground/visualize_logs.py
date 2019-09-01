@@ -259,16 +259,16 @@ def plot_dynamics(log_file_path: str):
     # plt.grid(True)
     min_headway_time = np.array(min_headway_time)
     min_headway_calm = np.array(min_headway_calm)
-    valid_idx = np.where(min_headway_calm > 0.0)
+    valid_idx = np.where(min_headway_calm > 0.0)[0]
     min_headway_calm_plt, = plt.plot(min_headway_time[valid_idx], min_headway_calm[valid_idx], '.')
     min_headway_std = np.array(min_headway_std)
-    valid_idx = np.where(min_headway_std > 0.0)
+    valid_idx = np.where(min_headway_std > 0.0)[0]
     min_headway_std_plt, = plt.plot(min_headway_time[valid_idx], min_headway_std[valid_idx], '.')
     min_headway_aggr = np.array(min_headway_aggr)
-    valid_idx = np.where(min_headway_aggr > 0.0)
+    valid_idx = np.where(min_headway_aggr > 0.0)[0]
     min_headway_agg_plt, = plt.plot(min_headway_time[valid_idx], min_headway_aggr[valid_idx], '.')
     min_headway_chosen = np.array(min_headway_chosen)
-    valid_idx = np.where(min_headway_chosen >= 0)
+    valid_idx = np.where(min_headway_chosen >= 0)[0]
     min_headway_chosen_plt, = plt.plot(min_headway_time[valid_idx], min_headway_chosen[valid_idx], '.')
     plt.xlabel('time[s]')
     plt.ylabel('headway')
