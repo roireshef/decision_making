@@ -27,6 +27,7 @@ DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone()
                                                    logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_ROAD_SIGN_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                               FilterActionsTowardsCellsWithoutStopSignsOrStopBars(),
+                                                              # TODO This filter + StaticTrafficFlowControlFilter and BeyondSpecStaticTrafficFlowControlFilter below make the planner disregard road signs altogether
                                                               FilterRoadSignActions(),
                                                               FilterLaneChanging()
                                                               ],
@@ -36,7 +37,7 @@ DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone()
                                                              FilterForKinematics(),
                                                              FilterForLaneSpeedLimits(),
                                                              FilterForSafetyTowardsTargetVehicle(),
-                                                             # TODO The 2 filters below + FilterRoadSignActions make the planner disregards road signs altogether
+                                                             # TODO The 2 filters below + FilterRoadSignActions make the planner disregard road signs altogether
                                                              # StaticTrafficFlowControlFilter(),
                                                              # BeyondSpecStaticTrafficFlowControlFilter(),
                                                              BeyondSpecSpeedLimitFilter(),
