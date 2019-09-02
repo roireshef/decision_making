@@ -193,3 +193,20 @@ class Math:
         mod = np.subtract(a, np.multiply(div, b))
 
         return b * (np.fabs(mod - b) < precision) + mod * (np.fabs(mod - b) > precision) * (np.fabs(mod) > precision)
+
+    @staticmethod
+    def solve_quadratic(p):
+        """
+        Find the roots of a quadratic equation
+        :param p: a 2d numpy array [Mx3] having in each of the M rows the 3 polynomial coefficients vector [a, b, c]
+        :return: a 2d numpy array [Mx2] of roots for each poly1d instance, or None if no root exists. Smaller root is at index 0
+        """
+
+        a, b, c = np.hsplit(p, 3)
+        b_over_2 = b * 0.5
+        discriminant = b_over_2 * b_over_2 - a * c
+        valid_roots = np.where(discriminant >= 0)[0]
+        roots = np.full((p.shape[0], 2), np.nan)
+        sqrt_disc = np.sqrt(discriminant[valid_roots])
+        roots[valid_roots] = np.c_[-b_over_2[valid_roots] - sqrt_disc, -b_over_2[valid_roots] + sqrt_disc] / a[valid_roots]
+        return roots

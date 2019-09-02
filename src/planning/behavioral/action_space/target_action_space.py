@@ -140,12 +140,40 @@ class TargetActionSpace(ActionSpace):
             self.logger.debug("Headway set %1.2f, %1.2f ,%1.2f,  %f", des_hw, curr_hw, T_m[0], behavioral_state.ego_state.timestamp_in_sec)
         else:
             T_m = SPECIFICATION_HEADWAY
-            SLOW_DOWN_FACTOR = 2
+            # If the speed of the ego is higher than that of the leading vehicle, set the v_T to be lower than the real v_T.
+            # This will limit the ego's speed and help in case of sudden brake by the leading vehicle.
+            # Does not impact RoadSign actions, as its v_T is already 0, so it won't be reduced
+            SLOW_DOWN_FACTOR = 1
             v_diff = v_T - v_0
             mod_idx = np.where(v_diff < -0.1)[0]  # where the head vehicle is slower than the ego
-            v_T_mod = v_T.copy()
-            v_T_mod[mod_idx] = np.maximum(0, v_T_mod[mod_idx] + (v_diff[mod_idx] * SLOW_DOWN_FACTOR))
-            self.logger.debug("SlowDown %1.2f, %1.2f, %1.2f, %f", v_T[0], v_0[0], v_T_mod[0], behavioral_state.ego_state.timestamp_in_sec)
+            v_T_mod1 = v_T.copy()  # TODO REMOVE FOR DEBUG
+            MAX_DECEL = 4.5
+            # Need to make sure the v_T is not too low, as this might cause it to be filtered by the kinematics filter due to too large decelaration.
+            # Assume the ego starts at v_0 nad breaks at deceleration A. Calculate at what speed the leading vehicle should drive
+            # in order for the ego to match its speed at time t, and for the distance between vehicles to be the SAFETY distance at the same time t.
+            # This gives us the following 2 equations:
+            # 1. v_T = v_0 - A * t
+            # 2. S0 - (t *(v_T+v_0)/2) + (t * v_T) = SPECIFICATION_HEADWAY * v_T + LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+            # Exchanging t from eq. 1 into eq. 2 gives a quadratic eq in v_T which we solve below.
+            # We use the smaller root as a lower bound to the speed we can set.
+            # There are a few special cases to note:
+            # 1. No roots to the equation: This happens when the initial S0 is too small relative to the required headway. In this case we keep the v_T unchanged.
+            # 2. Root is larger than v_T. This happens if the leading vehicle is moving too slow and we want it to move faster. In this case we keep the v_T unchanged.
+            # 3. Negative root. This happens if the initial S0 is too large relative to v_T. The leading vehicle needs to drive in reverse to be at the desired location. In this case we ignore the bound.
+            lower_root = Math.solve_quadratic(
+                np.c_[np.ones(len(mod_idx)),
+                      2 * (MAX_DECEL * SPECIFICATION_HEADWAY - v_0[mod_idx]),
+                      v_0[mod_idx] * v_0[mod_idx] - 2 * MAX_DECEL * ds[mod_idx]])[:, 0]
+            # find solutions to the quadratic equation that are indeed below v_T.
+            # For example, if v_0 is large and ds is small, than the root will be close to v_0, which might be higher than v_T
+            valid_root_idx = np.where(~np.isnan(lower_root) & (lower_root < v_T[mod_idx]))[0]
+            valid_idx = mod_idx[valid_root_idx]
+            # don't modify values where there is no root. These are cases the headway is too small, no matter what we do
+            v_T_mod1[valid_idx] = np.maximum(0, v_T_mod1[valid_idx] + (v_diff[valid_idx] * SLOW_DOWN_FACTOR))
+            v_T_mod = v_T_mod1.copy()
+            v_T_mod[valid_idx] = np.maximum(v_T_mod1[valid_idx], lower_root[valid_idx])
+            self.logger.debug("SlowDown %1.2f, %1.2f, %1.2f, %1.2f, %1.2f, %f", v_T[0], v_0[0], v_T_mod1[0], v_T_mod[0],
+                              lower_root[0] if (len(mod_idx) > 0 and ~np.isnan(lower_root[0])) else 0, behavioral_state.ego_state.timestamp_in_sec)
         # T_m = SPECIFICATION_HEADWAY
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],

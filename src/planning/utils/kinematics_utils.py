@@ -40,14 +40,13 @@ class KinematicUtils:
         return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
 
     @staticmethod
-    def calc_safety_margin(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):
+    def calc_safety_margin(poly_host: np.array, poly_target: np.array, margin: float, time_range: Limits):
         """
-        Given two s(t) longitudinal polynomials (one for host, one for target), this function checks if host maintains
-        at least a distance of margin + headway (time * host_velocity) in the time range specified by <time_range>.
+        Given two s(t) longitudinal polynomials (one for host, one for target), this function calculates the minimal
+        headway over the whole trajectory specified by <time_range>.
         :param poly_host: 1d numpy array - coefficients of host's polynomial s(t)
         :param poly_target: 1d numpy array - coefficients of target's polynomial s(t)
         :param margin: the minimal stopping distance to keep in meters (in addition to headway, highly relevant for stopping)
-        :param headway: the time to use for the headway formula: time*velocity = distance to keep.
         :param time_range: the relevant range of t for checking the polynomials, i.e. [0, T]
         :return: minimal (on time axis) difference between min. safe distance and actual distance
         """
@@ -65,7 +64,7 @@ class KinematicUtils:
         distances = np.polyval(poly_diff, suspected_times)
         velocities = np.polyval(vel_poly, suspected_times)
         min_headway = np.min(distances / np.maximum(velocities, EPS))
-        # print('>>>>> d:', distances[::4], '\n v', velocities[::4], '\n headway', distances[::4] / np.maximum(velocities[::4], EPS))
+        #print('>>>>> d:', distances[::4], '\n v', velocities[::4], '\n headway', distances[::4] / np.maximum(velocities[::4], EPS))
         return min_headway
 
     @staticmethod

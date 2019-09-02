@@ -180,12 +180,15 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
             target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
 
-            # minimal margin used in addition to headway (center-to-center of both objects) #LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
-            margin = LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT + \
+            # minimal margin used in addition to headway (center-to-center of both objects)
+            # Uses LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT and not LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, as otherwise
+            # when approaching the leading vehicle, the distance becomes 0, and so does the headway,
+            # leading to a selection of AGGRESSIVE action for no reason. Especially noticeable in stop&go tests
+            margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
                      behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # calculate safety margin (on frenet longitudinal axis)
-            min_headway = KinematicUtils.calc_safety_margin(poly_s, target_poly_s, margin, SAFETY_HEADWAY, np.array([0, spec.t]))
+            min_headway = KinematicUtils.calc_safety_margin(poly_s, target_poly_s, margin, np.array([0, spec.t]))
             min_headways.append(min_headway)
 
         return min_headways

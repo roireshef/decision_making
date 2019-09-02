@@ -62,7 +62,9 @@ def plot_dynamics(log_file_path: str):
     min_headway_chosen = []
     min_headway_time = []
     v_T_mod = []
+    v_T_mod1 = []
     v_T_mod_time = []
+    lower_root = []
 
     while True:
         text = f.readline()
@@ -93,8 +95,10 @@ def plot_dynamics(log_file_path: str):
         if 'SlowDown' in text:
             #self.logger.debug("SlowDown", v_T[0], v_0[0], v_T_mod[0], behavioral_state.ego_state.timestamp_in_sec)
             split_str = text.split('SlowDown')[1].split(',')
-            v_T_mod.append(float(split_str[2]))
-            v_T_mod_time.append(float(split_str[3]))
+            v_T_mod1.append(float(split_str[2]))
+            v_T_mod.append(float(split_str[3]))
+            lower_root.append(float(split_str[4]))
+            v_T_mod_time.append(float(split_str[5]))
 
         if '_scene_dynamic_callback' in text:
             split_str = text.split('Publishing State ')
@@ -204,10 +208,12 @@ def plot_dynamics(log_file_path: str):
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
-    mod_v_t_plot, = plt.plot(v_T_mod_time, v_T_mod)
+    mod_v_t_plot, = plt.plot(v_T_mod_time, v_T_mod, 'x')
+    mod_v_t1_plot, = plt.plot(v_T_mod_time, v_T_mod1, 'o')
+    lower_root_plot, = plt.plot(v_T_mod_time, lower_root, 's')
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
-    plt.legend([ego_sv_plot, other_sv_plot, mod_v_t_plot], ['ego_sv', 'other_sv', 'other_mod'])
+    plt.legend([ego_sv_plot, other_sv_plot, mod_v_t_plot, mod_v_t1_plot, lower_root_plot], ['ego_sv', 'other_sv', 'other_mod', 'other_mod1', 'lower root'], loc='upper right')
     plt.grid(True)
 
     ax3 = plt.subplot(5, 2, 5, sharex=ax1)
@@ -259,14 +265,14 @@ def plot_dynamics(log_file_path: str):
     # plt.grid(True)
     min_headway_time = np.array(min_headway_time)
     min_headway_calm = np.array(min_headway_calm)
-    valid_idx = np.where(min_headway_calm > 0.0)[0]
-    min_headway_calm_plt, = plt.plot(min_headway_time[valid_idx], min_headway_calm[valid_idx], '.')
+    valid_idx = np.where((min_headway_calm > 0.0) & (min_headway_calm < 5.0))[0]
+    min_headway_calm_plt, = plt.plot(min_headway_time[valid_idx], min_headway_calm[valid_idx], 'x')
     min_headway_std = np.array(min_headway_std)
-    valid_idx = np.where(min_headway_std > 0.0)[0]
-    min_headway_std_plt, = plt.plot(min_headway_time[valid_idx], min_headway_std[valid_idx], '.')
+    valid_idx = np.where((min_headway_std > 0.0) & (min_headway_calm < 5.0))[0]
+    min_headway_std_plt, = plt.plot(min_headway_time[valid_idx], 2+min_headway_std[valid_idx], 'o')
     min_headway_aggr = np.array(min_headway_aggr)
-    valid_idx = np.where(min_headway_aggr > 0.0)[0]
-    min_headway_agg_plt, = plt.plot(min_headway_time[valid_idx], min_headway_aggr[valid_idx], '.')
+    valid_idx = np.where((min_headway_aggr > 0.0) & (min_headway_calm < 5.0))[0]
+    min_headway_agg_plt, = plt.plot(min_headway_time[valid_idx], 4+min_headway_aggr[valid_idx], '+')
     min_headway_chosen = np.array(min_headway_chosen)
     valid_idx = np.where(min_headway_chosen >= 0)[0]
     min_headway_chosen_plt, = plt.plot(min_headway_time[valid_idx], min_headway_chosen[valid_idx], '.')
