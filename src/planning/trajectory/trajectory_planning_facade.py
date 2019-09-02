@@ -92,17 +92,11 @@ class TrajectoryPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            orig_gff_fstate = params.reference_route.convert_from_segment_state(state.ego_state.map_state.lane_fstate,
-                                                                                state.ego_state.map_state.lane_id)
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
                 updated_state = sampled_state
-
-                new_gff_fstate = params.reference_route.cstate_to_fstate(updated_state.ego_state.cartesian_state)
-                print('TP time', state.ego_state.timestamp_in_sec, 'orig', orig_gff_fstate[:3], 'updated', new_gff_fstate[:3])
             else:
-                print('TP IF: replan', orig_gff_fstate[:3])
                 updated_state = state
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)

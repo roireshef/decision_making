@@ -126,6 +126,13 @@ MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
 # Time threshold to raise takeover flag
 TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
 
+# Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the speed reduction of the target for the action spec
+SLOW_DOWN_FACTOR = 1
+# Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the lower bound on the speed reduction of the target for the action spec
+MAX_DECEL = 4.5
+# Headway margin over SAFETY_HEADWAY to select calm/aggressive dynamic action
+HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_CALM_DYNAMIC_ACTION = 0.7
+HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_STANDARD_DYNAMIC_ACTION = 0.5
 
 # Trajectory Planner #
 

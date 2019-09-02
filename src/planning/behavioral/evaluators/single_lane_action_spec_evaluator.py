@@ -4,7 +4,8 @@ from typing import List
 
 import numpy as np
 from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, EPS, \
-    LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+    LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_CALM_DYNAMIC_ACTION, \
+    HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_STANDARD_DYNAMIC_ACTION
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
@@ -47,34 +48,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         # The selection is only by aggressiveness, since it relies on the fact that we only follow a vehicle on the
         # SAME lane, which means there is only 1 possible vehicle to follow, so there is only 1 target vehicle speed.
         if len(follow_vehicle_valid_action_idxs) > 0:
-            # choose aggressiveness level for dynamic action according to the headway safety margin from the front car
-            dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
-            print(">>>>>>> AGGR_LEVELS & SAFETY MARGINS >>>>>")
-            min_headways = SingleLaneActionSpecEvaluator.calc_minimal_headways(dynamic_specs, behavioral_state)
-            aggr_levels = np.array(
-                [action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs])
-            spec_t = [action_specs[action_idx].t for action_idx in follow_vehicle_valid_action_idxs]
-            calm_idx = np.where(aggr_levels == 0)[0]
-            standard_idx = np.where(aggr_levels == 1)[0]
-            aggr_idx = np.where(aggr_levels == 2)[0]
-            print(">>>>>>> AGGR_LEVELS & MIN_HEADWAYS: spec.t", aggr_levels, min_headways, spec_t, "calm_idx", calm_idx,
-                  "standard_idx", standard_idx)
-            if len(calm_idx) > 0 and min_headways[calm_idx[0]] > SAFETY_HEADWAY + 0.7:
-                chosen_level = calm_idx[0]
-            elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > SAFETY_HEADWAY + 0.5:
-                chosen_level = standard_idx[0]
-            else:
-                chosen_level = -1  # the most aggressive
-            # chosen_level = -1       # TODO OVERRIDE FOR TESTING
-            # chosen_level = 0  # BASIC - calmest
-
-            self.logger.debug("Headway min %1.2f, %1.2f ,%1.2f,  %d, %f", -1 if len(calm_idx) == 0 else min_headways[calm_idx[0]],
-                              -1 if len(standard_idx) == 0 else min_headways[standard_idx[0]],
-                              -1 if len(aggr_idx) == 0 else min_headways[aggr_idx[0]],
-                              chosen_level,
-                              behavioral_state.ego_state.timestamp_in_sec)
-            print(">>>>>>> SAFETY MARGINS chosen level",
-                  action_recipes[follow_vehicle_valid_action_idxs[chosen_level]].aggressiveness)
+            chosen_level = self._choose_aggressiveness_of_dynamic_action_by_headway(action_recipes, action_specs,
+                                                                                    behavioral_state, follow_vehicle_valid_action_idxs)
             costs[follow_vehicle_valid_action_idxs[chosen_level]] = 0  # choose the found dynamic action
             return costs
 
@@ -146,8 +121,38 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         # Avoid AGGRESSIVE stop. TODO relax the restriction of not selective an aggressive road sign
         return road_sign_action.aggressiveness != AggressivenessLevel.CALM
 
+    def _choose_aggressiveness_of_dynamic_action_by_headway(self, action_recipes: List[ActionRecipe], action_specs: List[ActionSpec],
+                                                            behavioral_state: BehavioralGridState, follow_vehicle_valid_action_idxs: List[int]):
+        """ choose aggressiveness level for dynamic action according to the headway safety margin from the front car.
+        If the headway becomes small, be more aggressive.
+        :param action_recipes: recipes
+        :param action_specs: specs
+        :param behavioral_state: state of the world
+        :param follow_vehicle_valid_action_idxs: indices of valid dynamic actions
+        :return: the index of the chosen dynamic action
+        """
+        dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
+        min_headways = SingleLaneActionSpecEvaluator._calc_minimal_headways(dynamic_specs, behavioral_state)
+        aggr_levels = np.array([action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs])
+        calm_idx = np.where(aggr_levels == AggressivenessLevel.CALM.value)[0]
+        standard_idx = np.where(aggr_levels == AggressivenessLevel.STANDARD.value)[0]
+        aggr_idx = np.where(aggr_levels == AggressivenessLevel.AGGRESSIVE.value)[0]
+        if len(calm_idx) > 0 and min_headways[calm_idx[0]] > SAFETY_HEADWAY + HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_CALM_DYNAMIC_ACTION:
+            chosen_level = calm_idx[0]
+        elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > SAFETY_HEADWAY + HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_STANDARD_DYNAMIC_ACTION:
+            chosen_level = standard_idx[0]
+        else:
+            chosen_level = -1  # the most aggressive
+        self.logger.debug("Headway min %1.2f, %1.2f ,%1.2f,  %d, %f",
+                          -1 if len(calm_idx) == 0 else min_headways[calm_idx[0]],
+                          -1 if len(standard_idx) == 0 else min_headways[standard_idx[0]],
+                          -1 if len(aggr_idx) == 0 else min_headways[aggr_idx[0]],
+                          chosen_level,
+                          behavioral_state.ego_state.timestamp_in_sec)
+        return chosen_level
+
     @staticmethod
-    def calc_minimal_headways(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[int]:
+    def _calc_minimal_headways(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[int]:
         """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
          of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
          maintaining the required safety-headway + constant safety-margin"""

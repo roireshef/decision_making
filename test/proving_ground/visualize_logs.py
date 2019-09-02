@@ -52,10 +52,6 @@ def plot_dynamics(log_file_path: str):
     no_valid_traj_timestamps = []
     no_action_in_bp_timestamps = []
 
-    headway = []
-    current_headway = []
-    desired_headway = []
-    headway_time = []
     min_headway_calm = []
     min_headway_std = []
     min_headway_aggr = []
@@ -71,16 +67,6 @@ def plot_dynamics(log_file_path: str):
         if not text:
             break
 
-        if 'Headway set' in text:
-            try:
-                split_str = text.split('Headway set')[1].split(',')
-                desired_headway.append(float(split_str[0]))
-                current_headway.append(float(split_str[1]))
-                headway.append(float(split_str[2]))
-                headway_time.append(float(split_str[3]))
-            except:
-                pass
-
         if 'Headway min' in text:
             try:
                 split_str = text.split('Headway min')[1].split(',')
@@ -93,7 +79,6 @@ def plot_dynamics(log_file_path: str):
                 pass
 
         if 'SlowDown' in text:
-            #self.logger.debug("SlowDown", v_T[0], v_0[0], v_T_mod[0], behavioral_state.ego_state.timestamp_in_sec)
             split_str = text.split('SlowDown')[1].split(',')
             v_T_mod1.append(float(split_str[2]))
             v_T_mod.append(float(split_str[3]))
@@ -196,24 +181,25 @@ def plot_dynamics(log_file_path: str):
     f = plt.figure(1)
 
     ax1 = plt.subplot(5, 2, 1)
-    # ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    # other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
+    ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
+    other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
     euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist)
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
-    # plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
-    plt.legend([euclid_dist_plot], ['euclid_dist'])
+    plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
     plt.grid(True)
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
-    mod_v_t_plot, = plt.plot(v_T_mod_time, v_T_mod, 'x')
-    mod_v_t1_plot, = plt.plot(v_T_mod_time, v_T_mod1, 'o')
-    lower_root_plot, = plt.plot(v_T_mod_time, lower_root, 's')
+    # un remark the lines below to see the way the target speed is modified
+    # mod_v_t_plot, = plt.plot(v_T_mod_time, v_T_mod, 'x')
+    # mod_v_t1_plot, = plt.plot(v_T_mod_time, v_T_mod1, '+')
+    # lower_root_plot, = plt.plot(v_T_mod_time, lower_root, 's')
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
-    plt.legend([ego_sv_plot, other_sv_plot, mod_v_t_plot, mod_v_t1_plot, lower_root_plot], ['ego_sv', 'other_sv', 'other_mod', 'other_mod1', 'lower root'], loc='upper right')
+    plt.legend([ego_sv_plot, other_sv_plot], ['ego_sv', 'other_sv'])
+    # plt.legend([ego_sv_plot, other_sv_plot, mod_v_t_plot, mod_v_t1_plot, lower_root_plot], ['ego_sv', 'other_sv', 'other_mod', 'other_mod1', 'lower root'], loc='upper right')
     plt.grid(True)
 
     ax3 = plt.subplot(5, 2, 5, sharex=ax1)
@@ -257,47 +243,38 @@ def plot_dynamics(log_file_path: str):
     plt.grid(True)
 
     ax7 = plt.subplot(5, 2, 4, sharex=ax1)
-    # for t, traj in zip(trajectory_time, trajectory):
-    #     plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_X], '-.')
-    #
-    # plt.xlabel('time[s]')
-    # plt.ylabel('trajectories (x position)')
-    # plt.grid(True)
-    min_headway_time = np.array(min_headway_time)
-    min_headway_calm = np.array(min_headway_calm)
-    valid_idx = np.where((min_headway_calm > 0.0) & (min_headway_calm < 5.0))[0]
-    min_headway_calm_plt, = plt.plot(min_headway_time[valid_idx], min_headway_calm[valid_idx], 'x')
-    min_headway_std = np.array(min_headway_std)
-    valid_idx = np.where((min_headway_std > 0.0) & (min_headway_calm < 5.0))[0]
-    min_headway_std_plt, = plt.plot(min_headway_time[valid_idx], 2+min_headway_std[valid_idx], 'o')
-    min_headway_aggr = np.array(min_headway_aggr)
-    valid_idx = np.where((min_headway_aggr > 0.0) & (min_headway_calm < 5.0))[0]
-    min_headway_agg_plt, = plt.plot(min_headway_time[valid_idx], 4+min_headway_aggr[valid_idx], '+')
-    min_headway_chosen = np.array(min_headway_chosen)
-    valid_idx = np.where(min_headway_chosen >= 0)[0]
-    min_headway_chosen_plt, = plt.plot(min_headway_time[valid_idx], min_headway_chosen[valid_idx], '.')
+    # TODO
+    for t, traj in zip(trajectory_time, trajectory):
+        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_X], '-.')
+
     plt.xlabel('time[s]')
-    plt.ylabel('headway')
-    plt.legend([min_headway_calm_plt, min_headway_std_plt, min_headway_agg_plt, min_headway_chosen_plt],
-               ['min_calm', 'min std', 'min aggr', 'chosen'])
+    plt.ylabel('trajectories (x position)')
     plt.grid(True)
+    # min_headway_time = np.array(min_headway_time)
+    # min_headway_calm = np.array(min_headway_calm)
+    # valid_idx = np.where((min_headway_calm > 0.0) & (min_headway_calm < 5.0))[0]
+    # min_headway_calm_plt, = plt.plot(min_headway_time[valid_idx], min_headway_calm[valid_idx], 'x')
+    # min_headway_std = np.array(min_headway_std)
+    # valid_idx = np.where((min_headway_std > 0.0) & (min_headway_calm < 5.0))[0]
+    # min_headway_std_plt, = plt.plot(min_headway_time[valid_idx], 2+min_headway_std[valid_idx], 'o')
+    # min_headway_aggr = np.array(min_headway_aggr)
+    # valid_idx = np.where((min_headway_aggr > 0.0) & (min_headway_calm < 5.0))[0]
+    # min_headway_agg_plt, = plt.plot(min_headway_time[valid_idx], 4+min_headway_aggr[valid_idx], '+')
+    # min_headway_chosen = np.array(min_headway_chosen)
+    # valid_idx = np.where(min_headway_chosen >= 0)[0]
+    # min_headway_chosen_plt, = plt.plot(min_headway_time[valid_idx], min_headway_chosen[valid_idx], '.')
+    # plt.xlabel('time[s]')
+    # plt.ylabel('headway')
+    # plt.legend([min_headway_calm_plt, min_headway_std_plt, min_headway_agg_plt, min_headway_chosen_plt],
+    #            ['min_calm', 'min std', 'min aggr', 'chosen'])
+    # plt.grid(True)
 
     ax8 = plt.subplot(5, 2, 6, sharex=ax1)
-    # for t, traj in zip(trajectory_time, trajectory):
-    #     plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_Y], '-.')
+    for t, traj in zip(trajectory_time, trajectory):
+        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_Y], '-.')
 
-    # plt.xlabel('time[s]')
-    # plt.ylabel('trajectories (y position)')
-    if False:
-        desired_headway_plot, = plt.plot(headway_time, desired_headway)
-        current_headway_plot, = plt.plot(headway_time, current_headway)
-        headway_plot, = plt.plot(headway_time, headway)
-        plt.xlabel('time[s]')
-        plt.ylabel('headway')
-        plt.legend([headway_plot, current_headway_plot, desired_headway_plot],
-                   ['set_headway', 'current_headway', 'desired_headway'])
-    else:
-        pass
+    plt.xlabel('time[s]')
+    plt.ylabel('trajectories (y position)')
     plt.grid(True)
 
     ax9 = plt.subplot(5, 2, 8, sharex=ax1)

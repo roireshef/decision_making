@@ -68,7 +68,7 @@ class CostBasedBehavioralPlanner:
         pass
 
     @abstractmethod
-    def plan(self, orig_state: State, state: State, route_plan: RoutePlan):
+    def plan(self, state: State, route_plan: RoutePlan):
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
