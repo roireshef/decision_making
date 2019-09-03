@@ -14,7 +14,7 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
-from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
 class RoutePlanningFacade(DmModule):

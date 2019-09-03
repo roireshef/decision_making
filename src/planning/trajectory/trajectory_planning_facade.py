@@ -29,7 +29,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
-from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
 import rte.python.profiler as prof
