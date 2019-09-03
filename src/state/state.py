@@ -1,12 +1,6 @@
 import copy
 import numpy as np
 from logging import Logger
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DynamicObject import TsSYSDynamicObject
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_EgoState import TsSYSEgoState
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectSize import TsSYSObjectSize
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_OccupancyState import TsSYSOccupancyState
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_State import TsSYSState
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
     EGO_HEIGHT
@@ -40,19 +34,6 @@ class OccupancyState(PUBSUB_MSG_IMPL):
         self.free_space = np.copy(free_space)
         self.confidence = np.copy(confidence)
 
-    def serialize(self) ->TsSYSOccupancyState:
-        pubsub_msg = TsSYSOccupancyState()
-        pubsub_msg.e_Cnt_Timestamp = self.timestamp
-        pubsub_msg.s_FreeSpace = SerializationUtils.serialize_non_typed_small_array(self.free_space)
-        pubsub_msg.s_Confidence = SerializationUtils.serialize_non_typed_small_array(self.confidence)
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSOccupancyState) -> ():
-        return cls(pubsubMsg.e_Cnt_Timestamp,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_FreeSpace),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_Confidence))
-
 
 class ObjectSize(PUBSUB_MSG_IMPL):
     length = float
@@ -63,19 +44,6 @@ class ObjectSize(PUBSUB_MSG_IMPL):
         self.length = length
         self.width = width
         self.height = height
-
-    def serialize(self):
-        # type: () -> TsSYSObjectSize
-        pubsub_msg = TsSYSObjectSize()
-        pubsub_msg.e_l_Length = self.length
-        pubsub_msg.e_l_Width = self.width
-        pubsub_msg.e_l_Height = self.height
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSObjectSize) -> ObjectSize
-        return cls(pubsubMsg.e_l_Length, pubsubMsg.e_l_Width, pubsubMsg.e_l_Height)
 
 
 class DynamicObject(PUBSUB_MSG_IMPL):
@@ -224,27 +192,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                                           map_state,
                                           self.size, self.confidence, self.off_map)
 
-    def serialize(self):
-        # type: () -> TsSYSDynamicObject
-        pubsub_msg = TsSYSDynamicObject()
-        pubsub_msg.e_i_ObjectID = self.obj_id
-        pubsub_msg.e_Cnt_Timestamp = self.timestamp
-        pubsub_msg.a_e_CachedCartesianState = self.cartesian_state
-        pubsub_msg.s_CachedMapState = self._cached_map_state.serialize()
-        pubsub_msg.s_Size = self.size.serialize()
-        pubsub_msg.e_r_Confidence = self.confidence
-        pubsub_msg.e_b_offMap = self.off_map
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSDynamicObject) -> DynamicObject
-        return cls(pubsubMsg.e_i_ObjectID, pubsubMsg.e_Cnt_Timestamp
-                   , pubsubMsg.a_e_CachedCartesianState
-                   , MapState.deserialize(pubsubMsg.s_CachedMapState) if pubsubMsg.s_CachedMapState.e_i_LaneID > 0 else None
-                   , ObjectSize.deserialize(pubsubMsg.s_Size)
-                   , pubsubMsg.e_r_Confidence, pubsubMsg.e_b_offMap)
-
 
 class EgoState(DynamicObject):
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map):
@@ -263,22 +210,6 @@ class EgoState(DynamicObject):
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map)
-
-    def serialize(self):
-        # type: () -> TsSYSEgoState
-        pubsub_msg = TsSYSEgoState()
-        pubsub_msg.s_DynamicObject = super(self.__class__, self).serialize()
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSEgoState) -> EgoState
-        dyn_obj = DynamicObject.deserialize(pubsubMsg.s_DynamicObject)
-        return cls(dyn_obj.obj_id, dyn_obj.timestamp
-                   , dyn_obj._cached_cartesian_state
-                   , dyn_obj._cached_map_state
-                   , dyn_obj.size
-                   , dyn_obj.confidence, dyn_obj.off_map)
 
 
 class State(PUBSUB_MSG_IMPL):
@@ -312,31 +243,6 @@ class State(PUBSUB_MSG_IMPL):
                      occupancy_state or self.occupancy_state,
                      dynamic_objects if dynamic_objects is not None else self.dynamic_objects,
                      ego_state or self.ego_state)
-
-    def serialize(self):
-        # type: () -> TsSYSState
-        pubsub_msg = TsSYSState()
-
-        pubsub_msg.e_b_isSampled = self.is_sampled
-        pubsub_msg.s_OccupancyState = self.occupancy_state.serialize()
-        ''' resize the list at once to the right length '''
-        pubsub_msg.e_Cnt_NumOfObjects = len(self.dynamic_objects)
-
-        for i in range(pubsub_msg.e_Cnt_NumOfObjects):
-            pubsub_msg.s_DynamicObjects[i] = self.dynamic_objects[i].serialize()
-        pubsub_msg.s_EgoState = self.ego_state.serialize()
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSState) -> State
-        dynamic_objects = list()
-        for i in range(pubsubMsg.e_Cnt_NumOfObjects):
-            dynamic_objects.append(DynamicObject.deserialize(pubsubMsg.s_DynamicObjects[i]))
-        return cls(pubsubMsg.e_b_isSampled
-                   , OccupancyState.deserialize(pubsubMsg.s_OccupancyState)
-                   , dynamic_objects
-                   , EgoState.deserialize(pubsubMsg.s_EgoState))
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod
