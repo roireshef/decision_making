@@ -116,7 +116,15 @@ class AugmentedLaneActionSpecEvaluator(ActionSpecEvaluator):
         raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
                                       behavioral_state.ego_state.timestamp_in_sec)
 
-    def find_min_cost_augmented_lane(self, behavioral_state: BehavioralGridState, route_plan: RoutePlan):
+    def find_min_cost_augmented_lane(self, behavioral_state: BehavioralGridState, route_plan: RoutePlan) -> RelativeLane:
+        """
+        Finds the lane with the minimal cost based on route plan costs. Only the SAME_LANE/augmented lanes are considered.
+        Only the first upcoming split is considered. The minimum is defined as the lane whose downstream lane at that split
+        has the minimal cost.
+        :param behavioral_state: Behavioral Grid State which contains the GFFs to be considered
+        :param route_plan: Route plan that contains the route costs
+        :return: RelativeLane of the BehavioralGridState which has the minimal cost.
+        """
         gffs = behavioral_state.extended_lane_frames
         route_costs_dict = route_plan.to_costs_dict()
 
