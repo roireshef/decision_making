@@ -35,9 +35,11 @@ class AugmentedLaneActionSpecEvaluator(ActionSpecEvaluator):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
 
+        # choose the minimum cost lane based on route plan costs
+        # the minimum cost lane is defined as the lane who has the minimum cost at the first point where
+        # it diverges from the SAME_LANE
         minimum_cost_lane = self.find_min_cost_augmented_lane(behavioral_state, route_plan)
 
-        # look at the actions that are in the minimum cost lane
         costs = np.full(len(action_recipes), 1)
 
         # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
