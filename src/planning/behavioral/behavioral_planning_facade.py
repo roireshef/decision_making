@@ -216,13 +216,16 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 dist_to_end += lane_length
 
-            # check the end cost for all lane segments within a road segment
+            # If the host is far from any potential problem area, break. The takeover flag should not be raised.
+            if dist_to_end >= max(MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, ego_state.map_state.lane_fstate[FS_SV] * TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG):
+                break
+
             lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
 
-            takeover_flag = np.all(lane_end_costs == 1)
-
-            if takeover_flag or dist_to_end >= max(MIN_DISTANCE_TO_SET_TAKEOVER_FLAG,
-                                                   ego_state.map_state.lane_fstate[FS_SV]*TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG):
+            # Since the host is close to a potential problem area, check the end cost for all lane segments within the road segment. If all of the
+            # lane end costs are equal to 1, there is no where for the host to go. The takeover flag should be set to True.
+            if np.all(lane_end_costs == 1):
+                takeover_flag = True
                 break
 
         takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,
