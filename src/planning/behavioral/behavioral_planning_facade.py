@@ -170,9 +170,9 @@ class BehavioralPlanningFacade(DmModule):
     @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
     def _set_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState) -> Takeover:
         """
-        funtion to calculate the takeover message based on the static route plan
-        takeover flag will be set True if all lane segments' end costs for a downstream road segment
-        within a threshold distance are 1, i.e., road is blocked.
+        Calculate the takeover message based on the static route plan
+        The takeover flag will be set to True if all lane end costs for a downstream road segment
+        within a threshold distance are 1 (i.e. road is blocked).
         :param route_plan_data: last route plan data
         :param ego_state: last state for ego vehicle
         :return: Takeover data
