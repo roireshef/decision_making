@@ -525,7 +525,6 @@ def test_getDownstreamLanes_emptyOnLastSegment(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     current_lane_id = 292
     downstream_lane_ids = MapUtils.get_downstream_lane_ids(lane_id=current_lane_id)
-    print(downstream_lane_ids)
     assert len(downstream_lane_ids) == 0
 
 
