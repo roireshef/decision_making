@@ -1,7 +1,6 @@
 import time
 
 import traceback
-from logging import Logger
 import numpy as np
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -34,7 +33,8 @@ from decision_making.src.planning.utils.localization_utils import LocalizationUt
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
+from logging import Logger
 
 
 class BehavioralPlanningFacade(DmModule):
