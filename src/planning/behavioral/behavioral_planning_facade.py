@@ -192,7 +192,7 @@ class BehavioralPlanningFacade(DmModule):
 
         ego_row_idx = route_plan_start_idx[0][0]
 
-        dist_to_end = 0
+        dist_to_end = 0.0
         takeover_flag = False
 
         # iterate through all road segments within MIN_DISTANCE_TO_SET_TAKEOVER_FLAG
