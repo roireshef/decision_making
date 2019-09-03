@@ -563,10 +563,6 @@ def construction_scene_for_takeover_test(request):
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)],
                               222: [(True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
-                                     LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
-                                     1.0),
-                                     (True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)]}
