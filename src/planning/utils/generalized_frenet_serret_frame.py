@@ -50,7 +50,7 @@ class GFF_Type(Enum):
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
-                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: GFF_Type = None):
+                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: Optional[GFF_Type] = None):
         """
         A generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
         A special case might be a subsegment of a single frenet frame.
@@ -96,7 +96,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSGeneralizedFrenetSerretFrame):
-        # GFF type defaults to Normal since type information is lost when serialized
+        # GFF type will not be set when the message is deserialized.
+        # This must be manually set if the GFF is to be used. 
         return cls(SerializationUtils.deserialize_any_array(pubsubMsg.s_Points),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_T),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_N),
