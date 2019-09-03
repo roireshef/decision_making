@@ -2,10 +2,10 @@ import numpy as np
 import rte.python.profiler as prof
 import six
 from abc import ABCMeta, abstractmethod
-from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING
-from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
+from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
@@ -452,11 +452,11 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
             else target_gff.s_max
 
         # skip checking for end of Partial GFF if vehicle will be stopped before the padded end
-        if action_spec.v == 0 and action_spec.s < gff_end_s:
+        if action_spec.v == ZERO_SPEED and action_spec.s < gff_end_s:
             self._raise_true()
 
         # must be able to achieve 0 velocity before the end of the GFF
-        return np.array([gff_end_s]), np.array([0])
+        return np.array([gff_end_s]), np.array([ZERO_SPEED])
 
 
 class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
