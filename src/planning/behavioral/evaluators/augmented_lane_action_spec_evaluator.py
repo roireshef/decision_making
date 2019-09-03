@@ -44,7 +44,7 @@ class AugmentedLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
         # on the straight lane if no actions are available on the augmented lane
-        
+
         # A set is used to prevent duplicates when minimum_cost_lane==RelativeLane.SAME_LANE
         lanes_to_try = {minimum_cost_lane, RelativeLane.SAME_LANE}
 
@@ -58,8 +58,7 @@ class AugmentedLaneActionSpecEvaluator(ActionSpecEvaluator):
             # The selection is only by aggressiveness, since it relies on the fact that we only follow a vehicle on the
             # SAME lane, which means there is only 1 possible vehicle to follow, so there is only 1 target vehicle speed.
             if len(follow_vehicle_valid_action_idxs) > 0:
-                costs[follow_vehicle_valid_action_idxs[
-                    0]] = 0  # choose the found dynamic action, which is least aggressive
+                costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action, which is least aggressive
                 return costs
 
             # next try to find a valid road sign action (FOLLOW_ROAD_SIGN) for SAME_LANE.
