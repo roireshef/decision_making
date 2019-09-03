@@ -435,16 +435,11 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> any:
         """
-        Finds the end of the Partial GFF
+        Finds the point some distance before the end of a partial GFF. This distance is determined by PARTIAL_GFF_END_PADDING.
         :param behavioral_state:
         :param action_spec:
         :return: points that require braking after the spec
         """
-
-        # skip checking for end of Partial GFF if vehicle will be stopped
-        if action_spec.v == 0:
-            self._raise_true()
-
         target_gff = behavioral_state.extended_lane_frames[action_spec.relative_lane]
 
         # skip checking if the GFF is not a partial GFF
@@ -455,6 +450,10 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
         gff_end_s = target_gff.s_max - PARTIAL_GFF_END_PADDING \
             if target_gff.s_max - PARTIAL_GFF_END_PADDING > 0 \
             else target_gff.s_max
+
+        # skip checking for end of Partial GFF if vehicle will be stopped before the padded end
+        if action_spec.v == 0 and action_spec.s < gff_end_s:
+            self._raise_true()
 
         # must be able to achieve 0 velocity before the end of the GFF
         return np.array([gff_end_s]), np.array([0])
