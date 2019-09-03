@@ -50,7 +50,25 @@ class GFF_Type(Enum):
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
-                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: GFF_Type = GFF_Type.Normal):
+                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: GFF_Type = None):
+        """
+        A generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
+        A special case might be a subsegment of a single frenet frame.
+        :param points: 2D numpy array of points sampled from a smooth curve (x,y axes; ideally a spline of high order)
+        :param T: 2D numpy array of tangent unit vectors (x,y axes) of <points>
+        :param N: 2D numpy array of normal unit vectors (x,y axes) of <points>
+        :param k: 1D numpy array of curvature values at each point in <points>
+        :param k_tag: 1D numpy array of values of 1st derivative of curvature at each point in <points>
+        :param segment_ids: id (usually lane id) of the frenet frames that make up the GFF
+        :param segments_s_start: starting longitudinal s to be taken into account for each frenet frame segment
+        :param segments_s_offsets: The accumulated longitudinal progress on the generalized frenet frame for each segment,
+                                    e.g. segments_s_offsets[2] contains the length of (subsegment #0 + subsegment #1)
+        :param segments_ds: the resolution of longitudinal distance along the curve (progress diff between points in <points>), per segment
+        :param segments_point_offset:The accumulated number of points participating in the generation of the generalized frenet frame
+                                     for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
+                                     plus the number of points taken from subsegment #1.
+        :param gff_type: type of GFF (Normal, Partial, Augmented, AugmentedPartial)
+        """
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
         self._segment_ids = segment_ids
         self._segments_s_start = segments_s_start
@@ -88,7 +106,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsSOffsets),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsDS),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsPointOffset),
-                   GFF_Type.Normal)
+                   None)
 
     @property
     def segments(self) -> List[FrenetSubSegment]:
