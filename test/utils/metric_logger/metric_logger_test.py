@@ -3,7 +3,7 @@ from time import sleep
 import os
 import glob
 from pathlib import Path
-from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from rte.python.logger.AV_logger import AV_Logger, LOG_DIRECTORY
 
 
