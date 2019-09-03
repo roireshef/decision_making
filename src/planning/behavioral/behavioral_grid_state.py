@@ -199,10 +199,12 @@ class BehavioralGridState:
                                                                           route_plan=route_plan,
                                                                           logger=logger,
                                                                           can_augment=can_augment)
-            extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
             raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
+
+        # set the SAME_LANE first since it cannot be augmented
+        extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
 
         host_cartesian_point = np.array([state.ego_state.cartesian_state[C_X],
                                          state.ego_state.cartesian_state[C_Y]])
