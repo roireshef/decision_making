@@ -75,9 +75,16 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
 
+            route_plan = self._get_current_route_plan()
+
+            route_plan_dict = route_plan.to_costs_dict()
+
             scene_dynamic = self._get_current_scene_dynamic()
 
-            state = State.create_state_from_scene_dynamic(scene_dynamic, self._last_gff_segment_ids, self.logger)
+            state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
+                                                          selected_gff_segment_ids=self._last_gff_segment_ids,
+                                                          route_plan_dict=route_plan_dict,
+                                                          logger=self.logger)
 
             state.handle_negative_velocities()
 
@@ -97,8 +104,6 @@ class BehavioralPlanningFacade(DmModule):
                                   "according to previous plan")
             else:
                 updated_state = state
-
-            route_plan = self._get_current_route_plan()
 
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)

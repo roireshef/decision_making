@@ -41,7 +41,9 @@ def test_createStateFromSceneDyamic_singleHostHypothesis_correctHostLocalization
 
     gff_segment_ids = np.array([200, 210, 220])
 
-    state = State.create_state_from_scene_dynamic(scene_dynamic_fix_single_host_hypothesis, gff_segment_ids, logger)
+    state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_single_host_hypothesis,
+                                                  selected_gff_segment_ids=gff_segment_ids,
+                                                  logger=logger)
 
     assert state.ego_state.map_state.lane_id == 200
 
@@ -59,7 +61,9 @@ def test_createStateFromSceneDyamic_twoHostHypotheses_correctHostLocalization(pu
 
     gff_segment_ids = np.array([201, 211, 221])
 
-    state = State.create_state_from_scene_dynamic(scene_dynamic_fix_two_host_hypotheses, gff_segment_ids, logger)
+    state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_two_host_hypotheses,
+                                                  selected_gff_segment_ids=gff_segment_ids,
+                                                  logger=logger)
 
     assert state.ego_state.map_state.lane_id == 201
 
@@ -77,9 +81,33 @@ def test_createStateFromSceneDyamic_threeHostHypotheses_correctHostLocalization(
 
     gff_segment_ids = np.array([2244100, 19670533, 58375685])
 
-    state = State.create_state_from_scene_dynamic(scene_dynamic_fix_three_host_hypotheses, gff_segment_ids, logger)
+    state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_three_host_hypotheses,
+                                                  selected_gff_segment_ids=gff_segment_ids,
+                                                  logger=logger)
 
     assert state.ego_state.map_state.lane_id == 2244100
+
+
+def test_createStateFromSceneDyamic_noGFFavailable_correctHostLocalization(pubsub: PubSub,
+                                                                                scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
+    """
+    :param scene_dynamic_fix: Fixture of scene dynamic
+    :param gff_segment_ids: GFF lane segment ids for last action
+
+    Checking functionality of create_state_from_scene_dynamic for the case of multiple host hypothesis
+    """
+
+    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+
+    gff_segment_ids = np.array([])
+    route_plan_dict = {2244100: (0, 1), 19670532: (0, 0), 19670533: (0, 1)}
+
+    state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_three_host_hypotheses,
+                                                  selected_gff_segment_ids=gff_segment_ids,
+                                                  route_plan_dict=route_plan_dict,
+                                                  logger=logger)
+
+    assert state.ego_state.map_state.lane_id == 19670532
 
 
 @pytest.mark.skip(reason="irrelevant since was moved to SP")

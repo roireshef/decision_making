@@ -7,8 +7,9 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESO
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
+from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 
 
 class DynamicObjectsData:
@@ -300,12 +301,14 @@ class State(PUBSUB_MSG_IMPL):
                     self.dynamic_objects[i].obj_id, self.dynamic_objects[i].cartesian_state[C_V])
 
     @classmethod
-    def create_state_from_scene_dynamic(cls, scene_dynamic, selected_gff_segment_ids, logger):
-        # type: (SceneDynamic, np.ndarray, Logger) -> State
+    def create_state_from_scene_dynamic(cls, scene_dynamic, selected_gff_segment_ids,
+                                        logger, route_plan_dict=None):
+        # type: (SceneDynamic, np.ndarray, Logger, Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]]) -> State
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic: scene dynamic data
         :param selected_gff_segment_ids: list of GFF segment ids for the last selected action
+        :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value
         :param logger: Logging module
         :return: valid State class
         """
@@ -332,10 +335,16 @@ class State(PUBSUB_MSG_IMPL):
                 # raise a warning and choose the closet lane
                 logger.warning("None of the host localization hypotheses matches the previous planning action")
 
+        elif len(host_hyp_lane_ids) > 1 and route_plan_dict is not None:
+            # If previous action does not exist, use the route plan end costs as an additional hint
+            # to choose the correct hypothesis
+            selected_host_hyp_idx = np.argmin([route_plan_dict[lane_id][1] for lane_id in host_hyp_lane_ids])
+
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
                                  as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
                                  lane_id=scene_dynamic.s_Data.s_host_localization.
                                  as_host_hypothesis[selected_host_hyp_idx].e_i_lane_segment_id)
+
         ego_state = EgoState(obj_id=0,
                              timestamp=timestamp,
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
@@ -346,6 +355,7 @@ class State(PUBSUB_MSG_IMPL):
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,
                                           timestamp=timestamp)
+
         dynamic_objects = State.create_dyn_obj_list(dyn_obj_data)
 
         return cls(False, occupancy_state, dynamic_objects, ego_state)
