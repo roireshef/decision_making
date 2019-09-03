@@ -35,41 +35,128 @@ class AugmentedLaneActionSpecEvaluator(ActionSpecEvaluator):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
 
+        minimum_cost_lane = self.find_min_cost_augmented_lane(behavioral_state, route_plan)
+
+        # look at the actions that are in the minimum cost lane
+        costs = np.full(len(action_recipes), 1)
+
+        # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
+        # on the straight lane if no actions are available on the augmented lane
+        lanes_to_try = [minimum_cost_lane, RelativeLane.SAME_LANE] if minimum_cost_lane != RelativeLane.SAME_LANE \
+            else [minimum_cost_lane]
+
+        for target_lane in lanes_to_try:
+            # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE
+            follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
+                                                if action_specs_mask[i]
+                                                and recipe.relative_lane == target_lane
+                                                and recipe.action_type == ActionType.FOLLOW_VEHICLE]
+            # The selection is only by aggressiveness, since it relies on the fact that we only follow a vehicle on the
+            # SAME lane, which means there is only 1 possible vehicle to follow, so there is only 1 target vehicle speed.
+            if len(follow_vehicle_valid_action_idxs) > 0:
+                costs[follow_vehicle_valid_action_idxs[
+                    0]] = 0  # choose the found dynamic action, which is least aggressive
+                return costs
+
+            # next try to find a valid road sign action (FOLLOW_ROAD_SIGN) for SAME_LANE.
+            # Selection only needs to consider aggressiveness level, as all the target speeds are ZERO_SPEED.
+            # Tentative decision is kept in selected_road_sign_idx, to be compared against STATIC actions
+            follow_road_sign_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
+                                                  if action_specs_mask[i]
+                                                  and recipe.relative_lane == target_lane
+                                                  and recipe.action_type == ActionType.FOLLOW_ROAD_SIGN]
+            if len(follow_road_sign_valid_action_idxs) > 0:
+                # choose the found action, which is least aggressive.
+                selected_road_sign_idx = follow_road_sign_valid_action_idxs[0]
+            else:
+                selected_road_sign_idx = -1
+
+            # last, look for valid static action
+            filtered_follow_lane_idxs = [i for i, recipe in enumerate(action_recipes)
+                                         if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                                         and recipe.relative_lane == target_lane]
+            if len(filtered_follow_lane_idxs) > 0:
+                # find the minimal aggressiveness level among valid static recipes
+                min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_follow_lane_idxs])
+
+                # among the minimal aggressiveness level, find the fastest action
+                follow_lane_valid_action_idxs = [idx for idx in filtered_follow_lane_idxs
+                                                 if action_recipes[idx].aggressiveness.value == min_aggr_level]
+
+                selected_follow_lane_idx = follow_lane_valid_action_idxs[-1]
+            else:
+                selected_follow_lane_idx = -1
+
+            # finally decide between the road sign and the static action
+            if selected_road_sign_idx < 0 and selected_follow_lane_idx < 0:
+                # if no action of either type was found, skip checking for actions on the lane
+                continue
+            elif selected_road_sign_idx < 0:
+                # if no road sign action is found, select the static action
+                costs[selected_follow_lane_idx] = 0
+                return costs
+            elif selected_follow_lane_idx < 0:
+                # if no static action is found, select the road sign action
+                costs[selected_road_sign_idx] = 0
+                return costs
+            else:
+                # if both road sign and static actions are valid - choose
+                if self._is_static_action_preferred(action_recipes, selected_road_sign_idx, selected_follow_lane_idx):
+                    costs[selected_follow_lane_idx] = 0
+                    return costs
+                else:
+                    costs[selected_road_sign_idx] = 0
+                    return costs
+
+        # if the for loop is exited without having returned anything, no valid actions were found in both
+        # minimum_cost_lane as well as the SAME_LANE
+        raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
+                                      behavioral_state.ego_state.timestamp_in_sec)
+
+    def find_min_cost_augmented_lane(self, behavioral_state: BehavioralGridState, route_plan: RoutePlan):
         gffs = behavioral_state.extended_lane_frames
         route_costs_dict = route_plan.to_costs_dict()
 
         # initialize the SAME_LANE to be the one that is chosen
         minimum_cost_lane = RelativeLane.SAME_LANE
 
-        is_left_augmented = RelativeLane.LEFT_LANE in gffs and (gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented or
-                                                                gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.AugmentedPartial)
+        is_left_augmented = RelativeLane.LEFT_LANE in gffs and (
+                    gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented or
+                    gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.AugmentedPartial)
 
-        is_right_augmented = RelativeLane.RIGHT_LANE in gffs and (gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented or
-                                                                  gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial)
+        is_right_augmented = RelativeLane.RIGHT_LANE in gffs and (
+                    gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented or
+                    gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial)
 
         diverging_indices = {}
 
         if is_left_augmented:
             # Find where gffs[RelativeLane.LEFT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
-            max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids), len(gffs[RelativeLane.LEFT_LANE].segment_ids))
+            max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids),
+                            len(gffs[RelativeLane.LEFT_LANE].segment_ids))
 
             try:
-                diverging_indices[RelativeLane.LEFT_LANE] = np.argwhere(gffs[RelativeLane.LEFT_LANE].segment_ids[:max_index] !=
-                                                                        gffs[RelativeLane.SAME_LANE].segment_ids[:max_index])[0][0]
+                diverging_indices[RelativeLane.LEFT_LANE] = \
+                np.argwhere(gffs[RelativeLane.LEFT_LANE].segment_ids[:max_index] !=
+                            gffs[RelativeLane.SAME_LANE].segment_ids[:max_index])[0][0]
             except IndexError:
                 is_left_augmented = False
-                self.logger.warning(AugmentedGffCreatedIncorrectly(f"Augmented LEFT_LANE and SAME_LANE GFFs contain identical lane segments."))
+                self.logger.warning(AugmentedGffCreatedIncorrectly(
+                    f"Augmented LEFT_LANE and SAME_LANE GFFs contain identical lane segments."))
 
         if is_right_augmented:
             # Find where gffs[RelativeLane.RIGHT_LANE].segment_ids and gffs[RelativeLane.SAME_LANE].segment_ids begin to diverge
-            max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids), len(gffs[RelativeLane.RIGHT_LANE].segment_ids))
+            max_index = min(len(gffs[RelativeLane.SAME_LANE].segment_ids),
+                            len(gffs[RelativeLane.RIGHT_LANE].segment_ids))
 
             try:
-                diverging_indices[RelativeLane.RIGHT_LANE] = np.argwhere(gffs[RelativeLane.RIGHT_LANE].segment_ids[:max_index] !=
-                                                                         gffs[RelativeLane.SAME_LANE].segment_ids[:max_index])[0][0]
+                diverging_indices[RelativeLane.RIGHT_LANE] = \
+                np.argwhere(gffs[RelativeLane.RIGHT_LANE].segment_ids[:max_index] !=
+                            gffs[RelativeLane.SAME_LANE].segment_ids[:max_index])[0][0]
             except IndexError:
                 is_right_augmented = False
-                self.logger.warning(AugmentedGffCreatedIncorrectly(f"Augmented RIGHT_LANE and SAME_LANE GFFs contain identical lane segments."))
+                self.logger.warning(AugmentedGffCreatedIncorrectly(
+                    f"Augmented RIGHT_LANE and SAME_LANE GFFs contain identical lane segments."))
 
         # Define lambda function to get route cost of lane
         cost_after_diverge = lambda target_lane, split_side: \
@@ -124,42 +211,4 @@ class AugmentedLaneActionSpecEvaluator(ActionSpecEvaluator):
                  < cost_after_diverge(RelativeLane.SAME_LANE, RelativeLane.RIGHT_LANE)):
             minimum_cost_lane = RelativeLane.RIGHT_LANE
 
-        # look at the actions that are in the minimum cost lane
-        costs = np.full(len(action_recipes), 1)
-
-        # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
-        # on the straight lane if no actions are available on the augmented lane
-        lanes_to_try = [minimum_cost_lane, RelativeLane.SAME_LANE] if minimum_cost_lane != RelativeLane.SAME_LANE \
-            else [minimum_cost_lane]
-
-        for target_lane in lanes_to_try:
-            # first try to find a valid dynamic action for the target_lane
-            follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
-                                                if action_specs_mask[i]
-                                                and recipe.relative_lane == target_lane
-                                                and recipe.action_type == ActionType.FOLLOW_VEHICLE]
-            if len(follow_vehicle_valid_action_idxs) > 0:
-                costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
-                return costs
-
-            filtered_indices = [i for i, recipe in enumerate(action_recipes)
-                                if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                                and recipe.relative_lane == target_lane]
-
-            if len(filtered_indices) > 0:
-                # find the minimal aggressiveness level among valid static recipes
-                min_aggr_level = min([action_recipes[idx].aggressiveness.value for idx in filtered_indices])
-
-                # find the most fast action with the minimal aggressiveness level
-                follow_lane_valid_action_idxs = [idx for idx in filtered_indices
-                                                 if action_recipes[idx].aggressiveness.value == min_aggr_level]
-
-                # choose the most fast action among the calmest actions;
-                # it's last in the recipes list since the recipes are sorted in the increasing order of velocities
-                costs[follow_lane_valid_action_idxs[-1]] = 0
-                return costs
-
-        # if the for loop is exited without having returned anything, no valid actions were found in both
-        # minimum_cost_lane as well as the SAME_LANE
-        raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
-                                      behavioral_state.ego_state.timestamp_in_sec)
+        return minimum_cost_lane
