@@ -67,7 +67,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :param segments_point_offset:The accumulated number of points participating in the generation of the generalized frenet frame
                                      for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
                                      plus the number of points taken from subsegment #1.
-        :param gff_type: type of GFF (Normal, Partial, Augmented, AugmentedPartial)
+        :param gff_type: type of GFF (Normal, Partial, Augmented, AugmentedPartial). This field is only used within the planning module,
+                         and will be lost when the object is published.
         """
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
         self._segment_ids = segment_ids
