@@ -491,7 +491,7 @@ def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState :
 def construction_scene_for_takeover_test(request):
     # Set Default Expected Output
     route_plan_data = default_route_plan()
-    expected_takover = False
+    expected_takeover = False
     ego_state = generate_ego_state(ego_lane_id = 200 , ego_lane_station = 0)
 
 
@@ -519,8 +519,6 @@ def construction_scene_for_takeover_test(request):
         route_plan_data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
 
         ego_state = generate_ego_state(ego_lane_id = 201 , ego_lane_station = 75)
-
-        expected_takover = False
 
     elif request.param is "scene_two":
         # All lanes are blocked, and the vehicle is close to crossing into one of them. The takeover flag should be True.
@@ -552,7 +550,7 @@ def construction_scene_for_takeover_test(request):
 
         ego_state = generate_ego_state(ego_lane_id = 282 , ego_lane_station = 80)
 
-        expected_takover = True
+        expected_takeover = True
 
     elif request.param is "scene_three":
         # All lanes are blocked, but the vehicle is not close to crossing into one of them. The takeover flag should be False.
@@ -589,11 +587,8 @@ def construction_scene_for_takeover_test(request):
 
         ego_state = generate_ego_state(ego_lane_id = 211 , ego_lane_station = 30)
 
-        # expected output
-        expected_takover = False
-
     else:
         lane_modifications = {}
 
     return TakeOverTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                             route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takover)
+                            route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takeover)
