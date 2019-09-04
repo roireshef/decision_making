@@ -30,7 +30,7 @@ from decision_making.src.planning.utils.localization_utils import LocalizationUt
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.src.utils.dm_profiler import DMProfiler
-from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
 import rte.python.profiler as prof
