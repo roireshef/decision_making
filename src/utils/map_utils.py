@@ -291,7 +291,7 @@ class MapUtils:
     @prof.ProfileFunction()
     def get_generalized_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
                                              can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
-                                           Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
+            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         Create Generalized Frenet frame(s) along lane center, starting from given lane and station. If augmented lanes can be created, they will
         be returned in the dictionary under the RelativeLane.LEFT_LANE/RIGHT_LANE keys.
@@ -417,8 +417,7 @@ class MapUtils:
                          route_plan: RoutePlan,
                          can_augment: Optional[Dict[RelativeLane, bool]] = None,
                          lane_subsegments: Optional[List[FrenetSubSegment]] = None,
-                         cumulative_distance: Optional[float] = None) -> \
-                         Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool]]:
+                         cumulative_distance: Optional[float] = None) -> Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
