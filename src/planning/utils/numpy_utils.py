@@ -101,6 +101,10 @@ class UniformGrid:
     def array(self):
         return np.arange(self.start, self.end + np.finfo(np.float32).eps, self.resolution)
 
+    def from_index(self, idx):
+        """Returns the value from the grid, by index"""
+        return self.array[idx]
+
     def get_index(self, value):
         """
         Returns index of closest value on equally-spaced axis
