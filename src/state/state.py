@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 from logging import Logger
-from decision_making.src.exceptions import MultipleObjectsWithRequestedID
+from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoStateLaneIdNotValid
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
     EGO_HEIGHT
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
@@ -336,8 +336,8 @@ class State(PUBSUB_MSG_IMPL):
                 logger.warning("None of the host localization hypotheses matches the previous planning action")
 
         elif len(host_hyp_lane_ids) > 1 and route_plan_dict is not None:
-            # If previous action does not exist, use the route plan end costs as an additional hint
-            # to choose the correct hypothesis
+            # If previous action does not exist, choose the hypothesis lane with minimum route plan end cost
+            # if there are multiple lanes with similar minimum cost values, the closest lane (smallest index) is chosen
             try:
                 selected_host_hyp_idx = np.argmin([route_plan_dict[lane_id][1] for lane_id in host_hyp_lane_ids])
             except KeyError:
@@ -348,6 +348,9 @@ class State(PUBSUB_MSG_IMPL):
             logger.debug("Number of localization hypotheses published for ego vehicle by SCENE_DYNAMIC is %d" +
                          " with lane IDs: %s, selected hypothesis for planning is the lane ID: %d",
                          len(host_hyp_lane_ids), host_hyp_lane_ids, host_hyp_lane_ids[selected_host_hyp_idx])
+
+        if host_hyp_lane_ids[selected_host_hyp_idx] == 0:
+            raise EgoStateLaneIdNotValid("Ego vehicle lane assignment is not valid")
 
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
                                  as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
