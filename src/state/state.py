@@ -338,7 +338,11 @@ class State(PUBSUB_MSG_IMPL):
         elif len(host_hyp_lane_ids) > 1 and route_plan_dict is not None:
             # If previous action does not exist, use the route plan end costs as an additional hint
             # to choose the correct hypothesis
-            selected_host_hyp_idx = np.argmin([route_plan_dict[lane_id][1] for lane_id in host_hyp_lane_ids])
+            try:
+                selected_host_hyp_idx = np.argmin([route_plan_dict[lane_id][1] for lane_id in host_hyp_lane_ids])
+            except KeyError:
+                # if route plan cost is not found for any host lanes, raise a warning and continue with the closest lane
+                logger.warning("Route plan cost not found for a host lane segment")
 
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
                                  as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
