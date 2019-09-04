@@ -21,7 +21,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 PLANNING_LOOKAHEAD_DIST = 100.0
 
 # [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 400
+MAX_HORIZON_DISTANCE = 600
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
