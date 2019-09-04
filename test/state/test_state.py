@@ -110,6 +110,28 @@ def test_createStateFromSceneDyamic_noGFFavailable_correctHostLocalization(pubsu
     assert state.ego_state.map_state.lane_id == 19670532
 
 
+def test_createStateFromSceneDyamic_noGFFSimilarEndCosts_correctHostLocalization(pubsub: PubSub,
+                                                                                scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
+    """
+    :param scene_dynamic_fix: Fixture of scene dynamic
+    :param gff_segment_ids: GFF lane segment ids for last action
+
+    Checking functionality of create_state_from_scene_dynamic for the case of multiple host hypothesis
+    """
+
+    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+
+    gff_segment_ids = np.array([])
+    route_plan_dict = {2244100: (0, 1), 19670532: (0, 0), 19670533: (0, 0)}
+
+    state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_three_host_hypotheses,
+                                                  selected_gff_segment_ids=gff_segment_ids,
+                                                  route_plan_dict=route_plan_dict,
+                                                  logger=logger)
+
+    assert state.ego_state.map_state.lane_id == 19670532
+
+
 @pytest.mark.skip(reason="irrelevant since was moved to SP")
 def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(dynamic_objects_negative_velocity: DynamicObjectsData):
     """

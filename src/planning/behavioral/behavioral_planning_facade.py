@@ -76,11 +76,12 @@ class BehavioralPlanningFacade(DmModule):
             start_time = time.time()
 
             route_plan = self._get_current_route_plan()
-
             route_plan_dict = route_plan.to_costs_dict()
 
-            scene_dynamic = self._get_current_scene_dynamic()
+            scene_static = self._get_current_scene_static()
+            SceneStaticModel.get_instance().set_scene_static(scene_static)
 
+            scene_dynamic = self._get_current_scene_dynamic()
             state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                           selected_gff_segment_ids=self._last_gff_segment_ids,
                                                           route_plan_dict=route_plan_dict,
@@ -89,9 +90,6 @@ class BehavioralPlanningFacade(DmModule):
             state.handle_negative_velocities()
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
-
-            scene_static = self._get_current_scene_static()
-            SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with

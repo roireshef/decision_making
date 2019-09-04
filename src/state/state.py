@@ -10,6 +10,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from typing import List, Optional, Dict, Tuple
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
+from decision_making.src.messages.scene_static_enums import ManeuverType
 
 
 class DynamicObjectsData:
@@ -337,9 +338,22 @@ class State(PUBSUB_MSG_IMPL):
 
         elif len(host_hyp_lane_ids) > 1 and route_plan_dict is not None:
             # If previous action does not exist, choose the hypothesis lane with minimum route plan end cost
-            # if there are multiple lanes with similar minimum cost values, the closest lane (smallest index) is chosen
+            # if there are multiple lanes with similar minimum cost values, the lane with STRAIGHT maneuver type is chosen
+            # if there is no lane with STRAIGHT maneuver type or multiple lanes have STRAIGHT maneuver type (in lane change scenario),
+            # the closest lane (smallest index) is chosen
             try:
-                selected_host_hyp_idx = np.argmin([route_plan_dict[lane_id][1] for lane_id in host_hyp_lane_ids])
+                lane_end_costs = [route_plan_dict[lane_id][1] for lane_id in host_hyp_lane_ids]
+                min_index = np.argwhere(lane_end_costs == np.min(lane_end_costs))
+                if len(min_index) > 1:
+
+                    maneuver_types = [MapUtils.get_lane_maneuver_type(host_hyp_lane_ids[idx[0]]) for idx in min_index]
+                    if ManeuverType.STRAIGHT_CONNECTION in maneuver_types:
+                        selected_host_hyp_idx = [min_index[idx][0] for idx in range(len(maneuver_types))
+                                                 if maneuver_types[idx] == ManeuverType.STRAIGHT_CONNECTION][0]
+                    else:
+                        selected_host_hyp_idx = min_index[0][0]
+                else:
+                    selected_host_hyp_idx = min_index[0][0]
             except KeyError:
                 # if route plan cost is not found for any host lanes, raise a warning and continue with the closest lane
                 logger.warning("Route plan cost not found for a host lane segment")
