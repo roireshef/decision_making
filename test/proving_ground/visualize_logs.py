@@ -216,8 +216,8 @@ def plot_dynamics(log_file_path: str):
     plt.grid(True)
 
     ax7 = plt.subplot(5, 2, 7, sharex=ax1)
-    ego_curv, = plt.plot(timestamp_in_sec, ego_curv)
-    plt.legend([ego_curv], ['curvature (cartesian)'])
+    ego_curv_plt, = plt.plot(timestamp_in_sec, ego_curv)
+    plt.legend([ego_curv_plt], ['curvature (cartesian)'])
 
     plt.xlabel('time[s]')
     plt.ylabel('curvature [1/m]')
@@ -258,7 +258,6 @@ def plot_dynamics(log_file_path: str):
 
 if __name__ == "__main__":
     # Enter path of log file to analyze here:
-    # file_path = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
-    file_path = '/home/kz430x/Downloads/AV_Log_dm_main.log'
+    file_path = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
     f = plot_dynamics(file_path)
     plt.show(f)
