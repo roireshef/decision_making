@@ -345,8 +345,8 @@ class State(PUBSUB_MSG_IMPL):
                 logger.warning("Route plan cost not found for a host lane segment")
 
         if len(host_hyp_lane_ids) > 1:
-            logger.debug("Number of localization hypotheses published for ego vehicle by SCENE_DYNAMIC: %d" +
-                         " with lane IDs: %s, selected hypothesis has the lane ID of: %d",
+            logger.debug("Number of localization hypotheses published for ego vehicle by SCENE_DYNAMIC is %d" +
+                         " with lane IDs: %s, selected hypothesis for planning is the lane ID: %d",
                          len(host_hyp_lane_ids), host_hyp_lane_ids, host_hyp_lane_ids[selected_host_hyp_idx])
 
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
