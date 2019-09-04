@@ -35,7 +35,7 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         # Choose the minimum cost lane based on route plan costs.
         # The minimum cost lane is defined as the lane who has the minimum cost at the first point where
         # it diverges from the SAME_LANE.
-        minimum_cost_lane = self.find_min_cost_augmented_lane(behavioral_state, route_plan)
+        minimum_cost_lane = self._find_min_cost_augmented_lane(behavioral_state, route_plan)
 
         costs = np.full(len(action_recipes), 1)
 
