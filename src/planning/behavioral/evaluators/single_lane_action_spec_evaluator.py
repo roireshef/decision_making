@@ -37,6 +37,7 @@ class SingleLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         """
         costs = np.full(len(action_recipes), 1)
 
+
         # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE
         selected_follow_vehicle_idx = self._get_follow_vehicle_valid_action_idx(action_recipes, action_specs_mask, RelativeLane.SAME_LANE)
         if selected_follow_vehicle_idx >= 0:
