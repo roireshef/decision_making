@@ -78,6 +78,10 @@ class BehavioralGridState:
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
 
+        # TODO: Make sure to account for all relevant actors on all upstream lanes. For example, there may be an actor outside of an
+        #  upstream merge area that is moving quickly. If we predict that this actor will come close to the host, we have to consider
+        #  it as well.
+
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
             sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
