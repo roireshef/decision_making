@@ -223,10 +223,6 @@ class BehavioralGridState:
                 # Need to check if the augmented GFF was actually created
                 if relative_lane in lane_gff_dict:
                     extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
-
-                    # Log the fact that an augmented lane was created for debug purposes
-                    logger.debug(f"Augmented lane created for {relative_lane.name} starting on lane "
-                                 f"{lane_gff_dict[relative_lane].segment_ids[0]}.")
             else:
                 # Find station in the relative lane that is adjacent to the host's station in the lane it is occupying
                 host_station_in_adjacent_lane = \
