@@ -97,7 +97,7 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static_pg_spl
     assert dist_to_right == dist_to_left
 
 
-def test_getLookaheadFrenetFrameByCost_onEndingLane_PartialGFFCreated(scene_static_left_lane_ends, route_plan_1_2):
+def test_getGeneralizedFrenetFrameByCost_onEndingLane_PartialGFFCreated(scene_static_left_lane_ends, route_plan_1_2):
     """
     Make sure a partial GFF is created when the left lane suddenly ends
     :param scene_static_left_lane_ends:
@@ -117,7 +117,7 @@ def test_getLookaheadFrenetFrameByCost_onEndingLane_PartialGFFCreated(scene_stat
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Partial
 
 
-def test_getLookaheadFrenetFrameByCost_onFullLane_NormalGFFCreated(scene_static_right_lane_ends, route_plan_1_2):
+def test_getGeneralizedFrenetFrameByCost_onFullLane_NormalGFFCreated(scene_static_right_lane_ends, route_plan_1_2):
     SceneStaticModel.get_instance().set_scene_static(scene_static_right_lane_ends)
 
     starting_lon = 800
@@ -128,7 +128,7 @@ def test_getLookaheadFrenetFrameByCost_onFullLane_NormalGFFCreated(scene_static_
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFF_Type.Normal
 
 
-def test_getLookaheadFrenetFrameByCost_LeftSplitAugmentedGFFCreated(left_lane_split_scene_static, route_plan_1_2):
+def test_getGeneralizedFrenetFrameByCost_LeftSplitAugmentedGFFCreated(left_lane_split_scene_static, route_plan_1_2):
     SceneStaticModel.get_instance().set_scene_static(left_lane_split_scene_static)
 
     starting_lon = 700.
@@ -145,7 +145,7 @@ def test_getLookaheadFrenetFrameByCost_LeftSplitAugmentedGFFCreated(left_lane_sp
     assert np.array_equal(gff_dict[RelativeLane.LEFT_LANE].segment_ids, [11, 22])
 
 
-def test_getLookaheadFrenetFrameByCost_RightSplitAugmentedGFFCreated(right_lane_split_scene_static, route_plan_1_2):
+def test_getGeneralizedFrenetFrameByCost_RightSplitAugmentedGFFCreated(right_lane_split_scene_static, route_plan_1_2):
     SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static)
 
     starting_lon = 700.
@@ -162,7 +162,7 @@ def test_getLookaheadFrenetFrameByCost_RightSplitAugmentedGFFCreated(right_lane_
     assert np.array_equal(gff_dict[RelativeLane.RIGHT_LANE].segment_ids, [11, 20])
 
 
-def test_getLookaheadFrenetFrameByCost_LeftRightSplitAugmentedGFFsCreated(left_right_lane_split_scene_static, route_plan_1_2):
+def test_getGeneralizedFrenetFrameByCost_LeftRightSplitAugmentedGFFsCreated(left_right_lane_split_scene_static, route_plan_1_2):
     SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static)
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
 
@@ -184,7 +184,7 @@ def test_getLookaheadFrenetFrameByCost_LeftRightSplitAugmentedGFFsCreated(left_r
     assert gff_dict[RelativeLane.SAME_LANE].has_segment_id(21)
 
 
-def test_getLookaheadFrenetFrameByCost_CanAugmentButNoSplit_NoAugmentedCreated(scene_static_short_testable, route_plan_1_2):
+def test_getGeneralizedFrenetFrameByCost_CanAugmentButNoSplit_NoAugmentedCreated(scene_static_short_testable, route_plan_1_2):
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
     starting_lon = 700.
     starting_lane = 11
@@ -199,7 +199,7 @@ def test_getLookaheadFrenetFrameByCost_CanAugmentButNoSplit_NoAugmentedCreated(s
     assert RelativeLane.RIGHT_LANE not in gff_dict
 
 @patch('decision_making.src.utils.map_utils.MAX_FORWARD_HORIZON', 400)
-def test_getLookaheadFrenetFrameByCost_OffsetSplitsLeftFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_left_first,
+def test_getGeneralizedFrenetFrameByCost_OffsetSplitsLeftFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_left_first,
                                                                                   route_plan_lane_splits_on_left_and_right_left_first):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first)
     starting_lon = 10.
@@ -217,7 +217,7 @@ def test_getLookaheadFrenetFrameByCost_OffsetSplitsLeftFirst_BothAugmentedCreate
     assert np.array_equal(gff_dict[RelativeLane.RIGHT_LANE].segment_ids, [201, 211, 221, 230, 240])
 
 @patch('decision_making.src.utils.map_utils.MAX_FORWARD_HORIZON', 400)
-def test_getLookaheadFrenetFrameByCost_OffsetSplitsRightFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_right_first,
+def test_getGeneralizedFrenetFrameByCost_OffsetSplitsRightFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_right_first,
                                                                                    route_plan_lane_splits_on_left_and_right_right_first):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_right_first)
     starting_lon = 10.
@@ -235,10 +235,10 @@ def test_getLookaheadFrenetFrameByCost_OffsetSplitsRightFirst_BothAugmentedCreat
     assert np.array_equal(gff_dict[RelativeLane.RIGHT_LANE].segment_ids, [201, 211, 220, 230, 240])
 
 
-def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(
+def test_getGeneralizedFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(
         scene_static_pg_split, route_plan_20_30):
     """
-    test method get_lookahead_frenet_frame_by_cost:
+    test method get_generalized_frenet_frame_by_cost:
         the frame starts and ends on arbitrary points.
     verify that final length, offset of GFF and conversion of an arbitrary point are accurate
     """
@@ -270,9 +270,9 @@ def test_getLookaheadFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrentLa
 
 
 @patch('decision_making.src.utils.map_utils.MAX_FORWARD_HORIZON', 900)
-def test_getLookaheadFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
+def test_getGeneralizedFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
     """
-    Make sure that partial/augmentedPartial GFFS are created when the lookahead distance is set to be very far ahead
+    Make sure that partial/augmentedPartial GFFS are created when the forward horizon is set to be very far ahead
     :param left_right_lane_split_scene_static:
     :param route_plan_1_2_3:
     :return:
@@ -321,7 +321,7 @@ def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     assert is_augmented == False
 
 
-def test_advanceByCost_navPlanDoesNotFitMap_partialLookahead(scene_static_pg_split, route_plan_20_30):
+def test_advanceByCost_navPlanDoesNotFitMap_partialGeneralized(scene_static_pg_split, route_plan_20_30):
     """
     test the method _advance_by_cost
         add additional segment to nav_plan that does not exist on the map; validate a partial lookahead is done
@@ -398,7 +398,7 @@ def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg
         assert True
 
 
-def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialLookahead(scene_static_pg_split, route_plan_20_30):
+def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialGeneralized(scene_static_pg_split, route_plan_20_30):
     """
     test the method _advance_by_cost
         test exception for too short map but nav_plan is long enough; validate the relevant exception
