@@ -9,7 +9,6 @@ from decision_making.src.planning.behavioral.data_objects import ActionType, Agg
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y
 from decision_making.src.state.state import EgoState
 
-
 def plot_dynamics(log_file_path: str):
     """
     Plot various graphs concerning localization, BP and TP outputs
@@ -156,16 +155,17 @@ def plot_dynamics(log_file_path: str):
 
     ax1 = plt.subplot(5, 2, 1)
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
-    euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist)
+    other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx, '.-')
+    euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist, '.-')
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
     plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
+    plt.ticklabel_format(useOffset=False, style='plain')
     plt.grid(True)
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
-    other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
+    other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv, '.-')
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
     plt.legend([ego_sv_plot, other_sv_plot], ['ego_sv', 'other_sv'])
@@ -178,28 +178,29 @@ def plot_dynamics(log_file_path: str):
     plt.legend([ego_sa_plot], ['ego_sa'])
     plt.grid(True)
 
-    ax4 = plt.subplot(5, 2, 7, sharex=ax1)
-    plt.plot(recipe_time, recipe_action, color='g')
-    plt.plot(recipe_time, recipe_aggresiveness, color='m')
+    ax4 = plt.subplot(5, 2, 2, sharex=ax1)
+    plt.plot(recipe_time, recipe_action, '.-', color='g')
+    plt.plot(recipe_time, recipe_aggresiveness, '.-', color='m')
     plt.xlabel('time[s]')
-    plt.ylabel('recipe')
+    plt.ylabel('Chosen Recipe')
     y_values = [str(aggressiveness).split('.')[1].lower() for aggressiveness in AggressivenessLevel] + \
                [str(action).split('.')[1].lower() for action in ActionType if action != ActionType.OVERTAKE_VEHICLE]
     y_axis = np.arange(len(y_values))
     plt.yticks(y_axis, y_values)
+    plt.axhline(y=2.5, linewidth=1, color='k', linestyle='-')
     plt.grid(True)
 
-    ax5 = plt.subplot(5, 2, 9, sharex=ax1)
+    ax5 = plt.subplot(5, 2, 4, sharex=ax1)
     spec_t_plot,  = plt.plot(spec_time, spec_t, 'o-')
     spec_v_plot,  = plt.plot(spec_time, spec_v, 'o-')
     bp_no_actions_plot = plt.scatter(no_action_in_bp_timestamps, [1]*len(no_action_in_bp_timestamps), s=5, c='k')
 
     plt.xlabel('time[s]')
-    plt.ylabel('spec_time/spec_velocity')
+    plt.ylabel('Action Horizon\nTarget Velocity')
     plt.legend([spec_t_plot, spec_v_plot, bp_no_actions_plot], ['spec_t [s]', 'spec_v [m/s]', 'no_actions_bp'])
     plt.grid(True)
 
-    ax6 = plt.subplot(5, 2, 2, sharex=ax1)
+    ax6 = plt.subplot(5, 2, 9, sharex=ax1)
     bp_if_lon,  = plt.plot(bp_if_time, bp_if_lon_err, 'o-.')
     bp_if_lat,  = plt.plot(bp_if_time, bp_if_lat_err, 'o--')
     tp_if_lon,  = plt.plot(tp_if_time, tp_if_lon_err, 'o-.')
@@ -214,41 +215,42 @@ def plot_dynamics(log_file_path: str):
                ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
     plt.grid(True)
 
-    ax7 = plt.subplot(5, 2, 4, sharex=ax1)
-    for t, traj in zip(trajectory_time, trajectory):
-        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_X], '-.')
+    ax7 = plt.subplot(5, 2, 7, sharex=ax1)
+    ego_curv_plt, = plt.plot(timestamp_in_sec, ego_curv)
+    plt.legend([ego_curv_plt], ['curvature (cartesian)'])
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (x position)')
+    plt.ylabel('curvature [1/m]')
     plt.grid(True)
 
     ax8 = plt.subplot(5, 2, 6, sharex=ax1)
     for t, traj in zip(trajectory_time, trajectory):
+        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_X], '-.')
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_Y], '-.')
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (y position)')
+    plt.ylabel('location (x,y) requests \n(trajectory)')
     plt.grid(True)
 
     ax9 = plt.subplot(5, 2, 8, sharex=ax1)
-    ego_sv_plt, = plt.plot(timestamp_in_sec, ego_sv)
+    ego_sv_plt, = plt.plot(timestamp_in_sec, ego_sv, 'k-', alpha=0.2)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_V], '-.')
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (vel.)')
-    plt.legend([ego_sv_plt], ['BP'])
+    plt.ylabel('velocity requests\n(trajectory)')
+    plt.legend([ego_sv_plt], ['actual vel.'])
     plt.grid(True)
 
     ax10 = plt.subplot(5, 2, 10, sharex=ax1)
-    ego_sa_plt, = plt.plot(timestamp_in_sec, ego_sa)
+    ego_sa_plt, = plt.plot(timestamp_in_sec, ego_sa, 'k-', alpha=0.2)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_A], '-.')
     no_valid_traj_plot = plt.scatter(no_valid_traj_timestamps, [1]*len(no_valid_traj_timestamps), s=5, c='k')
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (acc.)')
-    plt.legend([ego_sa_plt, no_valid_traj_plot], ['BP', 'no_val_traj'])
+    plt.ylabel('acceleration requests\n(trajectory)')
+    plt.legend([ego_sa_plt, no_valid_traj_plot], ['actual acc.', 'no_valid_traj_tp'])
     plt.grid(True)
 
     return f
