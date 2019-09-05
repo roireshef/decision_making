@@ -90,4 +90,34 @@ def scene_static_merge_right():
 
     return scene
 
+@pytest.fixture()
+def scene_static_merge_left_right_to_center():
+    scene = short_testable_scene_static_mock()
+    # disconnect 12 from 22, add connection from 12 to 21
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_downstream_lanes = [LaneSegmentConnectivity(21, ManeuverType.STRAIGHT_CONNECTION)]
+
+    # disconnect 10 from 20, add connection from 10 to 21
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[2].as_downstream_lanes = [LaneSegmentConnectivity(21, ManeuverType.STRAIGHT_CONNECTION)]
+
+    # delete lanes 20 and 22, remove adjacents of 21
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].as_left_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].as_right_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].e_Cnt_left_adjacent_lane_count = 0
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].e_Cnt_right_adjacent_lane_count = 0
+
+    # add 12 and 10 to upstreams of 21
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].as_upstream_lanes.append([LaneSegmentConnectivity(10, ManeuverType.LEFT_MERGE_CONNECTION)])
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].as_upstream_lanes.append([LaneSegmentConnectivity(12, ManeuverType.RIGHT_MERGE_CONNECTION)])
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].e_Cnt_upstream_lane_count += 2
+
+    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[5]
+    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3]
+
+    scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 2
+
+    # delete 20 and 22 from road segment 2
+    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[1].a_i_lane_segment_ids = [21]
+    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[1].e_Cnt_lane_segment_id_count = 1
+
+    return scene
 

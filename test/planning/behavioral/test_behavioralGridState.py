@@ -6,7 +6,7 @@ from rte.python.logger.AV_logger import AV_Logger
 import numpy as np
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
     state_with_sorrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, \
-    state_with_object_after_merge
+    state_with_object_after_merge, state_with_objects_around_3to1_merge
 from decision_making.test.planning.custom_fixtures import route_plan_1_2
 
 
@@ -18,6 +18,18 @@ def test_createFromState_objectAfterMerge_objectAssignedToAllGffs(state_with_obj
     assert occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)][0].dynamic_object.obj_id == 1
     assert len(occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
     assert occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)][0].dynamic_object.obj_id == 1
+
+def test_createFromState_objectsAroundMerge_objectsCorrectlyAssigned(state_with_objects_around_3to1_merge, route_plan_1_2):
+    behavioral_state = BehavioralGridState.create_from_state(state_with_objects_around_3to1_merge, route_plan_1_2, None)
+
+    occupancy_grid = behavioral_state.road_occupancy_grid
+    assert len(occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
+    front_same_grid_ids = [item.dynamic_object.obj_id for item in occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]]
+    front_left_grid_ids = [item.dynamic_object.obj_id for item in occupancy_grid[(RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT)]]
+    front_right_grid_ids = [item.dynamic_object.obj_id for item in occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)]]
+    assert np.array_equal(np.sort(front_same_grid_ids), [1, 2, 3])
+    assert np.array_equal(np.sort(front_left_grid_ids), [1, 2, 4])
+    assert np.array_equal(np.sort(front_right_grid_ids), [1, 2, 5])
 
 
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects, route_plan_20_30):
