@@ -5,7 +5,8 @@ import numpy as np
 from decision_making.paths import Paths
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, EPS
 from decision_making.src.messages.scene_common_messages import Timestamp
-from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
+from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel, RelativeLane, \
+    RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y
 from decision_making.src.state.state import EgoState
 
@@ -52,6 +53,8 @@ def plot_dynamics(log_file_path: str):
     trajectory_time = []
     no_valid_traj_timestamps = []
     no_action_in_bp_timestamps = []
+    grid_times = []
+    lon_distances = []
 
     while True:
         text = f.readline()
@@ -94,6 +97,19 @@ def plot_dynamics(log_file_path: str):
                 ego_cx_cy = np.array(state_dict['ego_state']['_cached_cartesian_state']['array'][C_X: C_Y + 1])
                 other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
                 euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
+
+        if 'BehavioralGrid' in text:
+            behavioral_grid_str = text.split('BehavioralGrid at time')[1]
+            time = float(behavioral_grid_str.split(':')[0])
+            grid_str = behavioral_grid_str.split(':')[1]
+            grid = ast.literal_eval(grid_str)
+            front_cell = [RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT]
+            if front_cell in grid:
+                grid_times.append(time)
+                lon_distances.append(grid[front_cell])
+
+            grid_times.append(time)
+            lon_distances.append(grid)
 
         if 'Chosen behavioral action spec' in text:
             spec_str = text.split('Chosen behavioral action spec ')[1]

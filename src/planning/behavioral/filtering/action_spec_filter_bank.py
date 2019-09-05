@@ -79,6 +79,8 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
                 nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
                     ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
 
+        self.logger.debug("Current speed limit: %f" % MapUtils.get_lane(behavioral_state.ego_state.map_state.lane_id).e_v_nominal_speed)
+
         T = np.array([spec.t for spec in action_specs])
         return KinematicUtils.filter_by_velocity_limit(ctrajectories, nominal_speeds, T)
 

@@ -6,7 +6,8 @@ from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE, \
+    LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
@@ -85,6 +86,11 @@ class BehavioralGridState:
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
+
+        distances_grid = {cell: Tuple[obj[0].dynamic_object.obj_id, obj[0].longitudinal_distance]
+                          for cell, obj in multi_object_grid.items() if len(obj) > 0}
+        logger.debug("%s at time %f: %s" % (LOG_MSG_BEHAVIORAL_GRID, state.ego_state.timestamp_in_sec, distances_grid))
+
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
