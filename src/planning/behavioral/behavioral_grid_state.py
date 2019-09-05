@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import numpy as np
-import copy
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
