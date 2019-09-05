@@ -16,8 +16,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.utils.map_utils import MapUtils
 
 
-class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
-
+class MultiLaneActionSpecEvaluator(ActionSpecEvaluator):
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
@@ -47,11 +46,11 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                 len(action_recipes), len(action_specs))
 
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
-        current_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
+        current_lane_action_ind = MultiLaneActionSpecEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT))
-        left_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
+        left_lane_action_ind = MultiLaneActionSpecEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT))
-        right_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
+        right_lane_action_ind = MultiLaneActionSpecEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT))
 
         # The cost for each action is assigned so that the preferred policy would be:
@@ -85,9 +84,9 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
         ego_fpoint = behavioral_state.ego_state.map_state.lane_fstate[[FP_SX, FP_DX]]
 
-        dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
+        dist_to_backleft, safe_left_dist_behind_ego = MultiLaneActionSpecEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, lane_frenet, ego_fpoint, RelativeLane.LEFT_LANE)
-        dist_to_backright, safe_right_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
+        dist_to_backright, safe_right_dist_behind_ego = MultiLaneActionSpecEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, lane_frenet, ego_fpoint, RelativeLane.RIGHT_LANE)
 
         self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft,
