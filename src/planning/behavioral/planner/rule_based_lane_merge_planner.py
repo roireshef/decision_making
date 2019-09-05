@@ -1,9 +1,11 @@
+from logging import Logger
 from typing import Optional, List
 import numpy as np
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LON_ACC_LIMITS, VELOCITY_LIMITS, \
     EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, SPECIFICATION_HEADWAY, BP_ACTION_T_LIMITS
 
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState1D, LIMIT_MAX
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
@@ -44,13 +46,14 @@ class LaneMergeSequence:
         self.action_specs = action_specs
 
 
-class RuleBasedLaneMergePlanner:
+class RuleBasedLaneMergePlanner(BasePlanner):
 
     TIME_GRID_RESOLUTION = 0.2
     VEL_GRID_RESOLUTION = 0.5
     MAX_TARGET_S_ERROR = 0.5  # [m] maximal allowed error for actions' terminal s
 
-    def __init__(self, actions: List[LaneMergeSequence]):
+    def __init__(self, actions: List[LaneMergeSequence], logger: Logger):
+        super().__init__(logger)
         self.actions = actions
 
     @staticmethod

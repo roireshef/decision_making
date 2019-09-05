@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABCMeta
+from logging import Logger
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
@@ -19,19 +20,19 @@ class Planner:
 class Scenario:
     @staticmethod
     @abstractmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState) -> Planner:
+    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
         pass
 
 
 class DefaultScenario(Scenario):
     @staticmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState) -> Planner:
+    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
         return SingleStepBehavioralPlanner
 
 
 class LaneMergeScenario(Scenario):
     @staticmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState) -> Planner:
+    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
         lane_merge_state = LaneMergeState.build(state, behavioral_state)
         if lane_merge_state is None or len(lane_merge_state.actors) == 0:
             # if there is no lane merge ahead or the main road is empty, then perform the default strategy
@@ -40,14 +41,14 @@ class LaneMergeScenario(Scenario):
         # there is a merge ahead with cars on the main road
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
         lane_merge_actions = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
-        return RuleBasedLaneMergePlanner(lane_merge_actions) if len(lane_merge_actions) > 0 \
+        return RuleBasedLaneMergePlanner(lane_merge_actions, logger) if len(lane_merge_actions) > 0 \
             else RL_LaneMergePlanner(lane_merge_state)
 
 
 class ScenarioIdentifier:
 
     @staticmethod
-    def identify(behavioral_state: BehavioralGridState) -> Scenario:
+    def identify(behavioral_state: BehavioralGridState):
         """
         Given the current state, find the lane merge ahead and cars on the main road upstream the merge point.
         :param behavioral_state: current behavioral grid state

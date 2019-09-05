@@ -8,19 +8,19 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator_by_poli
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionsEvaluator
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
-    ScenarioParams, LaneMergeState, RuleBasedLaneMergeEvaluator
+    ScenarioParams, LaneMergeState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
     ActionSpec
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
-    CostBasedBehavioralPlanner
+from decision_making.src.planning.behavioral.planner.base_planner import \
+    BasePlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from logging import Logger
 from typing import Optional, List
 
 
-class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
+class SingleStepBehavioralPlanner(BasePlanner):
     """
     For each received current-state:
      1.A behavioral, semantic state is created and its value is approximated.
@@ -30,9 +30,10 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, action_space: ActionSpace, action_spec_validator: Optional[ActionSpecFiltering],
-                 predictor: EgoAwarePredictor, logger: Logger):
-        super().__init__(action_space, action_spec_validator, predictor, logger)
+    def __init__(self, action_space: ActionSpace, predictor: EgoAwarePredictor, logger: Logger):
+        super().__init__(logger)
+        self.default_action_space = action_space
+        self.predictor = predictor
 
     @prof.ProfileFunction()
     def plan(self, state: State, route_plan: RoutePlan):
@@ -52,11 +53,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         selected_action_index = valid_idxs[action_costs[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
 
-        trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
+        trajectory_parameters = BasePlanner._generate_trajectory_specs(
             behavioral_state=behavioral_state, action_spec=selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
-        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
+        baseline_trajectory = BasePlanner.generate_baseline_trajectory(
             state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 

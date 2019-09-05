@@ -2,6 +2,7 @@ import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
 from typing import Optional, List
@@ -16,32 +17,23 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
-from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
-from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
 
 
 @six.add_metaclass(ABCMeta)
-class CostBasedBehavioralPlanner(Planner):
-    def __init__(self, action_space: ActionSpace, action_spec_validator: Optional[ActionSpecFiltering],
-                 predictor: EgoAwarePredictor, logger: Logger):
-        self.default_action_space = action_space
-        self.action_spec_validator = action_spec_validator or ActionSpecFiltering(filters=None, logger=logger)
-        self.predictor = predictor
+class BasePlanner:
+    def __init__(self, logger: Logger):
+        self.action_spec_validator = ActionSpecFiltering(filters=None, logger=logger)
         self.logger = logger
-
-        self._last_action: Optional[ActionRecipe] = None
-        self._last_action_spec: Optional[ActionSpec] = None
 
     @abstractmethod
     def plan(self, state: State, route_plan: RoutePlan):
@@ -56,21 +48,6 @@ class CostBasedBehavioralPlanner(Planner):
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
         pass
-
-    @prof.ProfileFunction()
-    def _generate_terminal_states(self, state: State, behavioral_state: BehavioralGridState,
-                                  action_specs: List[ActionSpec], mask: np.ndarray, route_plan: RoutePlan) \
-            -> List[BehavioralGridState]:
-        """
-        Given current state and action specifications, generate a corresponding list of future states using the
-        predictor. Uses mask over list of action specifications to avoid unnecessary computation
-        :param state: the current world state
-        :param action_specs: list of action specifications
-        :param mask: 1D mask vector (boolean) for filtering valid action specifications
-        :return: a list of terminal states
-        """
-        # TODO: implement after M0
-        return [None] * len(action_specs)
 
     @staticmethod
     @prof.ProfileFunction()
@@ -93,8 +70,8 @@ class CostBasedBehavioralPlanner(Planner):
 
         # calculate trajectory cost_params using original goal map_state (from the map)
         goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
-                                                                       ego_size=ego.size)
+        cost_params = BasePlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
+                                                        ego_size=ego.size)
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
