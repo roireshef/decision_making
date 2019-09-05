@@ -89,6 +89,12 @@ class BehavioralPlanningFacade(DmModule):
 
             state.handle_negative_velocities()
 
+            if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count > 1:
+                self.logger.debug("Multiple localization hypotheses published for ego vehicle at timestamp: %f," +
+                                  " Number of Hypotheses: %d",
+                                  state.ego_state.timestamp_in_sec,
+                                  scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count)
+
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning

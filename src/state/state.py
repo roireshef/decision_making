@@ -358,11 +358,6 @@ class State(PUBSUB_MSG_IMPL):
                 # if route plan cost is not found for any host lanes, raise a warning and continue with the closest lane
                 logger.warning("Route plan cost not found for a host lane segment")
 
-        if len(host_hyp_lane_ids) > 1:
-            logger.debug("Number of localization hypotheses published for ego vehicle by SCENE_DYNAMIC is %d" +
-                         " with lane IDs: %s, selected hypothesis for planning is the lane ID: %d",
-                         len(host_hyp_lane_ids), host_hyp_lane_ids, host_hyp_lane_ids[selected_host_hyp_idx])
-
         if host_hyp_lane_ids[selected_host_hyp_idx] == 0:
             raise EgoStateLaneIdNotValid("Ego vehicle lane assignment is not valid")
 

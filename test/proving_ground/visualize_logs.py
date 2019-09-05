@@ -17,6 +17,8 @@ def plot_dynamics(log_file_path: str):
     :return: a showable matplotlib figure
     """
     f = open(log_file_path, 'r')
+    ego_hypothesis_num = []
+    multiple_ego_hypotheses_timestamp = []
     ego_cv = []
     ego_ca = []
     ego_curv = []
@@ -87,6 +89,12 @@ def plot_dynamics(log_file_path: str):
                 other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
                 euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
 
+        if 'Multiple localization hypotheses' in text:
+            ego_hypothesis_num.append(int(text.split('Number of Hypotheses: ')[1]))
+            multiple_ego_hypotheses_timestamp.append(float(text.split('at timestamp: ')[1].split(', Number of Hypotheses:')[0]))
+        else:
+            ego_hypothesis_num.append(1)
+
         if 'Chosen behavioral action spec' in text:
             spec_str = text.split('Chosen behavioral action spec ')[1]
             spec_dict = ast.literal_eval(spec_str.split(' (ego_timestamp: ')[0])
@@ -150,9 +158,10 @@ def plot_dynamics(log_file_path: str):
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
     other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
     euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist)
+    multiple_ego_hypotheses = plt.scatter(multiple_ego_hypotheses_timestamp, [100] * len(multiple_ego_hypotheses_timestamp), s=5, c='k')
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
-    plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
+    plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot, multiple_ego_hypotheses], ['ego_s', 'other_s', 'euclid_dist', 'multiple_ego_hypotheses'])
     plt.grid(True)
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
