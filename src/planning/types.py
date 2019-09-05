@@ -92,9 +92,9 @@ CRT_LEN = 6
 S5, S4, S3, S2, S1, S0, D5, D4, D3, D2, D1, D0 = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 
 ## ROUTE PLANNER ##
-# Cost to be in a lane while traversing a road segment
+# Cost to be in a lane while traversing a lane segment
 LaneOccupancyCost = float
-# Cost to be in a lane at the end of a road segment
+# Cost to be in a lane at the end of a lane segment
 LaneEndCost = float
 
 ## MISC ##

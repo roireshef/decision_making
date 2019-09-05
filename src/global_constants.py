@@ -232,7 +232,9 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 # Route Planner #
 LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 
-
+# Indices for the route plan cost tuple
+LANE_OCCUPANCY_COST_IND = 0
+LANE_END_COST_IND = 1
 
 # State #
 

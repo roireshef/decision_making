@@ -3,7 +3,7 @@ import numpy as np
 from logging import Logger
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoStateLaneIdNotValid
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
-    EGO_HEIGHT
+    EGO_HEIGHT, LANE_END_COST_IND
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
@@ -375,18 +375,14 @@ class State(PUBSUB_MSG_IMPL):
             # if there is no lane with STRAIGHT maneuver type or multiple lanes have STRAIGHT maneuver type (in lane change scenario),
             # the closest lane (smallest index) is chosen
             try:
-                lane_end_costs = [route_plan_dict[lane_id][1] for lane_id in host_hyp_lane_ids]
-                min_index = np.argwhere(lane_end_costs == np.min(lane_end_costs))
-                if len(min_index) > 1:
-
-                    maneuver_types = [MapUtils.get_lane_maneuver_type(host_hyp_lane_ids[idx[0]]) for idx in min_index]
+                lane_end_costs = [route_plan_dict[lane_id][LANE_END_COST_IND] for lane_id in host_hyp_lane_ids]
+                min_indices = np.argwhere(lane_end_costs == np.min(lane_end_costs))
+                selected_host_hyp_idx = min_indices[0][0]
+                if len(min_indices) > 1:
+                    maneuver_types = [MapUtils.get_lane_maneuver_type(host_hyp_lane_ids[idx[0]]) for idx in min_indices]
                     if ManeuverType.STRAIGHT_CONNECTION in maneuver_types:
-                        selected_host_hyp_idx = [min_index[idx][0] for idx in range(len(maneuver_types))
+                        selected_host_hyp_idx = [min_indices[idx][0] for idx in range(len(maneuver_types))
                                                  if maneuver_types[idx] == ManeuverType.STRAIGHT_CONNECTION][0]
-                    else:
-                        selected_host_hyp_idx = min_index[0][0]
-                else:
-                    selected_host_hyp_idx = min_index[0][0]
             except KeyError:
                 # if route plan cost is not found for any host lanes, raise a warning and continue with the closest lane
                 logger.warning("Route plan cost not found for a host lane segment")
