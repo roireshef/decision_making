@@ -203,10 +203,10 @@ class Math:
         """
 
         a, b, c = np.hsplit(p, 3)
-        b_over_2 = b * 0.5
-        discriminant = b_over_2 * b_over_2 - a * c
+        half_b = b * 0.5
+        discriminant = half_b * half_b - a * c
         valid_roots = np.where(discriminant >= 0)[0]
         roots = np.full((p.shape[0], 2), np.nan)
         sqrt_disc = np.sqrt(discriminant[valid_roots])
-        roots[valid_roots] = np.c_[-b_over_2[valid_roots] - sqrt_disc, -b_over_2[valid_roots] + sqrt_disc] / a[valid_roots]
+        roots[valid_roots] = np.c_[-half_b[valid_roots] - sqrt_disc, -half_b[valid_roots] + sqrt_disc] / a[valid_roots]
         return roots

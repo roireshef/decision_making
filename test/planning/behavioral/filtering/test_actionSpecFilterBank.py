@@ -150,7 +150,7 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
     # only look at the same lane, front cell actions
     actions_with_vehicle = follow_vehicle_recipes_towards_front_cells[3:6]
 
-    expected_filter_results = np.array([False, True, False], dtype=bool)
+    expected_filter_results = np.array([True, True, False], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
 
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,

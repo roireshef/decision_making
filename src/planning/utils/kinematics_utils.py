@@ -8,7 +8,6 @@ from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
-from typing import List
 
 
 class KinematicUtils:
@@ -38,34 +37,6 @@ class KinematicUtils:
         roots = Math.find_real_roots_in_limits(poly_diff[first_non_zero:], time_range)
 
         return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
-
-    @staticmethod
-    def calc_safety_margin(poly_host: np.array, poly_target: np.array, margin: float, time_range: Limits):
-        """
-        Given two s(t) longitudinal polynomials (one for host, one for target), this function calculates the minimal
-        headway over the whole trajectory specified by <time_range>.
-        :param poly_host: 1d numpy array - coefficients of host's polynomial s(t)
-        :param poly_target: 1d numpy array - coefficients of target's polynomial s(t)
-        :param margin: the minimal stopping distance to keep in meters (in addition to headway, highly relevant for stopping)
-        :param time_range: the relevant range of t for checking the polynomials, i.e. [0, T]
-        :return: minimal (on time axis) difference between min. safe distance and actual distance
-        """
-        # coefficients of host vehicle velocity v_h(t) of host
-        vel_poly = np.polyder(poly_host, 1)
-
-        # poly_diff is the polynomial of the distance between poly2 and poly1 with subtracting the required distance
-        poly_diff = poly_target - poly_host
-        poly_diff[-1] -= margin
-
-        suspected_times = np.linspace(time_range[0], time_range[1], 64)
-
-        # This calculates the margin in headway time by checking 64 points evenly spaced in the time range
-        # selects the time at which the headway time is minimal
-        distances = np.polyval(poly_diff, suspected_times)
-        velocities = np.polyval(vel_poly, suspected_times)
-        min_headway = np.min(distances / np.maximum(velocities, EPS))
-        #print('>>>>> d:', distances[::4], '\n v', velocities[::4], '\n headway', distances[::4] / np.maximum(velocities[::4], EPS))
-        return min_headway
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,

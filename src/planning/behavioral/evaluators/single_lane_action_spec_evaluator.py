@@ -3,16 +3,15 @@ from logging import Logger
 from typing import List
 
 import numpy as np
-from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, EPS, \
-    LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_CALM_DYNAMIC_ACTION, \
-    HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_STANDARD_DYNAMIC_ACTION
+from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, EPS, \
+    REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe, DynamicActionRecipe, RelativeLongitudinalPosition, AggressivenessLevel
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.planning.types import LAT_CELL, FS_SA, FS_SV, FS_DX, C_V, FS_SX
+from decision_making.src.planning.types import LAT_CELL, FS_SA, FS_SV, FS_DX, C_V, FS_SX, Limits
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
@@ -137,9 +136,9 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         calm_idx = np.where(aggr_levels == AggressivenessLevel.CALM.value)[0]
         standard_idx = np.where(aggr_levels == AggressivenessLevel.STANDARD.value)[0]
         aggr_idx = np.where(aggr_levels == AggressivenessLevel.AGGRESSIVE.value)[0]
-        if len(calm_idx) > 0 and min_headways[calm_idx[0]] > SAFETY_HEADWAY + HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_CALM_DYNAMIC_ACTION:
+        if len(calm_idx) > 0 and min_headways[calm_idx[0]] > REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION:
             chosen_level = calm_idx[0]
-        elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > SAFETY_HEADWAY + HEADWAY_MARGIN_OVER_SAFETY_TO_SELECT_STANDARD_DYNAMIC_ACTION:
+        elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION:
             chosen_level = standard_idx[0]
         else:
             chosen_level = -1  # the most aggressive
@@ -193,7 +192,34 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                      behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
 
             # calculate safety margin (on frenet longitudinal axis)
-            min_headway = KinematicUtils.calc_safety_margin(poly_s, target_poly_s, margin, np.array([0, spec.t]))
+            min_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_s, target_poly_s, margin, np.array([0, spec.t]))
             min_headways.append(min_headway)
 
         return min_headways
+
+    @staticmethod
+    def calc_minimal_headway_over_trajectory(poly_host: np.array, poly_target: np.array, margin: float, time_range: Limits):
+        """
+        Given two s(t) longitudinal polynomials (one for host, one for target), this function calculates the minimal
+        headway over the whole trajectory specified by <time_range>.
+        :param poly_host: 1d numpy array - coefficients of host's polynomial s(t)
+        :param poly_target: 1d numpy array - coefficients of target's polynomial s(t)
+        :param margin: the minimal stopping distance to keep in meters (in addition to headway, highly relevant for stopping)
+        :param time_range: the relevant range of t for checking the polynomials, i.e. [0, T]
+        :return: minimal (on time axis) difference between min. safe distance and actual distance
+        """
+        # coefficients of host vehicle velocity v_h(t) of host
+        vel_poly = np.polyder(poly_host, 1)
+
+        # poly_diff is the polynomial of the distance between poly2 and poly1 with subtracting the required distance
+        poly_diff = poly_target - poly_host
+        poly_diff[-1] -= margin
+
+        suspected_times = np.linspace(time_range[0], time_range[1], 64)
+
+        # This calculates the margin in headway time by checking 64 points evenly spaced in the time range
+        # selects the time at which the headway time is minimal
+        distances = np.polyval(poly_diff, suspected_times)
+        velocities = np.polyval(vel_poly, suspected_times)
+        min_headway = np.min(distances / np.maximum(velocities, EPS))
+        return min_headway

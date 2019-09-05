@@ -6,7 +6,7 @@ from typing import Optional, List, Type
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_DECEL, SLOW_DOWN_FACTOR
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe
@@ -170,7 +170,7 @@ class TargetActionSpace(ActionSpace):
         :return: target speed to set for the action
         """
         v_diff = v_T - v_0
-        mod_idx = np.where(v_diff < -0.1)[0]  # where the leading vehicle is slower than the ego
+        mod_idx = np.where(v_diff < CLOSE_TO_ZERO_NEGATIVE_VELOCITY)[0]  # where the leading vehicle is slower than the ego
         v_T_mod = v_T.copy()
         # Need to make sure the v_T is not too low, as this might cause it to be filtered by the kinematics filter due to too large decelaration.
         # Assume the ego starts at v_0 nad breaks at deceleration A. Calculate at what speed the leading vehicle should drive

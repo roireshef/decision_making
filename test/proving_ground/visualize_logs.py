@@ -9,6 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType, Agg
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y
 from decision_making.src.state.state import EgoState
 
+
 def plot_dynamics(log_file_path: str):
     """
     Plot various graphs concerning localization, BP and TP outputs
