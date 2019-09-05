@@ -317,6 +317,39 @@ class State(PUBSUB_MSG_IMPL):
         timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
 
+        selected_host_hyp_idx = State.select_ego_hypothesis(scene_dynamic, selected_gff_segment_ids, route_plan_dict, logger)
+
+        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
+                                 as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
+                                 lane_id=scene_dynamic.s_Data.s_host_localization.
+                                 as_host_hypothesis[selected_host_hyp_idx].e_i_lane_segment_id)
+
+        ego_state = EgoState(obj_id=0,
+                             timestamp=timestamp,
+                             cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
+                             map_state=ego_map_state,
+                             size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
+                             confidence=1.0, off_map=False)
+
+        dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
+                                          objects_localization=scene_dynamic.s_Data.as_object_localization,
+                                          timestamp=timestamp)
+
+        dynamic_objects = State.create_dyn_obj_list(dyn_obj_data)
+
+        return cls(False, occupancy_state, dynamic_objects, ego_state)
+
+    @staticmethod
+    def select_ego_hypothesis(scene_dynamic, selected_gff_segment_ids, route_plan_dict, logger):
+        """
+        selects the correct ego localization hypothesis among possible multiple hypotheses published by scene_dynamic
+        :param scene_dynamic: scene dynamic data
+        :param selected_gff_segment_ids: list of GFF segment ids for the last selected action
+        :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value
+        :param logger: Logging module
+        :return: index for the selected localization hypothesis
+        """
+
         selected_host_hyp_idx = 0
 
         host_hyp_lane_ids = [hyp.e_i_lane_segment_id
@@ -361,25 +394,7 @@ class State(PUBSUB_MSG_IMPL):
         if host_hyp_lane_ids[selected_host_hyp_idx] == 0:
             raise EgoStateLaneIdNotValid("Ego vehicle lane assignment is not valid")
 
-        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
-                                 as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
-                                 lane_id=scene_dynamic.s_Data.s_host_localization.
-                                 as_host_hypothesis[selected_host_hyp_idx].e_i_lane_segment_id)
-
-        ego_state = EgoState(obj_id=0,
-                             timestamp=timestamp,
-                             cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
-                             map_state=ego_map_state,
-                             size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0, off_map=False)
-
-        dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
-                                          objects_localization=scene_dynamic.s_Data.as_object_localization,
-                                          timestamp=timestamp)
-
-        dynamic_objects = State.create_dyn_obj_list(dyn_obj_data)
-
-        return cls(False, occupancy_state, dynamic_objects, ego_state)
+        return selected_host_hyp_idx
 
     @staticmethod
     def create_dyn_obj_list(dyn_obj_data: DynamicObjectsData) -> List[DynamicObject]:
