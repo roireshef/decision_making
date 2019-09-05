@@ -152,9 +152,12 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
 
     @staticmethod
     def _calc_minimal_headways(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[int]:
-        """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
-         of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
-         maintaining the required safety-headway + constant safety-margin"""
+        """
+        Calculate the minimal headway between ego and targets over the whole trajectory of the action.
+        :param action_specs: action specs, defining the trajectories.
+        :param behavioral_state: state of the world, from which the target state is extracted.
+        :return:
+        """
         # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
         # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
         relative_cells = [(spec.recipe.relative_lane,
