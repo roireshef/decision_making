@@ -20,7 +20,8 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
-    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle
+    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_merge_right
+from decision_making.test.planning.custom_fixtures import route_plan_1_2
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 NAVIGATION_PLAN = np.array(range(20, 30))
@@ -144,6 +145,36 @@ def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
                                                             size=car_size, confidence=1., off_map=False)
             dynamic_objects.append(dynamic_object)
             obj_id += 1
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
+def state_with_object_after_merge(route_plan_1_2: RoutePlan):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_merge_right())
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    # Ego state
+    ego_lane_lon = 850.
+    ego_vel = 10
+    ego_lane_id = 11
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+
+    dynamic_objects: List[DynamicObject] = list()
+    obj_id = 1
+    obj_lane_id = 20
+    obj_lane_lon = 0.
+    obj_vel = 10
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
+    dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
+                                                    size=car_size, confidence=1., off_map=False)
+    dynamic_objects.append(dynamic_object)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 

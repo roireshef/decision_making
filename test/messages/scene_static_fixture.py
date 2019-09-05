@@ -5,6 +5,7 @@ from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, PG_P
     ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME
 from decision_making.paths import Paths
 
+from decision_making.src.messages.scene_static_message import MapRoadSegmentType, LaneSegmentConnectivity, ManeuverType
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
 
 NUM_LANES = 3
@@ -71,3 +72,22 @@ def short_testable_scene_static_mock():
                                                             num_lanes=NUM_LANES,
                                                             lane_width=LANE_WIDTH,
                                                             points_of_roads=road_coordinates)
+
+@pytest.fixture()
+def scene_static_merge_right():
+    scene = short_testable_scene_static_mock()
+    # disconnect 11 from 21, add connection to 20
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes = [LaneSegmentConnectivity(20, ManeuverType.STRAIGHT_CONNECTION)]
+    # add upstream connection from 20 to 11
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_upstream_lanes.append(LaneSegmentConnectivity(11, ManeuverType.STRAIGHT_CONNECTION))
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_Cnt_upstream_lane_count += 1
+    # remove adjacent lanes from 20
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_left_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_Cnt_left_adjacent_lane_count = 0
+    # delete lane 21
+    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4]
+    scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
+
+    return scene
+
+

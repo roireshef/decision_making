@@ -1,11 +1,24 @@
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
 from rte.python.logger.AV_logger import AV_Logger
 import numpy as np
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    state_with_sorrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30
+    state_with_sorrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, \
+    state_with_object_after_merge
+from decision_making.test.planning.custom_fixtures import route_plan_1_2
+
+
+def test_createFromState_objectAfterMerge_objectAssignedToAllGffs(state_with_object_after_merge, route_plan_1_2):
+    behavioral_state = BehavioralGridState.create_from_state(state_with_object_after_merge, route_plan_1_2, None)
+    # check to see if the road occupancy grid contains the actor for both same_lane and right_lane
+    occupancy_grid = behavioral_state.road_occupancy_grid
+    assert len(occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
+    assert occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)][0].dynamic_object.obj_id == 1
+    assert len(occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
+    assert occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)][0].dynamic_object.obj_id == 1
+
 
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects, route_plan_20_30):
     """
@@ -57,9 +70,3 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
             map_state.lane_fstate, map_state.lane_id)
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
 
-def test_createFromState_objLaneIdInMultipleGFFs_assignedToAll():
-    """
-    TODO: Create this test once Augmented GFFS are brought in
-    :return:
-    """
-    pass

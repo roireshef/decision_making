@@ -109,7 +109,7 @@ class BehavioralGridState:
         on_map_dynamic_objects = np.array([obj for obj in dynamic_objects if not obj.off_map])
 
         # calculate objects' segment map_states
-        object_map_states = [obj.map_state for obj in on_map_dynamic_objects]
+        object_map_states = np.array([obj.map_state for obj in on_map_dynamic_objects])
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
@@ -127,10 +127,12 @@ class BehavioralGridState:
             # invert <unassigned_obj_mask> instead of recalculating since rel_lanes_per_obj has been changed
             previously_assigned_obj_indices = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
             if len(previously_assigned_obj_indices) > 0:
-                duplicate_objs = copy.deepcopy(on_map_dynamic_objects[previously_assigned_obj_indices])
+                duplicate_objs = np.array([copy.deepcopy(obj) for obj in on_map_dynamic_objects[previously_assigned_obj_indices]])
+                duplicate_objs_map_states = np.array([copy.deepcopy(map_state) for map_state in object_map_states[previously_assigned_obj_indices]])
                 # append duplicate objs and the current lane to the list of objs and lanes
-                np.append(on_map_dynamic_objects, duplicate_objs)
-                np.append(rel_lanes_per_obj, [rel_lane] * len(duplicate_objs))
+                on_map_dynamic_objects = np.concatenate([on_map_dynamic_objects, duplicate_objs])
+                rel_lanes_per_obj = np.concatenate([rel_lanes_per_obj, [rel_lane] * len(duplicate_objs)])
+                object_map_states = np.concatenate([object_map_states, duplicate_objs_map_states])
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
