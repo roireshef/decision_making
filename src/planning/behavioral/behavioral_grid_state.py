@@ -87,9 +87,14 @@ class BehavioralGridState:
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
 
-        distances_grid = {cell: Tuple[obj[0].dynamic_object.obj_id, obj[0].longitudinal_distance]
-                          for cell, obj in multi_object_grid.items() if len(obj) > 0}
-        logger.debug("%s at time %f: %s" % (LOG_MSG_BEHAVIORAL_GRID, state.ego_state.timestamp_in_sec, distances_grid))
+        front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        if front_cell in multi_object_grid and len(multi_object_grid[front_cell]) > 0:
+            front_obj = multi_object_grid[front_cell][0].dynamic_object
+            front_obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
+            logger.debug("%s: time %f, dist_to_front_obj %f front_obj: %s" %
+                         (LOG_MSG_BEHAVIORAL_GRID, state.ego_state.timestamp_in_sec, front_obj_dist, front_obj))
+        logger.debug("Current speed limit at time %f: %f" %
+                     (state.ego_state.timestamp_in_sec, MapUtils.get_lane(state.ego_state.map_state.lane_id).e_v_nominal_speed))
 
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
