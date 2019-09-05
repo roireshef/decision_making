@@ -10,7 +10,7 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_L
     LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX, FrenetState2D
+from decision_making.src.planning.types import FS_SX, FrenetState2D, C_V
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
@@ -91,8 +91,9 @@ class BehavioralGridState:
         if front_cell in multi_object_grid and len(multi_object_grid[front_cell]) > 0:
             front_obj = multi_object_grid[front_cell][0].dynamic_object
             front_obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
-            logger.debug("%s: time %f, dist_to_front_obj %f front_obj: %s" %
-                         (LOG_MSG_BEHAVIORAL_GRID, state.ego_state.timestamp_in_sec, front_obj_dist, front_obj))
+            logger.debug("%s: time %f, front_obj: (%d, %f, %f) " %
+                         (LOG_MSG_BEHAVIORAL_GRID, state.ego_state.timestamp_in_sec, front_obj.obj_id,
+                          front_obj.cartesian_state[C_V], front_obj_dist))
         logger.debug("Current speed limit at time %f: %f" %
                      (state.ego_state.timestamp_in_sec, MapUtils.get_lane(state.ego_state.map_state.lane_id).e_v_nominal_speed))
 

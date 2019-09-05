@@ -5,8 +5,7 @@ import numpy as np
 from decision_making.paths import Paths
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, EPS
 from decision_making.src.messages.scene_common_messages import Timestamp
-from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel, RelativeLane, \
-    RelativeLongitudinalPosition
+from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y
 from decision_making.src.state.state import EgoState
 
@@ -80,13 +79,12 @@ def plot_dynamics(log_file_path: str):
         if 'BehavioralGrid' in text:
             behavioral_grid_str = text.split('BehavioralGrid: time')[1]
             time = float(behavioral_grid_str.split(', ')[0])
-            dist_to_front = float(behavioral_grid_str.split('dist_to_front_obj ')[1].split('front_obj')[0])
-            front_obj_str = behavioral_grid_str.split('front_obj: ')[1]
-            front_obj = ast.literal_eval(front_obj_str)
+            obj_id_str, obj_vel_str, obj_dist_str = behavioral_grid_str.split('front_obj: (')[1].split(')')[0].split(',')
+            obj_id, obj_vel, obj_dist = int(obj_id_str), float(obj_vel_str), float(obj_dist_str)
             other_times.append(time)
-            other_ids.append(front_obj['obj_id'])
-            other_dists.append(dist_to_front)
-            other_vels.append(front_obj['_cached_cartesian_state']['array'][C_V])
+            other_ids.append(obj_id)
+            other_vels.append(obj_vel)
+            other_dists.append(obj_dist)
 
         if 'Chosen behavioral action spec' in text:
             spec_str = text.split('Chosen behavioral action spec ')[1]
@@ -149,16 +147,17 @@ def plot_dynamics(log_file_path: str):
 
     ax1 = plt.subplot(5, 2, 1)
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    longitudinal_dist_plot, = plt.plot(other_times, other_dists, '.-')
+    longitudinal_dist_plot, = plt.plot(other_times, other_dists)
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
     plt.legend([ego_sx_plot, longitudinal_dist_plot], ['ego_s', 'longitudinal_dist'])
     other_times, other_ids, other_dists = np.array(other_times, dtype=float), np.array(other_ids, dtype=int), np.array(other_dists, dtype=float)
     switch_idx = np.where(other_ids[:-1] - other_ids[1:] != 0)[0] + 1
     if len(switch_idx) > 0:
+        switch_idx = np.concatenate(([0], switch_idx))
         plt.scatter(other_times[switch_idx], other_dists[switch_idx], marker='o', c=longitudinal_dist_plot.get_color())
         for idx in switch_idx:
-            plt.annotate(str(idx), (other_times[idx], other_dists[idx]))
+            plt.annotate(str(other_ids[idx]), (other_times[idx], other_dists[idx]))
     plt.ticklabel_format(useOffset=False, style='plain')
     plt.grid(True)
 
