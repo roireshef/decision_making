@@ -1,6 +1,7 @@
 import numpy as np
-from decision_making.src.planning.behavioral.rule_based_lane_merge import LaneMergeState, ActorState, \
-    RuleBasedLaneMerge, ScenarioParams, RuleBasedLaneMergeEvaluator
+from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
+    ScenarioParams, RuleBasedLaneMergeEvaluator
+from decision_making.src.state.lane_merge_state import LaneMergeState, ActorState
 from decision_making.src.state.state import ObjectSize
 from unittest.mock import patch
 
@@ -13,7 +14,7 @@ def test_createSafeMergeActions_useMaxVel():
     actor2 = ActorState(ego_size, np.array([0, 20, 0]))
     actors = [actor1, actor2]
     state = LaneMergeState(ego_fstate, ego_size, actors, merge_point_red_line_dist=20, merge_point_s_in_gff=200)
-    lane_merge_actions, action_specs = RuleBasedLaneMerge.create_safe_actions(
+    lane_merge_actions, action_specs = RuleBasedLaneMergePlanner.create_safe_actions(
         state, ScenarioParams(worst_case_back_car_accel=0, worst_case_front_car_decel=3))
     assert len(lane_merge_actions) > 0
     final_v = np.array([action.action_specs[-1].v_T for action in lane_merge_actions])
@@ -29,7 +30,7 @@ def test_createSafeMergeActions_useStop():
     actor2 = ActorState(ego_size, np.array([-30., 20., 0.]))
     actors = [actor1, actor2]
     state = LaneMergeState(ego_fstate, ego_size, actors, merge_point_red_line_dist=20., merge_point_s_in_gff=200.)
-    lane_merge_actions, action_specs = RuleBasedLaneMerge.create_safe_actions(
+    lane_merge_actions, action_specs = RuleBasedLaneMergePlanner.create_safe_actions(
         state, ScenarioParams(worst_case_back_car_accel=0, worst_case_front_car_decel=0))
     assert len(action_specs) > 0
     costs = RuleBasedLaneMergeEvaluator.evaluate(lane_merge_actions)

@@ -4,8 +4,7 @@ from logging import Logger
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from typing import List
 
-from decision_making.src.planning.behavioral.rule_based_lane_merge import LaneMergeState
-
+from decision_making.src.state.lane_merge_state import LaneMergeState
 from ray.rllib.policy.sample_batch import SampleBatch
 
 

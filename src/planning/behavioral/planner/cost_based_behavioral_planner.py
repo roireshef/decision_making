@@ -32,7 +32,7 @@ from decision_making.src.utils.map_utils import MapUtils
 
 
 @six.add_metaclass(ABCMeta)
-class CostBasedBehavioralPlanner:
+class CostBasedBehavioralPlanner(Planner):
     def __init__(self, action_space: ActionSpace, action_spec_validator: Optional[ActionSpecFiltering],
                  predictor: EgoAwarePredictor, logger: Logger):
         self.default_action_space = action_space

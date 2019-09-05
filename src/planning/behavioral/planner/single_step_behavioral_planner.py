@@ -7,14 +7,13 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.evaluators.action_evaluator_by_policy import LaneMergeRLPolicy
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionsEvaluator
-from decision_making.src.planning.behavioral.rule_based_lane_merge import RuleBasedLaneMerge, ScenarioParams, \
-    LaneMergeState, RuleBasedLaneMergeEvaluator
+from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
+    ScenarioParams, LaneMergeState, RuleBasedLaneMergeEvaluator
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
     ActionSpec
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
-from decision_making.src.planning.types import FS_SX
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from logging import Logger
@@ -93,7 +92,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # there is a merge ahead with cars on the main road
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        lane_merge_actions, action_specs = RuleBasedLaneMerge.create_safe_actions(lane_merge_state, ScenarioParams())
+        lane_merge_actions, action_specs = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
         action_costs = RuleBasedLaneMergeEvaluator.evaluate(lane_merge_actions)
         if len(lane_merge_actions) > 0:  # then the safe lane merge was found
             return action_specs, action_costs
