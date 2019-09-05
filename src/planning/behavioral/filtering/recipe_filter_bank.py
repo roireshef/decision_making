@@ -3,7 +3,8 @@ from typing import List
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe
+    RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe, \
+    RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.utils.map_utils import MapUtils
 
@@ -39,12 +40,19 @@ class FilterOvertakeActions(RecipeFilter):
 
 
 class FilterActionsTowardsCellsWithoutStopSignsOrStopBars(RecipeFilter):
-    def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [len(MapUtils.get_stop_bar_and_stop_sign(
             behavioral_state.extended_lane_frames[recipe.relative_lane])) > 0
                 if ((recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames))
                 else False
                 for recipe in recipes]
+
+
+class FilterRoadSignActions(RecipeFilter):
+    """ The purpose of this filter is to temporarily disable the stop for geo location feature """
+    def filter(self, recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.action_type != ActionType.FOLLOW_ROAD_SIGN
+                if recipe is not None else False for recipe in recipes]
 
 
 # General ActionRecipe Filters
