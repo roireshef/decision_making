@@ -5,7 +5,7 @@ from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
-from decision_making.src.exceptions import MappingException
+from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
@@ -224,9 +224,28 @@ class BehavioralGridState:
                 if relative_lane in lane_gff_dict:
                     extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
             else:
-                # Find station in the relative lane that is adjacent to the host's station in the lane it is occupying
-                host_station_in_adjacent_lane = \
-                    MapUtils.get_lane_frenet_frame(closest_lanes_dict[relative_lane]).cpoint_to_fpoint(host_cartesian_point)[FP_SX]
+                try:
+                    # Find station in the relative lane that is adjacent to the host's station in the lane it is occupying
+                    adjacent_lane_frenet_frame = MapUtils.get_lane_frenet_frame(closest_lanes_dict[relative_lane])
+                    host_station_in_adjacent_lane = adjacent_lane_frenet_frame.cpoint_to_fpoint(host_cartesian_point)[FP_SX]
+
+                except OutOfSegmentBack:
+                    # The host's position on the adjacent lane could not be found because the frame is ahead of the host. This may happen
+                    # as the host is transitioning between road segments. The host should be close to the beginning of the road segment
+                    # though so the initial station is used here.
+                    host_station_in_adjacent_lane = 0.0
+
+                    # TODO: Should we check the actual distance from the host to the first point on the frame and do something if the
+                    #  distance is too large?
+
+                except OutOfSegmentFront:
+                    # The host's position on the adjacent lane could not be found because the frame is behind the host. This may happen
+                    # as the host is transitioning between road segments. The host should be close to the end of the road segment
+                    # though so the max station is used here.
+                    host_station_in_adjacent_lane = adjacent_lane_frenet_frame.s_max
+
+                    # TODO: Should we check the actual distance from the host to the last point on the frame and do something if the
+                    #  distance is too large?
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
