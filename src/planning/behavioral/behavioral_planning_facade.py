@@ -87,7 +87,7 @@ class BehavioralPlanningFacade(DmModule):
                                                           route_plan_dict=route_plan_dict,
                                                           logger=self.logger)
 
-            state.handle_negative_velocities()
+            state.handle_negative_velocities(self.logger)
 
             if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count > 1:
                 self.logger.debug("Multiple localization hypotheses published for ego vehicle at timestamp: %f," +

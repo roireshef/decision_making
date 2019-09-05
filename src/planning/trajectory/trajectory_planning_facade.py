@@ -82,7 +82,7 @@ class TrajectoryPlanningFacade(DmModule):
             state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                           selected_gff_segment_ids=params.reference_route.segment_ids,
                                                           logger=self.logger)
-            state.handle_negative_velocities()
+            state.handle_negative_velocities(self.logger)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 

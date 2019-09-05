@@ -276,20 +276,21 @@ class State(PUBSUB_MSG_IMPL):
         selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id in target_obj_ids]
         return selected_objects
 
-    def handle_negative_velocities(self) -> None:
+    def handle_negative_velocities(self, logger) -> None:
         """
         Handles cases of ego state or dynamic objects with negative velocities.
         It modifies their velocities so they will equal zero and writes a warning in the log.
+        :param logger: Logging module
         :return: None
         """
         if self.ego_state.cartesian_state[C_V] < 0:
             self.ego_state.cartesian_state[C_V] = 0
             self.ego_state.map_state.lane_fstate[FS_SV] = 0
-            self.logger.warning('Ego was received with negative velocity %f' % self.ego_state.cartesian_state[C_V])
+            logger.warning('Ego was received with negative velocity %f' % self.ego_state.cartesian_state[C_V])
         elif self.ego_state.cartesian_state[C_V] == 0 and self.ego_state.cartesian_state[C_A] < 0:
             self.ego_state.cartesian_state[C_A] = 0
             self.ego_state.map_state.lane_fstate[FS_SA] = 0
-            self.logger.warning(
+            logger.warning(
                 'Ego was received with zero velocity and negative acceleration %f' % self.ego_state.cartesian_state[
                     C_A])
 
@@ -297,7 +298,7 @@ class State(PUBSUB_MSG_IMPL):
             if self.dynamic_objects[i].cartesian_state[C_V] < 0:
                 self.dynamic_objects[i].cartesian_state[C_V] = 0
                 self.dynamic_objects[i].map_state.lane_fstate[FS_SV] = 0
-                self.logger.warning(
+                logger.warning(
                     'Dynamic object with obj_id %s was received with negative velocity %f',
                     self.dynamic_objects[i].obj_id, self.dynamic_objects[i].cartesian_state[C_V])
 
