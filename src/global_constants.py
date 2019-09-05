@@ -127,7 +127,7 @@ MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
 TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
 
 # Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the speed reduction of the target for the action spec
-SLOW_DOWN_FACTOR = 1
+SLOW_DOWN_FACTOR = 0.5
 # Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the lower bound on the speed
 # reduction of the target for the action spec. Set to a lower value to account for the fact that deceleration is not immediate
 MAX_DECEL = - LON_ACC_LIMITS[0] - 1
