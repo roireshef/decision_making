@@ -107,6 +107,9 @@ class BehavioralPlanningFacade(DmModule):
             # Send visualization data
             self._publish_visualization(behavioral_visualization_message)
 
+            self.logger.debug("Current speed limit at time %f: %f" %
+                              (state.ego_state.timestamp_in_sec, MapUtils.get_lane(state.ego_state.map_state.lane_id).e_v_nominal_speed))
+
             self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
 
             MetricLogger.get_logger().report()
