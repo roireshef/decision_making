@@ -361,6 +361,9 @@ class BehavioralGridState:
         lane_frame = MapUtils.get_lane_frenet_frame(lane_id)
         bbox = dynamic_object.bounding_box()
 
+        # add center of vehicle to the list of points being considered
+        bbox = np.vstack((bbox, [dynamic_object.x, dynamic_object.y]))
+
         nominal_path_coords = np.array([np.array([nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value],
                                          nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value]])
                                for nominal in MapUtils.get_lane_geometry(lane_id).a_nominal_path_points])

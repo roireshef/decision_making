@@ -114,7 +114,7 @@ def test_createMirrorObjects_laneSplit_carNotInOverlap(scene_static_short_testab
 
 def test_isObjectInLane_carOnLaneLine(scene_static_short_testable: SceneStatic):
     """
-
+    Tests the method is_object_in_lane. Places a car in lane 11, shifted 1.5 meters left from lane 11's nominal points.
     :param scene_static_short_testable:
     :return:
     """
@@ -122,10 +122,35 @@ def test_isObjectInLane_carOnLaneLine(scene_static_short_testable: SceneStatic):
 
     # Create car in lane 11 which is offset 1.5 meters to the left
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1.0,1,0,1.5,0,0]), 11),
-                                                  size=ObjectSize(1,1,1), confidence=1, off_map=False)
+                                                  size=ObjectSize(4,1.5,1), confidence=1, off_map=False)
 
     assert BehavioralGridState.is_object_in_lane(dyn_obj, 11) == True
     assert BehavioralGridState.is_object_in_lane(dyn_obj, 12) == True
     assert BehavioralGridState.is_object_in_lane(dyn_obj, 10) == False
 
-    
+def test_isObjectInLane_carInSingleLane(scene_static_short_testable: SceneStatic):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+
+    # Create car in lane 11
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1.0,1,0,0,0,0]), 11),
+                                                  size=ObjectSize(1,1,1), confidence=1, off_map=False)
+
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 11) == True
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 12) == False
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 10) == False
+
+def test_isObjectInLane_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+    """
+    Validate that projected object is correctly placed in overlapping lane
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
+
+    # Create other car in lane 21, which overlaps with lane 22
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
+                                                  map_state=MapState(np.array([1,1,0,0,0,0]), 19670532),
+                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 19670532) == True
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 19670533) == True
+
+
