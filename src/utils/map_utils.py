@@ -260,8 +260,11 @@ class MapUtils:
         """
         upstream_lane = MapUtils.get_upstream_lanes(lane_id)[0]
         downstream_connectivity = MapUtils.get_lane(upstream_lane).as_downstream_lanes
-        return [connectivity.e_e_maneuver_type for connectivity in downstream_connectivity if
-                connectivity.e_i_lane_segment_id == lane_id][0]
+        connectivity = [connectivity.e_e_maneuver_type for connectivity in downstream_connectivity if
+                        connectivity.e_i_lane_segment_id == lane_id]
+        assert len(connectivity) == 1, "connectivity from upstream lane %s to lane %s was supposed to be 1-to-1" + \
+                                       "connection but got %s instances" % (upstream_lane, lane_id, len(connectivity))
+        return connectivity[0]
 
     @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:

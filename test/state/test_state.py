@@ -88,7 +88,7 @@ def test_createStateFromSceneDyamic_threeHostHypotheses_correctHostLocalization(
     assert state.ego_state.map_state.lane_id == 2244100
 
 
-def test_createStateFromSceneDyamic_noGFFavailable_correctHostLocalization(pubsub: PubSub,
+def test_createStateFromSceneDyamic_noGFFDifferentEndCosts_correctHostLocalization(pubsub: PubSub,
                                                                                 scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic

@@ -7,7 +7,7 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESO
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, TypeVar
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 from decision_making.src.messages.scene_static_enums import ManeuverType
@@ -214,6 +214,9 @@ class EgoState(DynamicObject):
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map)
 
 
+T = TypeVar('T', bound='State')
+
+
 class State(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
     occupancy_state = OccupancyState
@@ -221,8 +224,8 @@ class State(PUBSUB_MSG_IMPL):
     ego_state = EgoState
     is_sampled = bool
 
-    def __init__(self, is_sampled, occupancy_state, dynamic_objects, ego_state):
-        # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> None
+    def __init__(self, is_sampled: bool, occupancy_state: OccupancyState,
+                 dynamic_objects: List[DynamicObject], ego_state: EgoState) -> None:
         """
         main class for the world state. deep copy is required by self.clone_with!
         :param is_sampled: indicates if this state is sampled from a trajectory (and wasn't received from scene_dynamic)
@@ -235,8 +238,8 @@ class State(PUBSUB_MSG_IMPL):
         self.dynamic_objects = dynamic_objects
         self.ego_state = ego_state
 
-    def clone_with(self, is_sampled=None, occupancy_state=None, dynamic_objects=None, ego_state=None):
-        # type: (bool, OccupancyState, List[DynamicObject], EgoState) -> State
+    def clone_with(self, is_sampled: bool = None, occupancy_state: OccupancyState = None,
+                   dynamic_objects: List[DynamicObject] = None, ego_state: EgoState = None) -> T:
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
@@ -248,8 +251,7 @@ class State(PUBSUB_MSG_IMPL):
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod
-    def get_object_from_state(cls, state, target_obj_id):
-        # type: (State, int) -> DynamicObject
+    def get_object_from_state(cls, state: T, target_obj_id: int) -> DynamicObject:
         """
         Return the object with specific obj_id from world state
         :param state: the state to query
@@ -265,8 +267,7 @@ class State(PUBSUB_MSG_IMPL):
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod
-    def get_objects_from_state(cls, state, target_obj_ids):
-        # type: (State, List) -> List[DynamicObject]
+    def get_objects_from_state(cls, state: T, target_obj_ids: List[int]) -> List[DynamicObject]:
         """
         Returns a list of object with the specific obj_ids from state
         :param state: the state to query
@@ -276,7 +277,7 @@ class State(PUBSUB_MSG_IMPL):
         selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id in target_obj_ids]
         return selected_objects
 
-    def handle_negative_velocities(self, logger) -> None:
+    def handle_negative_velocities(self, logger: Logger) -> None:
         """
         Handles cases of ego state or dynamic objects with negative velocities.
         It modifies their velocities so they will equal zero and writes a warning in the log.
@@ -303,22 +304,27 @@ class State(PUBSUB_MSG_IMPL):
                     self.dynamic_objects[i].obj_id, self.dynamic_objects[i].cartesian_state[C_V])
 
     @classmethod
-    def create_state_from_scene_dynamic(cls, scene_dynamic, selected_gff_segment_ids,
-                                        logger, route_plan_dict=None):
-        # type: (SceneDynamic, np.ndarray, Logger, Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]]) -> State
+    def create_state_from_scene_dynamic(cls, scene_dynamic: SceneDynamic,
+                                        selected_gff_segment_ids: np.ndarray,
+                                        logger: Logger,
+                                        route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None):
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic: scene dynamic data
-        :param selected_gff_segment_ids: list of GFF segment ids for the last selected action
-        :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value
+        :param selected_gff_segment_ids: list of GFF segment ids for last or current BP action. If this method is called
+               from inside BP, the parameter refers to the last chosen BP action, while it refers to current BP action
+               if called from inside TP
         :param logger: Logging module
+        :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value.
+               Note that it is an optional argument and is used only when the method is called from inside BP and the
+               previous BP action is not available, e.g., at the beginning of the planning time.
         :return: valid State class
         """
 
         timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
 
-        selected_host_hyp_idx = State.select_ego_hypothesis(scene_dynamic, selected_gff_segment_ids, route_plan_dict, logger)
+        selected_host_hyp_idx = State.select_ego_hypothesis(scene_dynamic, selected_gff_segment_ids, logger, route_plan_dict)
 
         ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.
                                  as_host_hypothesis[selected_host_hyp_idx].a_lane_frenet_pose,
@@ -341,14 +347,21 @@ class State(PUBSUB_MSG_IMPL):
         return cls(False, occupancy_state, dynamic_objects, ego_state)
 
     @staticmethod
-    def select_ego_hypothesis(scene_dynamic, selected_gff_segment_ids, route_plan_dict, logger):
+    def select_ego_hypothesis(scene_dynamic: SceneDynamic,
+                              selected_gff_segment_ids: np.ndarray,
+                              logger: Logger,
+                              route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]]) -> int:
         """
         selects the correct ego localization hypothesis among possible multiple hypotheses published by scene_dynamic
         :param scene_dynamic: scene dynamic data
-        :param selected_gff_segment_ids: list of GFF segment ids for the last selected action
-        :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value
+        :param selected_gff_segment_ids: list of GFF segment ids for last or current BP action. If this method is called
+               from inside BP, the parameter refers to the last chosen BP action, while it refers to current BP action
+               if called from inside TP
         :param logger: Logging module
-        :return: index for the selected localization hypothesis
+        :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value.
+               Note that it is an optional argument and is used only when the method is called from inside BP and the
+               previous BP action is not available, e.g., at the beginning of the planning time.
+        :return: index for the selected localization hypothesis.
         """
 
         selected_host_hyp_idx = 0
