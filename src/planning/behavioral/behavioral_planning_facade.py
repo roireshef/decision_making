@@ -27,7 +27,9 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
+from decision_making.src.planning.behavioral.scenario_identifier import ScenarioIdentifier
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV
@@ -102,8 +104,16 @@ class BehavioralPlanningFacade(DmModule):
 
             self._publish_takeover(takeover_message)
 
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
-                                                                                                           route_plan)
+            # create road semantic grid from the raw State object
+            # behavioral_state contains road_occupancy_grid and ego_state
+            behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
+
+            # choose scenario and planner
+            scenario = ScenarioIdentifier.identify(behavioral_state)
+            planner = scenario.choose_planner(updated_state, behavioral_state, self.logger)
+
+            trajectory_params, samplable_trajectory, behavioral_visualization_message = \
+                planner.plan(updated_state, behavioral_state)
 
             self._last_trajectory = samplable_trajectory
 

@@ -1,5 +1,6 @@
 import numpy as np
 import rte.python.profiler as prof
+from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -10,8 +11,7 @@ from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams, LaneMergeState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
-    ActionSpec
-from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
+    ActionSpec, AggressivenessLevel, RelativeLane, ActionType
 from decision_making.src.planning.behavioral.planner.base_planner import \
     BasePlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -35,43 +35,114 @@ class SingleStepBehavioralPlanner(BasePlanner):
         self.default_action_space = action_space
         self.predictor = predictor
 
-    @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan):
+    def _choose_action(self, behavioral_state: BehavioralGridState):
+        action_specs = self._specify_and_filter_default_actions(behavioral_state)
+        costs = self._evaluate(behavioral_state, action_specs)
+        return action_specs[np.argmin(costs)]
 
-        # create road semantic grid from the raw State object
-        # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
+    def _evaluate(self, behavioral_state: BehavioralGridState, action_specs: List[ActionSpec]) -> np.ndarray:
+        """
+        Evaluates Action-Specifications based on the following logic:
+        * Only takes into account actions on RelativeLane.SAME_LANE
+        * If there's a leading vehicle, try following it (ActionType.FOLLOW_VEHICLE, lowest aggressiveness possible)
+        * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_ROAD_SIGN action with lowest
+        * aggressiveness, and save it.
+        * Find the ActionType.FOLLOW_LANE action with maximal allowed velocity and lowest aggressiveness possible,
+        * and save it.
+        * Compare the saved FOLLOW_ROAD_SIGN and FOLLOW_LANE actions, and choose between them.
+        :param behavioral_state: semantic behavioral state, containing the semantic grid.
+        :param action_specs: specifications of action_recipes.
+        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
+        """
+        costs = np.full(len(action_specs), 1)
 
-        # choose action evaluation strategy according to the current state (e.g. rule-based or RL policy)
-        action_specs, action_costs = self._choose_strategy(state, behavioral_state)
+        # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE
+        follow_vehicle_valid_action_idxs = [i for i, spec in enumerate(action_specs)
+                                            if spec is not None
+                                            and spec.recipe.relative_lane == RelativeLane.SAME_LANE
+                                            and spec.recipe.action_type == ActionType.FOLLOW_VEHICLE]
+        # The selection is only by aggressiveness, since it relies on the fact that we only follow a vehicle on the
+        # SAME lane, which means there is only 1 possible vehicle to follow, so there is only 1 target vehicle speed.
+        if len(follow_vehicle_valid_action_idxs) > 0:
+            costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action, which is least aggressive
+            return costs
 
-        # ActionSpec filtering
-        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+        # next try to find a valid road sign action (FOLLOW_ROAD_SIGN) for SAME_LANE.
+        # Selection only needs to consider aggressiveness level, as all the target speeds are ZERO_SPEED.
+        # Tentative decision is kept in selected_road_sign_idx, to be compared against STATIC actions
+        follow_road_sign_valid_action_idxs = [i for i, spec in enumerate(action_specs)
+                                              if spec is not None
+                                              and spec.recipe.relative_lane == RelativeLane.SAME_LANE
+                                              and spec.recipe.action_type == ActionType.FOLLOW_ROAD_SIGN]
+        if len(follow_road_sign_valid_action_idxs) > 0:
+            # choose the found action, which is least aggressive.
+            selected_road_sign_idx = follow_road_sign_valid_action_idxs[0]
+        else:
+            selected_road_sign_idx = -1
 
-        # choose action (argmax)
-        valid_idxs = np.where(action_specs_mask)[0]
-        selected_action_index = valid_idxs[action_costs[valid_idxs].argmin()]
-        selected_action_spec = action_specs[selected_action_index]
+        # last, look for valid static action
+        filtered_follow_lane_idxs = [i for i, spec in enumerate(action_specs)
+                                     if spec is not None and isinstance(spec.recipe, StaticActionRecipe)
+                                     and spec.recipe.relative_lane == RelativeLane.SAME_LANE]
+        if len(filtered_follow_lane_idxs) > 0:
+            # find the minimal aggressiveness level among valid static recipes
+            min_aggr_level = min([action_specs[idx].recipe.aggressiveness.value for idx in filtered_follow_lane_idxs])
 
-        trajectory_parameters = BasePlanner._generate_trajectory_specs(
-            behavioral_state=behavioral_state, action_spec=selected_action_spec)
-        visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
+            # among the minimal aggressiveness level, find the fastest action
+            follow_lane_valid_action_idxs = [idx for idx in filtered_follow_lane_idxs
+                                             if action_specs[idx].recipe.aggressiveness.value == min_aggr_level]
 
-        baseline_trajectory = BasePlanner.generate_baseline_trajectory(
-            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
-            behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
+            selected_follow_lane_idx = follow_lane_valid_action_idxs[-1]
+        else:
+            selected_follow_lane_idx = -1
 
-        # self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
-        #                   action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
-        self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
-                          selected_action_spec, state.ego_state.timestamp_in_sec)
+        # finally decide between the road sign and the static action
+        if selected_road_sign_idx < 0 and selected_follow_lane_idx < 0:
+            # if no action of either type was found, raise an error
+            raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
+                                          behavioral_state.ego_state.timestamp_in_sec)
+        elif selected_road_sign_idx < 0:
+            # if no road sign action is found, select the static action
+            costs[selected_follow_lane_idx] = 0
+            return costs
+        elif selected_follow_lane_idx < 0:
+            # if no static action is found, select the road sign action
+            costs[selected_road_sign_idx] = 0
+            return costs
+        else:
+            # if both road sign and static actions are valid - choose
+            if SingleStepBehavioralPlanner._is_static_action_preferred(action_specs, selected_road_sign_idx):
+                costs[selected_follow_lane_idx] = 0
+                return costs
+            else:
+                costs[selected_road_sign_idx] = 0
+                return costs
 
-        # self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
-        #                   % (behavioral_state.ego_state.timestamp_in_sec,
-        #                      action_recipes[selected_action_index],
-        #                      selected_action_spec.t))
+    @staticmethod
+    def _is_static_action_preferred(action_specs: List[ActionSpec], road_sign_idx: int):
+        """
+        Selects if a STATIC or ROAD_SIGN action is preferred.
+        This can be based on any criteria.
+        For example:
+            always prefer 1 type of action,
+            select action type if aggressiveness is as desired
+            Toggle between the 2
+        :param action_specs: of all possible actions
+        :param road_sign_idx: of calmest road sign action
+        :return: True if static action is preferred, False otherwise
+        """
+        road_sign_action = action_specs[road_sign_idx]
+        # Avoid AGGRESSIVE stop. TODO relax the restriction of not selective an aggressive road sign
+        return road_sign_action.recipe.aggressiveness != AggressivenessLevel.CALM
 
-        return trajectory_parameters, baseline_trajectory, visualization_message
+
+
+
+
+
+
+
+
 
     def _choose_strategy(self, state: State, behavioral_state: BehavioralGridState) -> [List[ActionSpec], np.array]:
         """
@@ -103,23 +174,3 @@ class SingleStepBehavioralPlanner(BasePlanner):
         action_costs = LaneMergeRLPolicy.evaluate(lane_merge_state)
         add_stop_bar()
         return action_specs, action_costs
-
-    def _specify_default_action_space(self, behavioral_state: BehavioralGridState) -> List[Optional[ActionSpec]]:
-        action_recipes = self.default_action_space.recipes
-
-        # Recipe filtering
-        recipes_mask = self.default_action_space.filter_recipes(action_recipes, behavioral_state)
-        self.logger.debug('Number of actions originally: %d, valid: %d',
-                          self.default_action_space.action_space_size, np.sum(recipes_mask))
-
-        action_specs = np.full(len(action_recipes), None)
-        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
-        action_specs[recipes_mask] = self.default_action_space.specify_goals(valid_action_recipes, behavioral_state)
-
-        # TODO: FOR DEBUG PURPOSES!
-        num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
-        num_of_considered_dynamic_actions = sum(isinstance(x, DynamicActionRecipe) for x in valid_action_recipes)
-        num_of_specified_actions = sum(x is not None for x in action_specs)
-        self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
-                          num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
-        return list(action_specs)

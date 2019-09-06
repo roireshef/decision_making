@@ -1,7 +1,7 @@
 import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
-from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
@@ -18,7 +18,8 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane, \
+    StaticActionRecipe, DynamicActionRecipe
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -35,8 +36,8 @@ class BasePlanner:
         self.action_spec_validator = ActionSpecFiltering(filters=None, logger=logger)
         self.logger = logger
 
-    @abstractmethod
-    def plan(self, state: State, route_plan: RoutePlan):
+    @prof.ProfileFunction()
+    def plan(self, state: State, behavioral_state: BehavioralGridState):
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
@@ -44,10 +45,68 @@ class BasePlanner:
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
         cost params and strategy.
         :param state: the current world state
-        :param route_plan: A route plan message
+        :param behavioral_state: current behavioral grid state
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
+        # choose action evaluation strategy according to the current state (e.g. rule-based or RL policy)
+        action_specs, action_costs = self._choose_strategy(state, behavioral_state)
+
+        # ActionSpec filtering
+        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+
+        # choose action (argmax)
+        valid_idxs = np.where(action_specs_mask)[0]
+        selected_action_index = valid_idxs[action_costs[valid_idxs].argmin()]
+        selected_action_spec = action_specs[selected_action_index]
+
+        trajectory_parameters = BasePlanner._generate_trajectory_specs(
+            behavioral_state=behavioral_state, action_spec=selected_action_spec)
+        visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
+
+        baseline_trajectory = BasePlanner.generate_baseline_trajectory(
+            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
+            behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
+
+        # self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
+        #                   action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
+        self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
+                          selected_action_spec, state.ego_state.timestamp_in_sec)
+
+        # self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
+        #                   % (behavioral_state.ego_state.timestamp_in_sec,
+        #                      action_recipes[selected_action_index],
+        #                      selected_action_spec.t))
+
+        return trajectory_parameters, baseline_trajectory, visualization_message
+
+    @abstractmethod
+    def _choose_action(self, state):
         pass
+
+    def _specify_and_filter_default_actions(self, behavioral_state: BehavioralGridState) -> np.array:
+        """
+        specify and filter default action space
+        :param behavioral_state:
+        :return: numpy array of action specs
+        """
+        action_recipes = self.default_action_space.recipes
+
+        # Recipe filtering
+        recipes_mask = self.default_action_space.filter_recipes(action_recipes, behavioral_state)
+        self.logger.debug('Number of actions originally: %d, valid: %d',
+                          self.default_action_space.action_space_size, np.sum(recipes_mask))
+
+        action_specs = np.full(len(action_recipes), None)
+        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+        action_specs[recipes_mask] = self.default_action_space.specify_goals(valid_action_recipes, behavioral_state)
+
+        # TODO: FOR DEBUG PURPOSES!
+        num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
+        num_of_considered_dynamic_actions = sum(isinstance(x, DynamicActionRecipe) for x in valid_action_recipes)
+        num_of_specified_actions = sum(x is not None for x in action_specs)
+        self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
+                          num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
+        return action_specs
 
     @staticmethod
     @prof.ProfileFunction()
