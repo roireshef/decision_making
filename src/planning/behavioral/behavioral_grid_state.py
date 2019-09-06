@@ -23,15 +23,16 @@ class DynamicObjectWithRoadSemantics:
     its frenet state.
     """
 
-    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float, relative_lane: Optional[RelativeLane]):
+    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float, relative_lanes: Optional[List[RelativeLane]]):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
-        :param relative_lane: relative lane w.r.t. ego; None if the object is far laterally (not on adjacent lane)
+        :param relative_lane: list of relative lanes w.r.t. ego; None if the object is far laterally (not on adjacent lane)
+                              usually just one, but can be multiple in the case of a merge
         """
         self.dynamic_object = dynamic_object
         self.longitudinal_distance = longitudinal_distance
-        self.relative_lane = relative_lane
+        self.relative_lanes = relative_lanes
 
 
 # Define semantic cell
@@ -109,7 +110,7 @@ class BehavioralGridState:
         """
 
         # filter out off map dynamic objects
-        on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
+        on_map_dynamic_objects = np.array([obj for obj in dynamic_objects if not obj.off_map])
 
         # calculate objects' segment map_states
         object_map_states = [obj.map_state for obj in on_map_dynamic_objects]
@@ -120,8 +121,22 @@ class BehavioralGridState:
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
-            relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
-            rel_lanes_per_obj[relevant_objects] = rel_lane
+            relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
+
+            # assign object to lane if it hasn't already been assigned
+            unassigned_obj_mask = (rel_lanes_per_obj == None)
+            unassigned_relevant_obj_mask = np.logical_and(unassigned_obj_mask, relevant_object_mask)
+            for i in range(len(on_map_dynamic_objects)):
+                if unassigned_relevant_obj_mask[i]:
+                    rel_lanes_per_obj[i] = np.array([rel_lane])
+
+            # add rel_lanes to obj's rel_lanes list if it belongs to more than one rel_lane
+            # invert <unassigned_obj_mask> instead of recalculating since rel_lanes_per_obj has been changed
+            previously_assigned_obj_indices = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
+            if len(previously_assigned_obj_indices) > 0:
+                # add another rel lane to the rel_lane list
+                for idx in previously_assigned_obj_indices:
+                    rel_lanes_per_obj[idx] = np.append(rel_lanes_per_obj[idx], [rel_lane])
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
@@ -284,11 +299,12 @@ class BehavioralGridState:
         # We consider only object on the adjacent lanes
         for obj in objects:
             # ignore vehicles out of pre-defined range and vehicles not in adjacent lanes
-            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and obj.relative_lane is not None:
+            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and obj.relative_lanes is not None:
                 # compute longitudinal projection on the grid
                 object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
-
-                grid[(obj.relative_lane, object_relative_long)].append(obj)
+                # loop through all the rel_lanes in the case of an obj belonging to more than one (splits/merges)
+                for rel_lane in obj.relative_lanes:
+                    grid[(rel_lane, object_relative_long)].append(obj)
 
         return grid
 

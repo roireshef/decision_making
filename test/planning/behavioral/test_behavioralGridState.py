@@ -1,5 +1,5 @@
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
@@ -15,10 +15,33 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     state_with_lane_split_on_left_ending, route_plan_lane_split_on_left_ends, state_with_lane_split_on_left_and_right_ending, \
     route_plan_lane_splits_on_left_and_right_end, route_plan_lane_splits_on_left_and_right_left_first, \
     state_with_lane_split_on_left_and_right_left_first, route_plan_lane_splits_on_left_and_right_right_first, \
-    state_with_lane_split_on_left_and_right_right_first
+    state_with_lane_split_on_left_and_right_right_first, state_with_object_after_merge, state_with_objects_around_3to1_merge
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_left_lane_ends, route_plan_right_lane_ends, \
     route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
+
+
+def test_createFromState_objectAfterMerge_objectAssignedToAllGffs(state_with_object_after_merge, route_plan_1_2):
+    behavioral_state = BehavioralGridState.create_from_state(state_with_object_after_merge, route_plan_1_2, None)
+    # check to see if the road occupancy grid contains the actor for both same_lane and right_lane
+    occupancy_grid = behavioral_state.road_occupancy_grid
+    assert len(occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
+    assert occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)][0].dynamic_object.obj_id == 1
+    assert len(occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
+    assert occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)][0].dynamic_object.obj_id == 1
+
+def test_createFromState_objectsAroundMerge_objectsCorrectlyAssigned(state_with_objects_around_3to1_merge, route_plan_1_2):
+    behavioral_state = BehavioralGridState.create_from_state(state_with_objects_around_3to1_merge, route_plan_1_2, None)
+
+    occupancy_grid = behavioral_state.road_occupancy_grid
+    assert len(occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
+    front_same_grid_ids = [item.dynamic_object.obj_id for item in occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]]
+    front_left_grid_ids = [item.dynamic_object.obj_id for item in occupancy_grid[(RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT)]]
+    front_right_grid_ids = [item.dynamic_object.obj_id for item in occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)]]
+    assert np.array_equal(np.sort(front_same_grid_ids), [1, 2, 3])
+    assert np.array_equal(np.sort(front_left_grid_ids), [1, 2, 4])
+    assert np.array_equal(np.sort(front_right_grid_ids), [1, 2, 5])
+
 
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_surrounding_objects, route_plan_20_30):
     """
