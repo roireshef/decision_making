@@ -111,3 +111,21 @@ def test_createMirrorObjects_laneSplit_carNotInOverlap(scene_static_short_testab
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
     all_objects = BehavioralGridState._project_actors_inside_intersection([dyn_obj])
     assert len(all_objects) == 1 and all_objects[0] == dyn_obj
+
+def test_isObjectInLane_carOnLaneLine(scene_static_short_testable: SceneStatic):
+    """
+
+    :param scene_static_short_testable:
+    :return:
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+
+    # Create car in lane 11 which is offset 1.5 meters to the left
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1.0,1,0,1.5,0,0]), 11),
+                                                  size=ObjectSize(1,1,1), confidence=1, off_map=False)
+
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 11) == True
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 12) == True
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 10) == False
+
+    

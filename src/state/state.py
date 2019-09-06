@@ -166,7 +166,14 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
         # apply transformations to points
         bbox = untranslate_mat.dot(rotation_mat).dot(translate_mat).dot(bbox)
-        return bbox
+
+        # transpose matrix to get an array of coordinates
+        bbox = bbox.transpose()
+
+        # normalize and remove homogenous 3rd coordinate
+        for i in range(len(bbox)):
+            bbox[i] = bbox[i] / bbox[i,2]
+        return bbox[:,0:2]
 
 
     @property

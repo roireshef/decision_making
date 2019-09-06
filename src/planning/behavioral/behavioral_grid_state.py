@@ -15,7 +15,7 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.scene_static_enums import LaneOverlapType
+from decision_making.src.messages.scene_static_enums import LaneOverlapType, NominalPathPoint
 from decision_making.src.planning.utils.math_utils import Math
 
 
@@ -361,8 +361,8 @@ class BehavioralGridState:
         lane_frame = MapUtils.get_lane_frenet_frame(lane_id)
         bbox = dynamic_object.bounding_box()
 
-        nominal_path_coords = np.array([np.array([nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX],
-                                         nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY]])
+        nominal_path_coords = np.array([np.array([nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value],
+                                         nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value]])
                                for nominal in MapUtils.get_lane_geometry(lane_id).a_nominal_path_points])
 
         # find closest point
@@ -372,7 +372,7 @@ class BehavioralGridState:
 
         min_distance = np.min(distances_to_lane)
 
-        closest_bbox_index = np.argmin(distances_to_lane)[0]
+        closest_bbox_index = np.argmin(distances_to_lane)
 
         closest_s_on_lane = lane_frame.cpoint_to_fpoint(closest_nominal_points[closest_bbox_index])[FP_SX]
 
