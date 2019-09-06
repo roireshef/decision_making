@@ -153,4 +153,16 @@ def test_isObjectInLane_laneSplit_carInOverlap(scene_static_oval_with_splits: Sc
     assert BehavioralGridState.is_object_in_lane(dyn_obj, 19670532) == True
     assert BehavioralGridState.is_object_in_lane(dyn_obj, 19670533) == True
 
+def test_isObjectInLane_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+    """
+    Validate that projected object is correctly placed in overlapping lane
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
+
+    # Create other car in lane 21, which overlaps with lane 22
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
+                                                  map_state=MapState(np.array([1,1,0,0,0,0]), 58375684),
+                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 58375684) == True
+    assert BehavioralGridState.is_object_in_lane(dyn_obj, 58375685) == True
 
