@@ -1,23 +1,20 @@
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import NoActionsLeftForBPError
-from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace, ActionSpaceContainer
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.evaluators.action_evaluator_by_policy import LaneMergeRLPolicy
-from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
-    SingleLaneActionsEvaluator
-from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
-    ScenarioParams, LaneMergeState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
     ActionSpec, AggressivenessLevel, RelativeLane, ActionType
+from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
+    DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import \
     BasePlanner
-from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.state.state import State
 from logging import Logger
 from typing import Optional, List
+
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
 
 class SingleStepBehavioralPlanner(BasePlanner):
@@ -30,15 +27,37 @@ class SingleStepBehavioralPlanner(BasePlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, action_space: ActionSpace, predictor: EgoAwarePredictor, logger: Logger):
+    def __init__(self, logger: Logger):
         super().__init__(logger)
-        self.default_action_space = action_space
-        self.predictor = predictor
+        self.predictor = RoadFollowingPredictor(logger)
+        self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+                                                          DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
-    def _choose_action(self, behavioral_state: BehavioralGridState):
-        action_specs = self._specify_and_filter_default_actions(behavioral_state)
-        costs = self._evaluate(behavioral_state, action_specs)
-        return action_specs[np.argmin(costs)]
+    def _create_actions(self, behavioral_state: BehavioralGridState) -> np.array:
+        action_recipes = self.action_space.recipes
+
+        # Recipe filtering
+        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+        self.logger.debug('Number of actions originally: %d, valid: %d',
+                          self.action_space.action_space_size, np.sum(recipes_mask))
+
+        action_specs = np.full(len(action_recipes), None)
+        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
+
+        # TODO: FOR DEBUG PURPOSES!
+        num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
+        num_of_considered_dynamic_actions = sum(isinstance(x, DynamicActionRecipe) for x in valid_action_recipes)
+        num_of_specified_actions = sum(x is not None for x in action_specs)
+        self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
+                          num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
+        return action_specs
+
+    def _filter_actions(self, behavioral_state: BehavioralGridState, action_specs: np.array) -> np.array:
+        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+        filtered_action_specs = np.full(len(action_specs), None)
+        filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
+        return filtered_action_specs
 
     def _evaluate(self, behavioral_state: BehavioralGridState, action_specs: List[ActionSpec]) -> np.ndarray:
         """
@@ -135,42 +154,5 @@ class SingleStepBehavioralPlanner(BasePlanner):
         # Avoid AGGRESSIVE stop. TODO relax the restriction of not selective an aggressive road sign
         return road_sign_action.recipe.aggressiveness != AggressivenessLevel.CALM
 
-
-
-
-
-
-
-
-
-
-    def _choose_strategy(self, state: State, behavioral_state: BehavioralGridState) -> [List[ActionSpec], np.array]:
-        """
-        Given the current state, choose the strategy for actions evaluation in BP.
-        Currently, perform evaluation by RL policy only if there is a lane merge ahead and there are cars on the
-        main lanes upstream the merge point.
-        :param state: current state
-        :param behavioral_state: current behavioral grid state
-        :return: action evaluation strategy
-        """
-        # first check if there is a lane merge ahead
-        lane_merge_state = LaneMergeState.build(state, behavioral_state)
-        if lane_merge_state is None or len(lane_merge_state.actors) == 0:
-            # there is no lane merge ahead, then perform the default strategy with the default action space and
-            # the default rule-based policy
-            action_specs = self._specify_default_action_space(behavioral_state)
-            action_costs = SingleLaneActionsEvaluator.evaluate(action_specs)
-            return action_specs, action_costs
-
-        # there is a merge ahead with cars on the main road
-        # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        lane_merge_actions, action_specs = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
-        action_costs = RuleBasedLaneMergeEvaluator.evaluate(lane_merge_actions)
-        if len(lane_merge_actions) > 0:  # then the safe lane merge was found
-            return action_specs, action_costs
-
-        # the safe lane merge can not be guaranteed, so add stop bar at red line and perform RL
-        action_specs = self._specify_default_action_space(behavioral_state)
-        action_costs = LaneMergeRLPolicy.evaluate(lane_merge_state)
-        add_stop_bar()
-        return action_specs, action_costs
+    def _choose_action(self, action_specs: np.array, costs: np.array) -> ActionSpec:
+        return action_specs[np.argmin(costs)]

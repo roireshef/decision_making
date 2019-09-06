@@ -3,6 +3,7 @@ from logging import Logger
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
+from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, ScenarioParams
 from decision_making.src.planning.types import FS_SX
@@ -27,7 +28,7 @@ class Scenario:
 class DefaultScenario(Scenario):
     @staticmethod
     def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
-        return SingleStepBehavioralPlanner
+        return SingleStepBehavioralPlanner(logger)
 
 
 class LaneMergeScenario(Scenario):
@@ -36,13 +37,13 @@ class LaneMergeScenario(Scenario):
         lane_merge_state = LaneMergeState.build(state, behavioral_state)
         if lane_merge_state is None or len(lane_merge_state.actors) == 0:
             # if there is no lane merge ahead or the main road is empty, then perform the default strategy
-            return SingleStepBehavioralPlanner
+            return SingleStepBehavioralPlanner(logger)
 
         # there is a merge ahead with cars on the main road
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
         lane_merge_actions = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
         return RuleBasedLaneMergePlanner(lane_merge_actions, logger) if len(lane_merge_actions) > 0 \
-            else RL_LaneMergePlanner(lane_merge_state)
+            else RL_LaneMergePlanner(lane_merge_state, logger)
 
 
 class ScenarioIdentifier:

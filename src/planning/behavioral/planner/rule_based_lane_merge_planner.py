@@ -3,8 +3,9 @@ from typing import Optional, List
 import numpy as np
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LON_ACC_LIMITS, VELOCITY_LIMITS, \
     EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, SPECIFICATION_HEADWAY, BP_ACTION_T_LIMITS
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState1D, LIMIT_MAX
 from decision_making.src.planning.utils.math_utils import Math
@@ -297,8 +298,17 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             car_safe[:max_vi[ti], ti] = True
         return car_safe
 
-    @staticmethod
-    def _evaluate(actions: List[LaneMergeSequence]) -> np.array:
+    def _create_actions(self, behavioral_state: BehavioralGridState) -> np.array:
+        return self.actions or self.create_safe_actions()
+
+    def _filter_actions(self, behavioral_state: BehavioralGridState, actions: np.array) -> np.array:
+        first_action_specs = [action[0] for action in actions]  # pick the first spec from each LaneMergeSequence
+        action_specs_mask = self.action_spec_validator.filter_action_specs(first_action_specs, behavioral_state)
+        filtered_action_specs = np.full(len(first_action_specs), None)
+        filtered_action_specs[action_specs_mask] = first_action_specs[action_specs_mask]
+        return filtered_action_specs
+
+    def _evaluate(self, behavioral_state: BehavioralGridState, actions: np.array) -> np.array:
         """
         Calculate time-jerk costs for the given actions
         :param actions: list of LaneMergeActions, where each LaneMergeAction is a sequence of action specs
@@ -326,3 +336,12 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
         action_costs = weights[0] * actions_jerks + weights[2] * actions_times
         return action_costs
+
+    def _choose_action(self, actions: np.array, costs: np.array) -> ActionSpec:
+        """
+        pick the first action_spec from the best LaneMergeSequence
+        :param actions: array of LaneMergeSequence
+        :param costs: array of actions' costs
+        :return: [ActionSpec] the first action_spec in the best LaneMergeSequence
+        """
+        return actions[np.argmin(costs)][0]
