@@ -123,13 +123,15 @@ class BehavioralGridState:
                                                 lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
                                                                                        LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
-                        projected_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
-                                                                       timestamp=dynamic_object.timestamp,
-                                                                       cartesian_state=dynamic_object.cartesian_state,
-                                                                       map_state=MapState(None, lane_id),
-                                                                       size=dynamic_object.size,
-                                                                       confidence=dynamic_object.confidence,
-                                                                       off_map=False))
+                        # project only if the vehicle is in the overlapping lane
+                        if BehavioralGridState.is_object_in_lane(dynamic_object, lane_id):
+                            projected_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
+                                                                           timestamp=dynamic_object.timestamp,
+                                                                           cartesian_state=dynamic_object.cartesian_state,
+                                                                           map_state=MapState(None, lane_id),
+                                                                           size=dynamic_object.size,
+                                                                           confidence=dynamic_object.confidence,
+                                                                           off_map=False))
 
         return dynamic_objects + projected_dynamic_objects
 
@@ -350,14 +352,13 @@ class BehavioralGridState:
     def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int) -> bool:
         """
         Checks if any part of an object is inside another lane.
-        Takes the point of the object's bounding box that is closest to the lane.
+        Takes the point of the object's bounding box or center of mass that is closest to the lane.
         Checks if the distance from that point to the nominal path point of the lane is less than
         the nominal point's left/right offset.
         :param dynamic_object:
         :param lane_id:
         :return:
         """
-
         lane_frame = MapUtils.get_lane_frenet_frame(lane_id)
         bbox = dynamic_object.bounding_box()
 
@@ -367,19 +368,13 @@ class BehavioralGridState:
         nominal_path_coords = np.array([np.array([nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value],
                                          nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value]])
                                for nominal in MapUtils.get_lane_geometry(lane_id).a_nominal_path_points])
-
-        # find closest point
+        # find closest point to the lane's nominal path
         closest_nominal_points = [Math.find_closest_point_in_array(point, nominal_path_coords)
                              for point in bbox]
         distances_to_lane = [np.linalg.norm(bbox[i] - closest_nominal_points[i]) for i in range(len(bbox))]
-
         min_distance = np.min(distances_to_lane)
-
         closest_bbox_index = np.argmin(distances_to_lane)
-
         closest_s_on_lane = lane_frame.cpoint_to_fpoint(closest_nominal_points[closest_bbox_index])[FP_SX]
-
         lane_width = MapUtils.get_lane_width(lane_id, closest_s_on_lane)
-
         # if the closest distance to the nominal path is less than the lane's width, the vehicle must be in the lane.
         return min_distance < lane_width/2.0
