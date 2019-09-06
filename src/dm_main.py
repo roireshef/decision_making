@@ -65,7 +65,7 @@ class DmInitialization:
                                             )
 
         recipe_evaluator = None
-        action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
+        action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
         action_spec_filtering = DEFAULT_ACTION_SPEC_FILTERING
