@@ -13,7 +13,7 @@ from decision_making.test.constants import BP_NEGLIGIBLE_DISPOSITION_LON, BP_NEG
 
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import EgoState
+from decision_making.src.state.state import EgoState, State
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.takeover_message import Takeover
 from decision_making.src.exceptions import RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, \
@@ -37,7 +37,6 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
                          last_trajectory=None)
         self._trajectory_params = trajectory_params
         self._visualization_msg = visualization_msg
-
         self._trigger_pos = trigger_pos
         if self._trigger_pos is None:
             self._triggered = True
@@ -50,7 +49,13 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
         :return: void
         """
         try:
-            state = self._get_current_state()
+
+            scene_dynamic = self._get_current_scene_dynamic()
+
+            state = State.create_state_from_scene_dynamic(scene_dynamic, self._last_gff_segment_ids, self.logger)
+
+            state.handle_negative_velocities(self.logger)
+
             current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
             if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <

@@ -4,7 +4,7 @@ import traceback
 import numpy as np
 
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
@@ -15,11 +15,12 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
     RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
-    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG
+    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
+from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -49,16 +50,17 @@ class BehavioralPlanningFacade(DmModule):
         self._planner = behavioral_planner
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
+        self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
-        self.pubsub.subscribe(UC_SYSTEM_STATE)
+        self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
 
     def _stop_impl(self):
-        self.pubsub.unsubscribe(UC_SYSTEM_STATE)
+        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
 
@@ -72,10 +74,28 @@ class BehavioralPlanningFacade(DmModule):
 
         try:
             start_time = time.time()
-            state = self._get_current_state()
+
+            route_plan = self._get_current_route_plan()
+            route_plan_dict = route_plan.to_costs_dict()
 
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
+
+            scene_dynamic = self._get_current_scene_dynamic()
+            state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
+                                                          selected_gff_segment_ids=self._last_gff_segment_ids,
+                                                          route_plan_dict=route_plan_dict,
+                                                          logger=self.logger)
+
+            state.handle_negative_velocities(self.logger)
+
+            if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count > 1:
+                self.logger.debug("Multiple localization hypotheses published for ego vehicle at timestamp: %f," +
+                                  " Number of Hypotheses: %d",
+                                  state.ego_state.timestamp_in_sec,
+                                  scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count)
+
+            self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
@@ -89,8 +109,6 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 updated_state = state
 
-            route_plan = self._get_current_route_plan()
-
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
 
@@ -100,6 +118,8 @@ class BehavioralPlanningFacade(DmModule):
                                                                                                            route_plan)
 
             self._last_trajectory = samplable_trajectory
+
+            self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
 
             # Send plan to trajectory
             self._publish_results(trajectory_params)
@@ -131,28 +151,6 @@ class BehavioralPlanningFacade(DmModule):
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: %s. Trace: %s" %
                                  (e, traceback.format_exc()))
-
-    def _get_current_state(self) -> State:
-        """
-        Returns the last received world state.
-        We assume that if no updates have been received since the last call,
-        then we will output the last received state.
-        :return: deserialized State
-        """
-        is_success, serialized_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE)
-        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
-        if serialized_state is None:
-            if self._started_receiving_states:
-                # PubSub queue is empty after being non-empty for a while
-                raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_STATE)
-            else:
-                # Pubsub queue is empty since planning module is up
-                raise StateHasNotArrivedYet("Waiting for data from SceneProvider/StateModule")
-        self._started_receiving_states = True
-        state = State.deserialize(serialized_state)
-        self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
-        return state
 
     def _get_current_route_plan(self) -> RoutePlan:
         """
@@ -237,7 +235,6 @@ class BehavioralPlanningFacade(DmModule):
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
 
-        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
@@ -246,6 +243,18 @@ class BehavioralPlanningFacade(DmModule):
             raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
+
+    def _get_current_scene_dynamic(self) -> SceneDynamic:
+        is_success, serialized_scene_dynamic = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_DYNAMIC)
+
+        if serialized_scene_dynamic is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_SCENE_DYNAMIC)
+        scene_dynamic = SceneDynamic.deserialize(serialized_scene_dynamic)
+        if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count == 0:
+            raise MsgDeserializationError("SceneDynamic was received without any host localization")
+        self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
+        return scene_dynamic
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
