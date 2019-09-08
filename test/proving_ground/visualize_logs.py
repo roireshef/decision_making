@@ -65,9 +65,14 @@ def plot_dynamics(log_file_path: str):
             ego_cv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_V])
             ego_ca.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_A])
             ego_curv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_K])
-            ego_sa.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SA])
-            ego_sv.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SV])
-            ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
+            if state_dict['ego_state']['_cached_map_state'] is not None:
+                ego_sa.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SA])
+                ego_sv.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SV])
+                ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
+            else:
+                ego_sa.append(0)
+                ego_sv.append(0)
+                ego_sx.append(0)
             timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
 
         if 'BehavioralGrid: time' in text:
