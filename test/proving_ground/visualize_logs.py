@@ -70,7 +70,7 @@ def plot_dynamics(log_file_path: str):
             ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
             timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
 
-        if 'BehavioralGrid' in text:
+        if 'BehavioralGrid: time' in text:
             behavioral_grid_str = text.split('BehavioralGrid: time')[1]
             time = float(behavioral_grid_str.split(', ')[0])
             obj_id_str, obj_vel_str, obj_dist_str = behavioral_grid_str.split('front_obj: (')[1].split(')')[0].split(',')
