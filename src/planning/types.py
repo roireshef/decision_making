@@ -104,5 +104,8 @@ NumpyIndicesArray = np.ndarray
 # boolean array
 BoolArray = np.ndarray
 
+# array of ActionSpec
+ActionSpecArray = np.array
+
 # Info on road signs
 SIGN_TYPE, SIGN_S = 0, 1

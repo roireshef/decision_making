@@ -42,7 +42,7 @@ class LaneMergeScenario(Scenario):
         # there is a merge ahead with cars on the main road
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
         lane_merge_actions = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
-        return RuleBasedLaneMergePlanner(lane_merge_actions, logger) if len(lane_merge_actions) > 0 \
+        return RuleBasedLaneMergePlanner(lane_merge_state, lane_merge_actions, logger) if len(lane_merge_actions) > 0 \
             else RL_LaneMergePlanner(lane_merge_state, logger)
 
 

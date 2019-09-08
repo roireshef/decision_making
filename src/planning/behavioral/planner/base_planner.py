@@ -18,7 +18,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLane, ActionRecipe
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -50,18 +50,7 @@ class BasePlanner:
         actions = self._create_actions(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(filtered_actions)
-        selected_action_spec = self._choose_action(actions, costs)
-
-        # choose action evaluation strategy according to the current state (e.g. rule-based or RL policy)
-        # action_specs, action_costs = self._choose_strategy(state, behavioral_state)
-        #
-        # # ActionSpec filtering
-        # action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
-        #
-        # # choose action (argmax)
-        # valid_idxs = np.where(action_specs_mask)[0]
-        # selected_action_index = valid_idxs[action_costs[valid_idxs].argmin()]
-        # selected_action_spec = action_specs[selected_action_index]
+        selected_action_recipe, selected_action_spec = self._choose_action(actions, costs)
 
         trajectory_parameters = BasePlanner._generate_trajectory_params(
             behavioral_state=behavioral_state, action_spec=selected_action_spec)
@@ -75,11 +64,10 @@ class BasePlanner:
         #                   action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
                           selected_action_spec, state.ego_state.timestamp_in_sec)
-
-        # self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
-        #                   % (behavioral_state.ego_state.timestamp_in_sec,
-        #                      action_recipes[selected_action_index],
-        #                      selected_action_spec.t))
+        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
+                          selected_action_recipe, state.ego_state.timestamp_in_sec)
+        self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
+                          % (behavioral_state.ego_state.timestamp_in_sec, selected_action_recipe, selected_action_spec.t))
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
@@ -96,7 +84,7 @@ class BasePlanner:
         pass
 
     @abstractmethod
-    def _choose_action(self, action_specs: np.array, costs: np.array) -> ActionSpec:
+    def _choose_action(self, action_specs: np.array, costs: np.array) -> [ActionRecipe, ActionSpec]:
         pass
 
     @staticmethod

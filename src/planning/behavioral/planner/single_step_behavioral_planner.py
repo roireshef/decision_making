@@ -6,7 +6,7 @@ from decision_making.src.planning.behavioral.action_space.dynamic_action_space i
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
-    ActionSpec, AggressivenessLevel, RelativeLane, ActionType
+    ActionSpec, AggressivenessLevel, RelativeLane, ActionType, ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import \
@@ -14,6 +14,7 @@ from decision_making.src.planning.behavioral.planner.base_planner import \
 from logging import Logger
 from typing import Optional, List
 
+from decision_making.src.planning.types import ActionSpecArray
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
 
@@ -33,7 +34,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
         self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
-    def _create_actions(self, behavioral_state: BehavioralGridState) -> np.array:
+    def _create_actions(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
         action_recipes = self.action_space.recipes
 
         # Recipe filtering
@@ -53,13 +54,13 @@ class SingleStepBehavioralPlanner(BasePlanner):
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
         return action_specs
 
-    def _filter_actions(self, behavioral_state: BehavioralGridState, action_specs: np.array) -> np.array:
+    def _filter_actions(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> ActionSpecArray:
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         return filtered_action_specs
 
-    def _evaluate(self, behavioral_state: BehavioralGridState, action_specs: List[ActionSpec]) -> np.ndarray:
+    def _evaluate(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
         * Only takes into account actions on RelativeLane.SAME_LANE
@@ -154,5 +155,6 @@ class SingleStepBehavioralPlanner(BasePlanner):
         # Avoid AGGRESSIVE stop. TODO relax the restriction of not selective an aggressive road sign
         return road_sign_action.recipe.aggressiveness != AggressivenessLevel.CALM
 
-    def _choose_action(self, action_specs: np.array, costs: np.array) -> ActionSpec:
-        return action_specs[np.argmin(costs)]
+    def _choose_action(self, action_specs: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
+        selected_action_index = np.argmin(costs)
+        return self.action_space.recipes[selected_action_index], action_specs[selected_action_index]

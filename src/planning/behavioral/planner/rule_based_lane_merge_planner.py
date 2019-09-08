@@ -5,7 +5,7 @@ from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, 
     EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, SPECIFICATION_HEADWAY, BP_ACTION_T_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState1D, LIMIT_MAX
 from decision_making.src.planning.utils.math_utils import Math
@@ -53,8 +53,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     VEL_GRID_RESOLUTION = 0.5
     MAX_TARGET_S_ERROR = 0.5  # [m] maximal allowed error for actions' terminal s
 
-    def __init__(self, actions: List[LaneMergeSequence], logger: Logger):
+    def __init__(self, lane_merge_state: LaneMergeState, actions: List[LaneMergeSequence], logger: Logger):
         super().__init__(logger)
+        self.lane_merge_state = lane_merge_state
         self.actions = actions
 
     @staticmethod
@@ -299,7 +300,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return car_safe
 
     def _create_actions(self, behavioral_state: BehavioralGridState) -> np.array:
-        return self.actions or self.create_safe_actions()
+        return self.actions
 
     def _filter_actions(self, behavioral_state: BehavioralGridState, actions: np.array) -> np.array:
         first_action_specs = [action[0] for action in actions]  # pick the first spec from each LaneMergeSequence
@@ -337,11 +338,15 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         action_costs = weights[0] * actions_jerks + weights[2] * actions_times
         return action_costs
 
-    def _choose_action(self, actions: np.array, costs: np.array) -> ActionSpec:
+    def _choose_action(self, actions: np.array, costs: np.array) -> [ActionRecipe, ActionSpec]:
         """
-        pick the first action_spec from the best LaneMergeSequence
+        pick the first action_spec from the best LaneMergeSequence having the minimal cost
         :param actions: array of LaneMergeSequence
         :param costs: array of actions' costs
         :return: [ActionSpec] the first action_spec in the best LaneMergeSequence
         """
-        return actions[np.argmin(costs)][0]
+        # choose the first spec of the best action having the minimal cost
+        best_action_spec = actions[np.argmin(costs)][0]
+        # convert spec.s from LaneMergeState to be relative to GFF
+        best_action_spec.s += self.lane_merge_state.merge_point_in_gff
+        return [None, best_action_spec]

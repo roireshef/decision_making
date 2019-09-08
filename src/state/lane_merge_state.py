@@ -20,11 +20,11 @@ class ActorState:
 
 class LaneMergeState:
     def __init__(self, ego_fstate: FrenetState1D, ego_size: ObjectSize, main_road_actors: List[ActorState],
-                 merge_point_red_line_dist: float, merge_point_s_in_gff: float):
-        self.ego_fstate = ego_fstate  # SX is negative: -dist_to_red_line
+                 red_line_s: float, merge_point_s_in_gff: float):
+        self.ego_fstate = ego_fstate  # SX is negative since it relative to the merge point
         self.ego_size = ego_size
         self.main_road_actors = main_road_actors
-        self.merge_point_red_line_dist = merge_point_red_line_dist
+        self.red_line_s = red_line_s  # negative, relative to the merge point
         self.merge_point_in_gff = merge_point_s_in_gff
 
     @staticmethod
@@ -68,5 +68,5 @@ class LaneMergeState:
 
         ego_in_lane_merge = np.array([-dist_to_merge_point, ego_fstate_on_gff[FS_SV], ego_fstate_on_gff[FS_SA]])
         return LaneMergeState(ego_in_lane_merge, behavioral_state.ego_state.size, actors,
-                              merge_point_in_gff - red_line_in_gff, merge_point_in_gff)
+                              red_line_in_gff - merge_point_in_gff, merge_point_in_gff)
 
