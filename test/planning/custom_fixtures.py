@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, ROUTE_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
@@ -20,14 +20,13 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
-from decision_making.src.state.state_module import DynamicObjectsData
+from decision_making.src.state.state import DynamicObjectsData
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.route.route_planner_mock import RoutePlannerMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
-from decision_making.test.state.state_module_mock import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
@@ -175,6 +174,28 @@ def state_with_old_object(request) -> State:
 
 
 @pytest.fixture(scope='function')
+def scene_dynamic(scene_static_short_testable) -> SceneDynamic:
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+
+    lane_id = 11
+    road_id = 1
+    fstate = np.array([1., 1., 0., 0., 0., 0.])
+    host_hypotheses = [HostHypothesis(road_id, lane_id, fstate, False)]
+
+    frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    cstate = frenet.fstate_to_cstate(fstate)
+    ego_localization = HostLocalization(cstate, 1, host_hypotheses)
+
+    timestamp = Timestamp.from_seconds(5.0)
+    header = Header(0, timestamp, 0)
+    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
+
+    yield scene_dynamic
+
+
+@pytest.fixture(scope='function')
 def scene_dynamic_fix_single_host_hypothesis(scene_static_pg_split):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
@@ -187,6 +208,69 @@ def scene_dynamic_fix_single_host_hypothesis(scene_static_pg_split):
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
     cstate = frenet.fstate_to_cstate(fstate)
     ego_localization = HostLocalization(cstate, 1, host_hypotheses)
+
+    timestamp = Timestamp.from_seconds(5.0)
+    header = Header(0, timestamp, 0)
+    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
+
+    yield scene_dynamic
+
+
+@pytest.fixture(scope='function')
+def scene_dynamic_fix_two_host_hypotheses(scene_static_pg_split):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+
+    lane_id1 = 200
+    road_id1 = 20
+    fstate1 = np.array([50, 5, 0, 1.8, 0, 0])
+    host_hyp1 = HostHypothesis(road_id1, lane_id1, fstate1, False)
+
+    lane_id2 = 201
+    road_id2 = 20
+    fstate2 = np.array([50, 5, 0, -1.8, 0, 0])
+    host_hyp2 = HostHypothesis(road_id2, lane_id2, fstate2, False)
+
+    host_hypotheses = [host_hyp1, host_hyp2]
+
+    frenet = MapUtils.get_lane_frenet_frame(lane_id1)
+    cstate = frenet.fstate_to_cstate(fstate1)
+    ego_localization = HostLocalization(cstate, 2, host_hypotheses)
+
+    timestamp = Timestamp.from_seconds(5.0)
+    header = Header(0, timestamp, 0)
+    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
+
+    yield scene_dynamic
+
+
+@pytest.fixture(scope='function')
+def scene_dynamic_fix_three_host_hypotheses(scene_static_oval_with_splits):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
+
+    lane_id1 = 2244100
+    road_id1 = MapUtils.get_road_segment_id_from_lane_id(lane_id1)
+    fstate1 = np.array([MapUtils.get_lane_length(2244100), 10, 0, 0, 0, 0])
+    host_hyp1 = HostHypothesis(road_id1, lane_id1, fstate1, False)
+
+    lane_id2 = 19670532
+    road_id2 = MapUtils.get_road_segment_id_from_lane_id(lane_id2)
+    fstate2 = np.array([0, 10, 0, 0, 0, 0])
+    host_hyp2 = HostHypothesis(road_id2, lane_id2, fstate2, False)
+
+    lane_id3 = 19670533
+    road_id3 = MapUtils.get_road_segment_id_from_lane_id(lane_id3)
+    fstate3 = np.array([0, 10, 0, 0, 0, 0])
+    host_hyp3 = HostHypothesis(road_id3, lane_id3, fstate3, False)
+
+    host_hypotheses = [host_hyp1, host_hyp2, host_hyp3]
+
+    frenet = MapUtils.get_lane_frenet_frame(lane_id1)
+    cstate = frenet.fstate_to_cstate(fstate1)
+    ego_localization = HostLocalization(cstate, 3, host_hypotheses)
 
     timestamp = Timestamp.from_seconds(5.0)
     header = Header(0, timestamp, 0)
@@ -261,16 +345,6 @@ def route_planner_facade(state, pubsub, route_plan_1_2):
     route_plan_mock.start()
     yield route_plan_mock
     route_plan_mock.stop()
-
-
-@pytest.fixture(scope='function')
-def state_module(state, pubsub):
-    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-
-    state_mock = StateModuleMock(pubsub, logger, state)
-    state_mock.start()
-    yield state_mock
-    state_mock.stop()
 
 
 @pytest.fixture(scope='function')
