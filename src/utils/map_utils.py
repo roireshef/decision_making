@@ -8,7 +8,7 @@ from decision_making.src.messages.scene_static_message import SceneLaneSegmentGe
     SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D, FS_SX, SIGN_TYPE, SIGN_S
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX, RoadSignInfo
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -17,6 +17,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
 from decision_making.src.messages.scene_static_enums import ManeuverType
+from decision_making.src.planning.types import LaneSegmentID
 
 
 class MapUtils:
@@ -251,6 +252,21 @@ class MapUtils:
                 if connectivity.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION]
 
     @staticmethod
+    def get_lane_maneuver_type(lane_id: int) -> ManeuverType:
+        """
+        Get maneuver type for the given lane id
+        :param lane_id: ID for the lane in question
+        :return: Maneuver type of the lane
+        """
+        upstream_lane = MapUtils.get_upstream_lanes(lane_id)[0]
+        downstream_connectivity = MapUtils.get_lane(upstream_lane).as_downstream_lanes
+        connectivity = [connectivity.e_e_maneuver_type for connectivity in downstream_connectivity if
+                        connectivity.e_i_lane_segment_id == lane_id]
+        assert len(connectivity) == 1, "connectivity from upstream lane %s to lane %s was supposed to be 1-to-1" + \
+                                       "connection but got %s instances" % (upstream_lane, lane_id, len(connectivity))
+        return connectivity[0]
+
+    @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
         """
         Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' ordinal,
@@ -473,7 +489,7 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
-    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame) -> []:
+    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame) -> List[RoadSignInfo]:
         """
         Returns a list of the locations (s coordinates) of stop signs and stop bars on the GFF, with their type
         The list is ordered from closest traffic flow control to farthest.
@@ -481,16 +497,28 @@ class MapUtils:
         :return: A list of distances to stop signs and stop bars on the the GFF, ordered from closest traffic flow
         control to farthest, along with the type of the control.
         """
-        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)
-        stop_bars_and_signs = []
-        for road_sign in road_signs:
-            # TODO verify these are the correct stop bar enums
-            if road_sign[SIGN_TYPE] in [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]:
-                stop_bars_and_signs.append(road_sign)
+        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)  # ensures the returned value is sorted
+        # TODO verify these are the correct stop bar enums
+        desired_sign_types = [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]
+        stop_bars_and_signs = MapUtils.filter_flow_control_by_type(road_signs, desired_sign_types)
         return stop_bars_and_signs
 
     @staticmethod
-    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> []:
+    def filter_flow_control_by_type(road_signs: List[RoadSignInfo], road_sign_types: List[RoadObjectType]) -> List[RoadSignInfo]:
+        """
+        Filters the given road signs list to the desired road sign types
+        :param road_signs: list of road signs to filter
+        :param road_sign_types: list of desired road sign types
+        :return: filtered list of road signs
+        """
+        selected_road_signs = []
+        for road_sign in road_signs:
+            if road_sign.sign_type in road_sign_types:
+                selected_road_signs.append(road_sign)
+        return selected_road_signs
+
+    @staticmethod
+    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> List[RoadSignInfo]:
         """
         Returns a list of the locations (s coordinates) of Static_Traffic_flow_controls on the GFF, with their type
         The list is ordered from closest traffic flow control to farthest.
@@ -511,8 +539,8 @@ class MapUtils:
         frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
         frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
         road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
-        road_sign_info_on_gff = list(zip(road_sign_types, road_sign_s_on_gff))  # order of elements in zip must match types.py SIGN_TYPE, SIGN_DISTANCE
-        road_sign_info_on_gff.sort(key=lambda x: x[SIGN_S])  # sort by distance after the conversion to real distance
+        road_sign_info_on_gff = [RoadSignInfo(sign_type=sign_type, s=s) for sign_type, s in zip(road_sign_types, road_sign_s_on_gff)]
+        road_sign_info_on_gff.sort(key=lambda x: x.s)  # sort by distance after the conversion to real distance
         return road_sign_info_on_gff
 
     @staticmethod

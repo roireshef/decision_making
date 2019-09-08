@@ -232,6 +232,21 @@ class Poly1D:
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
 
+    @classmethod
+    def solve_1d_bvp(cls, constraints: np.ndarray, T: float) -> np.ndarray:
+        """
+        Solves the two-point boundary value problem in 1D, given a set of constraints over the initial and terminal states.
+        :param constraints: 3D numpy array of a set of constraints over the initial and terminal states
+        :param T: longitudinal/lateral trajectory duration (sec.), relative to ego. T has to be a multiple of WerlingPlanner.dt
+        :return: a poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s] or [c0_d, ..., c5_d]
+        """
+        assert constraints.shape[-1] == cls.num_coefs(), "%s should get constraints of size %s (got %s)" % \
+                                                         (cls.__name__, cls.num_coefs(), constraints.shape[-1])
+        A = cls.time_constraints_matrix(T)
+        A_inv = np.linalg.inv(A)
+        poly_coefs = cls.solve(A_inv, constraints)
+        return poly_coefs
+
 
 class QuarticPoly1D(Poly1D):
     @staticmethod

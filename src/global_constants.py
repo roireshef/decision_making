@@ -21,7 +21,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 PLANNING_LOOKAHEAD_DIST = 100.0
 
 # [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 400
+MAX_HORIZON_DISTANCE = 600
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
@@ -69,7 +69,7 @@ VELOCITY_STEP = 5/MPH_TO_MPS
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([0.0, 15.0])
+BP_ACTION_T_LIMITS = np.array([0.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -95,9 +95,19 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 # safety checks accordingly
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
+
+# [m/sec] zero speed
+ZERO_SPEED = 0.0
+
+# [m] road sign length
+ROAD_SIGN_LENGTH = 0
+
+# define acceptable distance [m] between stop_bar and stop_sign to be considered as related
+CLOSE_ENOUGH = 3.0
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
@@ -222,7 +232,9 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 # Route Planner #
 LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 
-
+# Indices for the route plan cost tuple
+LANE_OCCUPANCY_COST_IND = 0
+LANE_END_COST_IND = 1
 
 # State #
 
@@ -252,8 +264,6 @@ ROUTE_PLANNING_MODULE_PERIOD = 1
 
 #### NAMES OF MODULES FOR LOGGING ####
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
-NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
-NAVIGATION_PLANNING_NAME_FOR_METRICS = "NP"
 ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
@@ -261,7 +271,6 @@ TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
 ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
-STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 
 #### MetricLogger
 METRIC_LOGGER_DELIMITER = '_'
@@ -270,6 +279,7 @@ METRIC_LOGGER_DELIMITER = '_'
 # TODO: update decision_making_sim messages
 LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
 LOG_MSG_SCENE_STATIC_RECEIVED = "Received SceneStatic message with Timestamp: "
+LOG_MSG_SCENE_DYNAMIC_RECEIVED = "Received SceneDynamic message with Timestamp: "
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
 LOG_MSG_ROUTE_PLANNER_OUTPUT = "RoutePlanningFacade output is"
@@ -277,7 +287,6 @@ LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action 
 LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
 LOG_MSG_RECEIVED_STATE = "Received state"
-LOG_MSG_STATE_MODULE_PUBLISH_STATE = "Publishing State"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
 LOG_MSG_ROUTE_PLANNER_IMPL_TIME = "ROUTE Facade._periodic_action_impl time"
@@ -293,3 +302,4 @@ PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
 PG_PICKLE_FILE_NAME = 'PG.pkl'
 ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME = 'accel_scene_static.pkl'
 ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME = 'accel_scene_dynamic.pkl'
+OVAL_WITH_SPLITS_FILE_NAME = 'oval_with_splits.pkl'
