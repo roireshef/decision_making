@@ -26,8 +26,7 @@ from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.behavioral.scenario_identifier import ScenarioIdentifier
+from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV
@@ -40,16 +39,13 @@ from logging import Logger
 
 
 class BehavioralPlanningFacade(DmModule):
-    def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: BasePlanner,
-                 last_trajectory: SamplableTrajectory = None) -> None:
+    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
         :param logger:
-        :param behavioral_planner:
         :param last_trajectory: last trajectory returned from behavioral planner.
         """
         super().__init__(pubsub=pubsub, logger=logger)
-        self._planner = behavioral_planner
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
@@ -121,7 +117,7 @@ class BehavioralPlanningFacade(DmModule):
             behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
             # choose scenario and planner
-            scenario = ScenarioIdentifier.identify(behavioral_state)
+            scenario = Scenario.identify_scenario(behavioral_state)
             planner = scenario.choose_planner(updated_state, behavioral_state, self.logger)
 
             trajectory_params, samplable_trajectory, behavioral_visualization_message = \

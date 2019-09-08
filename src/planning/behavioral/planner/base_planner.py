@@ -31,77 +31,76 @@ from decision_making.src.utils.map_utils import MapUtils
 
 @six.add_metaclass(ABCMeta)
 class BasePlanner:
-    def __init__(self, logger: Logger):
+    def __init__(self, behavioral_state: BehavioralGridState, logger: Logger):
+        """
+        :param behavioral_state: current behavioral grid state
+        :param logger:
+        """
         self.action_spec_validator = ActionSpecFiltering(filters=None, logger=logger)
+        self.behavioral_state = behavioral_state
         self.logger = logger
 
     @prof.ProfileFunction()
-    def plan(self, state: State, behavioral_state: BehavioralGridState):
+    def plan(self):
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
         and evaluating actions. Its output will be further handled and used to create a trajectory in Trajectory Planner
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
         cost params and strategy.
-        :param state: the current world state
-        :param behavioral_state: current behavioral grid state
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
-        actions = self._create_actions(behavioral_state)
-        filtered_actions = self._filter_actions(behavioral_state, actions)
+        actions = self._create_actions()
+        filtered_actions = self._filter_actions(actions)
         costs = self._evaluate_actions(filtered_actions)
         selected_action_recipe, selected_action_spec = self._choose_action(actions, costs)
 
-        trajectory_parameters = BasePlanner._generate_trajectory_params(
-            behavioral_state=behavioral_state, action_spec=selected_action_spec)
+        trajectory_parameters = BasePlanner._generate_trajectory_params(action_spec=selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
+        timestamp_in_sec = self.behavioral_state.ego_state.timestamp_in_sec
         baseline_trajectory = BasePlanner.generate_baseline_trajectory(
-            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
-            behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
+            timestamp_in_sec, selected_action_spec, trajectory_parameters,
+            self.behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         # self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
         #                   action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
-        self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
-                          selected_action_spec, state.ego_state.timestamp_in_sec)
-        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
-                          selected_action_recipe, state.ego_state.timestamp_in_sec)
+        self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)", selected_action_spec, timestamp_in_sec)
+        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_recipe, timestamp_in_sec)
         self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
-                          % (behavioral_state.ego_state.timestamp_in_sec, selected_action_recipe, selected_action_spec.t))
+                          % (timestamp_in_sec, selected_action_recipe, selected_action_spec.t))
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
     @abstractmethod
-    def _create_actions(self, behavioral_state: BehavioralGridState) -> np.array:
+    def _create_actions(self) -> np.array:
         pass
 
     @abstractmethod
-    def _filter_actions(self, behavioral_state: BehavioralGridState, actions: np.array) -> np.array:
+    def _filter_actions(self, actions: np.array) -> np.array:
         pass
 
     @abstractmethod
-    def _evaluate(self, behavioral_state: BehavioralGridState, actions: np.array) -> np.ndarray:
+    def _evaluate(self, actions: np.array) -> np.ndarray:
         pass
 
     @abstractmethod
     def _choose_action(self, action_specs: np.array, costs: np.array) -> [ActionRecipe, ActionSpec]:
         pass
 
-    @staticmethod
     @prof.ProfileFunction()
-    def _generate_trajectory_params(behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> TrajectoryParams:
+    def _generate_trajectory_params(self, action_spec: ActionSpec) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
          Given the target longitude and latitude, we create a reference route in global coordinates, where:
          latitude is constant and equal to the target latitude;
          longitude starts from ego current longitude, and end in the target longitude.
-        :param behavioral_state: processed behavioral state
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
-        ego = behavioral_state.ego_state
+        ego = self.behavioral_state.ego_state
         # get action's unified frame (GFF)
-        action_frame = behavioral_state.extended_lane_frames[action_spec.relative_lane]
+        action_frame = self.behavioral_state.extended_lane_frames[action_spec.relative_lane]
 
         # goal Frenet state w.r.t. spec_lane_id
         projected_goal_fstate = action_spec.as_fstate()
@@ -124,7 +123,6 @@ class BasePlanner:
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                                  trajectory_end_time=trajectory_end_time,
                                                  bp_time=ego.timestamp)
-
         return trajectory_parameters
 
     @staticmethod

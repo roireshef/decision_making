@@ -19,37 +19,9 @@ class Planner:
 
 
 class Scenario:
-    @staticmethod
-    @abstractmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
-        pass
-
-
-class DefaultScenario(Scenario):
-    @staticmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
-        return SingleStepBehavioralPlanner(logger)
-
-
-class LaneMergeScenario(Scenario):
-    @staticmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
-        lane_merge_state = LaneMergeState.build(state, behavioral_state)
-        if lane_merge_state is None or len(lane_merge_state.actors) == 0:
-            # if there is no lane merge ahead or the main road is empty, then perform the default strategy
-            return SingleStepBehavioralPlanner(logger)
-
-        # there is a merge ahead with cars on the main road
-        # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        lane_merge_actions = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
-        return RuleBasedLaneMergePlanner(lane_merge_state, lane_merge_actions, logger) if len(lane_merge_actions) > 0 \
-            else RL_LaneMergePlanner(lane_merge_state, logger)
-
-
-class ScenarioIdentifier:
 
     @staticmethod
-    def identify(behavioral_state: BehavioralGridState):
+    def identify_scenario(behavioral_state: BehavioralGridState):
         """
         Given the current state, find the lane merge ahead and cars on the main road upstream the merge point.
         :param behavioral_state: current behavioral grid state
@@ -61,3 +33,29 @@ class ScenarioIdentifier:
         # Find the lanes before and after the merge point
         merge_lane_id = MapUtils.get_closest_lane_merge(gff, ego_fstate_on_gff[FS_SX], merge_lookahead=MERGE_LOOKAHEAD)
         return LaneMergeScenario if merge_lane_id is not None else DefaultScenario
+
+    @staticmethod
+    @abstractmethod
+    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
+        pass
+
+
+class DefaultScenario(Scenario):
+    @staticmethod
+    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
+        return SingleStepBehavioralPlanner(behavioral_state, logger)
+
+
+class LaneMergeScenario(Scenario):
+    @staticmethod
+    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
+        lane_merge_state = LaneMergeState.build(state, behavioral_state)
+        if lane_merge_state is None or len(lane_merge_state.actors) == 0:
+            # if there is no lane merge ahead or the main road is empty, then perform the default strategy
+            return SingleStepBehavioralPlanner(behavioral_state, logger)
+
+        # there is a merge ahead with cars on the main road
+        # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
+        actions = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
+        return RuleBasedLaneMergePlanner(behavioral_state, lane_merge_state, actions, logger) if len(actions) > 0 \
+            else RL_LaneMergePlanner(behavioral_state, lane_merge_state, logger)

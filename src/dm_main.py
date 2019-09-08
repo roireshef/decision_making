@@ -62,10 +62,8 @@ class DmInitialization:
                                             )
 
         action_spec_filtering = DEFAULT_ACTION_SPEC_FILTERING
-        planner = SingleStepBehavioralPlanner(action_space, action_spec_filtering, predictor, logger)
 
-        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
-                                                     behavioral_planner=planner, last_trajectory=None)
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None)
         return behavioral_module
 
     @staticmethod

@@ -53,8 +53,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     VEL_GRID_RESOLUTION = 0.5
     MAX_TARGET_S_ERROR = 0.5  # [m] maximal allowed error for actions' terminal s
 
-    def __init__(self, lane_merge_state: LaneMergeState, actions: List[LaneMergeSequence], logger: Logger):
-        super().__init__(logger)
+    def __init__(self, behavioral_state: BehavioralGridState, lane_merge_state: LaneMergeState,
+                 actions: List[LaneMergeSequence], logger: Logger):
+        super().__init__(behavioral_state, logger)
         self.lane_merge_state = lane_merge_state
         self.actions = actions
 
@@ -299,17 +300,17 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             car_safe[:max_vi[ti], ti] = True
         return car_safe
 
-    def _create_actions(self, behavioral_state: BehavioralGridState) -> np.array:
+    def _create_actions(self) -> np.array:
         return self.actions
 
-    def _filter_actions(self, behavioral_state: BehavioralGridState, actions: np.array) -> np.array:
+    def _filter_actions(self, actions: np.array) -> np.array:
         first_action_specs = [action[0] for action in actions]  # pick the first spec from each LaneMergeSequence
-        action_specs_mask = self.action_spec_validator.filter_action_specs(first_action_specs, behavioral_state)
+        action_specs_mask = self.action_spec_validator.filter_action_specs(first_action_specs, self.behavioral_state)
         filtered_action_specs = np.full(len(first_action_specs), None)
         filtered_action_specs[action_specs_mask] = first_action_specs[action_specs_mask]
         return filtered_action_specs
 
-    def _evaluate(self, behavioral_state: BehavioralGridState, actions: np.array) -> np.array:
+    def _evaluate(self, actions: np.array) -> np.array:
         """
         Calculate time-jerk costs for the given actions
         :param actions: list of LaneMergeActions, where each LaneMergeAction is a sequence of action specs

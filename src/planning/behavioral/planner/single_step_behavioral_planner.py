@@ -9,8 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import StaticActionRec
     ActionSpec, AggressivenessLevel, RelativeLane, ActionType, ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.planner.base_planner import \
-    BasePlanner
+from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from logging import Logger
 from typing import Optional, List
 
@@ -28,23 +27,23 @@ class SingleStepBehavioralPlanner(BasePlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, logger: Logger):
-        super().__init__(logger)
+    def __init__(self, behavioral_state: BehavioralGridState, logger: Logger):
+        super().__init__(behavioral_state, logger)
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
-    def _create_actions(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
+    def _create_actions(self) -> ActionSpecArray:
         action_recipes = self.action_space.recipes
 
         # Recipe filtering
-        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+        recipes_mask = self.action_space.filter_recipes(action_recipes, self.behavioral_state)
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
 
         action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
-        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
+        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, self.behavioral_state)
 
         # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
@@ -54,13 +53,13 @@ class SingleStepBehavioralPlanner(BasePlanner):
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
         return action_specs
 
-    def _filter_actions(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> ActionSpecArray:
-        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+    def _filter_actions(self, action_specs: ActionSpecArray) -> ActionSpecArray:
+        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, self.behavioral_state)
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         return filtered_action_specs
 
-    def _evaluate(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> np.ndarray:
+    def _evaluate(self, action_specs: ActionSpecArray) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
         * Only takes into account actions on RelativeLane.SAME_LANE
@@ -70,7 +69,6 @@ class SingleStepBehavioralPlanner(BasePlanner):
         * Find the ActionType.FOLLOW_LANE action with maximal allowed velocity and lowest aggressiveness possible,
         * and save it.
         * Compare the saved FOLLOW_ROAD_SIGN and FOLLOW_LANE actions, and choose between them.
-        :param behavioral_state: semantic behavioral state, containing the semantic grid.
         :param action_specs: specifications of action_recipes.
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
@@ -120,7 +118,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
         if selected_road_sign_idx < 0 and selected_follow_lane_idx < 0:
             # if no action of either type was found, raise an error
             raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
-                                          behavioral_state.ego_state.timestamp_in_sec)
+                                          self.behavioral_state.ego_state.timestamp_in_sec)
         elif selected_road_sign_idx < 0:
             # if no road sign action is found, select the static action
             costs[selected_follow_lane_idx] = 0
