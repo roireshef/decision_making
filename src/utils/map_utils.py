@@ -395,7 +395,7 @@ class MapUtils:
 
         lane_subsegments_dict = {}
 
-        lane_subsegments, cumulative_distance = MapUtils._advance_by_cost_ll(
+        lane_subsegments, cumulative_distance = MapUtils._advance_on_plan(
             initial_lane_id, initial_s, lookahead_distance, route_plan)
 
         current_lane_id = lane_subsegments[-1].e_i_SegmentID
@@ -455,7 +455,7 @@ class MapUtils:
 
     @staticmethod
     # TODO: name should be changed
-    def _advance_by_cost_ll(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
+    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
             -> (List[FrenetSubSegment], float):
         """
         Advances downstream according to plan as long as there is a single valid (according to navigation plan)
