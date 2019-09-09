@@ -279,9 +279,12 @@ class BehavioralGridState:
         :param logger:
         """
         front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        obj_id = obj_vel = obj_dist = 0  # write zeros if there is no front object
+
         if front_cell in multi_object_grid and len(multi_object_grid[front_cell]) > 0:
             front_obj = multi_object_grid[front_cell][0].dynamic_object
-            front_obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
-            logger.debug("%s: time %f, front_obj: (%d, %f, %f) " %
-                         (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj.obj_id, front_obj.cartesian_state[C_V],
-                          front_obj_dist))
+            obj_id = front_obj.obj_id
+            obj_vel = front_obj.cartesian_state[C_V]
+            obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
+        logger.debug("%s: time %f, front_obj: (%d, %f, %f) " %
+                     (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, obj_id, obj_vel, obj_dist))
