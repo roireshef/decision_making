@@ -336,12 +336,14 @@ class BehavioralGridState:
             lane_subsegments, is_partial, is_augmented, _ = lane_subsegments_dict[rel_lane]
             gff_type = GFFType.get(is_partial, is_augmented)
 
+            concatenated_lane_subsegments = upstream_lane_subsegments + lane_subsegments
+
             # Create Frenet frame for each sub segment
             frenet_frames = [MapUtils.get_lane_frenet_frame(lane_subsegment.e_i_SegmentID)
-                             for lane_subsegment in upstream_lane_subsegments + lane_subsegments]
+                             for lane_subsegment in concatenated_lane_subsegments]
 
             # Create GFF
-            gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, lane_subsegments, gff_type)
+            gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, concatenated_lane_subsegments, gff_type)
 
         return gffs_dict
 
