@@ -81,6 +81,10 @@ class UniformGrid:
         self.resolution = resolution
         self.length = int((self.end-self.start + np.finfo(np.float32).eps) // resolution) + 1
 
+    @property
+    def array(self):
+        return np.arange(self.start, self.end + np.finfo(np.float32).eps, self.resolution)
+
     def __str__(self):
         # NOTE: DO NOT CHANGE THIS METHOD WITHOUT ADAPTING FilterBadExpectedTrajectory.validate_predicate_constants METHOD!!!
         return 'UniformGrid(%s to %s, resolution: %s, length: %s)' % \
@@ -97,13 +101,9 @@ class UniformGrid:
     def __iter__(self):
         return self.array.__iter__()
 
-    @property
-    def array(self):
-        return np.arange(self.start, self.end + np.finfo(np.float32).eps, self.resolution)
-
-    def from_index(self, idx):
+    def __getitem__(self, item):
         """Returns the value from the grid, by index"""
-        return self.array[idx]
+        return self.array[item]
 
     def get_index(self, value):
         """
