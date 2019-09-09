@@ -534,44 +534,43 @@ class MapUtils:
             lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, True, False, cumulative_distance)
             return lane_subsegments_dict
 
+        augmented = []
+        # Deal with "splitting" direction (create augmented lane) in the split #
+        for rel_lane, maneuver_type in [(RelativeLane.RIGHT_LANE, ManeuverType.RIGHT_SPLIT),
+                                        (RelativeLane.LEFT_LANE, ManeuverType.LEFT_SPLIT)]:
+            # Check if augmented lanes can be created
+            if can_augment[rel_lane] and maneuver_type in valid_downstream_lanes:
+                # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
+                augmented_lane_dict = MapUtils._advance_by_cost_hl(
+                    initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
+                    lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan)
+                # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
+                # Read the return value description above for more information.
+                augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = augmented_lane_dict[RelativeLane.SAME_LANE]
+                # Assign information to dictionary accordingly
+                lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
+                                                   True, cumulative_distance + augmented_cumulative_distance)
+                augmented.append(rel_lane)
+
+        # remove the already augmented lanes from options to augment after taking the straight connection
+        can_still_augment = {k: v == True and k not in augmented for k, v in can_augment.items()}
+
         # Deal with "straight" direction in the split #
         if ManeuverType.STRAIGHT_CONNECTION in valid_downstream_lanes:
             # recursive call to construct the "keep straight" sequence of lanes (GFF)
             straight_lane_dict = MapUtils._advance_by_cost_hl(
                 initial_lane_id=valid_downstream_lanes[ManeuverType.STRAIGHT_CONNECTION], initial_s=0.0,
-                lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan, can_augment=can_augment)
+                lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan, can_augment=can_still_augment)
 
-            # Get returned information.
-            straight_lane_subsegments, is_straight_partial, _, straight_cumulative_distance = straight_lane_dict[RelativeLane.SAME_LANE]
+            for rel_lane, gff_tuple in straight_lane_dict.items():
+                # Get returned information.
+                straight_lane_subsegments, is_straight_partial, is_straight_augmented, straight_cumulative_distance = straight_lane_dict[rel_lane]
 
-            # Concatenate and assign information to dictionary accordingly
-            lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments + straight_lane_subsegments, is_straight_partial,
-                                                             False, cumulative_distance + straight_cumulative_distance)
+                # Concatenate and assign information to dictionary accordingly
+                lane_subsegments_dict[rel_lane] = (lane_subsegments + straight_lane_subsegments, is_straight_partial,
+                                                   is_straight_augmented, cumulative_distance + straight_cumulative_distance)
         else:
             raise StraightConnectionNotFound("Straight downstream connection not found for lane=%d", current_lane_id)
-
-        # Deal with "splitting" direction (augmented lanes) in the split #
-        for rel_lane, maneuver_type in [(RelativeLane.RIGHT_LANE, ManeuverType.RIGHT_SPLIT),
-                                        (RelativeLane.LEFT_LANE, ManeuverType.LEFT_SPLIT)]:
-            # Check if augmented lanes can be created
-            if can_augment[rel_lane]:
-                if maneuver_type in valid_downstream_lanes:
-                    # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
-                    augmented_lane_dict = MapUtils._advance_by_cost_hl(
-                        initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
-                        lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan)
-                    # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
-                    # Read the return value description above for more information.
-                    augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = augmented_lane_dict[RelativeLane.SAME_LANE]
-                    # Assign information to dictionary accordingly
-                    lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
-                                                       True, cumulative_distance + augmented_cumulative_distance)
-                elif rel_lane in straight_lane_dict.keys():
-                    augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = straight_lane_dict[rel_lane]
-                    # Assign information to dictionary accordingly
-                    lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
-                                                       True, cumulative_distance + augmented_cumulative_distance)
-
 
         return lane_subsegments_dict
 

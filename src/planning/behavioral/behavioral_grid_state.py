@@ -217,11 +217,9 @@ class BehavioralGridState:
 
         # Create generalized Frenet frame for the host's lane
         try:
-            lane_gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
-                                                                          station=state.ego_state.map_state.lane_fstate[FS_SX],
-                                                                          route_plan=route_plan,
-                                                                          logger=logger,
-                                                                          can_augment=can_augment)
+            lane_gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(
+                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=state.ego_state.map_state.lane_fstate[FS_SX],
+                route_plan=route_plan, logger=logger, can_augment=can_augment)
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
             raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
