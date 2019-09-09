@@ -119,9 +119,6 @@ class BehavioralGridState:
         object_map_states = [obj.map_state for obj in on_map_dynamic_objects]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
-        # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj = np.full(len(on_map_dynamic_objects), None)
-
         # Create boolean matrix that is true when a vehicle is in a relative lane
         vehicle_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(on_map_dynamic_objects))
 
