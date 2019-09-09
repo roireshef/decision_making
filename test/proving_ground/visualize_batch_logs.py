@@ -23,6 +23,8 @@ if __name__ == "__main__":
                 print("processing", i, "of", l)
                 sim = json_data[sim_key]
                 sim_type = sim['Batch type name']
+                # the params that change per use case are defined in simulation/src/metrics/code/metrics_general_utils/fuzz_batch_requirements.py
+                # the jsonObject fields names are defined in simulation/src/simulation/db/db_columns.py
                 if sim_type == "SWARM":
                     sim_title = sim_type
                 elif sim_type == "STOP_AND_GO":
@@ -62,6 +64,4 @@ if __name__ == "__main__":
                 pdf.savefig()
                 plt.close()
                 i += 1
-                if i == 2:
-                    break
             print("results were written to", dump_file)
