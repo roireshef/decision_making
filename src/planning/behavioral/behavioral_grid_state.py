@@ -118,32 +118,25 @@ class BehavioralGridState:
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
         rel_lanes_per_obj = np.full(len(on_map_dynamic_objects), None)
+
+        # Create boolean matrix that is true when a vehicle is in a relative lane
+        vehicle_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(on_map_dynamic_objects))
+
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
+            # add as row to matrix
             relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
+            vehicle_lane_matrix = np.vstack([vehicle_lane_matrix, relevant_object_mask])
 
-            # assign object to lane if it hasn't already been assigned
-            unassigned_obj_mask = (rel_lanes_per_obj == None)
-            unassigned_relevant_obj_mask = np.logical_and(unassigned_obj_mask, relevant_object_mask)
-            for i in range(len(on_map_dynamic_objects)):
-                if unassigned_relevant_obj_mask[i]:
-                    rel_lanes_per_obj[i] = np.array([rel_lane])
-
-            # add rel_lanes to obj's rel_lanes list if it belongs to more than one rel_lane
-            # invert <unassigned_obj_mask> instead of recalculating since rel_lanes_per_obj has been changed
-            previously_assigned_obj_indices = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
-            if len(previously_assigned_obj_indices) > 0:
-                # add another rel lane to the rel_lane list
-                for idx in previously_assigned_obj_indices:
-                    rel_lanes_per_obj[idx] = np.append(rel_lanes_per_obj[idx], [rel_lane])
-
-        # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
             extended_lane_frames, projected_ego_fstates, object_map_states)
 
-        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
-                for i, obj in enumerate(on_map_dynamic_objects) if rel_lanes_per_obj[i] is not None]
+        # get the lanes an object is in by looking at the columns of the matrix
+        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i],
+                   np.array(list(extended_lane_frames.keys()))[vehicle_lane_matrix[:,i]])
+                for i, obj in enumerate(on_map_dynamic_objects) if vehicle_lane_matrix[:,i].any()]
+
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
