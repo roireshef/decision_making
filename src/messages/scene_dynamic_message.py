@@ -156,7 +156,7 @@ class HostLocalization(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSHostLocalization()
 
         pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
-        pubsub_msg.e_Cnt_obj_hypothesis_count = self.e_Cnt_host_hypothesis_count
+        pubsub_msg.e_Cnt_host_hypothesis_count = self.e_Cnt_host_hypothesis_count
         for i in range(pubsub_msg.e_Cnt_host_hypothesis_count):
             pubsub_msg.as_host_hypothesis[i] = self.as_host_hypothesis[i].serialize()
 
