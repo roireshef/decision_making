@@ -454,7 +454,6 @@ class MapUtils:
         return lane_subsegments_dict
 
     @staticmethod
-    # TODO: name should be changed
     def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
             -> (List[FrenetSubSegment], float):
         """
