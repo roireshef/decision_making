@@ -7,7 +7,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
     RoadNotFound, raises
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
-    MAX_FORWARD_HORIZON
+    MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
@@ -78,9 +78,8 @@ class BehavioralGridState:
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
         extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, logger)
 
-        projected_ego_fstates = {
-            rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
-            for rel_lane in extended_lane_frames}
+        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
+                                 for rel_lane in extended_lane_frames}
 
         # TODO: Make sure to account for all relevant actors on all upstream lanes. For example, there may be an actor outside of an
         #  upstream merge area that is moving quickly. If we predict that this actor will come close to the host, we have to consider
@@ -88,12 +87,14 @@ class BehavioralGridState:
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames,
-                                                           projected_ego_fstates),
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
                    key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
+
+        BehavioralGridState._log_grid_data(multi_object_grid, state.ego_state.timestamp_in_sec, logger)
+
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
@@ -120,34 +121,24 @@ class BehavioralGridState:
         object_map_states = [obj.map_state for obj in on_map_dynamic_objects]
         objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
-        # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj = np.full(len(on_map_dynamic_objects), None)
+        # Create boolean matrix that is true when a vehicle is in a relative lane
+        vehicle_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(on_map_dynamic_objects))
+
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
+            # add as row to matrix
             relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
+            vehicle_lane_matrix = np.vstack([vehicle_lane_matrix, relevant_object_mask])
 
-            # assign object to lane if it hasn't already been assigned
-            unassigned_obj_mask = (rel_lanes_per_obj == None)
-            unassigned_relevant_obj_mask = np.logical_and(unassigned_obj_mask, relevant_object_mask)
-            for i in range(len(on_map_dynamic_objects)):
-                if unassigned_relevant_obj_mask[i]:
-                    rel_lanes_per_obj[i] = np.array([rel_lane])
-
-            # add rel_lanes to obj's rel_lanes list if it belongs to more than one rel_lane
-            # invert <unassigned_obj_mask> instead of recalculating since rel_lanes_per_obj has been changed
-            previously_assigned_obj_indices = np.nonzero(np.logical_and(np.logical_not(unassigned_obj_mask), relevant_object_mask))[0].tolist()
-            if len(previously_assigned_obj_indices) > 0:
-                # add another rel lane to the rel_lane list
-                for idx in previously_assigned_obj_indices:
-                    rel_lanes_per_obj[idx] = np.append(rel_lanes_per_obj[idx], [rel_lane])
-
-        # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
             extended_lane_frames, projected_ego_fstates, object_map_states)
 
-        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
-                for i, obj in enumerate(on_map_dynamic_objects) if rel_lanes_per_obj[i] is not None]
+        # get the lanes an object is in by looking at the columns of the matrix
+        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i],
+                   np.array(list(extended_lane_frames.keys()))[vehicle_lane_matrix[:,i]])
+                for i, obj in enumerate(on_map_dynamic_objects) if vehicle_lane_matrix[:,i].any()]
+
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
@@ -398,3 +389,24 @@ class BehavioralGridState:
             return RelativeLongitudinalPosition.REAR
         else:
             return RelativeLongitudinalPosition.PARALLEL
+
+    @staticmethod
+    def _log_grid_data(multi_object_grid: Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]],
+                       timestamp_in_sec: float, logger: Logger):
+        """
+        Write to log front object ID, its velocity and the distance from ego
+        :param multi_object_grid: dictionary of the behavioral grid: from cell to objects' list
+        :param timestamp_in_sec: current state time
+        :param logger:
+        """
+        if logger is None:
+            return
+        front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        front_obj = None
+        front_obj_dist = 0  # write zeros if there is no front object
+
+        if front_cell in multi_object_grid and len(multi_object_grid[front_cell]) > 0:
+            front_obj = multi_object_grid[front_cell][0].dynamic_object
+            front_obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
+        logger.debug("%s: time %f, dist_from_front_object %f, front_object: %s" %
+                     (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
