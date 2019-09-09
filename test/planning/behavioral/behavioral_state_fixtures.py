@@ -71,7 +71,7 @@ def create_route_plan_msg(road_segment_ids):
 
 
 @pytest.fixture(scope='function')
-def ego_state_for_takover_message_simple_scene():
+def ego_state_for_takeover_message_simple_scene():
 
     ego_lane_id = 101
     ego_lane_lon = 0 # station along the lane
@@ -86,7 +86,7 @@ def ego_state_for_takover_message_simple_scene():
 
 
 @pytest.fixture(scope='function')
-def ego_state_for_takover_message_default_scene():
+def ego_state_for_takeover_message_default_scene():
 
     ego_lane_id = 201
     ego_lane_lon = 100 # station along the lane

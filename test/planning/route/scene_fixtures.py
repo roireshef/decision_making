@@ -491,7 +491,7 @@ def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState :
 def construction_scene_for_takeover_test(request):
     # Set Default Expected Output
     route_plan_data = default_route_plan()
-    expected_takover = False
+    expected_takeover = False
     ego_state = generate_ego_state(ego_lane_id = 200 , ego_lane_station = 0)
 
 
@@ -518,7 +518,7 @@ def construction_scene_for_takeover_test(request):
 
         ego_state = generate_ego_state(ego_lane_id = 201 , ego_lane_station = 50)
 
-        expected_takover = False
+        expected_takeover = False
 
     elif request.param is "scene_two":
         lane_modifications = {290: [(True,
@@ -549,7 +549,7 @@ def construction_scene_for_takeover_test(request):
 
         ego_state = generate_ego_state(ego_lane_id = 282 , ego_lane_station = 80)
 
-        expected_takover = True
+        expected_takeover = True
 
     elif request.param is "scene_three":
         lane_modifications = {212: [(True,
@@ -610,10 +610,10 @@ def construction_scene_for_takeover_test(request):
         ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
         # expected output
-        expected_takover = True
+        expected_takeover = True
 
     else:
         lane_modifications = {}
 
     return TakeOverTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                             route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takover)
+                             route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takeover)
