@@ -1,16 +1,17 @@
 from collections import defaultdict
-
-import numpy as np
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
+import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST
+from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
+    RoadNotFound, raises
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
+    MAX_FORWARD_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
@@ -23,7 +24,8 @@ class DynamicObjectWithRoadSemantics:
     its frenet state.
     """
 
-    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float, relative_lanes: Optional[List[RelativeLane]]):
+    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float,
+                 relative_lanes: Optional[List[RelativeLane]]):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
@@ -76,8 +78,9 @@ class BehavioralGridState:
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
         extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, logger)
 
-        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
-                                 for rel_lane in extended_lane_frames}
+        projected_ego_fstates = {
+            rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
+            for rel_lane in extended_lane_frames}
 
         # TODO: Make sure to account for all relevant actors on all upstream lanes. For example, there may be an actor outside of an
         #  upstream merge area that is moving quickly. If we predict that this actor will come close to the host, we have to consider
@@ -85,7 +88,8 @@ class BehavioralGridState:
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames,
+                                                           projected_ego_fstates),
                    key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
@@ -213,7 +217,7 @@ class BehavioralGridState:
 
         # Create generalized Frenet frame for the host's lane
         try:
-            lane_gff_dict = MapUtils.get_generalized_frenet_frame_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
+            lane_gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(lane_id=closest_lanes_dict[RelativeLane.SAME_LANE],
                                                                           station=state.ego_state.map_state.lane_fstate[FS_SX],
                                                                           route_plan=route_plan,
                                                                           logger=logger,
@@ -264,7 +268,7 @@ class BehavioralGridState:
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
-                    lane_gffs = MapUtils.get_generalized_frenet_frame_by_cost(lane_id=closest_lanes_dict[relative_lane],
+                    lane_gffs = BehavioralGridState.get_generalized_frenet_frames_by_cost(lane_id=closest_lanes_dict[relative_lane],
                                                                               station=host_station_in_adjacent_lane,
                                                                               route_plan=route_plan,
                                                                               logger=logger)
@@ -278,6 +282,70 @@ class BehavioralGridState:
                     logger.warning("Trying to fetch data for %s, but data is unavailable. %s" % (relative_lane, str(e)))
 
         return extended_lane_frames
+
+    @staticmethod
+    @raises(LaneNotFound, RoadNotFound)
+    @prof.ProfileFunction()
+    def get_generalized_frenet_frames_by_cost(lane_id: int, station: float, route_plan: RoutePlan,
+                                              logger: Optional[Logger] = None,
+                                              can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
+            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
+        """
+        Create Generalized Frenet frame(s) along lane center, starting from given lane and station. If augmented lanes can be created, they will
+        be returned in the dictionary under the RelativeLane.LEFT_LANE/RIGHT_LANE keys.
+        :param lane_id: starting lane_id
+        :param station: starting station [m]
+        :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param logger: Logger object to log warning messages
+        :param can_augment: Dict of RelativeLane to bool describing if a search for an augmented LEFT/RIGHT lane
+                            starting from the lane_id is needed.
+        :return: Dict of generalized Frenet frames with the relative lane as keys
+                 The relative lane key is with respect to the provided lane_id. The dictionary will always contain the GFF for the provided
+                 lane_id, and the RelativeLane.SAME_LANE key can be used to access it. If possible, augmented GFFs will also be returned,
+                 and they can be accessed with the respective relative lane key.
+        """
+        if station < MAX_BACKWARD_HORIZON:
+            # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane, and the
+            # upstream lane subsegments need to be found. The starting station for the forward lookahead should be the beginning of the
+            # current lane, and the forward lookahead distance should include the maximum forward horizon ahead of the given station and
+            # the backward distance to the beginning of the lane (i.e. the station).
+            starting_station = 0.0
+            lookahead_distance = MAX_FORWARD_HORIZON + station
+            upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON,
+                                                                                logger)
+        else:
+            # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
+            # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
+            # distance should include the maximum forward and backward horizons ahead of and behind the given station, respectively. In
+            # other words, if we're at station = 150 m on a lane and the maximum forward and backward horizons are 400 m and 100 m,
+            # respectively, then starting station = 50 m and forward lookahead distance = 400 + 100 = 500 m. This is the case where the GFF
+            # does not include any upstream lanes.
+            starting_station = station - MAX_BACKWARD_HORIZON
+            lookahead_distance = MAX_FORWARD_HORIZON + MAX_BACKWARD_HORIZON
+            upstream_lane_subsegments = []
+
+        lane_subsegments_dict = MapUtils._advance_by_cost(initial_lane_id=lane_id,
+                                                          initial_s=starting_station,
+                                                          lookahead_distance=lookahead_distance,
+                                                          route_plan=route_plan,
+                                                          lane_subsegments=upstream_lane_subsegments,
+                                                          can_augment=can_augment)
+
+        gffs_dict = {}
+
+        # Build GFFs from the Frenet Subsegments for the lane/augmented lanes that were created.
+        for rel_lane in lane_subsegments_dict:
+            lane_subsegments, is_partial, is_augmented, _ = lane_subsegments_dict[rel_lane]
+            gff_type = GFFType.get(is_partial, is_augmented)
+
+            # Create Frenet frame for each sub segment
+            frenet_frames = [MapUtils.get_lane_frenet_frame(lane_subsegment.e_i_SegmentID)
+                             for lane_subsegment in lane_subsegments]
+
+            # Create GFF
+            gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, lane_subsegments, gff_type)
+
+        return gffs_dict
 
     @staticmethod
     @prof.ProfileFunction()

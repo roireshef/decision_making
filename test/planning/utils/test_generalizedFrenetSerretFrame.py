@@ -3,7 +3,7 @@ import numpy as np
 from decision_making.src.planning.types import C_A, C_V, C_K, C_X, C_Y, FS_SX, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
-    FrenetSubSegment, GFF_Type
+    FrenetSubSegment, GFFType
 from decision_making.test.planning.trajectory.utils import RouteFixture
 
 
@@ -565,7 +565,7 @@ def test_buildGFF_hasGFFType():
     segmentation = [FrenetSubSegment(0, full_frenet.ds * point_idx_start, full_frenet.ds * point_idx_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[full_frenet],
                                                             sub_segments=segmentation)
-    assert generalized_frenet.gff_type == GFF_Type.Normal
+    assert generalized_frenet.gff_type == GFFType.Normal
 
 
 def test_lateralConsistency_twoOverlappingGFFs_cartesianPointHasSameLatitudeWRTbothGFFs():

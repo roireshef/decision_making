@@ -1,39 +1,36 @@
-import numpy as np
-from logging import Logger
 import copy
+from logging import Logger
+from typing import List, Dict, Optional, Tuple
 
+import numpy as np
+import rte.python.profiler as prof
 from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
     UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce, StraightConnectionNotFound
-from decision_making.src.global_constants import EPS, LANE_END_COST_IND, MAX_BACKWARD_HORIZON, \
-    MAX_FORWARD_HORIZON, LANE_OCCUPANCY_COST_IND, SATURATED_COST
+from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_static_enums import ManeuverType
+from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
-from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D, FS_SX, RoadSignInfo
+from decision_making.src.planning.types import LaneSegmentID
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-import rte.python.profiler as prof
-from typing import List, Dict, Optional, Tuple
-from decision_making.src.messages.scene_static_enums import ManeuverType
-from decision_making.src.planning.types import LaneSegmentID
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
-
 
 
 class MapUtils:
-
     @staticmethod
     def get_road_segment_ids() -> List[int]:
         """
         :return:road_segment_ids of every road in the static scene
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
-        road_segments = scene_static.s_Data.s_SceneStaticBase.as_scene_road_segment[:scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_road_segments]
+        road_segments = scene_static.s_Data.s_SceneStaticBase.as_scene_road_segment[
+                        :scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_road_segments]
         return [road_segment.e_i_road_segment_id for road_segment in road_segments]
 
     @staticmethod
@@ -159,9 +156,10 @@ class MapUtils:
 
         num_points_in_longest_lane = np.max(num_points_in_map_lanes)
         # create 3D matrix of all lanes' points; pad it by inf according to the largest number of lane points
-        map_lanes_xy_points = np.array([np.vstack((MapUtils.get_lane_geometry(lane_id).a_nominal_path_points[:, (x_index, y_index)],
-                                        np.full((num_points_in_longest_lane - num_points_in_map_lanes[i], 2), np.inf)))
-                                        for i, lane_id in enumerate(map_lane_ids)])
+        map_lanes_xy_points = np.array(
+            [np.vstack((MapUtils.get_lane_geometry(lane_id).a_nominal_path_points[:, (x_index, y_index)],
+                        np.full((num_points_in_longest_lane - num_points_in_map_lanes[i], 2), np.inf)))
+             for i, lane_id in enumerate(map_lane_ids)])
         distances_from_lane_points = np.linalg.norm(map_lanes_xy_points - cartesian_point, axis=2)  # 2D matrix
         closest_points_idx_per_lane = np.argmin(distances_from_lane_points, axis=1)
         # 1D array: the minimal distances to the point per lane
@@ -263,7 +261,8 @@ class MapUtils:
         :return: Maneuver types of the upstream lanes
         """
         upstream_connectivity = MapUtils.get_lane(lane_id).as_upstream_lanes
-        return {connectivity.e_i_lane_segment_id: connectivity.e_e_maneuver_type for connectivity in upstream_connectivity}
+        return {connectivity.e_i_lane_segment_id: connectivity.e_e_maneuver_type for connectivity in
+                upstream_connectivity}
 
     @staticmethod
     def get_downstream_lane_maneuver_types(lane_id: int) -> Dict[LaneSegmentID, ManeuverType]:
@@ -274,7 +273,8 @@ class MapUtils:
         :return: Maneuver types of the downstream lanes
         """
         downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
-        return {connectivity.e_i_lane_segment_id: connectivity.e_e_maneuver_type for connectivity in downstream_connectivity}
+        return {connectivity.e_i_lane_segment_id: connectivity.e_e_maneuver_type for connectivity in
+                downstream_connectivity}
 
     @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
@@ -285,75 +285,6 @@ class MapUtils:
         :return: sorted list of lane segments' IDs
         """
         return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
-
-    @staticmethod
-    @raises(LaneNotFound, RoadNotFound)
-    @prof.ProfileFunction()
-    def get_generalized_frenet_frame_by_cost(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
-                                             can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
-            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
-        """
-        Create Generalized Frenet frame(s) along lane center, starting from given lane and station. If augmented lanes can be created, they will
-        be returned in the dictionary under the RelativeLane.LEFT_LANE/RIGHT_LANE keys.
-        :param lane_id: starting lane_id
-        :param station: starting station [m]
-        :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :param logger: Logger object to log warning messages
-        :param can_augment: Dict of RelativeLane to bool describing if a search for an augmented LEFT/RIGHT lane
-                            starting from the lane_id is needed.
-        :return: Dict of generalized Frenet frames with the relative lane as keys
-                 The relative lane key is with respect to the provided lane_id. The dictionary will always contain the GFF for the provided
-                 lane_id, and the RelativeLane.SAME_LANE key can be used to access it. If possible, augmented GFFs will also be returned,
-                 and they can be accessed with the respective relative lane key.
-        """
-        if station < MAX_BACKWARD_HORIZON:
-            # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane, and the
-            # upstream lane subsegments need to be found. The starting station for the forward lookahead should be the beginning of the
-            # current lane, and the forward lookahead distance should include the maximum forward horizon ahead of the given station and
-            # the backward distance to the beginning of the lane (i.e. the station).
-            starting_station = 0.0
-            lookahead_distance = MAX_FORWARD_HORIZON + station
-            upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON, logger)
-        else:
-            # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
-            # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
-            # distance should include the maximum forward and backward horizons ahead of and behind the given station, respectively. In
-            # other words, if we're at station = 150 m on a lane and the maximum forward and backward horizons are 400 m and 100 m,
-            # respectively, then starting station = 50 m and forward lookahead distance = 400 + 100 = 500 m. This is the case where the GFF
-            # does not include any upstream lanes.
-            starting_station = station - MAX_BACKWARD_HORIZON
-            lookahead_distance = MAX_FORWARD_HORIZON + MAX_BACKWARD_HORIZON
-            upstream_lane_subsegments = []
-
-        lane_subsegments_dict = MapUtils._advance_by_cost(initial_lane_id=lane_id,
-                                                          initial_s=starting_station,
-                                                          lookahead_distance=lookahead_distance,
-                                                          route_plan=route_plan,
-                                                          lane_subsegments=upstream_lane_subsegments,
-                                                          can_augment=can_augment)
-
-        gffs_dict = {}
-
-        # Build GFFs from the Frenet Subsegments for the lane/augmented lanes that were created.
-        for rel_lane in lane_subsegments_dict:
-            lane_subsegments, is_partial, is_augmented = lane_subsegments_dict[rel_lane]
-
-            if is_partial and is_augmented:
-                gff_type = GFF_Type.AugmentedPartial
-            elif is_partial:
-                gff_type = GFF_Type.Partial
-            elif is_augmented:
-                gff_type = GFF_Type.Augmented
-            else:
-                gff_type = GFF_Type.Normal
-
-            # Create Frenet frame for each sub segment
-            frenet_frames = [MapUtils.get_lane_frenet_frame(lane_subsegment.e_i_SegmentID) for lane_subsegment in lane_subsegments]
-
-            # Create GFF
-            gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, lane_subsegments, gff_type)
-
-        return gffs_dict
 
     @staticmethod
     def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float,
@@ -409,6 +340,148 @@ class MapUtils:
         upstream_lane_subsegments.reverse()
 
         return upstream_lane_subsegments
+    #
+    # @staticmethod
+    # @raises(RoadNotFound, LaneNotFound, NavigationPlanTooShort, StraightConnectionNotFound)
+    # @prof.ProfileFunction()
+    # def _advance_by_cost(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+    #                      route_plan: RoutePlan,
+    #                      can_augment: Optional[Dict[RelativeLane, bool]] = None,
+    #                      lane_subsegments: Optional[List[FrenetSubSegment]] = None,
+    #                      cumulative_distance: Optional[float] = None) -> Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool]]:
+    #     """
+    #     Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
+    #     further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
+    #     If <desired_lon> is more than the distance to end of the plan, a LongitudeOutOfRoad exception is thrown.
+    #     :param initial_lane_id: the initial lane_id (the vehicle is current on)
+    #     :param initial_s: initial longitude along <initial_lane_id>
+    #     :param lookahead_distance: the desired distance of lookahead in [m].
+    #     :param route_plan: the relevant navigation plan to iterate over its road IDs.
+    #     :param can_augment: dict of RelativeLane to bool; if True, try to create an augmented lane for that RelativeLane
+    #     :param lane_subsegments: initial lane segments; further lane segments will be appended to this. Used for recursion.
+    #     :param cumulative_distance: cumulative_distance of lane_subsegments; further distance will be added to this. Used for recursion.
+    #     :return: Dictionary with potential keys: [RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+    #              These keys represent the non-augmented, left-augmented, and right-augmented gffs that can be created.
+    #              The key-value pair for the non-augmented lane (i.e. RelativeLane.SAME_LANE) will always exist, and it refers
+    #              to the provided initial_lane_id. The left-augmented and right-augmented keys (i.e. RelativeLane.LEFT_LANE
+    #              and RelativeLane.RIGHT_LANE) will only exist when an augmented GFF can be created. The values are tuples
+    #              that contain a list of FrenetSubSegments that will be used to create the GFF and two flags that denote the
+    #              GFF type. The first flag denotes a partial GFF and the second flag denotes an augmented GFF.
+    #     """
+    #     XYZ = None
+    #
+    #     initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
+    #
+    #     try:
+    #         current_road_idx_on_plan = np.where(route_plan.s_Data.a_i_road_segment_ids == initial_road_segment_id)[0][0]
+    #     except IndexError:
+    #         raise RoadNotFound("Road ID {} is not in the route plan road segment list".format(initial_road_segment_id))
+    #
+    #     # Assign arguments that are default to None
+    #     lane_subsegments = copy.deepcopy(lane_subsegments) or []
+    #     can_augment = copy.deepcopy(can_augment) or {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
+    #     cumulative_distance = cumulative_distance or 0.0
+    #
+    #     # Set initial values
+    #     current_lane_id = initial_lane_id
+    #     current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
+    #     lane_subsegments_dict = {}
+    #     is_partial = False
+    #
+    #     while True:
+    #         current_lane_length = MapUtils.get_lane(current_lane_id).e_l_length  # a lane's s_max
+    #
+    #         # distance to travel on current lane: distance to end of lane, or shorter if reached <lookahead distance>
+    #         current_segment_end_s = min(current_lane_length,
+    #                                     current_segment_start_s + lookahead_distance - cumulative_distance)
+    #
+    #         # add subsegment to the list and add traveled distance to <cumulative_distance> sum
+    #         lane_subsegments.append(FrenetSubSegment(current_lane_id, current_segment_start_s, current_segment_end_s))
+    #         cumulative_distance += current_segment_end_s - current_segment_start_s
+    #
+    #         if cumulative_distance > lookahead_distance - EPS:
+    #             break
+    #
+    #         next_road_idx_on_plan = current_road_idx_on_plan + 1
+    #
+    #         if next_road_idx_on_plan >= route_plan.s_Data.e_Cnt_num_road_segments:
+    #             raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
+    #                                          "current_segment_end_s=%f lookahead_distance=%f" %
+    #                                          (route_plan.s_Data.a_i_road_segment_ids,
+    #                                           lookahead_distance - cumulative_distance,
+    #                                           current_segment_end_s, lookahead_distance))
+    #
+    #         valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
+    #         num_valid_downstream_lanes = len(valid_downstream_lanes.keys())
+    #
+    #         if num_valid_downstream_lanes == 0:
+    #             is_partial = True
+    #             break
+    #         elif num_valid_downstream_lanes == 1:
+    #             # Turn the return of values() into list and access the lane segment ID
+    #             current_lane_id = list(valid_downstream_lanes.values())[0]
+    #         else:
+    #             # If there are multiple valid downstream lanes, choose the straight connection to continue on.
+    #             # TODO: This will have to be revisited once more complex road geometries are encountered. At The moment, this should work
+    #             #  for lane splits and forks.
+    #             try:
+    #                 current_lane_id = valid_downstream_lanes[ManeuverType.STRAIGHT_CONNECTION]
+    #             except KeyError:
+    #                 raise StraightConnectionNotFound("Straight downstream connection not found for lane=%d",
+    #                                                  current_lane_id)
+    #
+    #             # Check if augmented lanes can be created
+    #             if can_augment[RelativeLane.RIGHT_LANE] and ManeuverType.RIGHT_SPLIT in valid_downstream_lanes:
+    #                 can_augment[RelativeLane.RIGHT_LANE] = False
+    #
+    #                 right_augmented_lane_subsegments_dict = MapUtils._advance_by_cost(
+    #                     initial_lane_id=valid_downstream_lanes[ManeuverType.RIGHT_SPLIT],
+    #                     initial_s=0.0,
+    #                     lookahead_distance=lookahead_distance,
+    #                     route_plan=route_plan,
+    #                     lane_subsegments=lane_subsegments,
+    #                     cumulative_distance=cumulative_distance)
+    #
+    #                 # Check to make sure that dictionary is not empty
+    #                 if right_augmented_lane_subsegments_dict:
+    #                     # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct. Read the return value
+    #                     # description above for more information.
+    #                     right_augmented_lane_subsegments, is_right_partial, _, _ = right_augmented_lane_subsegments_dict[
+    #                         RelativeLane.SAME_LANE]
+    #
+    #                     # Assign information to dictionary accordingly
+    #                     lane_subsegments_dict[RelativeLane.RIGHT_LANE] = (
+    #                         right_augmented_lane_subsegments, is_right_partial, True, XYZ)
+    #
+    #             if can_augment[RelativeLane.LEFT_LANE] and ManeuverType.LEFT_SPLIT in valid_downstream_lanes:
+    #                 can_augment[RelativeLane.LEFT_LANE] = False
+    #
+    #                 left_augmented_lane_subsegments_dict = MapUtils._advance_by_cost(
+    #                     initial_lane_id=valid_downstream_lanes[ManeuverType.LEFT_SPLIT],
+    #                     initial_s=0.0,
+    #                     lookahead_distance=lookahead_distance,
+    #                     route_plan=route_plan,
+    #                     lane_subsegments=lane_subsegments,
+    #                     cumulative_distance=cumulative_distance)
+    #
+    #                 # Check to make sure that dictionary is not empty
+    #                 if left_augmented_lane_subsegments_dict:
+    #                     # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct. Read the return value
+    #                     # description above for more information.
+    #                     left_augmented_lane_subsegments, is_left_partial, _, _ = left_augmented_lane_subsegments_dict[
+    #                         RelativeLane.SAME_LANE]
+    #
+    #                     # Assign information to dictionary accordingly
+    #                     lane_subsegments_dict[RelativeLane.LEFT_LANE] = (
+    #                         left_augmented_lane_subsegments, is_left_partial, True, XYZ)
+    #
+    #         current_segment_start_s = 0.0
+    #         current_road_idx_on_plan = next_road_idx_on_plan
+    #
+    #     # Assign subsegments to dictionary for relative lane
+    #     lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, is_partial, False, XYZ)
+    #
+    #     return lane_subsegments_dict
 
     @staticmethod
     @raises(RoadNotFound, LaneNotFound, NavigationPlanTooShort, StraightConnectionNotFound)
@@ -418,6 +491,13 @@ class MapUtils:
                          can_augment: Optional[Dict[RelativeLane, bool]] = None,
                          lane_subsegments: Optional[List[FrenetSubSegment]] = None,
                          cumulative_distance: Optional[float] = None) -> Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool]]:
+
+        return MapUtils._advance_by_cost_hl(initial_lane_id, initial_s, lookahead_distance, route_plan, can_augment)
+
+    @staticmethod
+    def _advance_by_cost_hl(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+                            route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
+            Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
@@ -427,8 +507,6 @@ class MapUtils:
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
         :param can_augment: dict of RelativeLane to bool; if True, try to create an augmented lane for that RelativeLane
-        :param lane_subsegments: initial lane segments; further lane segments will be appended to this. Used for recursion.
-        :param cumulative_distance: cumulative_distance of lane_subsegments; further distance will be added to this. Used for recursion.
         :return: Dictionary with potential keys: [RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
                  These keys represent the non-augmented, left-augmented, and right-augmented gffs that can be created.
                  The key-value pair for the non-augmented lane (i.e. RelativeLane.SAME_LANE) will always exist, and it refers
@@ -436,7 +514,76 @@ class MapUtils:
                  and RelativeLane.RIGHT_LANE) will only exist when an augmented GFF can be created. The values are tuples
                  that contain a list of FrenetSubSegments that will be used to create the GFF and two flags that denote the
                  GFF type. The first flag denotes a partial GFF and the second flag denotes an augmented GFF.
+                 Lastly, the total length of the GFF is returned
         """
+        lane_subsegments_dict = {}
+
+        lane_subsegments, cumulative_distance = MapUtils._advance_by_cost_ll(
+            initial_lane_id, initial_s, lookahead_distance, route_plan)
+
+        current_lane_id = lane_subsegments[-1].e_i_SegmentID
+        valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
+
+        # traversal reached the end of desired horizon
+        if cumulative_distance >= lookahead_distance:
+            lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, False, False, cumulative_distance)
+            return lane_subsegments_dict
+
+        # a dead-end reached (no downstream lanes at all)
+        if len(valid_downstream_lanes) == 0:
+            lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, True, False, cumulative_distance)
+            return lane_subsegments_dict
+
+        # Deal with "straight" direction in the split #
+        if ManeuverType.STRAIGHT_CONNECTION in valid_downstream_lanes:
+            # recursive call to construct the "keep straight" sequence of lanes (GFF)
+            straight_lane_dict = MapUtils._advance_by_cost_hl(
+                initial_lane_id=valid_downstream_lanes[ManeuverType.STRAIGHT_CONNECTION], initial_s=0.0,
+                lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan, can_augment=can_augment)
+
+            # Get returned information.
+            straight_lane_subsegments, is_straight_partial, _, straight_cumulative_distance = straight_lane_dict[RelativeLane.SAME_LANE]
+
+            # Concatenate and assign information to dictionary accordingly
+            lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments + straight_lane_subsegments, is_straight_partial,
+                                                             False, cumulative_distance + straight_cumulative_distance)
+        else:
+            raise StraightConnectionNotFound("Straight downstream connection not found for lane=%d", current_lane_id)
+
+        # Deal with "splitting" direction (augmented lanes) in the split #
+        for rel_lane, maneuver_type in [(RelativeLane.RIGHT_LANE, ManeuverType.RIGHT_SPLIT),
+                                        (RelativeLane.LEFT_LANE, ManeuverType.LEFT_SPLIT)]:
+            # Check if augmented lanes can be created
+            if can_augment[rel_lane] and maneuver_type in valid_downstream_lanes:
+                # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
+                augmented_lane_dict = MapUtils._advance_by_cost_hl(
+                    initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
+                    lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan)
+
+                # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
+                # Read the return value description above for more information.
+                augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = augmented_lane_dict[RelativeLane.SAME_LANE]
+
+                # Assign information to dictionary accordingly
+                lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
+                                                   True, cumulative_distance + augmented_cumulative_distance)
+
+        return lane_subsegments_dict
+
+    @staticmethod
+    def _advance_by_cost_ll(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
+            -> (List[FrenetSubSegment], float):
+        """
+        Advances downstream according to plan as long as there is a single valid (according to navigation plan)
+        downstream lane only - this can be in case there is a single downstream lane, or in a case of a split where only
+        one of the downstream lanes are in the navigation plan (the others are not)
+        :param initial_lane_id: the initial lane_id (the vehicle is current on)
+        :param initial_s: initial longitude along <initial_lane_id>
+        :param lookahead_distance: the desired distance of lookahead in [m].
+        :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :return: Tuple(List of FrenetSubSegment traversed downstream, accumulated traveled distance on that sequence)
+        """
+
         initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
 
         try:
@@ -445,15 +592,12 @@ class MapUtils:
             raise RoadNotFound("Road ID {} is not in the route plan road segment list".format(initial_road_segment_id))
 
         # Assign arguments that are default to None
-        lane_subsegments = copy.deepcopy(lane_subsegments) or []
-        can_augment = copy.deepcopy(can_augment) or {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
-        cumulative_distance = cumulative_distance or 0.0
+        lane_subsegments = []
+        cumulative_distance = 0.0
 
         # Set initial values
         current_lane_id = initial_lane_id
         current_segment_start_s = initial_s  # reference longitudinal position on the lane of current_lane_id
-        lane_subsegments_dict = {}
-        is_partial = False
 
         while True:
             current_lane_length = MapUtils.get_lane(current_lane_id).e_l_length  # a lane's s_max
@@ -474,73 +618,25 @@ class MapUtils:
             if next_road_idx_on_plan >= route_plan.s_Data.e_Cnt_num_road_segments:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
                                              "current_segment_end_s=%f lookahead_distance=%f" %
-                                             (route_plan.s_Data.a_i_road_segment_ids, lookahead_distance - cumulative_distance,
+                                             (route_plan.s_Data.a_i_road_segment_ids,
+                                              lookahead_distance - cumulative_distance,
                                               current_segment_end_s, lookahead_distance))
 
             valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
             num_valid_downstream_lanes = len(valid_downstream_lanes.keys())
 
-            if num_valid_downstream_lanes == 0:
-                is_partial = True
+            if num_valid_downstream_lanes == 0:     # no valid downstream lanes on the navigation plan (dead-end)
                 break
-            elif num_valid_downstream_lanes == 1:
-                # Turn the return of values() into list and access the lane segment ID
-                current_lane_id = list(valid_downstream_lanes.values())[0]
-            else:
-                # If there are multiple valid downstream lanes, choose the straight connection to continue on.
-                # TODO: This will have to be revisited once more complex road geometries are encountered. At The moment, this should work
-                #  for lane splits and forks.
-                try:
-                    current_lane_id = valid_downstream_lanes[ManeuverType.STRAIGHT_CONNECTION]
-                except KeyError:
-                    raise StraightConnectionNotFound("Straight downstream connection not found for lane=%d", current_lane_id)
+            elif num_valid_downstream_lanes > 1:    # more than 1 downstream lane on the navigation plan
+                break
 
-                # Check if augmented lanes can be created
-                if can_augment[RelativeLane.RIGHT_LANE] and ManeuverType.RIGHT_SPLIT in valid_downstream_lanes:
-                    can_augment[RelativeLane.RIGHT_LANE] = False
-
-                    right_augmented_lane_subsegments_dict = MapUtils._advance_by_cost(initial_lane_id=valid_downstream_lanes[ManeuverType.RIGHT_SPLIT],
-                                                                                      initial_s=0.0,
-                                                                                      lookahead_distance=lookahead_distance,
-                                                                                      route_plan=route_plan,
-                                                                                      lane_subsegments=lane_subsegments,
-                                                                                      cumulative_distance=cumulative_distance)
-
-                    # Check to make sure that dictionary is not empty
-                    if right_augmented_lane_subsegments_dict:
-                        # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct. Read the return value
-                        # description above for more information.
-                        right_augmented_lane_subsegments, is_right_partial, _ = right_augmented_lane_subsegments_dict[RelativeLane.SAME_LANE]
-
-                        # Assign information to dictionary accordingly
-                        lane_subsegments_dict[RelativeLane.RIGHT_LANE] = (right_augmented_lane_subsegments, is_right_partial, True)
-
-                if can_augment[RelativeLane.LEFT_LANE] and ManeuverType.LEFT_SPLIT in valid_downstream_lanes:
-                    can_augment[RelativeLane.LEFT_LANE] = False
-
-                    left_augmented_lane_subsegments_dict = MapUtils._advance_by_cost(initial_lane_id=valid_downstream_lanes[ManeuverType.LEFT_SPLIT],
-                                                                                     initial_s=0.0,
-                                                                                     lookahead_distance=lookahead_distance,
-                                                                                     route_plan=route_plan,
-                                                                                     lane_subsegments=lane_subsegments,
-                                                                                     cumulative_distance=cumulative_distance)
-
-                    # Check to make sure that dictionary is not empty
-                    if left_augmented_lane_subsegments_dict:
-                        # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct. Read the return value
-                        # description above for more information.
-                        left_augmented_lane_subsegments, is_left_partial, _ = left_augmented_lane_subsegments_dict[RelativeLane.SAME_LANE]
-
-                        # Assign information to dictionary accordingly
-                        lane_subsegments_dict[RelativeLane.LEFT_LANE] = (left_augmented_lane_subsegments, is_left_partial, True)
+            # If the downstream lane exist and is single, use it
+            current_lane_id = list(valid_downstream_lanes.values())[0]
 
             current_segment_start_s = 0.0
             current_road_idx_on_plan = next_road_idx_on_plan
 
-        # Assign subsegments to dictionary for relative lane
-        lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, is_partial, False)
-
-        return lane_subsegments_dict
+        return lane_subsegments, cumulative_distance
 
     @staticmethod
     def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, LaneSegmentID]:
@@ -569,7 +665,6 @@ class MapUtils:
 
         return {downstream_lane_maneuver_types[downstream_lane_id]: downstream_lane_id
                 for downstream_lane_id in valid_downstream_lane_ids}
-
 
     @staticmethod
     @raises(UpstreamLaneNotFound)
@@ -666,7 +761,8 @@ class MapUtils:
         return stop_bars_and_signs
 
     @staticmethod
-    def filter_flow_control_by_type(road_signs: List[RoadSignInfo], road_sign_types: List[RoadObjectType]) -> List[RoadSignInfo]:
+    def filter_flow_control_by_type(road_signs: List[RoadSignInfo], road_sign_types: List[RoadObjectType]) -> List[
+        RoadSignInfo]:
         """
         Filters the given road signs list to the desired road sign types
         :param road_signs: list of road signs to filter
@@ -701,7 +797,7 @@ class MapUtils:
         frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
         frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
         road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
-        road_sign_info_on_gff = [RoadSignInfo(sign_type=sign_type, s=s) for sign_type, s in zip(road_sign_types, road_sign_s_on_gff)]
+        road_sign_info_on_gff = [RoadSignInfo(sign_type=sign_type, s=s) for sign_type, s in
+                                 zip(road_sign_types, road_sign_s_on_gff)]
         road_sign_info_on_gff.sort(key=lambda x: x.s)  # sort by distance after the conversion to real distance
         return road_sign_info_on_gff
-

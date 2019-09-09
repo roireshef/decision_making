@@ -14,7 +14,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray
 from decision_making.src.planning.types import LAT_CELL
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFF_Type
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List, Union, Any
@@ -443,7 +443,7 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
         target_gff = behavioral_state.extended_lane_frames[action_spec.relative_lane]
 
         # skip checking if the GFF is not a partial GFF
-        if target_gff.gff_type not in [GFF_Type.Partial, GFF_Type.AugmentedPartial]:
+        if target_gff.gff_type not in [GFFType.Partial, GFFType.AugmentedPartial]:
             self._raise_true()
 
         # pad end of GFF with PARTIAL_GFF_END_PADDING as the host should not be at the very end of the Partial GFF

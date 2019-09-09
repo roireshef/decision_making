@@ -40,17 +40,28 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_i_SegmentID, pubsubMsg.e_i_SStart, pubsubMsg.e_i_SEnd)
 
 
-class GFF_Type(Enum):
+class GFFType(Enum):
     Normal = 0
     Augmented = 1
     Partial = 2
     AugmentedPartial = 3
 
+    @staticmethod
+    def get(is_partial, is_augmented):
+        if is_partial and is_augmented:
+            return GFFType.AugmentedPartial
+        elif is_partial:
+            return GFFType.Partial
+        elif is_augmented:
+            return GFFType.Augmented
+        else:
+            return GFFType.Normal
+
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
-                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: Optional[GFF_Type] = None):
+                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: Optional[GFFType] = None):
         """
         A generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
         A special case might be a subsegment of a single frenet frame.
@@ -138,7 +149,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     @classmethod
     @prof.ProfileFunction()
-    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment], gff_type: Optional[GFF_Type] = None):
+    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment], gff_type: Optional[GFFType] = None):
         """
         Create a generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
         A special case might be a sub segment of a single frenet frame.
@@ -149,7 +160,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :return: A new GeneralizedFrenetSerretFrame built out of different other frenet frames.
         """
         # If the GFF type is not provided, default to Normal
-        gff_type = gff_type or GFF_Type.Normal
+        gff_type = gff_type or GFFType.Normal
 
         segments_id = np.array([sub_seg.e_i_SegmentID for sub_seg in sub_segments])
         segments_s_start = np.array([sub_seg.e_i_SStart for sub_seg in sub_segments])

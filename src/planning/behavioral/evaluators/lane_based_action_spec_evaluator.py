@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT
 from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFF_Type
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
 
 
 
@@ -116,12 +116,12 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
         minimum_cost_lane = RelativeLane.SAME_LANE
 
         is_left_augmented = RelativeLane.LEFT_LANE in gffs and (
-                gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.Augmented or
-                gffs[RelativeLane.LEFT_LANE].gff_type == GFF_Type.AugmentedPartial)
+                gffs[RelativeLane.LEFT_LANE].gff_type == GFFType.Augmented or
+                gffs[RelativeLane.LEFT_LANE].gff_type == GFFType.AugmentedPartial)
 
         is_right_augmented = RelativeLane.RIGHT_LANE in gffs and (
-                gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.Augmented or
-                gffs[RelativeLane.RIGHT_LANE].gff_type == GFF_Type.AugmentedPartial)
+                gffs[RelativeLane.RIGHT_LANE].gff_type == GFFType.Augmented or
+                gffs[RelativeLane.RIGHT_LANE].gff_type == GFFType.AugmentedPartial)
 
         diverging_indices = {}
 
