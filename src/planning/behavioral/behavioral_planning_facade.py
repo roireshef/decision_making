@@ -1,17 +1,12 @@
 import time
-
 import traceback
 from logging import Logger
 
 import numpy as np
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-<<<<<<< HEAD
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
-=======
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
->>>>>>> master
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
@@ -78,28 +73,23 @@ class BehavioralPlanningFacade(DmModule):
 
         try:
             start_time = time.time()
-<<<<<<< HEAD
-=======
 
-            route_plan = self._get_current_route_plan()
-            route_plan_dict = route_plan.to_costs_dict()
->>>>>>> master
-
-            with DMProfiler(self.__class__.__name__ + '.get_state'):
-                state = self._get_current_state()
+            with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
+                route_plan = self._get_current_route_plan()
+                route_plan_dict = route_plan.to_costs_dict()
 
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
+                SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            SceneStaticModel.get_instance().set_scene_static(scene_static)
+            with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
+                scene_dynamic = self._get_current_scene_dynamic()
+                state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
+                                                              selected_gff_segment_ids=self._last_gff_segment_ids,
+                                                              route_plan_dict=route_plan_dict,
+                                                              logger=self.logger)
 
-            scene_dynamic = self._get_current_scene_dynamic()
-            state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
-                                                          selected_gff_segment_ids=self._last_gff_segment_ids,
-                                                          route_plan_dict=route_plan_dict,
-                                                          logger=self.logger)
-
-            state.handle_negative_velocities(self.logger)
+                state.handle_negative_velocities(self.logger)
 
             if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count > 1:
                 self.logger.debug("Multiple localization hypotheses published for ego vehicle at timestamp: %f," +
@@ -121,12 +111,6 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 updated_state = state
 
-<<<<<<< HEAD
-            with DMProfiler(self.__class__.__name__ + '.get_route_plan'):
-                route_plan = self._get_current_route_plan()
-
-=======
->>>>>>> master
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
 

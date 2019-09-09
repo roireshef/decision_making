@@ -76,20 +76,15 @@ class TrajectoryPlanningFacade(DmModule):
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
-<<<<<<< HEAD
-            with DMProfiler(self.__class__.__name__ + '.get_state'):
-                state = self._get_current_state()
-
-=======
->>>>>>> master
             params = self._get_mission_params()
 
-            scene_dynamic = self._get_current_scene_dynamic()
+            with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
+                scene_dynamic = self._get_current_scene_dynamic()
 
-            state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
-                                                          selected_gff_segment_ids=params.reference_route.segment_ids,
-                                                          logger=self.logger)
-            state.handle_negative_velocities(self.logger)
+                state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
+                                                              selected_gff_segment_ids=params.reference_route.segment_ids,
+                                                              logger=self.logger)
+                state.handle_negative_velocities(self.logger)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
