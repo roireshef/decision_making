@@ -283,7 +283,7 @@ class MapUtils:
         :param lane_id: ID for the lane in question
         :return: Maneuver type of the lane
         """
-        upstream_lane = MapUtils.get_upstream_lanes(lane_id)[0]
+        upstream_lane = MapUtils.get_upstream_lane_ids(lane_id)[0]
         downstream_connectivity = MapUtils.get_lane(upstream_lane).as_downstream_lanes
         connectivity = [connectivity.e_e_maneuver_type for connectivity in downstream_connectivity if
                         connectivity.e_i_lane_segment_id == lane_id]

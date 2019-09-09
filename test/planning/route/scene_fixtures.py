@@ -487,7 +487,7 @@ def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState:
 def construction_scene_for_takeover_test(request):
     # Set Default Expected Output
     route_plan_data = default_route_plan_for_PG_split_file()
-    expected_takover = False
+    expected_takeover = False
     ego_state = generate_ego_state(ego_lane_id = 200, ego_lane_station = 0)
 
     # Define Lane Modifications and Modify Expected Outputs
