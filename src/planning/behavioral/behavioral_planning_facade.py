@@ -127,8 +127,8 @@ class BehavioralPlanningFacade(DmModule):
             # Send visualization data
             self._publish_visualization(behavioral_visualization_message)
 
-            self.logger.debug("Current speed limit at time %f: %f" %
-                              (state.ego_state.timestamp_in_sec, MapUtils.get_lane(state.ego_state.map_state.lane_id).e_v_nominal_speed))
+            speed_limits = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in self._last_gff_segment_ids}
+            self.logger.debug("Speed limits at time %f: %s" % (state.ego_state.timestamp_in_sec, speed_limits))
 
             self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
 

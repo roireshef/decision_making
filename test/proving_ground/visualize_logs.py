@@ -78,8 +78,11 @@ def plot_dynamics(log_file_path: str):
         if 'BehavioralGrid: time' in text:
             behavioral_grid_str = text.split('BehavioralGrid: time')[1]
             time = float(behavioral_grid_str.split(', ')[0])
-            obj_id_str, obj_vel_str, obj_dist_str = behavioral_grid_str.split('front_obj: (')[1].split(')')[0].split(',')
-            obj_id, obj_vel, obj_dist = int(obj_id_str), float(obj_vel_str), float(obj_dist_str)
+            obj_dist = float(behavioral_grid_str.split('dist_from_front_object ')[1].split(',')[0])
+            obj_str = behavioral_grid_str.split('front_object: ')[1]
+            obj_dict = ast.literal_eval(obj_str)
+            obj_id = obj_dict['obj_id'] if obj_dict is not None else 0
+            obj_vel = obj_dict['_cached_cartesian_state']['array'][C_V] if obj_dict is not None else 0
             other_times.append(time)
             other_ids.append(obj_id)
             other_vels.append(obj_vel)
