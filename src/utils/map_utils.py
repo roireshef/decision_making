@@ -17,6 +17,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 from typing import List, Dict
 from decision_making.src.messages.scene_static_enums import ManeuverType
+from decision_making.src.planning.types import LaneSegmentID
 
 
 class MapUtils:
@@ -249,6 +250,21 @@ class MapUtils:
         # TODO: temporary fix for MS2 demo. remove it with lane split feature merge
         return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity
                 if connectivity.e_e_maneuver_type == ManeuverType.STRAIGHT_CONNECTION]
+
+    @staticmethod
+    def get_lane_maneuver_type(lane_id: int) -> ManeuverType:
+        """
+        Get maneuver type for the given lane id
+        :param lane_id: ID for the lane in question
+        :return: Maneuver type of the lane
+        """
+        upstream_lane = MapUtils.get_upstream_lanes(lane_id)[0]
+        downstream_connectivity = MapUtils.get_lane(upstream_lane).as_downstream_lanes
+        connectivity = [connectivity.e_e_maneuver_type for connectivity in downstream_connectivity if
+                        connectivity.e_i_lane_segment_id == lane_id]
+        assert len(connectivity) == 1, "connectivity from upstream lane %s to lane %s was supposed to be 1-to-1" + \
+                                       "connection but got %s instances" % (upstream_lane, lane_id, len(connectivity))
+        return connectivity[0]
 
     @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:

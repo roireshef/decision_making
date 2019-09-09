@@ -39,7 +39,7 @@ class RoutePlanningFacade(DmModule):
         """Unsubscribe from messages"""
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
 
-    def _periodic_action_impl(self)->None:
+    def _periodic_action_impl(self) -> None:
         """
         The main function of the route planner. It read the most up-to-date scene static base, includning the navigation route and lane
         attributes, processes them into internal data structures (as described in RoutePlannerInputData() class).

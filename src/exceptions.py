@@ -34,6 +34,10 @@ class StateHasNotArrivedYet(Warning):
     pass
 
 
+class EgoStateLaneIdNotValid(Exception):
+    pass
+
+
 # TRAJECTORY PLANNING
 @six.add_metaclass(ABCMeta)
 class TrajectoryPlanningException(Exception):
