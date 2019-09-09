@@ -278,6 +278,8 @@ class BehavioralGridState:
         :param timestamp_in_sec: current state time
         :param logger:
         """
+        if logger is None:
+            return
         front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
         front_obj = None
         front_obj_dist = 0  # write zeros if there is no front object

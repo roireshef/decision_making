@@ -22,7 +22,6 @@ from decision_making.src.state.state import OccupancyState, State, ObjectSize, E
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
     scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle
-from rte.python.logger.AV_logger import AV_Logger
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 NAVIGATION_PLAN = np.array(range(20, 30))
@@ -458,41 +457,41 @@ def state_for_testing_lanes_speed_limits_violations():
 @pytest.fixture(scope='function')
 def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
-                                                route_plan_20_30, AV_Logger.get_logger(""))
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_acceleration_towards_vehicle(
         state_with_objects_for_acceleration_towards_vehicle, route_plan_oval_track: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_acceleration_towards_vehicle,
-                                                route_plan_oval_track, AV_Logger.get_logger(""))
+                                                route_plan_oval_track, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
         state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
-                                                route_plan_20_30, AV_Logger.get_logger(""))
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
         state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_exact_tracking_mode,
-                                                route_plan_20_30, AV_Logger.get_logger(""))
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_objects_for_filtering_negative_sT: State,
                                                                  route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
-                                                route_plan_20_30, AV_Logger.get_logger(""))
+                                                route_plan_20_30, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
         state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
-                                                route_plan_20_30, AV_Logger.get_logger(""))
+                                                route_plan_20_30, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
@@ -503,12 +502,12 @@ def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
-                                                route_plan_20_30, AV_Logger.get_logger(""))
+                                                route_plan_20_30, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_segments_limits(state_for_testing_lanes_speed_limits_violations, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_for_testing_lanes_speed_limits_violations,
-                                                route_plan_20_30, AV_Logger.get_logger(""))
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
