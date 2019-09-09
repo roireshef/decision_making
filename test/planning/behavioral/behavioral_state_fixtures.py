@@ -101,7 +101,7 @@ def ego_state_for_takover_message_default_scene():
 
 
 @pytest.fixture(scope='function')
-def state_with_sorrounding_objects(route_plan_20_30: RoutePlan):
+def state_with_surrounding_objects(route_plan_20_30: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -454,8 +454,8 @@ def state_for_testing_lanes_speed_limits_violations():
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state(state_with_sorrounding_objects: State, route_plan_20_30: RoutePlan):
-    yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
+def behavioral_grid_state(state_with_surrounding_objects: State, route_plan_20_30: RoutePlan):
+    yield BehavioralGridState.create_from_state(state_with_surrounding_objects,
                                                 route_plan_20_30, None)
 
 

@@ -8,21 +8,21 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import DynamicObject, MapState, ObjectSize
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    state_with_sorrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30
+    state_with_surrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30
 from decision_making.test.messages.scene_static_fixture import scene_static_oval_with_splits, \
     scene_static_short_testable
 
 
-def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects, route_plan_20_30):
+def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_surrounding_objects, route_plan_20_30):
     """
     validate that 8 objects around ego create 8 grid cells in the behavioral state in multi-road map
     (a cell is created only if it contains at least one object)
     """
     logger = AV_Logger.get_logger()
 
-    behavioral_state = BehavioralGridState.create_from_state(state_with_sorrounding_objects, route_plan_20_30, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state_with_surrounding_objects, route_plan_20_30, logger)
 
-    assert len(behavioral_state.road_occupancy_grid) == len(state_with_sorrounding_objects.dynamic_objects)
+    assert len(behavioral_state.road_occupancy_grid) == len(state_with_surrounding_objects.dynamic_objects)
 
 
 def test_createFromState_eightObjectsAroundEgo_IgnoreThreeOffMapObjects(state_with_surrounding_objects_and_off_map_objects,
@@ -46,11 +46,11 @@ def test_createFromState_eightObjectsAroundEgo_IgnoreThreeOffMapObjects(state_wi
         assert np.all([not obj.dynamic_object.off_map for obj in dynamic_objects_on_grid])
 
 
-def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_sorrounding_objects, behavioral_grid_state):
+def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_surrounding_objects, behavioral_grid_state):
     """
     validate that 8 objects around ego have accurate longitudinal distances from ego in multi-road map
     """
-    target_map_states = [obj.map_state for obj in state_with_sorrounding_objects.dynamic_objects]
+    target_map_states = [obj.map_state for obj in state_with_surrounding_objects.dynamic_objects]
 
     longitudinal_distances = behavioral_grid_state.calculate_longitudinal_differences(target_map_states)
 
