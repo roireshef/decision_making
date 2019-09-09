@@ -362,7 +362,7 @@ class MapUtils:
                          route_plan: RoutePlan,
                          can_augment: Optional[Dict[RelativeLane, bool]] = None,
                          lane_subsegments: Optional[List[FrenetSubSegment]] = None,
-                         cumulative_distance: Optional[float] = None) -> Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool]]:
+                         cumulative_distance: Optional[float] = None) -> Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
 
         return MapUtils._advance_by_cost_hl(initial_lane_id, initial_s, lookahead_distance, route_plan, can_augment)
 

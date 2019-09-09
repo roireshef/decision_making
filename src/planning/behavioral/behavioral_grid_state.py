@@ -258,9 +258,7 @@ class BehavioralGridState:
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
                     lane_gffs = BehavioralGridState.get_generalized_frenet_frames_by_cost(lane_id=closest_lanes_dict[relative_lane],
-                                                                              station=host_station_in_adjacent_lane,
-                                                                              route_plan=route_plan,
-                                                                              logger=logger)
+                                                        station=host_station_in_adjacent_lane, route_plan=route_plan, logger=logger)
 
                     # Note that the RelativeLane keys that are in the returned dictionary from get_lookahead_frenet_frame_by_cost are
                     # with respect to the lane ID provided to the function. Therefore, since the lane ID for the left/right lane is
@@ -313,12 +311,9 @@ class BehavioralGridState:
             lookahead_distance = MAX_FORWARD_HORIZON + MAX_BACKWARD_HORIZON
             upstream_lane_subsegments = []
 
-        lane_subsegments_dict = MapUtils._advance_by_cost(initial_lane_id=lane_id,
-                                                          initial_s=starting_station,
-                                                          lookahead_distance=lookahead_distance,
-                                                          route_plan=route_plan,
-                                                          lane_subsegments=upstream_lane_subsegments,
-                                                          can_augment=can_augment)
+        lane_subsegments_dict = MapUtils._advance_by_cost(initial_lane_id=lane_id, initial_s=starting_station,
+                                            lookahead_distance=lookahead_distance, route_plan=route_plan,
+                                            lane_subsegments=upstream_lane_subsegments, can_augment=can_augment)
 
         gffs_dict = {}
 
