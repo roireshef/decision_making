@@ -389,6 +389,10 @@ class MapUtils:
                  GFF type. The first flag denotes a partial GFF and the second flag denotes an augmented GFF.
                  Lastly, the total length of the GFF is returned
         """
+        # initialize default arguments
+        can_augment = can_augment or {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
+
+
         lane_subsegments_dict = {}
 
         lane_subsegments, cumulative_distance = MapUtils._advance_by_cost_ll(
