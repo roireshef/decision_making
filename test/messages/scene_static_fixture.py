@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pickle
 from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, PG_PICKLE_FILE_NAME, \
-    ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME, \
+    ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME, ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME,\
     OVAL_WITH_SPLITS_FILE_NAME
 from decision_making.paths import Paths
 
@@ -33,8 +33,7 @@ def scene_static_accel_towards_vehicle():
 
 @pytest.fixture
 def scene_static_oval_with_splits():
-    return pickle.load(open(Paths.get_scene_static_absolute_path_filename(
-                        OVAL_WITH_SPLITS_FILE_NAME), 'rb'))
+    return pickle.load(open(Paths.get_scene_static_absolute_path_filename(OVAL_WITH_SPLITS_FILE_NAME), 'rb'))
 
 
 @pytest.fixture

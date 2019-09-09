@@ -76,8 +76,8 @@ class RoutePlanSubscriber(DmModule):
 
             # calculate the takeover message
             behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING),
-                                                trajectory_params=None,
-                                                visualization_msg=None, trigger_pos=None)
+                                                        trajectory_params=None,
+                                                        visualization_msg=None, trigger_pos=None)
 
             takeover_msg = behavior_facade_mock._mock_takeover_message(route_plan_data=route_plan.s_Data,
                                                                         ego_state=mock_state.ego_state,
