@@ -103,7 +103,9 @@ class UniformGrid:
 
     def __getitem__(self, item):
         """Returns the value from the grid, by index"""
-        return self.array[item]
+        if item >= self.length or item < 0:
+            raise IndexError("Index %s is out of bounds for %s" % (item, self))
+        return self.start + item * self.resolution
 
     def get_index(self, value):
         """
