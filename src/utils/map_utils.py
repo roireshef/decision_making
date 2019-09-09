@@ -340,7 +340,7 @@ class MapUtils:
         upstream_lane_subsegments.reverse()
 
         return upstream_lane_subsegments
-    #
+
     # @staticmethod
     # @raises(RoadNotFound, LaneNotFound, NavigationPlanTooShort, StraightConnectionNotFound)
     # @prof.ProfileFunction()
@@ -554,19 +554,24 @@ class MapUtils:
         for rel_lane, maneuver_type in [(RelativeLane.RIGHT_LANE, ManeuverType.RIGHT_SPLIT),
                                         (RelativeLane.LEFT_LANE, ManeuverType.LEFT_SPLIT)]:
             # Check if augmented lanes can be created
-            if can_augment[rel_lane] and maneuver_type in valid_downstream_lanes:
-                # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
-                augmented_lane_dict = MapUtils._advance_by_cost_hl(
-                    initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
-                    lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan)
+            if can_augment[rel_lane]:
+                if maneuver_type in valid_downstream_lanes:
+                    # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
+                    augmented_lane_dict = MapUtils._advance_by_cost_hl(
+                        initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
+                        lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan)
+                    # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
+                    # Read the return value description above for more information.
+                    augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = augmented_lane_dict[RelativeLane.SAME_LANE]
+                    # Assign information to dictionary accordingly
+                    lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
+                                                       True, cumulative_distance + augmented_cumulative_distance)
+                elif rel_lane in straight_lane_dict.keys():
+                    augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = straight_lane_dict[rel_lane]
+                    # Assign information to dictionary accordingly
+                    lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
+                                                       True, cumulative_distance + augmented_cumulative_distance)
 
-                # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
-                # Read the return value description above for more information.
-                augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = augmented_lane_dict[RelativeLane.SAME_LANE]
-
-                # Assign information to dictionary accordingly
-                lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
-                                                   True, cumulative_distance + augmented_cumulative_distance)
 
         return lane_subsegments_dict
 

@@ -340,7 +340,7 @@ class BehavioralGridState:
 
             # Create Frenet frame for each sub segment
             frenet_frames = [MapUtils.get_lane_frenet_frame(lane_subsegment.e_i_SegmentID)
-                             for lane_subsegment in lane_subsegments]
+                             for lane_subsegment in upstream_lane_subsegments + lane_subsegments]
 
             # Create GFF
             gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, lane_subsegments, gff_type)
