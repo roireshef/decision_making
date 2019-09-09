@@ -170,9 +170,9 @@ class BehavioralPlanningFacade(DmModule):
     @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
     def _set_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState) -> Takeover:
         """
-        funtion to calculate the takeover message based on the static route plan
-        takeover flag will be set True if all lane segments' end costs for a downstream road segment
-        within a threshold distance are 1, i.e., road is blocked.
+        Calculate the takeover message based on the static route plan
+        The takeover flag will be set to True if all lane end costs for a downstream road segment
+        within a threshold distance are 1 (i.e. road is blocked).
         :param route_plan_data: last route plan data
         :param ego_state: last state for ego vehicle
         :return: Takeover data
@@ -192,7 +192,7 @@ class BehavioralPlanningFacade(DmModule):
 
         ego_row_idx = route_plan_start_idx[0][0]
 
-        dist_to_end = 0
+        dist_to_end = 0.0
         takeover_flag = False
 
         # iterate through all road segments within MIN_DISTANCE_TO_SET_TAKEOVER_FLAG
@@ -216,14 +216,17 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 dist_to_end += lane_length
 
-            # check the end cost for all lane segments within a road segment
-            lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
-
-            takeover_flag = np.all(lane_end_costs == 1)
-
-            if takeover_flag or dist_to_end >= max(MIN_DISTANCE_TO_SET_TAKEOVER_FLAG,
-                                                   ego_state.map_state.lane_fstate[FS_SV]*TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG):
+            if dist_to_end >= max(MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, ego_state.map_state.lane_fstate[FS_SV] * TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG):
+                # If the host is far from any potential problem area, break the loop. The takeover flag should not be raised.
                 break
+            else:
+                # Since the host is close to a potential problem area, check the end cost for all lane segments within the road segment. If all of the
+                # lane end costs are equal to 1, there is no where for the host to go. Set the takeover flag to True and break the loop.
+                lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
+
+                if np.all(lane_end_costs == 1):
+                    takeover_flag = True
+                    break
 
         takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,
                                                     s_Timestamp=Timestamp.from_seconds(ego_state.timestamp_in_sec),
