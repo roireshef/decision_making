@@ -4,12 +4,9 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LO
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 
 from decision_making.src.messages.scene_static_message import SceneStatic
-from decision_making.src.state.state import EgoState
+from decision_making.src.planning.behavioral.state import EgoState
 from decision_making.test.planning.route.scene_fixtures import TakeOverTestData, \
-     default_route_plan, construction_scene_for_takeover_test
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
-    ego_state_for_takover_message_default_scene
+     default_route_plan
 
 
 def test_setTakeoverMessage_defaultScene_noTakeoverFlag(scene_static_pg_split: SceneStatic,

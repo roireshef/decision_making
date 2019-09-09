@@ -1,11 +1,10 @@
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
 from rte.python.logger.AV_logger import AV_Logger
 import numpy as np
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    state_with_sorrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30
+
 
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects, route_plan_20_30):
     """

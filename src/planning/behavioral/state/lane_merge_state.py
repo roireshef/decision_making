@@ -1,7 +1,7 @@
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FrenetState1D, FS_SX, FS_2D_LEN, FS_SV, FS_SA
-from decision_making.src.state.state import ObjectSize, State
+from decision_making.src.planning.behavioral.state import ObjectSize, State
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 import numpy as np

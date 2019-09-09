@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
-from decision_making.src.state.state import State
+from decision_making.src.planning.behavioral.state import State
 
 
 class ManeuverClassifier(metaclass=ABCMeta):

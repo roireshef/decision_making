@@ -4,7 +4,7 @@ import numpy as np
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, AggressivenessLevel, ActionSpec, \
     ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.planner.base_planner import BasePla
 from decision_making.src.planning.types import ActionSpecArray
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.lane_merge_state import LaneMergeState
+from decision_making.src.planning.behavioral.state import LaneMergeState
 
 
 class RL_LaneMergePlanner(BasePlanner):

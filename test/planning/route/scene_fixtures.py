@@ -10,8 +10,8 @@ from decision_making.src.messages.scene_static_enums import LaneConstructionType
     RoutePlanLaneSegmentAttr, LaneMappingStatusType, GMAuthorityType, MapLaneDirection,\
     ManeuverType
 from decision_making.src.messages.scene_static_message import SceneStatic
-from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import EgoState, ObjectSize
+from decision_making.src.planning.behavioral.state import MapState
+from decision_making.src.planning.behavioral.state import EgoState, ObjectSize
 from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
 
 

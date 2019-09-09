@@ -2,7 +2,7 @@ import six
 from abc import ABCMeta, abstractmethod
 from decision_making.src.exceptions import ConstraintFilterHaltWithValue
 from decision_making.src.global_constants import MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFilter
 from decision_making.src.planning.types import BoolArray

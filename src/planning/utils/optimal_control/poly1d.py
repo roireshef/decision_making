@@ -3,7 +3,7 @@ from typing import Union
 
 import numpy as np
 
-from decision_making.src.planning.types import Limits
+from decision_making.src.planning.types import Limits, BoolArray
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
@@ -127,13 +127,31 @@ class Poly1D:
         """
         Given the polynomial setting, this function returns A as a tensor with the first dimension iterating
         over different values of T (time-horizon) provided in <terminal_times>
-        :param terminal_times: 1D numpy array of different values for T
+        :param T: 1D numpy array of different values for T
         :return: 3D numpy array of shape [len(terminal_times), cls.num_coefs(), cls.num_coefs()]
         """
         return cls.time_constraints_tensor(np.array([T]))[0]
 
     @staticmethod
-    def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
+    def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits) -> BoolArray:
+        """
+        check acceleration limits with polynomials, whose leading coefficients may be zero
+        :param degree: degree of derivative: 2 for acceleration, 1 for velocity
+        :param poly_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
+        are_in_limits = np.zeros(poly_coefs.shape[0]).astype(bool)
+        for coef_idx in range(poly_coefs.shape[1]):
+            poly_of_degree = np.isclose(poly_coefs[:, :coef_idx], 0).all(axis=1) & ~np.isclose(poly_coefs[:, coef_idx], 0)
+            if poly_of_degree.any():
+                are_in_limits[poly_of_degree] = Poly1D.are_derivatives_in_limits_uniform_poly_degree(
+                    degree, poly_coefs[poly_of_degree, coef_idx:], T_vals[poly_of_degree], limits)
+        return are_in_limits
+
+    @staticmethod
+    def are_derivatives_in_limits_uniform_poly_degree(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
         """
         Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
         polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
@@ -175,25 +193,6 @@ class Poly1D:
     @classmethod
     def are_accelerations_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:
         return cls.are_derivatives_in_limits(degree=2, poly_coefs=poly_coefs, T_vals=T_vals, limits=acc_limits)
-
-    @classmethod
-    def are_derivatives_in_limits_zero_coef(cls, degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray,
-                                            limits: Limits) -> np.ndarray:
-        """
-        check acceleration limits with polynomials, whose leading coefficients may be zero
-        :param degree: degree of derivative: 2 for acceleration, 1 for velocity
-        :param poly_coefs:
-        :param T_vals:
-        :param limits:
-        :return: boolean 1D array of accelerations validity for each polynomial
-        """
-        valid_acc = np.zeros(poly_coefs.shape[0]).astype(bool)
-        for coef_idx in range(poly_coefs.shape[1]):
-            poly_of_degree = np.isclose(poly_coefs[:, :coef_idx], 0).all(axis=1) & ~np.isclose(poly_coefs[:, coef_idx], 0)
-            if poly_of_degree.any():
-                valid_acc[poly_of_degree] = cls.are_derivatives_in_limits(
-                    degree=degree, poly_coefs=poly_coefs[poly_of_degree, coef_idx:], T_vals=T_vals[poly_of_degree], limits=limits)
-        return valid_acc
 
     @classmethod
     def is_acceleration_in_limits(cls, poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:

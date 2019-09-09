@@ -4,14 +4,14 @@ from typing import List, Type
 import numpy as np
 from decision_making.src.global_constants import LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, \
     ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.state.state import DynamicObject
+from decision_making.src.planning.behavioral.state import DynamicObject
 from sklearn.utils.extmath import cartesian
 
 

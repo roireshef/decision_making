@@ -2,8 +2,8 @@ import numpy as np
 from decision_making.src.global_constants import FILTER_OFF_ROAD_OBJECTS
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_DV, FS_DX
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
-from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import State, DynamicObject
+from decision_making.src.planning.behavioral.state import MapState
+from decision_making.src.planning.behavioral.state import State, DynamicObject
 from logging import Logger
 from typing import List, Dict
 

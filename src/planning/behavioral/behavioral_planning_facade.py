@@ -25,14 +25,14 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import State, EgoState
+from decision_making.src.planning.behavioral.state import State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger

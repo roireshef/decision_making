@@ -1,6 +1,5 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.scene_static_fixture import scene_static_testable
 from typing import List
 
 import numpy as np
@@ -18,7 +17,7 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
     WerlingTrajectoryGenerator
-from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
+from decision_making.src.planning.behavioral.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 from decision_making.test.planning.trajectory.mock_samplable_trajectory import MockSamplableTrajectory
 from rte.python.logger.AV_logger import AV_Logger
 

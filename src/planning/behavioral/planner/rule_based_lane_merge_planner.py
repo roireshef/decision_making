@@ -1,16 +1,16 @@
 from logging import Logger
-from typing import Optional, List
+from typing import List
 import numpy as np
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LON_ACC_LIMITS, VELOCITY_LIMITS, \
     EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, SPECIFICATION_HEADWAY, BP_ACTION_T_LIMITS
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState1D, LIMIT_MAX
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.state.lane_merge_state import LaneMergeState, ActorState
+from decision_making.src.planning.behavioral.state import LaneMergeState, ActorState
 
 WORST_CASE_FRONT_CAR_DECEL = 3  # [m/sec^2]
 WORST_CASE_BACK_CAR_ACCEL = 0  # [m/sec^2]
@@ -124,17 +124,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         # the fast analytic kinematic filter reduce the load on the regular kinematic filter
         # calculate actions that don't violate acceleration limits
-        valid_acc = QuinticPoly1D.are_derivatives_in_limits_zero_coef(2, poly_coefs, T, LON_ACC_LIMITS)
-        valid_vel = QuinticPoly1D.are_derivatives_in_limits_zero_coef(1, poly_coefs[valid_acc], T[valid_acc],
-                                                                      VELOCITY_LIMITS)
+        valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+        valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], VELOCITY_LIMITS)
         valid_idxs = np.where(valid_acc)[0][valid_vel]
 
         actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, ds, QuinticPoly1D.num_coefs())])
                    for t, vT in zip(T[valid_idxs], v_T[valid_idxs])]
 
         # check if there are actions that try to violate maximal vel_limit
-        not_too_high_vel = QuinticPoly1D.are_derivatives_in_limits_zero_coef(1, poly_coefs[valid_acc], T[valid_acc],
-                                                                             np.array([-np.inf, VELOCITY_LIMITS[1]]))
+        not_too_high_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc],
+                                                                  np.array([-np.inf, VELOCITY_LIMITS[1]]))
         return actions, (~not_too_high_vel).any()
 
     @staticmethod
@@ -239,7 +238,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         poly = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T, T)
         validT = ~np.isnan(T)
         valid_acc = np.zeros_like(T).astype(bool)
-        valid_acc[validT] = QuarticPoly1D.are_derivatives_in_limits_zero_coef(2, poly[validT], T[validT], LON_ACC_LIMITS)
+        valid_acc[validT] = QuarticPoly1D.are_accelerations_in_limits(poly[validT], T[validT], LON_ACC_LIMITS)
         return valid_acc
 
     @staticmethod

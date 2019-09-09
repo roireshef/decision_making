@@ -18,9 +18,9 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
-from decision_making.src.state.state import DynamicObjectsData
+from decision_making.src.planning.behavioral.state import MapState
+from decision_making.src.planning.behavioral.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
+from decision_making.src.planning.behavioral.state import DynamicObjectsData
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock

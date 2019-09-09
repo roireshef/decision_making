@@ -10,7 +10,7 @@ from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.ma
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
     TrajectoryGenerator
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
-from decision_making.src.state.state import State, DynamicObject
+from decision_making.src.planning.behavioral.state import State, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 
 

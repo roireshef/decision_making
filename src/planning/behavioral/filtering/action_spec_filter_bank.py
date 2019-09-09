@@ -6,7 +6,7 @@ from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS
 from decision_making.src.global_constants import VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \

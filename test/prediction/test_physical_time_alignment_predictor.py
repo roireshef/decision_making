@@ -1,16 +1,13 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.test.messages.scene_static_fixture import scene_static_testable
 from typing import List
 
 import numpy as np
 
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
-from decision_making.src.state.state import DynamicObject, EgoState, State
+from decision_making.src.planning.behavioral.state import DynamicObject, EgoState, State
 from decision_making.test.prediction.utils import Utils
 
-from decision_making.test.prediction.conftest import physical_time_alignment_predictor, dynamic_init_state, \
-    prediction_timestamps, static_cartesian_state, \
-    predicted_dyn_object_states_road_yaw, predicted_dynamic_ego_states, DYNAMIC_OBJECT_ID
+from decision_making.test.prediction.conftest import DYNAMIC_OBJECT_ID
 
 
 def test_AlignObjects_ExternalTimestamp_AccuratePrediction(physical_time_alignment_predictor: EgoUnawarePredictor,

@@ -1,5 +1,4 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 from logging import Logger
 
 import numpy as np
@@ -14,8 +13,8 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import ObjectSize, DynamicObject, State, EgoState
+from decision_making.src.planning.behavioral.state import MapState
+from decision_making.src.planning.behavioral.state import ObjectSize, DynamicObject, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 
 

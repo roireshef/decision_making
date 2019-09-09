@@ -1,8 +1,8 @@
 import numpy as np
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams, RuleBasedLaneMergeEvaluator
-from decision_making.src.state.lane_merge_state import LaneMergeState, ActorState
-from decision_making.src.state.state import ObjectSize
+from decision_making.src.planning.behavioral.state import LaneMergeState, ActorState
+from decision_making.src.planning.behavioral.state import ObjectSize
 from unittest.mock import patch
 
 

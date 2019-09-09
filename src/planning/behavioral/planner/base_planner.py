@@ -5,7 +5,6 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
-from typing import Optional, List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, \
@@ -17,15 +16,15 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLane, ActionRecipe
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import State, ObjectSize
+from decision_making.src.planning.behavioral.state import MapState
+from decision_making.src.planning.behavioral.state import ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
 
 
