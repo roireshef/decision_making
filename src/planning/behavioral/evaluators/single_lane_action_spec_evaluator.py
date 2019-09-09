@@ -4,14 +4,15 @@ from typing import List
 
 import numpy as np
 from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, EPS, \
-    REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
+    REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION, \
+    NUM_OF_POINTS_FOR_HEADWAY_CALCULATION
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe, DynamicActionRecipe, RelativeLongitudinalPosition, AggressivenessLevel
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.planning.types import LAT_CELL, FS_SA, FS_SV, FS_DX, C_V, FS_SX, Limits
+from decision_making.src.planning.types import LAT_CELL, FS_SA, FS_SV, FS_DX, C_V, FS_SX, Limits, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
@@ -121,7 +122,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         return road_sign_action.aggressiveness != AggressivenessLevel.CALM
 
     def _choose_aggressiveness_of_dynamic_action_by_headway(self, action_recipes: List[ActionRecipe], action_specs: List[ActionSpec],
-                                                            behavioral_state: BehavioralGridState, follow_vehicle_valid_action_idxs: List[int]):
+                                                            behavioral_state: BehavioralGridState, follow_vehicle_valid_action_idxs: List[int]) -> int:
         """ choose aggressiveness level for dynamic action according to the headway safety margin from the front car.
         If the headway becomes small, be more aggressive.
         :param action_recipes: recipes
@@ -172,7 +173,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
         terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
 
-        poly_coefs_s = QuinticPoly1D.s_profile_coefficients(
+        poly_coefs_s = QuinticPoly1D.position_profile_coefficients(
             initial_fstates[:, FS_SA], initial_fstates[:, FS_SV], terminal_fstates[:, FS_SV],
             terminal_fstates[:, FS_SX] - initial_fstates[:, FS_SX], T)
         poly_coefs_s[:, -1] = initial_fstates[:, FS_SX]
@@ -218,7 +219,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         poly_diff = poly_target - poly_host
         poly_diff[-1] -= margin
 
-        suspected_times = np.linspace(time_range[0], time_range[1], 64)
+        suspected_times = np.linspace(time_range[LIMIT_MIN], time_range[LIMIT_MAX], NUM_OF_POINTS_FOR_HEADWAY_CALCULATION)
 
         # This calculates the margin in headway time by checking 64 points evenly spaced in the time range
         # selects the time at which the headway time is minimal

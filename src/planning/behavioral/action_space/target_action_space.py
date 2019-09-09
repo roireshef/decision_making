@@ -187,9 +187,6 @@ class TargetActionSpace(ActionSpace):
         lower_root = Math.solve_quadratic(np.c_[np.ones(len(mod_idx)),
                                                 2 * (MAX_DECEL * SPECIFICATION_HEADWAY - v_0[mod_idx]),
                                                 v_0[mod_idx] * v_0[mod_idx] - 2 * MAX_DECEL * ds[mod_idx]])[:, 0]
-        # Find solutions to the quadratic equation.
-        # Don't modify values where there is no root. These are cases the headway is too small, no matter what we do
-        # Don't modify values above v_T. For example, if v_0 is large and ds is small, than the root will be close to v_0, which might be higher than v_T
         valid_root_idx = np.where(~np.isnan(lower_root) & (lower_root < v_T[mod_idx]))[0]
         valid_idx = mod_idx[valid_root_idx]
         # select the reduced value where possible
