@@ -1,4 +1,5 @@
 import pickle
+
 from decision_making.paths import Paths
 from decision_making.src.planning.types import FS_SA, C_A
 

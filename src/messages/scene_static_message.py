@@ -157,8 +157,8 @@ class LaneOverlap(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSLaneOverlap):
-        return cls(pubsubMsg.e_i_other_lane_segment_id, pubsubMsg.a_l_source_lane_overlap_stations[:2],
-                   pubsubMsg.a_l_other_lane_overlap_stations[:2],
+        return cls(pubsubMsg.e_i_other_lane_segment_id, pubsubMsg.a_l_source_lane_overlap_stations,
+                   pubsubMsg.a_l_other_lane_overlap_stations,
                    LaneOverlapType(pubsubMsg.e_e_lane_overlap_type))
 
 class BoundaryPoint(PUBSUB_MSG_IMPL):

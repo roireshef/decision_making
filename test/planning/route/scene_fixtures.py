@@ -492,6 +492,8 @@ def construction_scene_for_takeover_test(request):
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
+        # Two lanes are blocked ahead, and the vehicle is close to crossing into one of them. The takeover flag should be False
+        # because a lane change is preferred over handing back to the driver.
         lane_modifications = {211: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
@@ -511,11 +513,10 @@ def construction_scene_for_takeover_test(request):
         route_plan_data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
         route_plan_data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
 
-        ego_state = generate_ego_state(ego_lane_id = 201, ego_lane_station = 50)
-
-        expected_takover = False
+        ego_state = generate_ego_state(ego_lane_id = 201 , ego_lane_station = 75)
 
     elif request.param is "scene_two":
+        # All lanes are blocked, and the vehicle is close to crossing into one of them. The takeover flag should be True.
         lane_modifications = {290: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
                                      LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
@@ -544,14 +545,11 @@ def construction_scene_for_takeover_test(request):
 
         ego_state = generate_ego_state(ego_lane_id = 282, ego_lane_station = 80)
 
-        expected_takover = True
+        expected_takeover = True
 
     elif request.param is "scene_three":
-        lane_modifications = {212: [(True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
-                                     LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
-                                     1.0)],
-                              220: [(True,
+        # All lanes are blocked, but the vehicle is not close to crossing into one of them. The takeover flag should be False.
+        lane_modifications = {220: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)],
@@ -560,20 +558,9 @@ def construction_scene_for_takeover_test(request):
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)],
                               222: [(True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
-                                     LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
-                                     1.0),
-                                    (True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
-                                     1.0)],
-                              280: [(True,
-                                     RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value,
-                                     LaneConstructionType.CeSYS_e_LaneConstructionType_Blocked.value,
                                      1.0)]}
-
-        # Road Segment 20
-        route_plan_data.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 21
         route_plan_data.as_route_plan_lane_segments[1][0].e_cst_lane_end_cost = 1.0
@@ -589,26 +576,10 @@ def construction_scene_for_takeover_test(request):
         route_plan_data.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
         route_plan_data.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
 
-        # Road Segment 27
-        route_plan_data.as_route_plan_lane_segments[7][0].e_cst_lane_end_cost = 1.0
-
-        # Road Segment 28
-        route_plan_data.as_route_plan_lane_segments[8][0].e_cst_lane_occupancy_cost = 1.0
-        route_plan_data.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
-
-        # ego state
-        ego_lane_id = 211
-        ego_lane_station = 30  # station along the lane
-        car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
-
-        map_state = MapState(np.array([ego_lane_station, 10, 0, 0, 0, 0]), ego_lane_id)
-        ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
-
-        # expected output
-        expected_takover = True
+        ego_state = generate_ego_state(ego_lane_id = 211 , ego_lane_station = 30)
 
     else:
         lane_modifications = {}
 
     return TakeOverTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                            route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takover)
+                            route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takeover)
