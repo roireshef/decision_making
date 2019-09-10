@@ -205,8 +205,8 @@ class BehavioralGridState:
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
 
         # Augmented GFFS can be created only if the lanes don't currently exist
-        can_augment = {RelativeLane.LEFT_LANE: RelativeLane.LEFT_LANE not in closest_lanes_dict.keys(),
-                       RelativeLane.RIGHT_LANE: RelativeLane.RIGHT_LANE not in closest_lanes_dict.keys()}
+        can_augment = [rel_lane for rel_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                       if rel_lane not in closest_lanes_dict.keys()]
 
         extended_lane_frames = {}
 
@@ -229,7 +229,7 @@ class BehavioralGridState:
         for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
             # can_augment is True only if the adjacent lane does not exist. Therefore, the only thing that can be done is to
             # create an augmented GFF
-            if can_augment[relative_lane]:
+            if relative_lane in can_augment:
                 # Even though a lane augmentation is possible, it may not exist
                 # (e.g. right lane doesn't exist allowing for an augmented GFF, but there are no right splits ahead)
                 # Need to check if the augmented GFF was actually created
@@ -278,7 +278,7 @@ class BehavioralGridState:
     @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound, StraightConnectionNotFound, NavigationPlanTooShort)
     @prof.ProfileFunction()
     def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan,
-                                       can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
+                                       can_augment: Optional[List[RelativeLane]] = None) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         Create Generalized Frenet frame(s) along lane center, starting from given lane and station. If augmented lanes can be created, they will
@@ -286,8 +286,7 @@ class BehavioralGridState:
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :param can_augment: Dict of RelativeLane to bool describing if a search for an augmented LEFT/RIGHT lane
-                            starting from the lane_id is needed.
+        :param can_augment: List of RelativeLane. All relative lanes inside this can be augmented.
         :return: Dict of generalized Frenet frames with the relative lane as keys
                  The relative lane key is with respect to the provided lane_id. The dictionary will always contain the GFF for the provided
                  lane_id, and the RelativeLane.SAME_LANE key can be used to access it. If possible, augmented GFFs will also be returned,
@@ -388,7 +387,7 @@ class BehavioralGridState:
     @staticmethod
     @raises(StraightConnectionNotFound, RoadNotFound, NavigationPlanTooShort, LaneNotFound)
     def _get_downstream_lane_subsegments(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                                         route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
+                                         route_plan: RoutePlan, can_augment: List[RelativeLane] = None) -> \
             Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
@@ -398,7 +397,7 @@ class BehavioralGridState:
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :param can_augment: dict of RelativeLane to bool; if True, try to create an augmented lane for that RelativeLane
+        :param can_augment: List of RelativeLane. All relative lanes inside this can be augmented.
         :return: Dictionary with potential keys: [RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
                  These keys represent the non-augmented, left-augmented, and right-augmented gffs that can be created.
                  The key-value pair for the non-augmented lane (i.e. RelativeLane.SAME_LANE) will always exist, and it refers
@@ -409,7 +408,7 @@ class BehavioralGridState:
                  Lastly, the total length of the GFF is returned
         """
         # initialize default arguments
-        can_augment = can_augment or {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
+        can_augment = can_augment or []
 
         lane_subsegments_dict = {}
 
@@ -434,7 +433,7 @@ class BehavioralGridState:
         for rel_lane, maneuver_type in [(RelativeLane.RIGHT_LANE, ManeuverType.RIGHT_SPLIT),
                                         (RelativeLane.LEFT_LANE, ManeuverType.LEFT_SPLIT)]:
             # Check if augmented lanes can be created
-            if can_augment[rel_lane] and maneuver_type in valid_downstream_lanes:
+            if (rel_lane in can_augment) and maneuver_type in valid_downstream_lanes:
                 # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
                 augmented_lane_dict = BehavioralGridState._get_downstream_lane_subsegments(
                     initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
@@ -451,7 +450,7 @@ class BehavioralGridState:
                 augmented.append(rel_lane)
 
         # remove the already augmented lanes from options to augment after taking the straight connection
-        can_still_augment = {k: v == True and k not in augmented for k, v in can_augment.items()}
+        can_still_augment = [rel_lane for rel_lane in can_augment if rel_lane not in augmented]
 
         # Deal with "straight" direction in the split #
         if ManeuverType.STRAIGHT_CONNECTION in valid_downstream_lanes:
