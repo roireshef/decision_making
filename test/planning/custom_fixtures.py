@@ -3,7 +3,7 @@ import pytest
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, ROUTE_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MAX_BACKWARD_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Timestamp, Header
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
@@ -235,7 +235,7 @@ def scene_dynamic(scene_static_short_testable) -> SceneDynamic:
 
     lane_id = 11
     road_id = 1
-    fstate = np.array([1., 1., 0., 0., 0., 0.])
+    fstate = np.array([MAX_BACKWARD_HORIZON, 1., 0., 0., 0., 0.])
     host_hypotheses = [HostHypothesis(road_id, lane_id, fstate, False)]
 
     frenet = MapUtils.get_lane_frenet_frame(lane_id)

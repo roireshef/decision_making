@@ -214,7 +214,7 @@ class BehavioralGridState:
         try:
             lane_gff_dict = BehavioralGridState._get_generalized_frenet_frames(
                 lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=state.ego_state.map_state.lane_fstate[FS_SX],
-                route_plan=route_plan, logger=logger, can_augment=can_augment)
+                route_plan=route_plan, can_augment=can_augment)
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
             raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
@@ -262,8 +262,7 @@ class BehavioralGridState:
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
                     lane_gffs = BehavioralGridState._get_generalized_frenet_frames(
-                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane,
-                        route_plan=route_plan, logger=logger)
+                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan)
 
                     # Note that the RelativeLane keys that are in the returned dictionary from _get_lookahead_frenet_frames are
                     # with respect to the lane ID provided to the function. Therefore, since the lane ID for the left/right lane is
@@ -276,9 +275,9 @@ class BehavioralGridState:
         return extended_lane_frames
 
     @staticmethod
-    @raises(LaneNotFound, RoadNotFound)
+    @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound)
     @prof.ProfileFunction()
-    def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
+    def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan,
                                        can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
@@ -287,7 +286,6 @@ class BehavioralGridState:
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
-        :param logger: Logger object to log warning messages
         :param can_augment: Dict of RelativeLane to bool describing if a search for an augmented LEFT/RIGHT lane
                             starting from the lane_id is needed.
         :return: Dict of generalized Frenet frames with the relative lane as keys
@@ -302,8 +300,7 @@ class BehavioralGridState:
             # the backward distance to the beginning of the lane (i.e. the station).
             starting_station = 0.0
             lookahead_distance = MAX_FORWARD_HORIZON + station
-            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON,
-                                                                                logger)
+            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON)
         else:
             # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
             # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
@@ -338,14 +335,13 @@ class BehavioralGridState:
         return gffs_dict
 
     @staticmethod
-    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float,
-                                       logger: Optional[Logger] = None) -> List[FrenetSubSegment]:
+    @raises(UpstreamLaneNotFound)
+    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float) -> List[FrenetSubSegment]:
         """
         Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
         :param initial_lane_id: ID of lane to start from
         :param initial_station: Station on given lane
         :param backward_distance: Distance [m] to look backwards
-        :param logger: Logger object to log warning messages
         :return: List of upstream lane subsegments
         """
         lane_id = initial_lane_id
@@ -358,10 +354,7 @@ class BehavioralGridState:
             num_upstream_lanes = len(upstream_lane_ids)
 
             if num_upstream_lanes == 0:
-                if logger is not None:
-                    logger.debug(UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id)))
-
-                break
+                raise UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id))
             elif num_upstream_lanes == 1:
                 chosen_upstream_lane_id = upstream_lane_ids[0]
             elif num_upstream_lanes > 1:

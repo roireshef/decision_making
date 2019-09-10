@@ -33,7 +33,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_left_first, \
     scene_static_lane_splits_on_left_and_right_right_first, scene_static_short_testable
-from decision_making.src.exceptions import NavigationPlanTooShort
+from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
 
 SMALL_DISTANCE_ERROR = 0.01
 
@@ -675,22 +675,17 @@ def test_getUpstreamLaneSubsegments_backwardHorizonPassesBeginningOfLane_Correct
     assert upstream_lane_subsegments[1].e_i_SEnd == 119.64304560784024
 
 
-def test_getUpstreamLaneSubsegments_NoUpstreamLane_CorrectUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
+def test_getUpstreamLaneSubsegments_NoUpstreamLane_validateUpstreamLaneNotFound(scene_static_pg_split: SceneStatic):
     """
     Test _get_upstream_lane_subsegments
     This tests the scenario where the backwards horizon extends to upstream lanes but an upstream lane doesn't exist at some point. With
     starting close to the beginning of lane 210 and going backwards 150 m, the beginning of lane 200 is passed. Since lane 200 doesn't
-    have any upstream lanes, the search should end and the lane subsegment should include the entire length of lane 200.
+    have any upstream lanes, the UpstreamLaneNotFound exception should be raised.
     """
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(210, 5, 150)
 
-    # Check size
-    assert len(upstream_lane_subsegments) == 1
-
-    # Check ID
-    assert upstream_lane_subsegments[0].e_i_SegmentID == 200
-
-    # Check start and end stations
-    assert upstream_lane_subsegments[0].e_i_SStart == 0.0
-    assert upstream_lane_subsegments[0].e_i_SEnd == 120.84134201631973  # Lane length taken from pickle file
+    try:
+        BehavioralGridState._get_upstream_lane_subsegments(210, 5, 150)
+        assert False
+    except UpstreamLaneNotFound:
+        assert True

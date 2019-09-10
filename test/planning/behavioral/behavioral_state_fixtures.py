@@ -435,7 +435,7 @@ def state_with_objects_for_filtering_exact_tracking_mode():
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
-    road_id = 20
+    road_id = 21
 
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
