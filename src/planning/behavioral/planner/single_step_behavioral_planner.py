@@ -85,10 +85,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
 
-        # TODO: CORRECT ONCE LANE CHANGES ARE ENABLED
-        if selected_action_spec.relative_lane != RelativeLane.SAME_LANE:
-            self.logger.debug(f"Action towards {selected_action_spec.relative_lane} chosen, which may be an augmented lane")
-
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
