@@ -264,7 +264,7 @@ class BehavioralGridState:
                         lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane,
                         route_plan=route_plan, logger=logger)
 
-                    # Note that the RelativeLane keys that are in the returned dictionary from get_lookahead_frenet_frame_by_cost are
+                    # Note that the RelativeLane keys that are in the returned dictionary from _get_lookahead_frenet_frames are
                     # with respect to the lane ID provided to the function. Therefore, since the lane ID for the left/right lane is
                     # provided to the function above, the RelativeLane.SAME_LANE key in the returned dictionary actually refers to the
                     # left/right lane. That makes the use of this key below correct.
