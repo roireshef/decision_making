@@ -197,6 +197,7 @@ class BehavioralGridState:
         contain multiple original lane segments. Augmented frenet frames may be created if there are lane splits ahead.
         :param state: the current world state
         :param route_plan: the route plan which contains lane costs
+        :param logger: Logger object to log warning messages
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
