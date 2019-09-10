@@ -4,8 +4,7 @@ from typing import List
 
 import numpy as np
 from decision_making.src.global_constants import LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, EPS, \
-    REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION, \
-    NUM_OF_POINTS_FOR_HEADWAY_CALCULATION
+    REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION, TRAJECTORY_TIME_RESOLUTION
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
@@ -206,6 +205,7 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         """
         Given two s(t) longitudinal polynomials (one for host, one for target), this function calculates the minimal
         headway over the whole trajectory specified by <time_range>.
+        Restriction: only relevant for positive velocities.
         :param poly_host: 1d numpy array - coefficients of host's polynomial s(t)
         :param poly_target: 1d numpy array - coefficients of target's polynomial s(t)
         :param margin: the minimal stopping distance to keep in meters (in addition to headway, highly relevant for stopping)
@@ -219,7 +219,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         poly_diff = poly_target - poly_host
         poly_diff[-1] -= margin
 
-        suspected_times = np.linspace(time_range[LIMIT_MIN], time_range[LIMIT_MAX], NUM_OF_POINTS_FOR_HEADWAY_CALCULATION)
+        suspected_times = np.arange(time_range[LIMIT_MIN], time_range[LIMIT_MAX] + 0.1 * TRAJECTORY_TIME_RESOLUTION,
+                                    TRAJECTORY_TIME_RESOLUTION)
 
         # This calculates the margin in headway time by checking 64 points evenly spaced in the time range
         # selects the time at which the headway time is minimal

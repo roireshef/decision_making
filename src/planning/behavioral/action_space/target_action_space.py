@@ -163,6 +163,23 @@ class TargetActionSpace(ActionSpace):
         If the speed of the ego is higher than that of the leading vehicle, set the v_T to be lower than the real v_T.
         This will limit the ego's speed and help in case of sudden brake by the leading vehicle.
         Does not impact RoadSign actions, as its v_T is already 0, so it won't be reduced
+        On top of this, need to make sure the v_T is not too low, as this might cause it to be filtered by the
+        kinematics filter due to too large deceleration.
+        Assume the ego starts at v_0 and breaks at deceleration A. Calculate at what speed the lead vehicle should drive
+        in order for the ego to match its speed at time t, and for the distance between vehicles to be the SAFETY
+        distance at the same time t.
+        This gives us the following 2 equations:
+        1. v_T = v_0 - A * t
+        2. S0 - (t *(v_T+v_0)/2) + (t * v_T) = SPECIFICATION_HEADWAY * v_T + LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+        Exchanging t from eq. 1 into eq. 2 gives a quadratic eq in v_T which we solve below.
+        We use the smaller root as a lower bound to the speed we can set.
+        There are a few special cases to note:
+        1. No roots to the equation: This happens when the initial S0 is too small relative to the required headway.
+        In this case we keep the v_T unchanged.
+        2. Root is larger than v_T. Happens if the leading vehicle is moving too slow and we want it to move faster.
+        In this case we keep the v_T unchanged.
+        3. Negative root. This happens if the initial S0 is too large relative to v_T. The lead vehicle needs to
+        drive in reverse to be at the desired location. In this case we ignore the bound.
         :param behavioral_state: world's state. Used for debug only.
         :param ds: distance between vehicles after subtracting the car's length and the specify margin
         :param v_0: initial ego speed [m/s]
@@ -170,20 +187,9 @@ class TargetActionSpace(ActionSpace):
         :return: target speed to set for the action
         """
         v_diff = v_T - v_0
-        mod_idx = np.where(v_diff < CLOSE_TO_ZERO_NEGATIVE_VELOCITY)[0]  # where the leading vehicle is slower than the ego
+        # indices where the leading vehicle is slower than the ego
+        mod_idx = np.where(v_diff < CLOSE_TO_ZERO_NEGATIVE_VELOCITY)[0]
         v_T_mod = v_T.copy()
-        # Need to make sure the v_T is not too low, as this might cause it to be filtered by the kinematics filter due to too large decelaration.
-        # Assume the ego starts at v_0 nad breaks at deceleration A. Calculate at what speed the leading vehicle should drive
-        # in order for the ego to match its speed at time t, and for the distance between vehicles to be the SAFETY distance at the same time t.
-        # This gives us the following 2 equations:
-        # 1. v_T = v_0 - A * t
-        # 2. S0 - (t *(v_T+v_0)/2) + (t * v_T) = SPECIFICATION_HEADWAY * v_T + LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
-        # Exchanging t from eq. 1 into eq. 2 gives a quadratic eq in v_T which we solve below.
-        # We use the smaller root as a lower bound to the speed we can set.
-        # There are a few special cases to note:
-        # 1. No roots to the equation: This happens when the initial S0 is too small relative to the required headway. In this case we keep the v_T unchanged.
-        # 2. Root is larger than v_T. This happens if the leading vehicle is moving too slow and we want it to move faster. In this case we keep the v_T unchanged.
-        # 3. Negative root. This happens if the initial S0 is too large relative to v_T. The leading vehicle needs to drive in reverse to be at the desired location. In this case we ignore the bound.
         lower_root = Math.solve_quadratic(np.c_[np.ones(len(mod_idx)),
                                                 2 * (MAX_DECEL * SPECIFICATION_HEADWAY - v_0[mod_idx]),
                                                 v_0[mod_idx] * v_0[mod_idx] - 2 * MAX_DECEL * ds[mod_idx]])[:, 0]
