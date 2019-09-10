@@ -25,15 +25,17 @@ class DynamicObjectWithRoadSemantics:
     its frenet state.
     """
 
-    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float, relative_lane: Optional[RelativeLane]):
+    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float,
+                 relative_lanes: Optional[List[RelativeLane]]):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
-        :param relative_lane: relative lane w.r.t. ego; None if the object is far laterally (not on adjacent lane)
+        :param relative_lanes: list of relative lanes w.r.t. ego; None if the object is far laterally (not on adjacent lane)
+                              usually just one, but can be multiple in the case of a merge
         """
         self.dynamic_object = dynamic_object
         self.longitudinal_distance = longitudinal_distance
-        self.relative_lane = relative_lane
+        self.relative_lanes = relative_lanes
 
 
 # Define semantic cell
@@ -137,22 +139,23 @@ class BehavioralGridState:
         return dynamic_objects + projected_dynamic_objects
 
     @staticmethod
-    def _lazy_set_map_states(dynamic_objects: List[DynamicObject],
+    def set_map_state_for_projected_actors(dynamic_objects: List[DynamicObject],
                              extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                             rel_lanes_per_obj: np.array):
+                             actor_lane_matrix: np.array):
         """
         Takes the relevant map_states and calculates the fstate ( map_states with None fstate and not None rel_lanes_per_obj)
         TODO: Fix double Conversion
         :param object_map_states:
         :param extended_lane_frames:
-        :param rel_lanes_per_obj:
+        :param actor_lane_matrix:
         :return:
         """
         for i, dynamic_object in enumerate(dynamic_objects):
             if dynamic_object.map_state.lane_fstate is None:
-                obj_fstate_on_GFF = extended_lane_frames[rel_lanes_per_obj[i]]. \
+                rel_lane = np.array(list(extended_lane_frames.keys()))[actor_lane_matrix[:, i]][0]
+                obj_fstate_on_GFF = extended_lane_frames[rel_lane]. \
                     cstate_to_fstate(dynamic_object.cartesian_state)
-                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
+                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lane]. \
                     convert_to_segment_state(obj_fstate_on_GFF)[1]
 
     @staticmethod
@@ -181,34 +184,37 @@ class BehavioralGridState:
         # calculate objects' segment map_states
         objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
 
-        # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj = np.full(len(overloaded_dynamic_objects), None)
+        # Create boolean matrix that is true when a vehicle is in a relative lane
+        actor_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(overloaded_dynamic_objects))
+
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
-            relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
-            rel_lanes_per_obj[relevant_objects] = rel_lane
+            # add as row to matrix
+            relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
+            actor_lane_matrix = np.vstack([actor_lane_matrix, relevant_object_mask])
 
-        # filter relevant objects
-        # the list comprehension works as such:  [(rel_lane1, obj1), (rel_lane2, obj2)] -> (rel_lane1, rel_lane2), (obj1, obj2)
-        # -> [rel_lane1, rel_lane2], [obj1, obj2]
-        relevant_dynamic_objects_lane, relevant_dynamic_objects = \
-            [list(l) for l in zip(*[(rel_lane, obj) for rel_lane, obj in \
-                                    zip(rel_lanes_per_obj, overloaded_dynamic_objects) if rel_lane is not None])] \
-            or ([], [])
+        relevant_objects_indices, relevant_objects = \
+                                [list(l) for l in zip(*[(i, obj) for i, obj in enumerate(overloaded_dynamic_objects)
+                                                        if actor_lane_matrix[:, i].any()])] \
+                                or ([], [])
 
-        # setting the missing map_states to pseudo-objects
-        BehavioralGridState._lazy_set_map_states(relevant_dynamic_objects, extended_lane_frames,
-                                                 relevant_dynamic_objects_lane)
+        relevant_actor_lane_matrix = actor_lane_matrix[:, relevant_objects_indices]
 
-        object_map_states = [obj.map_state for obj in relevant_dynamic_objects]
+        # setting the missing map_states to projected actors
+        BehavioralGridState.set_map_state_for_projected_actors(relevant_objects, extended_lane_frames,
+                                                               relevant_actor_lane_matrix)
+
+        relevant_objects_map_states = [obj.map_state for obj in relevant_objects]
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
-            extended_lane_frames, projected_ego_fstates, object_map_states)
+            extended_lane_frames, projected_ego_fstates, relevant_objects_map_states)
 
-        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], relevant_dynamic_objects_lane[i])
-                for i, obj in enumerate(relevant_dynamic_objects)]
+        # get the lanes an object is in by looking at the columns of the matrix
+        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i],
+                                               np.array(list(extended_lane_frames.keys()))[relevant_actor_lane_matrix[:, i]])
+                for i, obj in enumerate(relevant_objects) if relevant_actor_lane_matrix[:, i].any()]
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
@@ -318,11 +324,12 @@ class BehavioralGridState:
         # We consider only object on the adjacent lanes
         for obj in objects:
             # ignore vehicles out of pre-defined range and vehicles not in adjacent lanes
-            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and obj.relative_lane is not None:
+            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and obj.relative_lanes is not None:
                 # compute longitudinal projection on the grid
                 object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
-
-                grid[(obj.relative_lane, object_relative_long)].append(obj)
+                # loop through all the rel_lanes in the case of an obj belonging to more than one (splits/merges)
+                for rel_lane in obj.relative_lanes:
+                    grid[(rel_lane, object_relative_long)].append(obj)
 
         return grid
 
