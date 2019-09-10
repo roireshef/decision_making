@@ -302,7 +302,7 @@ class MapUtils:
 
     @staticmethod
     def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
-            -> (List[FrenetSubSegment], float):
+            -> Tuple[List[FrenetSubSegment], float]:
         """
         Advances downstream according to plan as long as there is a single valid (according to navigation plan)
         downstream lane only - this can be in case there is a single downstream lane, or in a case of a split where only
