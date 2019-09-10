@@ -331,7 +331,7 @@ def test_getGeneralizedFrenetFrames_LeftSplitAugmentedGFFCreated(left_lane_split
 
     starting_lon = 700.
     starting_lane = 11
-    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: False}
+    can_augment = [RelativeLane.LEFT_LANE]
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, can_augment = can_augment)
 
@@ -348,7 +348,7 @@ def test_getGeneralizedFrenetFrames_RightSplitAugmentedGFFCreated(right_lane_spl
 
     starting_lon = 700.
     starting_lane = 11
-    can_augment = {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: True}
+    can_augment = [RelativeLane.RIGHT_LANE]
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
 
@@ -362,7 +362,7 @@ def test_getGeneralizedFrenetFrames_RightSplitAugmentedGFFCreated(right_lane_spl
 
 def test_getGeneralizedFrenetFrames_LeftRightSplitAugmentedGFFsCreated(left_right_lane_split_scene_static, route_plan_1_2):
     SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static)
-    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
+    can_augment = [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
 
     # Modify the route plan
     # In order to match the scene static data, the left and right lane in the first road segment needs to be deleted since
@@ -386,7 +386,7 @@ def test_getGeneralizedFrenetFrames_CanAugmentButNoSplit_NoAugmentedCreated(scen
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
     starting_lon = 700.
     starting_lane = 11
-    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
+    can_augment = [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
 
@@ -402,7 +402,7 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(s
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first)
     starting_lon = 10.
     starting_lane = 211
-    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
+    can_augment = [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_left_first,
                                                                   can_augment=can_augment)
@@ -420,7 +420,7 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsRightFirst_BothAugmentedCreated(
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_right_first)
     starting_lon = 10.
     starting_lane = 211
-    can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
+    can_augment = [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_right_first,
                                                                   can_augment=can_augment)
