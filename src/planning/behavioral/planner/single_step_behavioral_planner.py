@@ -5,7 +5,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
-    ActionSpec
+    ActionSpec, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -84,6 +84,10 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         valid_idxs = np.where(action_specs_mask)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
+
+        # TODO: CORRECT ONCE LANE CHANGES ARE ENABLED
+        if selected_action_spec.relative_lane != RelativeLane.SAME_LANE:
+            self.logger.debug(f"Action towards {selected_action_spec.relative_lane} chosen, which may be an augmented lane")
 
         return selected_action_index, selected_action_spec
 
