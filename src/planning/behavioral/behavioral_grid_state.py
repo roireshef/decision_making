@@ -5,17 +5,20 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
-    RoadNotFound, raises
+    RoadNotFound, raises, NavigationPlanTooShort, StraightConnectionNotFound, UpstreamLaneNotFound
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
+    FrenetSubSegment
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.messages.scene_static_enums import ManeuverType
+
 
 
 class DynamicObjectWithRoadSemantics:
@@ -298,7 +301,7 @@ class BehavioralGridState:
             # the backward distance to the beginning of the lane (i.e. the station).
             starting_station = 0.0
             lookahead_distance = MAX_FORWARD_HORIZON + station
-            upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON,
+            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON,
                                                                                 logger)
         else:
             # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
@@ -311,9 +314,9 @@ class BehavioralGridState:
             lookahead_distance = MAX_FORWARD_HORIZON + MAX_BACKWARD_HORIZON
             upstream_lane_subsegments = []
 
-        lane_subsegments_dict = MapUtils._advance_by_cost(initial_lane_id=lane_id, initial_s=starting_station,
-                                            lookahead_distance=lookahead_distance, route_plan=route_plan,
-                                            lane_subsegments=upstream_lane_subsegments, can_augment=can_augment)
+        lane_subsegments_dict = BehavioralGridState._get_downstream_lane_subsegments(initial_lane_id=lane_id, initial_s=starting_station,
+                                                                                     lookahead_distance=lookahead_distance, route_plan=route_plan,
+                                                                                     can_augment=can_augment)
 
         gffs_dict = {}
 
@@ -332,6 +335,151 @@ class BehavioralGridState:
             gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, concatenated_lane_subsegments, gff_type)
 
         return gffs_dict
+
+    @staticmethod
+    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float,
+                                       logger: Optional[Logger] = None) -> List[FrenetSubSegment]:
+        """
+        Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
+        :param initial_lane_id: ID of lane to start from
+        :param initial_station: Station on given lane
+        :param backward_distance: Distance [m] to look backwards
+        :param logger: Logger object to log warning messages
+        :return: List of upstream lane subsegments
+        """
+        lane_id = initial_lane_id
+        upstream_distance = initial_station
+        upstream_lane_subsegments = []
+
+        while upstream_distance < backward_distance:
+            # First, choose an upstream lane
+            upstream_lane_ids = MapUtils.get_upstream_lane_ids(lane_id)
+            num_upstream_lanes = len(upstream_lane_ids)
+
+            if num_upstream_lanes == 0:
+                if logger is not None:
+                    logger.debug(UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id)))
+
+                break
+            elif num_upstream_lanes == 1:
+                chosen_upstream_lane_id = upstream_lane_ids[0]
+            elif num_upstream_lanes > 1:
+                # If there are multiple upstream lanes and one of those lanes has a STRAIGHT_CONNECTION maneuver type, choose that lane to
+                # follow. Otherwise, default to choosing the first upstream lane in the list.
+                chosen_upstream_lane_id = upstream_lane_ids[0]
+                upstream_lane_maneuver_types = MapUtils.get_upstream_lane_maneuver_types(lane_id)
+
+                for upstream_lane_id in upstream_lane_ids:
+                    if upstream_lane_maneuver_types[upstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION:
+                        chosen_upstream_lane_id = upstream_lane_id
+                        break
+
+            # Second, determine the start and end stations for the subsegment
+            end_station = MapUtils.get_lane(chosen_upstream_lane_id).e_l_length
+            upstream_distance += end_station
+            start_station = max(0.0, upstream_distance - backward_distance)
+
+            # Third, create and append the upstream lane subsegment
+            upstream_lane_subsegments.append(FrenetSubSegment(chosen_upstream_lane_id, start_station, end_station))
+
+            # Last, set lane for next loop
+            lane_id = chosen_upstream_lane_id
+
+        # Before returning, reverse the order of the subsegments so that they are in the order that they would have been traveled on. In
+        # other words, the first subsegment should be the furthest from the host, and the last subsegment should be the closest to the host.
+        upstream_lane_subsegments.reverse()
+
+        return upstream_lane_subsegments
+
+
+    @staticmethod
+    def _get_downstream_lane_subsegments(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+                                         route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
+            Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
+        """
+        Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
+        further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
+        If <desired_lon> is more than the distance to end of the plan, a LongitudeOutOfRoad exception is thrown.
+        :param initial_lane_id: the initial lane_id (the vehicle is current on)
+        :param initial_s: initial longitude along <initial_lane_id>
+        :param lookahead_distance: the desired distance of lookahead in [m].
+        :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param can_augment: dict of RelativeLane to bool; if True, try to create an augmented lane for that RelativeLane
+        :return: Dictionary with potential keys: [RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                 These keys represent the non-augmented, left-augmented, and right-augmented gffs that can be created.
+                 The key-value pair for the non-augmented lane (i.e. RelativeLane.SAME_LANE) will always exist, and it refers
+                 to the provided initial_lane_id. The left-augmented and right-augmented keys (i.e. RelativeLane.LEFT_LANE
+                 and RelativeLane.RIGHT_LANE) will only exist when an augmented GFF can be created. The values are tuples
+                 that contain a list of FrenetSubSegments that will be used to create the GFF and two flags that denote the
+                 GFF type. The first flag denotes a partial GFF and the second flag denotes an augmented GFF.
+                 Lastly, the total length of the GFF is returned
+        """
+        # initialize default arguments
+        can_augment = can_augment or {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: False}
+
+        lane_subsegments_dict = {}
+
+        lane_subsegments, cumulative_distance = MapUtils._advance_on_plan(
+            initial_lane_id, initial_s, lookahead_distance, route_plan)
+
+        current_lane_id = lane_subsegments[-1].e_i_SegmentID
+        valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
+
+        # traversal reached the end of desired horizon
+        if cumulative_distance >= lookahead_distance:
+            lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, False, False, cumulative_distance)
+            return lane_subsegments_dict
+
+        # a dead-end reached (no downstream lanes at all)
+        if len(valid_downstream_lanes) == 0:
+            lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, True, False, cumulative_distance)
+            return lane_subsegments_dict
+
+        augmented = []  # store all relative lanes that are actually augmented in this code block
+        # Deal with "splitting" direction (create augmented lane) in the split #
+        for rel_lane, maneuver_type in [(RelativeLane.RIGHT_LANE, ManeuverType.RIGHT_SPLIT),
+                                        (RelativeLane.LEFT_LANE, ManeuverType.LEFT_SPLIT)]:
+            # Check if augmented lanes can be created
+            if can_augment[rel_lane] and maneuver_type in valid_downstream_lanes:
+                # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
+                augmented_lane_dict = BehavioralGridState._get_downstream_lane_subsegments(
+                    initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
+                    lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan)
+
+                # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
+                # Read the return value description above for more information.
+                augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = \
+                augmented_lane_dict[RelativeLane.SAME_LANE]
+
+                # Assign information to dictionary accordingly
+                lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
+                                                   True, cumulative_distance + augmented_cumulative_distance)
+                augmented.append(rel_lane)
+
+        # remove the already augmented lanes from options to augment after taking the straight connection
+        can_still_augment = {k: v == True and k not in augmented for k, v in can_augment.items()}
+
+        # Deal with "straight" direction in the split #
+        if ManeuverType.STRAIGHT_CONNECTION in valid_downstream_lanes:
+            # recursive call to construct the "keep straight" sequence of lanes (GFF)
+            straight_lane_dict = BehavioralGridState._get_downstream_lane_subsegments(
+                initial_lane_id=valid_downstream_lanes[ManeuverType.STRAIGHT_CONNECTION], initial_s=0.0,
+                lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan,
+                can_augment=can_still_augment)
+
+            for rel_lane, gff_tuple in straight_lane_dict.items():
+                # Get returned information.
+                straight_lane_subsegments, is_straight_partial, is_straight_augmented, straight_cumulative_distance = \
+                straight_lane_dict[rel_lane]
+
+                # Concatenate and assign information to dictionary accordingly
+                lane_subsegments_dict[rel_lane] = (lane_subsegments + straight_lane_subsegments, is_straight_partial,
+                                                   is_straight_augmented,
+                                                   cumulative_distance + straight_cumulative_distance)
+        else:
+            raise StraightConnectionNotFound("Straight downstream connection not found for lane=%d", current_lane_id)
+
+        return lane_subsegments_dict
 
     @staticmethod
     @prof.ProfileFunction()

@@ -5,11 +5,10 @@ import pytest
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl, \
     RoadObjectType
-from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
+from decision_making.src.exceptions import UpstreamLaneNotFound
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
@@ -94,138 +93,7 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static_pg_spl
     assert dist_to_right == dist_to_left
 
 
-def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static_pg_split, route_plan_20_30):
-    """
-    test the method _advance_by_cost
-        validate that total length of output sub segments == lookahead_dist;
-    """
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    road_ids = MapUtils.get_road_segment_ids()
-    current_road_idx = 3
-    current_ordinal = 1
-    starting_lon = 20.
-    lookahead_dist = 500.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    sub_segments, is_partial, is_augmented, _ = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)[RelativeLane.SAME_LANE]
-    assert len(sub_segments) == 5
-    for seg in sub_segments:
-        assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
-    tot_length = sum([seg.e_i_SEnd - seg.e_i_SStart for seg in sub_segments])
-    assert np.isclose(tot_length, lookahead_dist)
-    assert is_partial == False
-    assert is_augmented == False
-
-
-def test_advanceByCost_navPlanDoesNotFitMap_partialGeneralized(scene_static_pg_split, route_plan_20_30):
-    """
-    test the method _advance_by_cost
-        add additional segment to nav_plan that does not exist on the map; validate a partial lookahead is done
-    """
-
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    current_road_idx = 3
-    current_ordinal = 1
-    starting_lon = 20.
-    lookahead_dist = 600.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
-    wrong_road_segment_id = 1234
-    nav_plan_length = 8
-
-    # Modify route plan for this test case
-    route_plan = route_plan_20_30
-    route_plan.s_Data.e_Cnt_num_road_segments = nav_plan_length + 1
-    route_plan.s_Data.a_i_road_segment_ids = np.array(route_plan.s_Data.a_i_road_segment_ids[:nav_plan_length].tolist() +
-                                                      [wrong_road_segment_id])
-    route_plan.s_Data.a_Cnt_num_lane_segments = route_plan.s_Data.a_Cnt_num_lane_segments[:(nav_plan_length + 1)]
-    route_plan.s_Data.as_route_plan_lane_segments = route_plan.s_Data.as_route_plan_lane_segments[:(nav_plan_length + 1)]
-
-    lane_number = 1
-
-    for lane_segment in route_plan.s_Data.as_route_plan_lane_segments[-1]:
-        lane_segment.e_i_lane_segment_id = wrong_road_segment_id + lane_number
-        lane_number += 1
-
-    # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
-    # validate getting the relevant exception
-    subsegs, is_partial, is_augmented, _ = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)[RelativeLane.SAME_LANE]
-
-    subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
-
-    # verify the wrong road segment is not added
-    # make sure that the non-existent road segment is not contained in the GFF
-    assert np.all([MapUtils.get_road_segment_id_from_lane_id(subseg.e_i_SegmentID) != wrong_road_segment_id for subseg in subsegs])
-    # make sure that the previous existing road segments were used
-    assert len(subsegs) == nav_plan_length - current_road_idx
-    # make sure the lanes are in the correct order
-    assert np.array_equal(subseg_ids, [231, 241, 251, 261, 271])
-    # make sure the GFF created was of type Partial since it should not extend the entire route plan
-    assert is_partial == True
-
-
-def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
-    """
-    test the method _advance_by_cost
-        test exception for too short nav plan; validate the relevant exception
-    """
-
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    current_road_idx = 3
-    current_ordinal = 1
-    starting_lon = 20.
-    lookahead_dist = 500.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
-    nav_plan_length = 7
-
-    # Modify route plan for this test case
-    route_plan = route_plan_20_30
-    route_plan.s_Data.e_Cnt_num_road_segments = nav_plan_length
-    route_plan.s_Data.a_i_road_segment_ids = route_plan.s_Data.a_i_road_segment_ids[:nav_plan_length]
-    route_plan.s_Data.a_Cnt_num_lane_segments = route_plan.s_Data.a_Cnt_num_lane_segments[:nav_plan_length]
-    route_plan.s_Data.as_route_plan_lane_segments = route_plan.s_Data.as_route_plan_lane_segments[:nav_plan_length]
-
-    # test the case when the navigation plan is too short; validate the relevant exception
-    try:
-        MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookahead_dist, route_plan)
-        assert False
-    except NavigationPlanTooShort:
-        assert True
-
-
-def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialGeneralized(scene_static_pg_split, route_plan_20_30):
-    """
-    test the method _advance_by_cost
-        test exception for too short map but nav_plan is long enough; validate the relevant exception
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    current_road_idx = 9
-    current_ordinal = 1
-    starting_lon = 50.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
-    lookadhead_dist = 1000
-
-    # Modify route plan to make it extend past the last lane in the scene_static fixture
-    route_plan = route_plan_20_30
-    route_plan.s_Data.e_Cnt_num_road_segments += 1
-    route_plan.s_Data.a_i_road_segment_ids = np.append(route_plan.s_Data.a_i_road_segment_ids, 30)
-    route_plan.s_Data.a_Cnt_num_lane_segments = np.append(route_plan.s_Data.a_Cnt_num_lane_segments,
-                                                          route_plan.s_Data.a_Cnt_num_lane_segments[-1])
-    route_plan.s_Data.as_route_plan_lane_segments.append([RoutePlanLaneSegment(300,0,0),
-                                                          RoutePlanLaneSegment(301,0,0),
-                                                          RoutePlanLaneSegment(302,0,0)])
-
-    # test the case when the map is too short; validate partial lookahead is done
-    subsegs, is_partial, is_augmented, _ = MapUtils._advance_by_cost(starting_lane_id, starting_lon, lookadhead_dist, route_plan)[RelativeLane.SAME_LANE]
-    subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
-
-    # make sure the subsegments are in the correct order
-    assert np.array_equal(subseg_ids, [291])
-    # make sure the the gff is marked as partial
-    assert is_partial == True
-    assert is_augmented == False
 
 
 def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength(scene_static_pg_split):
@@ -419,73 +287,5 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[0])
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[-1])
-
-
-def test_getUpstreamLaneSubsegments_backwardHorizonOnLane_NoUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
-    """
-    Test _get_upstream_lane_subsegments
-    The distance to travel backwards is small enough that it is still on the same lane. This should result in no upstream lane subsegments
-    returned.
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(200, 100, 50)
-    assert upstream_lane_subsegments == []
-
-
-def test_getUpstreamLaneSubsegments_backwardHorizonPassesBeginningOfLane_CorrectUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
-    """
-    Test _get_upstream_lane_subsegments
-    This tests the scenario where the backwards horizon extends to upstream lanes and they exist. The result should be the "normal" output
-    with subsegments extending back as far as the provided horizon with start and end stations assigned accordingly. The expected values
-    were calculated as follows:
-
-        station_on_220 = 5
-        backward_distance = 150
-        length_of_200 = 120.84134201631973  (from pickle file)
-        length_of_210 = 119.64304560784024  (from pickle file)
-
-        start_station_on_200 = (length_of_200 + length_of_210 + station_on_220) - backward_distance
-        end_station_on_200 = length_of_200
-
-        start_station_on_210 = 0.0  (beginning of lane segment)
-        end_station_on_210 = length_of_210
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(220, 5, 150)
-
-    # Check size
-    assert len(upstream_lane_subsegments) == 2
-
-    # Check order
-    assert upstream_lane_subsegments[0].e_i_SegmentID == 200
-    assert upstream_lane_subsegments[1].e_i_SegmentID == 210
-
-    # Check start and end stations
-    assert upstream_lane_subsegments[0].e_i_SStart == 95.48438762415998
-    assert upstream_lane_subsegments[0].e_i_SEnd == 120.84134201631973
-
-    assert upstream_lane_subsegments[1].e_i_SStart == 0.0
-    assert upstream_lane_subsegments[1].e_i_SEnd == 119.64304560784024
-
-
-def test_getUpstreamLaneSubsegments_NoUpstreamLane_CorrectUpstreamLaneSubsegments(scene_static_pg_split: SceneStatic):
-    """
-    Test _get_upstream_lane_subsegments
-    This tests the scenario where the backwards horizon extends to upstream lanes but an upstream lane doesn't exist at some point. With
-    starting close to the beginning of lane 210 and going backwards 150 m, the beginning of lane 200 is passed. Since lane 200 doesn't
-    have any upstream lanes, the search should end and the lane subsegment should include the entire length of lane 200.
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    upstream_lane_subsegments = MapUtils._get_upstream_lane_subsegments(210, 5, 150)
-
-    # Check size
-    assert len(upstream_lane_subsegments) == 1
-
-    # Check ID
-    assert upstream_lane_subsegments[0].e_i_SegmentID == 200
-
-    # Check start and end stations
-    assert upstream_lane_subsegments[0].e_i_SStart == 0.0
-    assert upstream_lane_subsegments[0].e_i_SEnd == 120.84134201631973  # Lane length taken from pickle file
 
 
