@@ -24,10 +24,7 @@ def plot_dynamics(log_file_path: str):
     ego_sa = []
     ego_sv = []
     ego_sx = []
-    other_cv = []
-    other_sv = []
-    other_sx = []
-    euclid_dist = []
+    other_vels = []
     timestamp_in_sec = []
 
     spec_t = []
@@ -53,6 +50,9 @@ def plot_dynamics(log_file_path: str):
     trajectory_time = []
     no_valid_traj_timestamps = []
     no_action_in_bp_timestamps = []
+    other_ids = []
+    other_times = []
+    other_dists = []
 
     while True:
         text = f.readline()
@@ -65,28 +65,28 @@ def plot_dynamics(log_file_path: str):
             ego_cv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_V])
             ego_ca.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_A])
             ego_curv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_K])
-            ego_sa.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SA])
-            ego_sv.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SV])
-            ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
+            if state_dict['ego_state']['_cached_map_state'] is not None:
+                ego_sa.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SA])
+                ego_sv.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SV])
+                ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
+            else:
+                ego_sa.append(0)
+                ego_sv.append(0)
+                ego_sx.append(0)
             timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
 
-            dyn_obj_list = state_dict['dynamic_objects']['iterable']
-            if len(dyn_obj_list) == 0:
-                other_cv.append(0.0)
-                other_sv.append(0.0)
-                other_sx.append(0.0)
-                euclid_dist.append(0.0)
-            else:
-                other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
-                if dyn_obj_list[0]['_cached_map_state'] is not None:
-                    other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
-                    other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
-                else:
-                    other_sv.append(0)
-                    other_sx.append(0)
-                ego_cx_cy = np.array(state_dict['ego_state']['_cached_cartesian_state']['array'][C_X: C_Y + 1])
-                other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
-                euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
+        if 'BehavioralGrid: time' in text:
+            behavioral_grid_str = text.split('BehavioralGrid: time')[1]
+            time = float(behavioral_grid_str.split(', ')[0])
+            obj_dist = float(behavioral_grid_str.split('dist_from_front_object ')[1].split(',')[0])
+            obj_str = behavioral_grid_str.split('front_object: ')[1]
+            obj_dict = ast.literal_eval(obj_str)
+            obj_id = obj_dict['obj_id'] if obj_dict is not None else 0
+            obj_vel = obj_dict['_cached_cartesian_state']['array'][C_V] if obj_dict is not None else 0
+            other_times.append(time)
+            other_ids.append(obj_id)
+            other_vels.append(obj_vel)
+            other_dists.append(obj_dist)
 
         if 'Multiple localization hypotheses' in text:
             ego_hypothesis_num.append(int(text.split('Number of Hypotheses: ')[1]))
@@ -155,21 +155,27 @@ def plot_dynamics(log_file_path: str):
 
     ax1 = plt.subplot(5, 2, 1)
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx, '.-')
-    euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist, '.-')
+    longitudinal_dist_plot, = plt.plot(other_times, other_dists)
     multiple_ego_hypotheses = plt.scatter(multiple_ego_hypotheses_timestamp, [100] * len(multiple_ego_hypotheses_timestamp), s=5, c='k')
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
-    plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot, multiple_ego_hypotheses], ['ego_s', 'other_s', 'euclid_dist', 'multiple_ego_hypotheses'])
+    plt.legend([ego_sx_plot, longitudinal_dist_plot, multiple_ego_hypotheses], ['ego_s', 'longitudinal_dist', 'multiple_ego_hypotheses'])
+    other_times, other_ids, other_dists = np.array(other_times, dtype=float), np.array(other_ids, dtype=int), np.array(other_dists, dtype=float)
+    switch_idx = np.where(other_ids[:-1] - other_ids[1:] != 0)[0] + 1
+    if len(switch_idx) > 0:
+        switch_idx = np.concatenate(([0], switch_idx))
+        plt.scatter(other_times[switch_idx], other_dists[switch_idx], marker='o', c=longitudinal_dist_plot.get_color())
+        for idx in switch_idx:
+            plt.annotate(str(other_ids[idx]), (other_times[idx], other_dists[idx]))
     plt.ticklabel_format(useOffset=False, style='plain')
     plt.grid(True)
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
-    other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv, '.-')
+    other_vel_plot,  = plt.plot(other_times, other_vels, '.-')
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
-    plt.legend([ego_sv_plot, other_sv_plot], ['ego_sv', 'other_sv'])
+    plt.legend([ego_sv_plot, other_vel_plot], ['ego_vel', 'other_vel'])
     plt.grid(True)
 
     ax3 = plt.subplot(5, 2, 5, sharex=ax1)

@@ -31,6 +31,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+        self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in action_spec_validator._filters])
 
     def _create_actions(self) -> ActionSpecArray:
         action_recipes = self.action_space.recipes

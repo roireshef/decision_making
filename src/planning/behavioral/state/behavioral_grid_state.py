@@ -6,10 +6,11 @@ from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE, \
+    LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX, FrenetState2D
+from decision_making.src.planning.types import FS_SX, FrenetState2D, C_V
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.behavioral.state import MapState
 from decision_making.src.planning.behavioral.state import DynamicObject, EgoState
@@ -134,6 +135,9 @@ class BehavioralGridState(State):
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
+
+        BehavioralGridState._log_grid_data(multi_object_grid, state.ego_state.timestamp_in_sec, logger)
+
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
@@ -313,3 +317,24 @@ class BehavioralGridState(State):
             return RelativeLongitudinalPosition.REAR
         else:
             return RelativeLongitudinalPosition.PARALLEL
+
+    @staticmethod
+    def _log_grid_data(multi_object_grid: Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]],
+                       timestamp_in_sec: float, logger: Logger):
+        """
+        Write to log front object ID, its velocity and the distance from ego
+        :param multi_object_grid: dictionary of the behavioral grid: from cell to objects' list
+        :param timestamp_in_sec: current state time
+        :param logger:
+        """
+        if logger is None:
+            return
+        front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        front_obj = None
+        front_obj_dist = 0  # write zeros if there is no front object
+
+        if front_cell in multi_object_grid and len(multi_object_grid[front_cell]) > 0:
+            front_obj = multi_object_grid[front_cell][0].dynamic_object
+            front_obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
+        logger.debug("%s: time %f, dist_from_front_object %f, front_object: %s" %
+                     (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
