@@ -301,6 +301,7 @@ class MapUtils:
         return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
+    @raises(RoadNotFound, NavigationPlanTooShort, LaneNotFound)
     def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
             -> Tuple[List[FrenetSubSegment], float]:
         """
@@ -370,6 +371,7 @@ class MapUtils:
 
 
     @staticmethod
+    @raises(LaneNotFound)
     def _get_valid_downstream_lanes(current_lane_id: int, route_plan: RoutePlan) -> Dict[ManeuverType, LaneSegmentID]:
         """
         Finds the valid downstream lanes from the current_lane_id lane that are on the route_plan.

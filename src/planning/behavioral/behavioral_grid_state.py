@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
-    RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound
+    RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound, NavigationPlanTooShort
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -275,7 +275,7 @@ class BehavioralGridState:
         return extended_lane_frames
 
     @staticmethod
-    @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound)
+    @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound, StraightConnectionNotFound, NavigationPlanTooShort)
     @prof.ProfileFunction()
     def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan,
                                        can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
@@ -335,7 +335,7 @@ class BehavioralGridState:
         return gffs_dict
 
     @staticmethod
-    @raises(UpstreamLaneNotFound)
+    @raises(UpstreamLaneNotFound, LaneNotFound)
     def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float) -> List[FrenetSubSegment]:
         """
         Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
@@ -386,6 +386,7 @@ class BehavioralGridState:
         return upstream_lane_subsegments
 
     @staticmethod
+    @raises(StraightConnectionNotFound, RoadNotFound, NavigationPlanTooShort, LaneNotFound)
     def _get_downstream_lane_subsegments(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                                          route_plan: RoutePlan, can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
             Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
