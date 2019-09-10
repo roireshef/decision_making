@@ -309,7 +309,7 @@ def test_getGeneralizedFrenetFrameByCost_onEndingLane_PartialGFFCreated(scene_st
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2)
     # check partial SAME_LANE
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [12])
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Partial
@@ -321,7 +321,7 @@ def test_getGeneralizedFrenetFrameByCost_onFullLane_NormalGFFCreated(scene_stati
     starting_lon = 800
     starting_lane = 11
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2)
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [11,21])
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
 
@@ -333,7 +333,7 @@ def test_getGeneralizedFrenetFrameByCost_LeftSplitAugmentedGFFCreated(left_lane_
     starting_lane = 11
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: False}
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment = can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment = can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -350,7 +350,7 @@ def test_getGeneralizedFrenetFrameByCost_RightSplitAugmentedGFFCreated(right_lan
     starting_lane = 11
     can_augment = {RelativeLane.LEFT_LANE: False, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -372,7 +372,7 @@ def test_getGeneralizedFrenetFrameByCost_LeftRightSplitAugmentedGFFsCreated(left
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 1
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(11, 600, route_plan_1_2, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(11, 600, route_plan_1_2, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFFType.Augmented
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFFType.Augmented
@@ -388,7 +388,7 @@ def test_getGeneralizedFrenetFrameByCost_CanAugmentButNoSplit_NoAugmentedCreated
     starting_lane = 11
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -404,7 +404,7 @@ def test_getGeneralizedFrenetFrameByCost_OffsetSplitsLeftFirst_BothAugmentedCrea
     starting_lane = 211
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_left_first,
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_left_first,
                                                                          can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -422,7 +422,7 @@ def test_getGeneralizedFrenetFrameByCost_OffsetSplitsRightFirst_BothAugmentedCre
     starting_lane = 211
     can_augment = {RelativeLane.LEFT_LANE: True, RelativeLane.RIGHT_LANE: True}
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_right_first,
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_right_first,
                                                                          can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -450,7 +450,7 @@ def test_getGeneralizedFrenetFrameByCost_frenetStartsBehindAndEndsAheadOfCurrent
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
-    gff = BehavioralGridState.get_generalized_frenet_frames_by_cost(lane_id, station, route_plan_20_30)[RelativeLane.SAME_LANE]
+    gff = BehavioralGridState._get_generalized_frenet_frames_by_cost(lane_id, station, route_plan_20_30)[RelativeLane.SAME_LANE]
 
     # validate the length of the obtained frenet frame
     assert abs(gff.s_max - (MAX_BACKWARD_HORIZON + MAX_FORWARD_HORIZON)) < SMALL_DISTANCE_ERROR
@@ -486,7 +486,7 @@ def test_getGeneralizedFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_la
     del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2_3.s_Data.a_Cnt_num_lane_segments[0] = 1
 
-    gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(11, 900, route_plan_1_2_3, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(11, 900, route_plan_1_2_3, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFFType.AugmentedPartial
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFFType.AugmentedPartial
@@ -694,6 +694,3 @@ def test_getUpstreamLaneSubsegments_NoUpstreamLane_CorrectUpstreamLaneSubsegment
     # Check start and end stations
     assert upstream_lane_subsegments[0].e_i_SStart == 0.0
     assert upstream_lane_subsegments[0].e_i_SEnd == 120.84134201631973  # Lane length taken from pickle file
-
-
-

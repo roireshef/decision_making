@@ -211,7 +211,7 @@ class BehavioralGridState:
 
         # Create generalized Frenet frame for the host's lane
         try:
-            lane_gff_dict = BehavioralGridState.get_generalized_frenet_frames_by_cost(
+            lane_gff_dict = BehavioralGridState._get_generalized_frenet_frames_by_cost(
                 lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=state.ego_state.map_state.lane_fstate[FS_SX],
                 route_plan=route_plan, logger=logger, can_augment=can_augment)
         except MappingException as e:
@@ -260,8 +260,9 @@ class BehavioralGridState:
 
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
-                    lane_gffs = BehavioralGridState.get_generalized_frenet_frames_by_cost(lane_id=closest_lanes_dict[relative_lane],
-                                                        station=host_station_in_adjacent_lane, route_plan=route_plan, logger=logger)
+                    lane_gffs = BehavioralGridState._get_generalized_frenet_frames_by_cost(
+                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane,
+                        route_plan=route_plan, logger=logger)
 
                     # Note that the RelativeLane keys that are in the returned dictionary from get_lookahead_frenet_frame_by_cost are
                     # with respect to the lane ID provided to the function. Therefore, since the lane ID for the left/right lane is
@@ -276,9 +277,8 @@ class BehavioralGridState:
     @staticmethod
     @raises(LaneNotFound, RoadNotFound)
     @prof.ProfileFunction()
-    def get_generalized_frenet_frames_by_cost(lane_id: int, station: float, route_plan: RoutePlan,
-                                              logger: Optional[Logger] = None,
-                                              can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
+    def _get_generalized_frenet_frames_by_cost(lane_id: int, station: float, route_plan: RoutePlan, logger: Optional[Logger] = None,
+                                               can_augment: Optional[Dict[RelativeLane, bool]] = None) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         Create Generalized Frenet frame(s) along lane center, starting from given lane and station. If augmented lanes can be created, they will
@@ -390,7 +390,6 @@ class BehavioralGridState:
         upstream_lane_subsegments.reverse()
 
         return upstream_lane_subsegments
-
 
     @staticmethod
     def _get_downstream_lane_subsegments(initial_lane_id: int, initial_s: float, lookahead_distance: float,
