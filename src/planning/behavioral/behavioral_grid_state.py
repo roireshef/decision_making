@@ -218,7 +218,7 @@ class BehavioralGridState:
         # get the rel. lanes for an object by looking at the columns of the matrix
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i],
                                                np.array(list(extended_lane_frames.keys()))[relevant_actor_lane_matrix[:, i]])
-                for i, obj in enumerate(relevant_objects) if relevant_actor_lane_matrix[:, i].any()]
+                for i, obj in enumerate(relevant_objects)]
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
