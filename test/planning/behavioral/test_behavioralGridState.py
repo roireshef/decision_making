@@ -495,9 +495,9 @@ def test_getGeneralizedFrenet_AugmentedPartialCreatedWhenSplitEnds(left_right_la
     assert gff_dict[RelativeLane.RIGHT_LANE].has_segment_id(20)
     assert gff_dict[RelativeLane.SAME_LANE].has_segment_id(21)
 
-def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static_pg_split, route_plan_20_30):
+def test_getDownstreamLaneSubsegments_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_by_cost
+    test the method _get_downstream_lane_subsegments
         validate that total length of output sub segments == lookahead_dist;
     """
 
@@ -518,9 +518,9 @@ def test_advanceByCost_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     assert is_augmented == False
 
 
-def test_advanceByCost_navPlanDoesNotFitMap_partialGeneralized(scene_static_pg_split, route_plan_20_30):
+def test_getDownstreamLaneSubsegments_navPlanDoesNotFitMap_partialGeneralized(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_by_cost
+    test the method _get_downstream_lane_subsegments
         add additional segment to nav_plan that does not exist on the map; validate a partial lookahead is done
     """
 
@@ -565,9 +565,9 @@ def test_advanceByCost_navPlanDoesNotFitMap_partialGeneralized(scene_static_pg_s
     assert is_partial == True
 
 
-def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
+def test_getDownstreamLaneSubsegments_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_by_cost
+    test the method _get_downstream_lane_subsegments
         test exception for too short nav plan; validate the relevant exception
     """
 
@@ -595,9 +595,9 @@ def test_advanceByCost_navPlanTooShort_validateRelevantException(scene_static_pg
         assert True
 
 
-def test_advanceByCost_lookAheadDistLongerThanMap_validatePartialGeneralized(scene_static_pg_split, route_plan_20_30):
+def test_getDownstreamLaneSubsegments_lookAheadDistLongerThanMap_validatePartialGeneralized(scene_static_pg_split, route_plan_20_30):
     """
-    test the method _advance_by_cost
+    test the method _get_downstream_lane_subsegments
         test exception for too short map but nav_plan is long enough; validate the relevant exception
     """
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
