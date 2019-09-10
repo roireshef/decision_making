@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
-    RoadNotFound, raises, NavigationPlanTooShort, StraightConnectionNotFound, UpstreamLaneNotFound
+    RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -128,7 +128,7 @@ class BehavioralGridState:
         vehicle_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(on_map_dynamic_objects))
 
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
-        for rel_lane, extended_lane_frame in extended_lane_frames.items():
+        for _, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
             # add as row to matrix
             relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
@@ -467,7 +467,7 @@ class BehavioralGridState:
                 lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan,
                 can_augment=can_still_augment)
 
-            for rel_lane, gff_tuple in straight_lane_dict.items():
+            for rel_lane, _ in straight_lane_dict.items():
                 # Get returned information.
                 straight_lane_subsegments, is_straight_partial, is_straight_augmented, straight_cumulative_distance = \
                 straight_lane_dict[rel_lane]

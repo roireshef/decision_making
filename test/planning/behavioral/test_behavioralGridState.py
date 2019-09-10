@@ -550,7 +550,7 @@ def test_advanceByCost_navPlanDoesNotFitMap_partialGeneralized(scene_static_pg_s
 
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
     # validate getting the relevant exception
-    subsegs, is_partial, is_augmented, _ = BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon, lookahead_dist, route_plan)[RelativeLane.SAME_LANE]
+    subsegs, is_partial, _, _ = BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon, lookahead_dist, route_plan)[RelativeLane.SAME_LANE]
 
     subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
 
