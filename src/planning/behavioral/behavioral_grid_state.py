@@ -140,21 +140,24 @@ class BehavioralGridState:
 
     @staticmethod
     def set_map_state_for_projected_actors(dynamic_objects: List[DynamicObject],
-                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                             actor_lane_matrix: np.array):
+                                           extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+                                           actor_lane_matrix: np.array) -> None:
         """
-        Takes the relevant map_states and calculates the fstate ( map_states with None fstate and not None rel_lanes_per_obj)
+        Takes the relevant map_states for relevant objects and calculates the fstate if missing ( map_states with None fstate)
         TODO: Fix double Conversion
-        :param object_map_states:
-        :param extended_lane_frames:
-        :param actor_lane_matrix:
+        :param dynamic_objects: list of dynamic objects
+        :param extended_lane_frames: extended lane frame data
+        :param actor_lane_matrix: boolian matrix of size 3 by len(dynamic_objects) where each column represents the
+               which gff rel. lanes a dynamic object belongs to.
         :return:
         """
         for i, dynamic_object in enumerate(dynamic_objects):
             if dynamic_object.map_state.lane_fstate is None:
                 rel_lane = np.array(list(extended_lane_frames.keys()))[actor_lane_matrix[:, i]][0]
+
                 obj_fstate_on_GFF = extended_lane_frames[rel_lane]. \
                     cstate_to_fstate(dynamic_object.cartesian_state)
+
                 dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lane]. \
                     convert_to_segment_state(obj_fstate_on_GFF)[1]
 
@@ -194,14 +197,15 @@ class BehavioralGridState:
             relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
             actor_lane_matrix = np.vstack([actor_lane_matrix, relevant_object_mask])
 
+        # filter the relevant objects which belong to any of the gff relative lanes
         relevant_objects_indices, relevant_objects = \
                                 [list(l) for l in zip(*[(i, obj) for i, obj in enumerate(overloaded_dynamic_objects)
-                                                        if actor_lane_matrix[:, i].any()])] \
+                                    if actor_lane_matrix[:, i].any()])] \
                                 or ([], [])
 
         relevant_actor_lane_matrix = actor_lane_matrix[:, relevant_objects_indices]
 
-        # setting the missing map_states to projected actors
+        # set the missing map_states to projected actors
         BehavioralGridState.set_map_state_for_projected_actors(relevant_objects, extended_lane_frames,
                                                                relevant_actor_lane_matrix)
 
@@ -211,7 +215,7 @@ class BehavioralGridState:
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
             extended_lane_frames, projected_ego_fstates, relevant_objects_map_states)
 
-        # get the lanes an object is in by looking at the columns of the matrix
+        # get the rel. lanes for an object by looking at the columns of the matrix
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i],
                                                np.array(list(extended_lane_frames.keys()))[relevant_actor_lane_matrix[:, i]])
                 for i, obj in enumerate(relevant_objects) if relevant_actor_lane_matrix[:, i].any()]

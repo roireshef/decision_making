@@ -101,7 +101,7 @@ def test_projectActorsInsideIntersection_laneMerge_carInOverlap(scene_static_ova
     assert projected_objects[0].map_state.lane_id == 58375685
 
 
-def test_createMirrorObjects_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
+def test_projectActorsInsideIntersection_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
     """
     Validate that no mirror object is created if there is no overlap
     """
