@@ -387,7 +387,7 @@ class BehavioralGridState:
     @staticmethod
     @raises(StraightConnectionNotFound, RoadNotFound, NavigationPlanTooShort, LaneNotFound)
     def _get_downstream_lane_subsegments(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                                         route_plan: RoutePlan, can_augment: List[RelativeLane] = None) -> \
+                                         route_plan: RoutePlan, can_augment: Optional[List[RelativeLane]] = None) -> \
             Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
