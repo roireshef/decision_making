@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
-    UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce, StraightConnectionNotFound
+    UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
