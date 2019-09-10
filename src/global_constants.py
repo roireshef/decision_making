@@ -168,14 +168,14 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference 
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 15
+TRAJECTORY_NUM_POINTS = 20
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.5
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 3.0
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
