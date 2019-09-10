@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Tuple
 
 import numpy as np
 import rte.python.profiler as prof
