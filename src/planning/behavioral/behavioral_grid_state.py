@@ -28,12 +28,12 @@ class DynamicObjectWithRoadSemantics:
     """
 
     def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float,
-                 relative_lanes: Optional[List[RelativeLane]]):
+                 relative_lanes: Optional[List[RelativeLane]] = None):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
-        :param relative_lane: list of relative lanes w.r.t. ego; None if the object is far laterally (not on adjacent lane)
-                              usually just one, but can be multiple in the case of a merge
+        :param relative_lanes: list of relative lanes w.r.t. ego; None if the object is far laterally (not on adjacent lane)
+                               usually just one, but can be multiple in the case of a merge
         """
         self.dynamic_object = dynamic_object
         self.longitudinal_distance = longitudinal_distance
