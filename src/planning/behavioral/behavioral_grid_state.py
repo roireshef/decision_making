@@ -29,7 +29,7 @@ class DynamicObjectWithRoadSemantics:
     """
 
     def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float,
-                 relative_lanes: Optional[List[RelativeLane]]):
+                 relative_lanes: Optional[List[RelativeLane]] = None):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
@@ -223,7 +223,7 @@ class BehavioralGridState:
 
         # get the rel. lanes for an object by looking at the columns of the matrix
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i],
-                                               np.array(list(extended_lane_frames.keys()))[relevant_actor_lane_matrix[:, i]])
+                                               np.array(list(extended_lane_frames.keys()))[relevant_actor_lane_matrix[:, i]].tolist())
                 for i, obj in enumerate(relevant_objects)]
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
