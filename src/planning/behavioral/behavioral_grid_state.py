@@ -160,6 +160,8 @@ class BehavioralGridState:
         """
         for i, dynamic_object in enumerate(dynamic_objects):
             if dynamic_object.map_state.lane_fstate is None:
+                # In the case that the actor belongs to multiple rel. lanes, it does not matter which one to choose
+                # for the purpose of finding the map state for that actor. we take the first one here. 
                 rel_lane = np.array(list(extended_lane_frames.keys()))[actor_lane_matrix[:, i]][0]
 
                 obj_fstate_on_GFF = extended_lane_frames[rel_lane]. \
