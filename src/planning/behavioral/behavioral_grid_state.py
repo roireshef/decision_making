@@ -139,7 +139,7 @@ class BehavioralGridState:
 
         # get the lanes an object is in by looking at the columns of the matrix
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i],
-                   np.array(list(extended_lane_frames.keys()))[vehicle_lane_matrix[:,i]])
+                                               np.array(list(extended_lane_frames.keys()))[vehicle_lane_matrix[:,i]].tolist())
                 for i, obj in enumerate(on_map_dynamic_objects) if vehicle_lane_matrix[:,i].any()]
 
 
