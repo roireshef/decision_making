@@ -3,7 +3,7 @@ import rte.python.profiler as prof
 from typing import List, Optional
 from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
     DownstreamLaneDataNotFound
-from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, TRUE_COST, FALSE_COST
+from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, MAX_COST, MIN_COST
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
     RoutePlanRoadSegment, RoutePlanRoadSegments
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType,\
@@ -30,12 +30,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of lane map type. Current implementation is binary cost.
         :param mapping_status_attribute: type of mapped
-        :return: normalized cost (FALSE_COST to TRUE_COST)
+        :return: normalized cost (MIN_COST to MAX_COST)
         """
         if ((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
             (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
-            return FALSE_COST
-        return TRUE_COST
+            return MIN_COST
+        return MAX_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -43,12 +43,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of construction zone type. Current implementation is binary cost.
         :param construction_zone_attribute: type of lane construction
-        :return: Normalized cost (FALSE_COST to TRUE_COST)
+        :return: Normalized cost (MIN_COST to MAX_COST)
         """
         if ((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
             (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
-            return FALSE_COST
-        return TRUE_COST
+            return MIN_COST
+        return MAX_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -56,13 +56,13 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of lane direction. Current implementation is binary cost.
         :param lane_dir_in_route_attribute: map lane direction in respect to host
-        :return: Normalized cost (FALSE_COST to TRUE_COST)
+        :return: Normalized cost (MIN_COST to MAX_COST)
         """
         if ((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
             (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
             (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
-            return FALSE_COST
-        return TRUE_COST
+            return MIN_COST
+        return MAX_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -70,11 +70,11 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         """
         Cost of GM authorized driving area. Current implementation is binary cost.
         :param gm_authority_attribute: type of GM authority
-        :return: Normalized cost (FALSE_COST to TRUE_COST)
+        :return: Normalized cost (MIN_COST to MAX_COST)
         """
         if (gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None):
-            return FALSE_COST
-        return TRUE_COST
+            return MIN_COST
+        return MAX_COST
 
     @staticmethod
     @raises(LaneAttributeNotFound)
@@ -85,7 +85,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         according to the (input) lane attribute, which lane attribute method to invoke
         :param lane_attribute_index: pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
         :param lane_attribute_value: value of the pointed lane attribute
-        :return: Normalized lane occupancy cost based on the concerned lane attribute (FALSE_COST to TRUE_COST)
+        :return: Normalized lane occupancy cost based on the concerned lane attribute (MIN_COST to MAX_COST)
         """
         if 'attribute_based_occupancy_cost_methods' not in BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost.__dict__:
             # The above if check and then setting of attribute_based_occupancy_cost_methods within the if block is equivalent of
@@ -142,10 +142,10 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
             lane_attribute_occupancy_cost = BinaryCostBasedRoutePlanner.lane_attribute_based_occupancy_cost(lane_attribute_index=lane_attribute_index, lane_attribute_value=lane_attribute_value)
             # Check if the lane is unoccupiable
-            if(lane_attribute_occupancy_cost == TRUE_COST):
-                return TRUE_COST
+            if(lane_attribute_occupancy_cost == MAX_COST):
+                return MAX_COST
 
-        return FALSE_COST
+        return MIN_COST
 
     @raises(DownstreamLaneDataNotFound)
     # Following method is kept public in order to unit test the method from outside the class
@@ -160,7 +160,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
                      is in the downstream route road segement
             (List[int]): list of all downstream lane segment ids
         """
-        min_downstream_lane_segment_occupancy_cost = TRUE_COST
+        min_downstream_lane_segment_occupancy_cost = MAX_COST
 
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
         # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
@@ -218,10 +218,10 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
         # Calculate lane end costs (from lane occupancy costs)
         if not self.get_route_plan_lane_segments():  # if route_plan_lane_segments is empty indicating the last segment in route
-            if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
-                lane_end_cost = TRUE_COST
+            if (lane_occupancy_cost == MAX_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=MAX_COST)
+                lane_end_cost = MAX_COST
             else:
-                lane_end_cost = FALSE_COST
+                lane_end_cost = MIN_COST
 
             downstream_lane_found_in_route = True
             # Because this is the last road segment in (current) route  we don't want to trigger RoadSegmentLaneSegmentMismatch
@@ -231,8 +231,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             lane_end_cost, downstream_lane_found_in_route, downstream_lane_segment_ids = self._lane_end_cost_calc(
                 lane_segment_base_data=lane_segment_base_data)
 
-            if (lane_occupancy_cost == TRUE_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=TRUE_COST)
-                lane_end_cost = TRUE_COST
+            if (lane_occupancy_cost == MAX_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=MAX_COST)
+                lane_end_cost = MAX_COST
 
         # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
         current_route_lane_segment = RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,

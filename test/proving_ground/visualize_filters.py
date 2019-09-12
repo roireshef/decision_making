@@ -26,8 +26,17 @@ def plot_filters_map(log_file_path: str):
     gray_color = np.array([0.75, 0.75, 0.75])
     color_names = np.array(["gray", "r", "g", "b", "y", "k", "c", "m", "yellow", "lightblue", "peachpuff", "fuchsia", "papayawhip", "lightsalmon"])  # See https://matplotlib.org/examples/color/named_colors.html
 
+    filters_list = []
+    while True:
+        text = file.readline()
+        if not text:
+            break
+        if 'ActionSpec Filters List: ' in text:
+            filters_list = text.split('List: [\'')[1].split('\']')[0].split('\', \'')
+            break
+
     patches = []
-    for idx, filter in enumerate(DEFAULT_ACTION_SPEC_FILTERING._filters + ['Passed']):
+    for idx, filter in enumerate(filters_list + ['Passed']):
         patches.append(mpatches.Patch(color=color_names[idx], label=filter.__str__()))
     plt.legend(handles=patches)
 
@@ -36,6 +45,7 @@ def plot_filters_map(log_file_path: str):
     action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                  RoadSignActionSpace(logger, predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
+
     # TODO in the future remove this limitation of SAME_LANE
     limit_relative_lane = [RelativeLane.SAME_LANE]  # currently limit to SAME_LANE to make visualization easier.
     action_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane in limit_relative_lane]

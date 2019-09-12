@@ -3,7 +3,7 @@ from decision_making.src.messages.scene_static_message import StaticTrafficFlowC
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_accel_towards_vehicle
 from typing import List
 from unittest.mock import patch
 
@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
     ActionRecipe, RelativeLane, ActionType, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, \
     FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle, StaticTrafficFlowControlFilter, \
-    BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter, FilterForSLimit
+    BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter, BeyondSpecPartialGffFilter, FilterForSLimit
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as FilterRecipeIfNone
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -31,7 +31,8 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_segments_limits, \
     state_for_testing_lanes_speed_limits_violations, \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
-    behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_oval_track
+    behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_for_oval_track_file, \
+    route_plan_1_2, behavioral_grid_state_with_left_lane_ending, state_with_left_lane_ending
 
 
 def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control,
@@ -142,6 +143,7 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_acceleration_towards_vehicle,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx """
+
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)
 
@@ -381,6 +383,29 @@ def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimits_filterResul
                                                             behavioral_grid_state_with_segments_limits)
 
     np.testing.assert_array_equal(filter_results, expected_filter_results)
+
+
+def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_state_with_left_lane_ending):
+    """
+    Tests the filter BeyondSpecGffFilter.
+    Puts the host in a situation where the left lane will suddenly end.
+    Any actions that end up too close to the end of the left lane should be filtered.
+    Actions on the center lane, which does not end, should be allowed.
+    :param behavioral_grid_state_with_left_lane_ending:
+    :return:
+    """
+
+    partial_gff_end_s = behavioral_grid_state_with_left_lane_ending.extended_lane_frames[RelativeLane.LEFT_LANE].s_max
+
+    filter = BeyondSpecPartialGffFilter()
+    t, v, s, d = 10, 30, partial_gff_end_s - 10, 0
+    action_specs = [
+        ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM)),
+        ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.LEFT_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_left_lane_ending)
+    expected = [True, False]
+    assert np.all(actual == expected)
+
 
 def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimitsWhenSlowing_filterResultsMatchExpected(
         behavioral_grid_state_with_segments_limits,

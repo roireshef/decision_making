@@ -5,9 +5,8 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
-TRUE_COST = 1.0
-FALSE_COST = 0.0
 MPH_TO_MPS = 2.23694
+
 
 # Communication Layer
 
@@ -20,11 +19,20 @@ PUBSUB_MSG_IMPL = StrSerializable
 # [m] high-level behavioral planner lookahead distance
 PLANNING_LOOKAHEAD_DIST = 100.0
 
-# [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 600
+# [m] Maximum forward horizon for building Generalized Frenet Frames
+MAX_FORWARD_HORIZON = 600.0
+
+# [m] Maximum backward horizon for building Generalized Frenet Frames
+MAX_BACKWARD_HORIZON = 100.0
+
+# [m] distance to the end of a partial GFF at which the vehicle must not be in
+PARTIAL_GFF_END_PADDING = 5.0
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
+
+# Prefer left or right split when the costs are the same
+PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False
 
 # After a change of TP costs run the following test:
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
@@ -160,14 +168,14 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference 
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 15
+TRAJECTORY_NUM_POINTS = 20
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.5
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 3.0
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
@@ -236,6 +244,22 @@ LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 LANE_OCCUPANCY_COST_IND = 0
 LANE_END_COST_IND = 1
 
+# Maximum value for RP's lane end and occupancy costs
+# Lane end cost = MAX_COST --> Do not leave the road segment in this lane
+# Lane occupancy cost = MAX_COST --> Do not drive in this lane
+MAX_COST = 1.0
+
+# Minimum value for RP's lane end and occupancy costs
+# Lane end cost = MIN_COST --> There is no penalty for being in this lane as we transition to the next road segment
+# Lane occupancy cost = MIN_COST --> We are allowed to drive in this lane
+MIN_COST = 0.0
+
+# Tunable parameter that defines the cost at which a lane is no longer considered to be valid. For example, a lane may
+# have an end or occupancy cost equal to 0.99, and it may be desirable to not consider it as a valid lane. This is
+# different from the actual maximum cost (= MAX_COST).
+SATURATED_COST = 1.0
+
+
 # State #
 
 # TODO: set real values
@@ -294,6 +318,7 @@ LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_
                                        "%f while trajectory time range is [%f, %f]"
 LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from desired location (desired frenet: %s, actual frenet: %s)"
 LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from actual location (actual frenet: %s)"
+LOG_MSG_BEHAVIORAL_GRID = "BehavioralGrid"
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9

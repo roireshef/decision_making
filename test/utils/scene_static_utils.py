@@ -1,9 +1,10 @@
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneRoadSegment, MapRoadSegmentType, AdjacentLane, \
     MovingDirection, MapLaneType, DataSceneStatic, SceneStatic, SceneStaticBase, SceneStaticGeometry, NavigationPlan, \
-    SceneLaneSegmentBase, SceneLaneSegmentGeometry, LaneSegmentConnectivity, ManeuverType, MapLaneMarkerType, BoundaryPoint,\
-    LaneOverlapType, LaneOverlap
-from decision_making.src.messages.scene_static_enums import NominalPathPoint
+    SceneLaneSegmentBase, SceneLaneSegmentGeometry, LaneSegmentConnectivity, ManeuverType, MapLaneMarkerType, BoundaryPoint, \
+    LaneOverlap, LaneOverlapType
+from decision_making.src.messages.scene_static_enums import NominalPathPoint, LaneMappingStatusType, MapLaneDirection, GMAuthorityType,\
+    LaneConstructionType
 from decision_making.src.planning.types import FP_SX, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from typing import List
@@ -33,9 +34,9 @@ class SceneStaticUtils:
         scene_lane_segments_geometry = []
 
         for road_idx, road_segment_id in enumerate(road_segment_ids):
-            upstream_roads = np.array([road_segment_ids[road_idx + 1]]) if road_idx < len(
+            downstream_roads = np.array([road_segment_ids[road_idx + 1]]) if road_idx < len(
                 road_segment_ids) - 1 else np.array([])
-            downstream_roads = np.array([road_segment_ids[road_idx - 1]]) if road_idx > 0 else np.array([])
+            upstream_roads = np.array([road_segment_ids[road_idx - 1]]) if road_idx > 0 else np.array([])
 
             local_lane_ids = lane_ids[road_idx]
             scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_segment_id,
@@ -121,11 +122,16 @@ class SceneStaticUtils:
                                                                      e_Cnt_upstream_lane_count=len(upstream_lane_segments),
                                                                      as_upstream_lanes=upstream_lane_segments,
                                                                      e_v_nominal_speed=50.0,
-                                                                     e_l_length=100,
-                                                                     e_Cnt_num_active_lane_attributes=0,
-                                                                     a_i_active_lane_attribute_indices=np.empty(1),
-                                                                     a_cmp_lane_attributes=np.empty(1),
-                                                                     a_cmp_lane_attribute_confidences=np.empty(1),
+                                                                     e_l_length=nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
+                                                                     e_Cnt_num_active_lane_attributes=4,
+                                                                     a_i_active_lane_attribute_indices=np.array([0, 1, 2, 3]),
+                                                                     a_cmp_lane_attributes=np.array(
+                                                                         [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                                                                          GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
+                                                                          LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
+                                                                          MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value
+                                                                          ]),
+                                                                     a_cmp_lane_attribute_confidences=np.ones(4),
                                                                      e_Cnt_lane_overlap_count=0,
                                                                      as_lane_overlaps=lane_overlap))
 
@@ -151,8 +157,8 @@ class SceneStaticUtils:
                                                                  as_scene_road_segment=scene_road_segments),
                                s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=len(scene_lane_segments_geometry),
                                                                          as_scene_lane_segments=scene_lane_segments_geometry),
-                               s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=0,
-                                                               a_i_road_segment_ids=np.empty(1)))
+                               s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=len(road_segment_ids),
+                                                               a_i_road_segment_ids=np.array(road_segment_ids)))
 
         scene = SceneStatic(s_Header=header, s_Data=data)
         return scene
@@ -168,7 +174,7 @@ class SceneStaticUtils:
         points_direction = np.diff(points, axis=0)
         norms = np.linalg.norm(points_direction, axis=1)[np.newaxis].T
         norms[np.where(norms == 0.0)] = 1.0
-        direction_unit_vec = np.divide(points_direction, norms)
+        direction_unit_vec = np.array(np.divide(points_direction, norms))
         normal_unit_vec = np.c_[-direction_unit_vec[:, 1], direction_unit_vec[:, 0]]
         normal_unit_vec = np.concatenate((normal_unit_vec, normal_unit_vec[-1, np.newaxis]))
         shifted_points = points + normal_unit_vec * lateral_shift
