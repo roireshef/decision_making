@@ -17,7 +17,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-PLANNING_LOOKAHEAD_DIST = 100.0
+PLANNING_LOOKAHEAD_DIST = 150.0
 
 # [m] Maximum forward horizon for building Generalized Frenet Frames
 MAX_FORWARD_HORIZON = 600.0
