@@ -32,6 +32,7 @@ class SceneStaticUtils:
         scene_road_segments = []
         scene_lane_segments_base = []
         scene_lane_segments_geometry = []
+        a_nominal_path_points = []
 
         for road_idx, road_segment_id in enumerate(road_segment_ids):
             downstream_roads = np.array([road_segment_ids[road_idx + 1]]) if road_idx < len(
@@ -143,7 +144,9 @@ class SceneStaticUtils:
                                                                              as_left_boundary_points=left_boundry_point,
                                                                              e_Cnt_right_boundary_points_count=len(right_boundry_point),
                                                                              as_right_boundary_points=right_boundry_point))
+                a_nominal_path_points.append(nominal_points)
 
+        a_nominal_path_points = np.concatenate(a_nominal_path_points, axis=0)
         header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
         map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0, 0))
         data = DataSceneStatic(e_b_Valid=True,
@@ -156,7 +159,8 @@ class SceneStaticUtils:
                                                                  e_Cnt_num_road_segments=len(scene_road_segments),
                                                                  as_scene_road_segment=scene_road_segments),
                                s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=len(scene_lane_segments_geometry),
-                                                                         as_scene_lane_segments=scene_lane_segments_geometry),
+                                                                         as_scene_lane_segments=scene_lane_segments_geometry,
+                                                                         a_nominal_path_points=a_nominal_path_points),
                                s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=len(road_segment_ids),
                                                                a_i_road_segment_ids=np.array(road_segment_ids)))
 
