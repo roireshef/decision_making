@@ -185,11 +185,15 @@ class BehavioralGridState:
             actor_lane_matrix = np.vstack([actor_lane_matrix, relevant_object_mask])
 
         # filter the relevant objects which belong to any of the gff relative lanes
-        relevant_objects_indices, relevant_objects = \
-                                [list(l) for l in zip(*[(i, obj) for i, obj in enumerate(overloaded_dynamic_objects)
-                                 if actor_lane_matrix[:, i].any()])] or ([], [])
+        # relevant_objects_indices, relevant_objects = \
+        #                         [list(l) for l in zip(*[(i, obj) for i, obj in enumerate(overloaded_dynamic_objects)
+        #                          if actor_lane_matrix[:, i].any()])] or ([], [])
+        #
+        # relevant_actor_lane_matrix = actor_lane_matrix[:, relevant_objects_indices]
 
-        relevant_actor_lane_matrix = actor_lane_matrix[:, relevant_objects_indices]
+        is_relevant_object = actor_lane_matrix.any(axis=0)
+        relevant_objects = list(np.array(overloaded_dynamic_objects)[is_relevant_object])
+        relevant_actor_lane_matrix = actor_lane_matrix[:, is_relevant_object]
 
         relevant_objects_map_states = [obj.map_state for obj in relevant_objects]
 
