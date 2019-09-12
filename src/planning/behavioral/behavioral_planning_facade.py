@@ -118,7 +118,7 @@ class BehavioralPlanningFacade(DmModule):
 
             # choose scenario and planner
             scenario = Scenario.identify_scenario(behavioral_state)
-            planner = scenario.choose_planner(updated_state, behavioral_state, self.logger)
+            planner = scenario.choose_planner(behavioral_state, self.logger)
 
             trajectory_params, samplable_trajectory, behavioral_visualization_message = \
                 planner.plan(updated_state, behavioral_state)

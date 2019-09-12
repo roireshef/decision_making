@@ -2,7 +2,7 @@ from abc import abstractmethod
 from logging import Logger
 
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, ScenarioParams
@@ -36,26 +36,30 @@ class Scenario:
 
     @staticmethod
     @abstractmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
+    def choose_planner(behavioral_state: BehavioralGridState, logger: Logger):
         pass
 
 
 class DefaultScenario(Scenario):
     @staticmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
+    def choose_planner(behavioral_state: BehavioralGridState, logger: Logger):
         return SingleStepBehavioralPlanner(behavioral_state, logger)
 
 
 class LaneMergeScenario(Scenario):
     @staticmethod
-    def choose_planner(state: State, behavioral_state: BehavioralGridState, logger: Logger):
-        lane_merge_state = LaneMergeState.build(state, behavioral_state)
-        if lane_merge_state is None or len(lane_merge_state.actors) == 0:
-            # if there is no lane merge ahead or the main road is empty, then perform the default strategy
-            return SingleStepBehavioralPlanner(behavioral_state, logger)
+    def choose_planner(behavioral_state: BehavioralGridState, logger: Logger):
+        lane_merge_state = LaneMergeState.create_from_behavioral_state(behavioral_state)
+        if lane_merge_state is not None:
+            # pick the number of actors on the merge side of the occupancy grid
+            actors_num = [len(lane_merge_state.road_occupancy_grid[(lane_merge_state.merge_side, lon_pos)])
+                          for lon_pos in RelativeLongitudinalPosition]
+            if sum(actors_num) > 0:
+                # there is a merge ahead with cars on the main road
+                # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
+                actions = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
+                return RuleBasedLaneMergePlanner(lane_merge_state, actions, logger) if len(actions) > 0 \
+                    else RL_LaneMergePlanner(lane_merge_state, logger)
 
-        # there is a merge ahead with cars on the main road
-        # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        actions = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
-        return RuleBasedLaneMergePlanner(behavioral_state, lane_merge_state, actions, logger) if len(actions) > 0 \
-            else RL_LaneMergePlanner(behavioral_state, lane_merge_state, logger)
+        # if there is no lane merge ahead or the main road is empty, then choose the default planner
+        return SingleStepBehavioralPlanner(behavioral_state, logger)

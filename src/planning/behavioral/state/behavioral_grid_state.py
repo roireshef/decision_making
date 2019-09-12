@@ -12,9 +12,8 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D, C_V
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
-from decision_making.src.planning.behavioral.state import MapState
-from decision_making.src.planning.behavioral.state import DynamicObject, EgoState
-from decision_making.src.planning.behavioral.state import State
+from decision_making.src.planning.behavioral.state.map_state import MapState
+from decision_making.src.planning.behavioral.state.state import DynamicObject, EgoState, State
 from decision_making.src.utils.map_utils import MapUtils
 
 
@@ -42,71 +41,22 @@ SemanticGridCell = Tuple[RelativeLane, RelativeLongitudinalPosition]
 RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
 
 
-class BehavioralGridState(State):
-    def __init__(self, is_sampled: bool, ego_state: EgoState, dynamic_objects: List[DynamicObject],
-                 occupancy_state: OccupancyState,
-                 road_occupancy_grid: RoadSemanticOccupancyGrid,
+class BehavioralGridState:
+    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                  projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
         """
         constructor of BehavioralGridState
-        :param ego_state:
-        :param dynamic_objects: list of dynamic objects
         :param road_occupancy_grid: dictionary from grid cell to list of dynamic objects with semantics
+        :param ego_state:
         :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
         :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
                 corresponding extended_lane_frame
         """
-        super().__init__(is_sampled, occupancy_state, dynamic_objects, ego_state)
         self.road_occupancy_grid = road_occupancy_grid
+        self.ego_state = ego_state
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
-
-    @classmethod
-    @prof.ProfileFunction()
-    def create_state_from_scene_dynamic(cls, scene_dynamic: SceneDynamic,
-                                        selected_gff_segment_ids: np.ndarray,
-                                        logger: Logger,
-                                        route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None):
-        """
-        Occupy the occupancy grid.
-        This method iterates over all dynamic objects, and fits them into the relevant cell
-        in the semantic occupancy grid (semantic_lane, semantic_lon).
-        Each cell holds a list of objects that are within the cell borders.
-        In this particular implementation, we keep up to one dynamic object per cell, which is the closest to ego.
-         (e.g. in the cells in front of ego, we keep objects with minimal longitudinal distance
-         relative to ego front, while in all other cells we keep the object with the maximal longitudinal distance from
-         ego front).
-        :return: created BehavioralGridState
-        """
-        """
-        This methods takes an already deserialized SceneDynamic message and converts it to a State object
-        :param scene_dynamic: scene dynamic data
-        :param selected_gff_segment_ids: list of GFF segment ids for last or current BP action. If this method is called
-               from inside BP, the parameter refers to the last chosen BP action, while it refers to current BP action
-               if called from inside TP
-        :param logger: Logging module
-        :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value.
-               Note that it is an optional argument and is used only when the method is called from inside BP and the
-               previous BP action is not available, e.g., at the beginning of the planning time.
-        :return: valid State class
-        """
-        state = State.create_state_from_scene_dynamic(scene_dynamic, selected_gff_segment_ids, logger, route_plan_dict)
-
-        # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, logger)
-
-        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
-                                 for rel_lane in extended_lane_frames}
-
-        # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
-        dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
-                   key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
-
-        multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
-                                                                         state.ego_state)
-        return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @classmethod
     @prof.ProfileFunction()
@@ -226,21 +176,21 @@ class BehavioralGridState(State):
 
     @staticmethod
     @prof.ProfileFunction()
-    def _create_generalized_frenet_frames(state: State, route_plan: RoutePlan, logger: Logger) -> \
+    def _create_generalized_frenet_frames(ego_state: EgoState, route_plan: RoutePlan, logger: Logger) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
         contain multiple original lane segments.
-        :param state:
+        :param ego_state:
         :param route_plan:
         :param logger:
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
-        ego_lane_id = state.ego_state.map_state.lane_id
+        ego_lane_id = ego_state.map_state.lane_id
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
         # create generalized_frames for the nearest lanes
-        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
+        suggested_ref_route_start = ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
 
         # TODO: remove this hack when all unit-tests have enough margin backward
         # if there is no long enough road behind ego, set ref_route_start = 0
@@ -248,7 +198,7 @@ class BehavioralGridState(State):
             if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
             else 0
 
-        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
+        frame_length = ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
 
         # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}

@@ -117,9 +117,9 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     ## FRENET => CARTESIAN
 
-    def fpoint_to_cpoint(self, fpoints: FrenetPoint) -> CartesianPoint2D:
+    def fpoint_to_cpoint(self, fpoint: FrenetPoint) -> CartesianPoint2D:
         """Transforms a frenet-frame point to a cartesian-frame point (see self.fpoints_to_cpoints for more details)"""
-        return self.fpoints_to_cpoints(fpoints[np.newaxis, :])[0]
+        return self.fpoints_to_cpoints(fpoint[np.newaxis, :])[0]
 
     def fpoints_to_cpoints(self, fpoints: FrenetTrajectory2D) -> CartesianPath2D:
         """
@@ -209,9 +209,9 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     ## CARTESIAN => FRENET
 
-    def cpoint_to_fpoint(self, cpoints: CartesianPoint2D) -> FrenetPoint:
+    def cpoint_to_fpoint(self, cpoint: CartesianPoint2D) -> FrenetPoint:
         """Transforms a cartesian-frame point to a frenet-frame point (see self.fpoints_to_cpoints for more details)"""
-        return self.cpoints_to_fpoints(cpoints[np.newaxis, :])[0]
+        return self.cpoints_to_fpoints(cpoint[np.newaxis, :])[0]
 
     def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory2D:
         """

@@ -1,8 +1,8 @@
 import numpy as np
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
-    ScenarioParams, RuleBasedLaneMergeEvaluator
-from decision_making.src.planning.behavioral.state import LaneMergeState, ActorState
-from decision_making.src.planning.behavioral.state import ObjectSize
+    ScenarioParams
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
+from decision_making.src.planning.behavioral.state.state import ObjectSize
 from unittest.mock import patch
 
 
@@ -33,7 +33,7 @@ def test_createSafeMergeActions_useStop():
     lane_merge_actions, action_specs = RuleBasedLaneMergePlanner.create_safe_actions(
         state, ScenarioParams(worst_case_back_car_accel=0, worst_case_front_car_decel=0))
     assert len(action_specs) > 0
-    costs = RuleBasedLaneMergeEvaluator.evaluate(lane_merge_actions)
+    costs = RuleBasedLaneMergePlanner.evaluate(lane_merge_actions)
     best_action = lane_merge_actions[np.argmin(costs)]
     assert len(best_action.action_specs) == 1
     best_spec = best_action.action_specs[0]

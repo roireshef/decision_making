@@ -9,7 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import StaticActionRec
     ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.types import ActionSpecArray
+from decision_making.src.planning.types import ActionSpecArray, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.planning.behavioral.state import LaneMergeState
@@ -17,9 +17,8 @@ from decision_making.src.planning.behavioral.state import LaneMergeState
 
 class RL_LaneMergePlanner(BasePlanner):
 
-    def __init__(self, behavioral_state: BehavioralGridState, lane_merge_state: LaneMergeState, logger: Logger):
-        super().__init__(behavioral_state, logger)
-        self.lane_merge_state = lane_merge_state
+    def __init__(self, lane_merge_state: LaneMergeState, logger: Logger):
+        super().__init__(lane_merge_state, logger)
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
 
@@ -77,7 +76,7 @@ class RL_LaneMergePlanner(BasePlanner):
         :param action_specs: np.array of action specs
         :return: array of actions costs: the lower the better
         """
-        encoded_state = encode_state_for_policy(self.lane_merge_state)
+        encoded_state = self.lane_merge_state.encode_state_for_RL()
 
         logits, _, _, _ = RL_policy.model({SampleBatch.CUR_OBS: np.array([encoded_state])}, [])
         actions_distribution = RL_policy.dist_class(logits[0])
@@ -94,5 +93,5 @@ class RL_LaneMergePlanner(BasePlanner):
         selected_action_index = np.argmin(costs)
         best_action_spec = action_specs[selected_action_index]
         # convert spec.s from LaneMergeState to GFF
-        best_action_spec.s += self.lane_merge_state.merge_point_in_gff
+        best_action_spec.s += self.lane_merge_state.ego_state.map_state.lane_fstate[FS_SX]
         return self.action_space.recipes[selected_action_index], best_action_spec
