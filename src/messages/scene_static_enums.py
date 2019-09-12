@@ -170,9 +170,8 @@ class NominalPathPoint(Enum):
     CeSYS_NominalPathPoint_e_l_s = 7
     CeSYS_NominalPathPoint_e_l_left_offset = 8
     CeSYS_NominalPathPoint_e_l_right_offset = 9
-    
-    
-    
+
+
 class RoutePlanLaneSegmentAttr(IntEnum):
     CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus = 0
     CeSYS_e_RoutePlanLaneSegmentAttr_GMFA = 1
@@ -189,7 +188,7 @@ class LaneMappingStatusType(IntEnum):
     CeSYS_e_LaneMappingStatusType_LidarMap = 16
     CeSYS_e_LaneMappingStatusType_METAMap = 32
     CeSYS_e_LaneMappingStatusType_Obsolete = 128
-    
+
 
 class MapLaneDirection(IntEnum):
     CeSYS_e_MapLaneDirection_SameAs_HostVehicle = 0
@@ -198,7 +197,8 @@ class MapLaneDirection(IntEnum):
     CeSYS_e_MapLaneDirection_Left_AwayFrom_HostVehicle = 3
     CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle = 4
     CeSYS_e_MapLaneDirection_Right_AwayFrom_HostVehicle = 5
-    
+
+
 class GMAuthorityType(IntEnum):
     CeSYS_e_GMAuthorityType_None = 0
     CeSYS_e_GMAuthorityType_RoadConstruction = 1

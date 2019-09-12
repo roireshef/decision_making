@@ -31,6 +31,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.planning.behavioral.state import State
+from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
@@ -77,12 +78,13 @@ class TrajectoryPlanningFacade(DmModule):
 
             params = self._get_mission_params()
 
-            scene_dynamic = self._get_current_scene_dynamic()
+            with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
+                scene_dynamic = self._get_current_scene_dynamic()
 
-            state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
-                                                          selected_gff_segment_ids=params.reference_route.segment_ids,
-                                                          logger=self.logger)
-            state.handle_negative_velocities(self.logger)
+                state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
+                                                              selected_gff_segment_ids=params.reference_route.segment_ids,
+                                                              logger=self.logger)
+                state.handle_negative_velocities(self.logger)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -111,9 +113,10 @@ class TrajectoryPlanningFacade(DmModule):
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, T_target_horizon,
-                     T_trajectory_end_horizon, params.cost_params)
+            with DMProfiler(self.__class__.__name__ + '.plan'):
+                samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy].plan(
+                    updated_state, params.reference_route, params.target_state, T_target_horizon,
+                    T_trajectory_end_horizon, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)

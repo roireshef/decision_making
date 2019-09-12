@@ -13,7 +13,7 @@ from decision_making.src.planning.types import C_V, \
     CartesianExtendedState, CartesianTrajectories, CartesianExtendedTrajectory, CartesianPoint2D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.planning.behavioral.state import State
-from decision_making.test.exceptions import NotTriggeredException
+from decision_making.src.exceptions import NotTriggeredException
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 
 

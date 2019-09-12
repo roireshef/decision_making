@@ -52,6 +52,11 @@ class FrenetLimitsViolated(TrajectoryPlanningException):
     pass
 
 
+# For tests
+class NotTriggeredException(TrajectoryPlanningException):
+    pass
+
+
 # BEHAVIORAL PLANNING
 @six.add_metaclass(ABCMeta)
 class BehavioralPlanningException(Exception):
@@ -78,6 +83,10 @@ class SceneModelIsEmpty(Exception):
     pass
 
 
+class AugmentedGffCreatedIncorrectly(BehavioralPlanningException):
+    pass
+
+
 # BEHAVIORAL PLANNING
 @six.add_metaclass(ABCMeta)
 class MappingException(Exception):
@@ -88,19 +97,7 @@ class UpstreamLaneNotFound(MappingException):
     pass
 
 
-class DownstreamLaneNotFound(MappingException):
-    pass
-
-
 class NavigationPlanTooShort(MappingException):
-    pass
-
-
-class NavigationPlanDoesNotFitMap(MappingException):
-    pass
-
-
-class AmbiguousNavigationPlan(MappingException):
     pass
 
 
@@ -113,6 +110,10 @@ class LaneNotFound(MappingException):
 
 
 class IDAppearsMoreThanOnce(MappingException):
+    pass
+
+
+class StraightConnectionNotFound(MappingException):
     pass
 
 

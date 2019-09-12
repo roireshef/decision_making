@@ -3,7 +3,7 @@ import pytest
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, ROUTE_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MAX_BACKWARD_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Timestamp, Header
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
@@ -50,6 +50,61 @@ def route_plan_1_2():
                                          as_route_plan_lane_segments=[
                                              [RoutePlanLaneSegment(10, 0, 0), RoutePlanLaneSegment(11, 0, 0), RoutePlanLaneSegment(12, 0, 0)],
                                              [RoutePlanLaneSegment(20, 0, 0), RoutePlanLaneSegment(21, 0, 0), RoutePlanLaneSegment(22, 0, 0)]]))
+
+@pytest.fixture(scope='function')
+def route_plan_1_2_3():
+    yield RoutePlan(s_Header=Header(e_Cnt_SeqNum=1, s_Timestamp=Timestamp(0, 0), e_Cnt_version=1),
+                    s_Data=DataRoutePlan(e_b_is_valid=True,
+                                         e_Cnt_num_road_segments=3,
+                                         a_i_road_segment_ids=np.array([1, 2, 3]),
+                                         a_Cnt_num_lane_segments=np.array([3, 3, 3]),
+                                         as_route_plan_lane_segments=[
+                                             [RoutePlanLaneSegment(10, 0, 0), RoutePlanLaneSegment(11, 0, 0), RoutePlanLaneSegment(12, 0, 0)],
+                                             [RoutePlanLaneSegment(20, 0, 0), RoutePlanLaneSegment(21, 0, 0), RoutePlanLaneSegment(22, 0, 0)],
+                                             [RoutePlanLaneSegment(30, 0, 0), RoutePlanLaneSegment(31, 0, 0), RoutePlanLaneSegment(32, 0, 0)]]))
+
+@pytest.fixture(scope='function')
+def route_plan_left_lane_ends(route_plan_1_2):
+    # Delete left lane
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[1][-1]
+
+    yield route_plan_1_2
+
+@pytest.fixture(scope='function')
+def route_plan_right_lane_ends(route_plan_1_2):
+    # Delete right lane
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[1][0]
+
+    yield route_plan_1_2
+
+@pytest.fixture(scope='function')
+def route_plan_lane_split_on_right(route_plan_1_2):
+    # Delete right lane in road segment 1
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] -= 1
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+
+    yield route_plan_1_2
+
+@pytest.fixture(scope='function')
+def route_plan_lane_split_on_left(route_plan_1_2):
+    # Delete left lane in road segment 1
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] -= 1
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][2]
+
+    yield route_plan_1_2
+
+@pytest.fixture(scope='function')
+def route_plan_lane_split_on_left_and_right(route_plan_1_2):
+    # Delete right lane in road segment 1
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] -= 1
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][0]
+    # Delete left lane in road segment 1
+    route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] -= 1
+    del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][1]
+
+    yield route_plan_1_2
 
 @pytest.fixture(scope='function')
 def dynamic_objects_not_on_road():
@@ -180,7 +235,7 @@ def scene_dynamic(scene_static_short_testable) -> SceneDynamic:
 
     lane_id = 11
     road_id = 1
-    fstate = np.array([1., 1., 0., 0., 0., 0.])
+    fstate = np.array([MAX_BACKWARD_HORIZON, 1., 0., 0., 0., 0.])
     host_hypotheses = [HostHypothesis(road_id, lane_id, fstate, False)]
 
     frenet = MapUtils.get_lane_frenet_frame(lane_id)

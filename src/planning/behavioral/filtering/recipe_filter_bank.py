@@ -7,6 +7,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, D
     RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
@@ -71,9 +72,11 @@ class FilterNonCalmActions(RecipeFilter):
 class FilterIfNoLane(RecipeFilter):
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         lane_id = behavioral_state.ego_state.map_state.lane_id
-        return [(recipe.relative_lane == RelativeLane.SAME_LANE or
-                len(MapUtils.get_adjacent_lane_ids(lane_id, recipe.relative_lane)) > 0)
-                if recipe is not None else False for recipe in recipes]
+        return [(recipe.relative_lane == RelativeLane.SAME_LANE
+                 or len(MapUtils.get_adjacent_lane_ids(lane_id, recipe.relative_lane)) > 0
+                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial])
+                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
+                else False for recipe in recipes]
 
 
 class FilterIfAggressive(RecipeFilter):
@@ -82,11 +85,14 @@ class FilterIfAggressive(RecipeFilter):
                 if recipe is not None else False for recipe in recipes]
 
 
-class FilterLaneChanging(RecipeFilter):
+class FilterLaneChangingIfNotAugmented(RecipeFilter):
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [recipe.relative_lane == RelativeLane.SAME_LANE
-                if recipe is not None else False for recipe in recipes]
-
+        # the if statement in the ternary operator is executed first and will short circuit if False,
+        # so a KeyError will not happen when accessing the extended_lane_frames dict
+        return [(recipe.relative_lane == RelativeLane.SAME_LANE
+                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial])
+                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
+                else False for recipe in recipes]
 
 class FilterSpeedingOverDesiredVelocityStatic(RecipeFilter):
     """ This filter only compares the target lane speed with an absolute speed limit.

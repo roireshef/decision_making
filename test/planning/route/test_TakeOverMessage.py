@@ -6,14 +6,17 @@ from decision_making.test.planning.behavioral.mock_behavioral_facade import Beha
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.behavioral.state import EgoState
 from decision_making.test.planning.route.scene_fixtures import TakeOverTestData, \
-     default_route_plan
+    default_route_plan_for_PG_split_file, construction_scene_for_takeover_test
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
+    ego_state_for_takover_message_default_scene
 
 
 def test_setTakeoverMessage_defaultScene_noTakeoverFlag(scene_static_pg_split: SceneStatic,
                                                         ego_state_for_takover_message_default_scene: EgoState):
 
     # Route Plan Data
-    route_plan_data = default_route_plan()
+    route_plan_data = default_route_plan_for_PG_split_file()
 
     behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING),
                                                 trajectory_params=None,
