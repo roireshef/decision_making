@@ -1,16 +1,15 @@
 import time
-
 import traceback
-import numpy as np
+from logging import Logger
 
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+import numpy as np
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
-
-from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet,\
+from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
@@ -32,9 +31,9 @@ from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
+from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
-from logging import Logger
 
 
 class BehavioralPlanningFacade(DmModule):
@@ -75,19 +74,22 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
 
-            route_plan = self._get_current_route_plan()
-            route_plan_dict = route_plan.to_costs_dict()
+            with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
+                route_plan = self._get_current_route_plan()
+                route_plan_dict = route_plan.to_costs_dict()
 
-            scene_static = self._get_current_scene_static()
-            SceneStaticModel.get_instance().set_scene_static(scene_static)
+            with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
+                scene_static = self._get_current_scene_static()
+                SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            scene_dynamic = self._get_current_scene_dynamic()
-            state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
-                                                          selected_gff_segment_ids=self._last_gff_segment_ids,
-                                                          route_plan_dict=route_plan_dict,
-                                                          logger=self.logger)
+            with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
+                scene_dynamic = self._get_current_scene_dynamic()
+                state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
+                                                              selected_gff_segment_ids=self._last_gff_segment_ids,
+                                                              route_plan_dict=route_plan_dict,
+                                                              logger=self.logger)
 
-            state.handle_negative_velocities(self.logger)
+                state.handle_negative_velocities(self.logger)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -119,7 +121,8 @@ class BehavioralPlanningFacade(DmModule):
 
             self._publish_takeover(takeover_message)
 
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
+            with DMProfiler(self.__class__.__name__ + '.plan'):
+                trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
                                                                                                            route_plan)
 
             self._last_trajectory = samplable_trajectory
@@ -244,12 +247,14 @@ class BehavioralPlanningFacade(DmModule):
         return takeover_message
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
+        with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):
+            is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
 
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
-        scene_static = SceneStatic.deserialize(serialized_scene_static)
+        with DMProfiler(self.__class__.__name__ + '.deserialize'):
+            scene_static = SceneStatic.deserialize(serialized_scene_static)
         if scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_road_segments == 0:
             raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
