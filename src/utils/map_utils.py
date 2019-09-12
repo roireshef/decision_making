@@ -282,8 +282,11 @@ class MapUtils:
         :param lane_id: ID for the lane in question
         :return: Maneuver type of the lane
         """
-        upstream_lane = MapUtils.get_upstream_lane_ids(lane_id)[0]
-        downstream_connectivity = MapUtils.get_lane(upstream_lane).as_downstream_lanes
+        try:
+            upstream_lane = MapUtils.get_upstream_lane_ids(lane_id)[0]
+            downstream_connectivity = MapUtils.get_lane(upstream_lane).as_downstream_lanes
+        except LaneNotFound:
+            return ManeuverType.UNKNOWN
         connectivity = [connectivity.e_e_maneuver_type for connectivity in downstream_connectivity if
                         connectivity.e_i_lane_segment_id == lane_id]
         assert len(connectivity) == 1, "connectivity from upstream lane %s to lane %s was supposed to be 1-to-1" + \

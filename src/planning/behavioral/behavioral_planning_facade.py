@@ -89,13 +89,18 @@ class BehavioralPlanningFacade(DmModule):
 
             state.handle_negative_velocities(self.logger)
 
-            if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count > 1:
-                self.logger.debug("Multiple localization hypotheses published for ego vehicle at timestamp: %f," +
-                                  " Number of Hypotheses: %d",
-                                  state.ego_state.timestamp_in_sec,
-                                  scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count)
-
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
+
+            self.logger.debug("Scene Dynamic host localization published at timestamp: %f," +
+                              " Number of Hypotheses: %d, Hypotheses (lane_id, road_id, lane_maneuver_type): %s," +
+                              " last gff lane segment IDs : %s, selected ego_state lane ID: %d",
+                              state.ego_state.timestamp_in_sec,
+                              scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count,
+                              [(hyp.e_i_lane_segment_id, hyp.e_i_road_segment_id,
+                                MapUtils.get_lane_maneuver_type(hyp.e_i_lane_segment_id)) for hyp in
+                               scene_dynamic.s_Data.s_host_localization.as_host_hypothesis],
+                              self._last_gff_segment_ids,
+                              state.ego_state.map_state.lane_id)
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
