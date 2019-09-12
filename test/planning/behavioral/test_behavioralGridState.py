@@ -301,7 +301,7 @@ def test_projectActorsInsideIntersection_laneSplit_carInOverlap(scene_static_ova
 
     # Create other car in lane 21, which overlaps with lane 22
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
-                                                  map_state=MapState(np.array([1,1,0,0,0,0]), 19670532),
+                                                  map_state=MapState(np.array([5,1,0,0,0,0]), 19670532),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
     all_objects = BehavioralGridState._project_actors_inside_intersection([dyn_obj])
     projected_objects = [obj for obj in all_objects if obj.obj_id == -10]

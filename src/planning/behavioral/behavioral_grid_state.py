@@ -135,40 +135,18 @@ class BehavioralGridState:
                                                 lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
                                                                                        LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
+
+                        # TODO: what to do in case object if map_state can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
+                        map_state = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
+
                         projected_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
                                                                        timestamp=dynamic_object.timestamp,
                                                                        cartesian_state=dynamic_object.cartesian_state,
-                                                                       map_state=MapState(None, lane_id),
+                                                                       map_state=MapState(map_state, lane_id),
                                                                        size=dynamic_object.size,
                                                                        confidence=dynamic_object.confidence,
                                                                        off_map=False))
-
         return dynamic_objects + projected_dynamic_objects
-
-    @staticmethod
-    def set_map_state_for_projected_actors(dynamic_objects: List[DynamicObject],
-                                           extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                                           actor_lane_matrix: np.array) -> None:
-        """
-        Takes the relevant map_states for relevant objects and calculates the fstate if missing ( map_states with None fstate)
-        TODO: Fix double Conversion
-        :param dynamic_objects: list of dynamic objects
-        :param extended_lane_frames: extended lane frame data
-        :param actor_lane_matrix: boolian matrix of size 3 by len(dynamic_objects) where each column represents the
-               which gff rel. lanes a dynamic object belongs to.
-        :return:
-        """
-        for i, dynamic_object in enumerate(dynamic_objects):
-            if dynamic_object.map_state.lane_fstate is None:
-                # In the case that the actor belongs to multiple rel. lanes, it does not matter which one to choose
-                # for the purpose of finding the map state for that actor. we take the first one here. 
-                rel_lane = np.array(list(extended_lane_frames.keys()))[actor_lane_matrix[:, i]][0]
-
-                obj_fstate_on_GFF = extended_lane_frames[rel_lane]. \
-                    cstate_to_fstate(dynamic_object.cartesian_state)
-
-                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lane]. \
-                    convert_to_segment_state(obj_fstate_on_GFF)[1]
 
     @staticmethod
     @prof.ProfileFunction()
@@ -209,14 +187,9 @@ class BehavioralGridState:
         # filter the relevant objects which belong to any of the gff relative lanes
         relevant_objects_indices, relevant_objects = \
                                 [list(l) for l in zip(*[(i, obj) for i, obj in enumerate(overloaded_dynamic_objects)
-                                    if actor_lane_matrix[:, i].any()])] \
-                                or ([], [])
+                                 if actor_lane_matrix[:, i].any()])] or ([], [])
 
         relevant_actor_lane_matrix = actor_lane_matrix[:, relevant_objects_indices]
-
-        # set the missing map_states to projected actors
-        BehavioralGridState.set_map_state_for_projected_actors(relevant_objects, extended_lane_frames,
-                                                               relevant_actor_lane_matrix)
 
         relevant_objects_map_states = [obj.map_state for obj in relevant_objects]
 
