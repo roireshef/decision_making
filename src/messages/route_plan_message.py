@@ -158,10 +158,9 @@ class RoutePlan(PUBSUB_MSG_IMPL):
         :return:
         """
         # TODO: cache when route plan header data is accurate
-        return {
-            lane_segment.e_i_lane_segment_id: (lane_segment.e_cst_lane_occupancy_cost, lane_segment.e_cst_lane_end_cost)
-            for road_segment in self.s_Data.as_route_plan_lane_segments
-            for lane_segment in road_segment}
+        return {lane_segment.e_i_lane_segment_id: (lane_segment.e_cst_lane_occupancy_cost, lane_segment.e_cst_lane_end_cost)
+                for road_segment in self.s_Data.as_route_plan_lane_segments
+                for lane_segment in road_segment}
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):
