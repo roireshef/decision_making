@@ -62,7 +62,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         return filtered_action_specs
 
-    def _evaluate(self, action_specs: ActionSpecArray) -> np.ndarray:
+    def _evaluate_actions(self, action_specs: ActionSpecArray) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
         * Only takes into account actions on RelativeLane.SAME_LANE

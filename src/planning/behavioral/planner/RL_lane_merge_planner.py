@@ -68,7 +68,7 @@ class RL_LaneMergePlanner(BasePlanner):
         action_specs[valid_specs_idxs[spec_s + braking_distances > self.lane_merge_state.red_line_s]] = None
         return action_specs
 
-    def _evaluate(self, action_specs: ActionSpecArray) -> np.ndarray:
+    def _evaluate_actions(self, action_specs: ActionSpecArray) -> np.ndarray:
         """
         Given RL policy, current state and actions mask, return the actions cost by operating policy on the state.
         Filtered actions get the maximal cost 1.

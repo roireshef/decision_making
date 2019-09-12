@@ -54,7 +54,7 @@ class BasePlanner:
         costs = self._evaluate_actions(filtered_actions)
         selected_action_recipe, selected_action_spec = self._choose_action(actions, costs)
 
-        trajectory_parameters = BasePlanner._generate_trajectory_params(action_spec=selected_action_spec)
+        trajectory_parameters = self._generate_trajectory_params(action_spec=selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
         timestamp_in_sec = self.behavioral_state.ego_state.timestamp_in_sec
@@ -80,7 +80,7 @@ class BasePlanner:
         pass
 
     @abstractmethod
-    def _evaluate(self, actions: np.array) -> np.ndarray:
+    def _evaluate_actions(self, actions: np.array) -> np.ndarray:
         pass
 
     @abstractmethod

@@ -355,7 +355,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         filtered_action_specs[action_specs_mask] = first_action_specs[action_specs_mask]
         return filtered_action_specs
 
-    def _evaluate(self, actions: np.array) -> np.array:
+    def _evaluate_actions(self, actions: np.array) -> np.array:
         """
         Calculate time-jerk costs for the given actions
         :param actions: list of LaneMergeActions, where each LaneMergeAction is a sequence of action specs

@@ -79,7 +79,7 @@ class BehavioralGridState:
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, logger)
+        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state.ego_state, route_plan, logger)
 
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
@@ -195,7 +195,6 @@ class BehavioralGridState:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
         contain multiple original lane segments. Augmented frenet frames may be created if there are lane splits ahead.
-        :param state: the current world state
         :param route_plan: the route plan which contains lane costs
         :param logger: Logger object to log warning messages
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
@@ -213,7 +212,7 @@ class BehavioralGridState:
         # Create generalized Frenet frame for the host's lane
         try:
             lane_gff_dict = BehavioralGridState._get_generalized_frenet_frames(
-                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=state.ego_state.map_state.lane_fstate[FS_SX],
+                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=ego_state.map_state.lane_fstate[FS_SX],
                 route_plan=route_plan, can_augment=can_augment)
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
@@ -222,8 +221,8 @@ class BehavioralGridState:
         # set the SAME_LANE first since it cannot be augmented
         extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
 
-        host_cartesian_point = np.array([state.ego_state.cartesian_state[C_X],
-                                         state.ego_state.cartesian_state[C_Y]])
+        host_cartesian_point = np.array([ego_state.cartesian_state[C_X],
+                                         ego_state.cartesian_state[C_Y]])
 
         # If an adjacent lane exists, create a generalized Frenet frame for it
         for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
