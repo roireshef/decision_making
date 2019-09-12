@@ -7,7 +7,7 @@ from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEG
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V, \
     C_A
-from decision_making.src.planning.behavioral.state import EgoState
+from decision_making.src.planning.behavioral.state.state import EgoState
 from decision_making.src.utils.geometry_utils import CartesianFrame
 import rte.python.profiler as prof
 

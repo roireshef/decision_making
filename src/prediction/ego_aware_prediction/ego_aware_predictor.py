@@ -6,7 +6,7 @@ from typing import List, Dict
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FrenetTrajectories2D, FrenetStates2D, FrenetTrajectories1D, \
     FrenetStates1D
-from decision_making.src.planning.behavioral.state import State, DynamicObject
+from decision_making.src.planning.behavioral.state.state import State, DynamicObject
 
 
 class EgoAwarePredictor(metaclass=ABCMeta):

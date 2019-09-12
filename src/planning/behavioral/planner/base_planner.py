@@ -23,8 +23,8 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.planning.behavioral.state import MapState
-from decision_making.src.planning.behavioral.state import ObjectSize
+from decision_making.src.planning.behavioral.state.map_state import MapState
+from decision_making.src.planning.behavioral.state.state import ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
 
 

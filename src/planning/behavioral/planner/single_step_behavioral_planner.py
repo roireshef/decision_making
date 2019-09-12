@@ -76,7 +76,8 @@ class SingleStepBehavioralPlanner(BasePlanner):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
         action_spec_evaluator = AugmentedLaneActionSpecEvaluator(self.logger)
-        return action_spec_evaluator.evaluate(self.behavioral_state, action_specs, action_specs != None, self.route_plan)
+        return action_spec_evaluator.evaluate(self.behavioral_state, self.action_space.recipes, action_specs,
+                                              list(action_specs != None), self.route_plan)
 
     def _choose_action(self, action_specs: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
         selected_action_index = np.argmin(costs)

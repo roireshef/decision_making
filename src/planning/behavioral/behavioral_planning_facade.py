@@ -31,7 +31,7 @@ from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.planning.behavioral.state import State, EgoState
+from decision_making.src.planning.behavioral.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger

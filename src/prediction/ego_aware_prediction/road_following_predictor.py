@@ -6,8 +6,8 @@ from decision_making.src.planning.trajectory.samplable_trajectory import Samplab
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX, FrenetTrajectories2D, \
     FrenetStates2D, FrenetState1D, FrenetTrajectories1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.planning.behavioral.state import MapState
-from decision_making.src.planning.behavioral.state import State, DynamicObject
+from decision_making.src.planning.behavioral.state.map_state import MapState
+from decision_making.src.planning.behavioral.state.state import State, DynamicObject
 
 
 # TODO: Consider making predictors static classes

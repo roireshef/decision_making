@@ -24,7 +24,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.planning.behavioral.state import State
+from decision_making.src.planning.behavioral.state.state import State
 
 
 class WerlingPlanner(TrajectoryPlanner):

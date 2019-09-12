@@ -1,10 +1,9 @@
-from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
 
 import numpy as np
 
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe, AggressivenessLevel
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
@@ -13,8 +12,6 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT
 from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
-
-
 
 
 class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):

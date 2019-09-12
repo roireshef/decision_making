@@ -8,8 +8,8 @@ from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner impor
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, ScenarioParams
 from decision_making.src.planning.types import FS_SX
-from decision_making.src.planning.behavioral.state import LaneMergeState, MERGE_LOOKAHEAD
-from decision_making.src.planning.behavioral.state import State
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, MERGE_LOOKAHEAD
+from decision_making.src.planning.behavioral.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 
 
