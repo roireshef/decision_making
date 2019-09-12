@@ -40,6 +40,22 @@ def test_findRealRootsInLimits_compareFoundRootsWithNumpyRoots_rootsShouldBeTheS
         assert np.isclose(real_roots1_in_limits, real_roots2_in_limits).all()
 
 
+def test_solveQuadratic_compareFindRealRootsInLimits_rootsShouldBeTheSame():
+    limits = np.array([-1000, 1000])
+    poly_sq = np.random.rand(10000, 3)
+
+    # calculate real roots in limits using Math.solve_quadratic
+    roots1 = Math.solve_quadratic(poly_sq.astype(complex))
+    is_in_limits = NumpyUtils.is_in_limits(roots1, limits)
+    roots1_in_limits = roots1[is_in_limits]
+
+    # calculate real roots in limits using Math.find_real_roots_in_limits
+    roots2 = Math.find_real_roots_in_limits(poly_sq, limits)
+    real_roots2_in_limits = roots2[np.logical_not(np.isnan(roots2))]
+
+    assert np.isclose(roots1_in_limits, real_roots2_in_limits).all()
+
+
 def test_floorToStep_compareFloatSeriesWithExpected_Accurate():
 
     step = 0.1
