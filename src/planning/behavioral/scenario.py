@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from logging import Logger
 
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
@@ -36,19 +37,19 @@ class Scenario:
 
     @staticmethod
     @abstractmethod
-    def choose_planner(behavioral_state: BehavioralGridState, logger: Logger):
+    def choose_planner(behavioral_state: BehavioralGridState, route_plan: RoutePlan, logger: Logger):
         pass
 
 
 class DefaultScenario(Scenario):
     @staticmethod
-    def choose_planner(behavioral_state: BehavioralGridState, logger: Logger):
-        return SingleStepBehavioralPlanner(behavioral_state, logger)
+    def choose_planner(behavioral_state: BehavioralGridState, route_plan: RoutePlan, logger: Logger):
+        return SingleStepBehavioralPlanner(behavioral_state, route_plan, logger)
 
 
 class LaneMergeScenario(Scenario):
     @staticmethod
-    def choose_planner(behavioral_state: BehavioralGridState, logger: Logger):
+    def choose_planner(behavioral_state: BehavioralGridState, route_plan: RoutePlan, logger: Logger):
         lane_merge_state = LaneMergeState.create_from_behavioral_state(behavioral_state)
         if lane_merge_state is not None:
             # pick the number of actors on the merge side of the occupancy grid
@@ -62,4 +63,4 @@ class LaneMergeScenario(Scenario):
                     else RL_LaneMergePlanner(lane_merge_state, logger)
 
         # if there is no lane merge ahead or the main road is empty, then choose the default planner
-        return SingleStepBehavioralPlanner(behavioral_state, logger)
+        return SingleStepBehavioralPlanner(behavioral_state, route_plan, logger)
