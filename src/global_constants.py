@@ -138,7 +138,7 @@ TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
 SLOW_DOWN_FACTOR = 0.5
 # Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the lower bound on the speed
 # reduction of the target for the action spec. Set to a lower value to account for the fact that deceleration is not immediate
-MAX_DECEL = - LON_ACC_LIMITS[0] - 1
+MAX_IMMEDIATE_DECEL = - LON_ACC_LIMITS[0] - 1
 # Headway to select calm/aggressive dynamic action. Must be larger than SAFETY_HEADWAY
 REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION = 1.4
 REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2

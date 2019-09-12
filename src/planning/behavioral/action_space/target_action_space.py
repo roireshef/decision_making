@@ -6,7 +6,7 @@ from typing import Optional, List, Type
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe
@@ -191,8 +191,8 @@ class TargetActionSpace(ActionSpace):
         mod_idx = np.where(v_diff < CLOSE_TO_ZERO_NEGATIVE_VELOCITY)[0]
         v_T_mod = v_T.copy()
         lower_root = Math.solve_quadratic(np.c_[np.ones(len(mod_idx)),
-                                                2 * (MAX_DECEL * SPECIFICATION_HEADWAY - v_0[mod_idx]),
-                                                v_0[mod_idx] * v_0[mod_idx] - 2 * MAX_DECEL * ds[mod_idx]])[:, 0]
+                                                2 * (MAX_IMMEDIATE_DECEL * SPECIFICATION_HEADWAY - v_0[mod_idx]),
+                                                v_0[mod_idx] * v_0[mod_idx] - 2 * MAX_IMMEDIATE_DECEL * ds[mod_idx]])[:, 0]
         valid_root_idx = np.where(~np.isnan(lower_root) & (lower_root < v_T[mod_idx]))[0]
         valid_idx = mod_idx[valid_root_idx]
         # select the reduced value where possible

@@ -317,8 +317,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
         poly_diff = poly_target - poly_host
         poly_diff[-1] -= margin
 
-        suspected_times = np.arange(time_range[LIMIT_MIN], time_range[LIMIT_MAX] + 0.1 * TRAJECTORY_TIME_RESOLUTION,
-                                    TRAJECTORY_TIME_RESOLUTION)
+        suspected_times = np.arange(time_range[LIMIT_MIN], time_range[LIMIT_MAX] + EPS, TRAJECTORY_TIME_RESOLUTION)
 
         # This calculates the margin in headway time by checking 64 points evenly spaced in the time range
         # selects the time at which the headway time is minimal
