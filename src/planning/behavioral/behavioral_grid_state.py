@@ -135,7 +135,6 @@ class BehavioralGridState:
                                                 lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
                                                                                        LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
-
                         # TODO: what to do in case object if map_state can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
                         map_state = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
 
@@ -183,13 +182,6 @@ class BehavioralGridState:
             # add as row to matrix
             relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
             actor_lane_matrix = np.vstack([actor_lane_matrix, relevant_object_mask])
-
-        # filter the relevant objects which belong to any of the gff relative lanes
-        # relevant_objects_indices, relevant_objects = \
-        #                         [list(l) for l in zip(*[(i, obj) for i, obj in enumerate(overloaded_dynamic_objects)
-        #                          if actor_lane_matrix[:, i].any()])] or ([], [])
-        #
-        # relevant_actor_lane_matrix = actor_lane_matrix[:, relevant_objects_indices]
 
         is_relevant_object = actor_lane_matrix.any(axis=0)
         relevant_objects = list(np.array(overloaded_dynamic_objects)[is_relevant_object])
