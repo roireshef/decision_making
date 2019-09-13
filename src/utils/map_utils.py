@@ -285,7 +285,8 @@ class MapUtils:
         try:
             upstream_lane = MapUtils.get_upstream_lane_ids(lane_id)[0]
             downstream_connectivity = MapUtils.get_lane(upstream_lane).as_downstream_lanes
-        except LaneNotFound:
+        # returns unknown type if there is no upstream lane for current lane or the upstream lane can not be found in scene static data
+        except IndexError or LaneNotFound:
             return ManeuverType.UNKNOWN
         connectivity = [connectivity.e_e_maneuver_type for connectivity in downstream_connectivity if
                         connectivity.e_i_lane_segment_id == lane_id]
