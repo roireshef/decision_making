@@ -290,8 +290,8 @@ class MapUtils:
             return ManeuverType.UNKNOWN
         connectivity = [connectivity.e_e_maneuver_type for connectivity in downstream_connectivity if
                         connectivity.e_i_lane_segment_id == lane_id]
-        assert len(connectivity) == 1, "connectivity from upstream lane %s to lane %s was supposed to be 1-to-1" + \
-                                       "connection but got %s instances" % (upstream_lane, lane_id, len(connectivity))
+        assert len(connectivity) == 1, f"connectivity from upstream lane {upstream_lane} to lane {lane_id} was supposed to be 1-to-1" + \
+                                       f"connection but got {len(connectivity)} instances"
         return connectivity[0]
 
 
