@@ -19,9 +19,12 @@ def test_calculateSafeTargetPoints():
     ds = 60
     actor1 = np.array([-60, 20, ego_len])
     actor2 = np.array([60, 20, ego_len])
-    #actors = actor2[np.newaxis]
     actors = np.vstack((actor1, actor2))
+    #actors = actor1[np.newaxis]
+    import time
+    st = time.time()
     v_T, T = RuleBasedLaneMergePlanner._calculate_safe_target_points(actors, v_grid, t_grid, ds, ScenarioParams())
+    print('\ntime=', time.time() - st)
     f = plt.figure(1)
     axes = plt.gca()
     axes.set_xlim([t_grid[0], t_grid[-1]])

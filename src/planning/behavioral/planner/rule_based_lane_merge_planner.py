@@ -15,7 +15,7 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPol
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 
 WORST_CASE_FRONT_CAR_DECEL = 3  # [m/sec^2]
-WORST_CASE_BACK_CAR_ACCEL = 0  # [m/sec^2]
+WORST_CASE_BACK_CAR_ACCEL = 1  # [m/sec^2]
 
 
 class ScenarioParams:
@@ -144,11 +144,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         time_quartic = time.time() - st
 
         lane_merge_actions = single_actions + max_vel_actions + stop_actions
-
-        # # given the list of lane_merge_actions, create list of initial action_specs with s value in GFF
-        # ego_s_in_gff = lane_merge_state.merge_point_in_gff + lane_merge_state.ego_fstate[FS_SX]
-        # init_specs = [action.action_specs[0] for action in lane_merge_actions]
-        # action_specs = [ActionSpec(spec.t, spec.v_T, ego_s_in_gff + spec.ds, d=0, recipe=None) for spec in init_specs]
 
         print('\ntime = %f: safety=%f quintic=%f quartic=%f' % (time.time() - st_tot, time_safety, time_quintic, time_quartic))
         return lane_merge_actions
@@ -382,10 +377,13 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         front_v = np.maximum(0, actors_v - t_grid * wc_front_decel)  # target velocity of the front actor
         front_T = np.repeat(t_grid[np.newaxis][np.newaxis], actors_s.shape[0], axis=0)
-        front_T = np.minimum(front_T, actors_v/wc_front_decel)
-        back_v = actors_v + t_grid * wc_back_accel  # target velocity of the front actor
+        front_T = np.minimum(front_T, actors_v / wc_front_decel)
         front_s = actors_s + front_T * actors_v - 0.5 * wc_front_decel * front_T * front_T - margins  # s of front actor at time t
-        back_s = actors_s + t_grid * actors_v + 0.5 * wc_back_accel * t_grid * t_grid + margins  # s of back actor at time t
+
+        back_v = np.minimum(VELOCITY_LIMITS[LIMIT_MAX], actors_v + t_grid * wc_back_accel)  # target velocity of the front actor
+        back_v_from_zero_t = np.concatenate((actors_v, back_v), axis=-1)
+        back_v_interp = 0.5 * (back_v_from_zero_t[..., 1:] + back_v_from_zero_t[..., :-1])
+        back_s = actors_s + np.cumsum(back_v_interp, axis=-1) * RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION + margins  # s of back actor at time t
 
         front_side_safe = np.maximum(0, ego_v * ego_v - front_v * front_v) / (2 * front_rss_decel) + ego_hw * ego_v < front_s - target_s
         back_side_safe = np.maximum(0, back_v * back_v - ego_v * ego_v) / (2 * back_rss_decel) + actor_hw * back_v < target_s - back_s
