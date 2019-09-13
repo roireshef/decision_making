@@ -293,6 +293,7 @@ class MapUtils:
                                        "connection but got %s instances" % (upstream_lane, lane_id, len(connectivity))
         return connectivity[0]
 
+
     @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
         """
