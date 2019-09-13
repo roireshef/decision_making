@@ -6,7 +6,8 @@ from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, AggressivenessLevel, ActionSpec, \
     ActionRecipe
-from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
+    DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import ActionSpecArray, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
@@ -48,7 +49,7 @@ class RL_LaneMergePlanner(BasePlanner):
         :return: array of ActionSpec of the original size, with None for filtered actions
         """
         # filter actions by the regular action_spec filters of the single_lane_planner
-        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, self.behavioral_state)
+        action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, self.behavioral_state)
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         # filter out actions that don't enable to brake before the red line

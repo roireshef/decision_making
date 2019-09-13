@@ -2,6 +2,7 @@ import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
@@ -35,7 +36,6 @@ class BasePlanner:
         :param behavioral_state: current behavioral grid state
         :param logger:
         """
-        self.action_spec_validator = ActionSpecFiltering(filters=None, logger=logger)
         self.behavioral_state = behavioral_state
         self.logger = logger
 

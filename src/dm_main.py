@@ -52,17 +52,6 @@ class DmInitialization:
 
         pubsub = PubSub()
 
-        predictor = RoadFollowingPredictor(logger)
-
-        action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
-                                                     DynamicActionSpace(logger, predictor,
-                                                                        DEFAULT_DYNAMIC_RECIPE_FILTERING),
-                                                     RoadSignActionSpace(logger, predictor,
-                                                                         DEFAULT_ROAD_SIGN_RECIPE_FILTERING)],
-                                            )
-
-        action_spec_filtering = DEFAULT_ACTION_SPEC_FILTERING
-
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None)
         return behavioral_module
 

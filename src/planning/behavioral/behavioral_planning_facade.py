@@ -24,6 +24,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
@@ -50,6 +51,7 @@ class BehavioralPlanningFacade(DmModule):
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
+        self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)

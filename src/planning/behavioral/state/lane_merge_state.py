@@ -2,6 +2,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 import numpy as np
 from decision_making.src.planning.types import FP_SX
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
 
 MAX_BACK_HORIZON = 300   # on the main road
 MAX_AHEAD_HORIZON = 100  # on the main road
@@ -26,7 +27,7 @@ class LaneMergeState(BehavioralGridState):
 
         for rel_lane in [RelativeLane.RIGHT_LANE, RelativeLane.LEFT_LANE]:
             target_gff = behavioral_state.extended_lane_frames[rel_lane]
-            if target_gff.gff_type != GFF_Type.Augmented:
+            if target_gff.gff_type != GFFType.Augmented:
                 continue
             current_index = np.where(same_lane_segments == ego_state.map_state.lane_id)[0][0]
             max_index = min(len(same_lane_segments), len(target_gff.segment_ids))

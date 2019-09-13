@@ -1,9 +1,33 @@
 import numpy as np
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, VELOCITY_LIMITS
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.behavioral.state.state import ObjectSize
 from unittest.mock import patch
+
+from decision_making.src.planning.types import LIMIT_MAX
+import matplotlib.pyplot as plt
+
+
+def test_calculateSafeTargetPoints():
+    t_grid = np.arange(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, BP_ACTION_T_LIMITS[LIMIT_MAX],
+                       RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION)
+    v_grid = np.arange(0, VELOCITY_LIMITS[LIMIT_MAX], RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)
+
+    ego_len = 5
+    ds = 60
+    actor1 = np.array([-60, 20, ego_len])
+    actor2 = np.array([60, 20, ego_len])
+    #actors = actor2[np.newaxis]
+    actors = np.vstack((actor1, actor2))
+    v_T, T = RuleBasedLaneMergePlanner._calculate_safe_target_points(actors, v_grid, t_grid, ds, ScenarioParams())
+    f = plt.figure(1)
+    axes = plt.gca()
+    axes.set_xlim([t_grid[0], t_grid[-1]])
+    axes.set_ylim([v_grid[0], v_grid[-1]])
+    plt.scatter(T, v_T)
+    plt.show(f)
 
 
 @patch('decision_making.src.planning.behavioral.rule_based_lane_merge.VELOCITY_LIMITS', [0, 18])
