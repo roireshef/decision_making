@@ -293,7 +293,7 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
 
 
-def test_projectActorsInsideIntersection_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+def test_projectObjectsInsideIntersection_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
     """
     Validate that projected object is correctly placed in overlapping lane
     """
@@ -308,7 +308,7 @@ def test_projectActorsInsideIntersection_laneSplit_carInOverlap(scene_static_ova
     assert projected_objects[0].map_state.lane_id == 19670533
 
 
-def test_projectActorsInsideIntersection_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+def test_projectObjectsInsideIntersection_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
     """
     Validate that projected object is correctly placed in overlapping lane
     """
@@ -331,7 +331,7 @@ def test_projectActorsInsideIntersection_laneMerge_carInOverlap(scene_static_ova
     assert projected_objects[0].map_state.lane_id == 58375685
 
 
-def test_projectActorsInsideIntersection_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
+def test_projectObjectsInsideIntersection_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
     """
     Validate that no mirror object is created if there is no overlap
     """
