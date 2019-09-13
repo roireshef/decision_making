@@ -303,7 +303,7 @@ def test_projectActorsInsideIntersection_laneSplit_carInOverlap(scene_static_ova
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
                                                   map_state=MapState(np.array([5,1,0,0,0,0]), 19670532),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    all_objects = BehavioralGridState._project_actors_inside_intersection([dyn_obj])
+    all_objects = BehavioralGridState._project_objects_inside_intersection([dyn_obj])
     projected_objects = [obj for obj in all_objects if obj.obj_id == -10]
     assert projected_objects[0].map_state.lane_id == 19670533
 
@@ -326,7 +326,7 @@ def test_projectActorsInsideIntersection_laneMerge_carInOverlap(scene_static_ova
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
                                                   map_state=MapState(np.array([5, 1, 0, 0, 0, 0]), 58375684),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    all_objects = BehavioralGridState._project_actors_inside_intersection([dyn_obj])
+    all_objects = BehavioralGridState._project_objects_inside_intersection([dyn_obj])
     projected_objects = [obj for obj in all_objects if obj.obj_id == -10]
     assert projected_objects[0].map_state.lane_id == 58375685
 
@@ -339,7 +339,7 @@ def test_projectActorsInsideIntersection_laneSplit_carNotInOverlap(scene_static_
     # Create other car in lane 21 which does NOT overlap with any other lane
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1,1,0,0,0,0]), 21),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
-    all_objects = BehavioralGridState._project_actors_inside_intersection([dyn_obj])
+    all_objects = BehavioralGridState._project_objects_inside_intersection([dyn_obj])
     assert len(all_objects) == 1 and all_objects[0] == dyn_obj
 
 
