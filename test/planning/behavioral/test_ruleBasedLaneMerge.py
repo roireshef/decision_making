@@ -1,5 +1,5 @@
 import numpy as np
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, VELOCITY_LIMITS
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, VELOCITY_LIMITS, EGO_LENGTH
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
@@ -11,10 +11,6 @@ import matplotlib.pyplot as plt
 
 
 def test_calculateSafeTargetPoints():
-    t_grid = np.arange(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, BP_ACTION_T_LIMITS[LIMIT_MAX],
-                       RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION)
-    v_grid = np.arange(0, VELOCITY_LIMITS[LIMIT_MAX], RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)
-
     ego_len = 5
     ds = 60
     actor1 = np.array([-60, 20, ego_len])
@@ -23,12 +19,14 @@ def test_calculateSafeTargetPoints():
     #actors = actor1[np.newaxis]
     import time
     st = time.time()
-    v_T, T = RuleBasedLaneMergePlanner._calculate_safe_target_points(actors, v_grid, t_grid, ds, ScenarioParams())
+    v_T, T = RuleBasedLaneMergePlanner._calculate_safe_target_points(EGO_LENGTH, actors, ds, ScenarioParams())
     print('\ntime=', time.time() - st)
     f = plt.figure(1)
     axes = plt.gca()
-    axes.set_xlim([t_grid[0], t_grid[-1]])
-    axes.set_ylim([v_grid[0], v_grid[-1]])
+    axes.set_xlim([0, BP_ACTION_T_LIMITS[LIMIT_MAX]])
+    axes.set_ylim([0, VELOCITY_LIMITS[LIMIT_MAX]])
+    plt.xlabel('T')
+    plt.ylabel('v_T')
     plt.scatter(T, v_T)
     plt.show(f)
 

@@ -2,7 +2,7 @@ from logging import Logger
 from typing import List
 import numpy as np
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LON_ACC_LIMITS, VELOCITY_LIMITS, \
-    EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, SPECIFICATION_HEADWAY, BP_ACTION_T_LIMITS
+    EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, SPECIFICATION_HEADWAY, BP_ACTION_T_LIMITS, EPS
 
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, ActionRecipe, \
     RelativeLane, RelativeLongitudinalPosition
@@ -96,12 +96,32 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         self.actions = actions
 
     @staticmethod
-    def create_safe_actions(simple_state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
+    def can_solve_by_rule_based(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
+        """
+        Check existence of rule-based solution that can merge safely, assuming the worst case scenario.
+        :param state: simple lane merge state, containing data about host and the main road vehicles
+        :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
+        :return: True if a rule-based solution exists
+        """
+        import time
+        st = time.time()
+        s_0, v_0, a_0 = state.ego_fstate
+        # calculate the actions' distance (the same for all actions)
+        ds = state.red_line_s - s_0
+
+        v_T, T = RuleBasedLaneMergePlanner._calculate_safe_target_points(state.ego_length, state.actors_s_vel_length, ds, params)
+
+
+
+        print('time=', time.time() - st)
+
+    @staticmethod
+    def create_safe_actions(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
             List[LaneMergeSequence]:
         """
         Create all possible actions to the merge point, filter unsafe actions, filter actions exceeding vel-acc limits,
         calculate time-jerk cost for the remaining actions.
-        :param simple_state: SimpleLaneMergeState containing distance to merge and actors
+        :param state: SimpleLaneMergeState containing distance to merge and actors
         :param params: scenario params, e.g. worst-case cars accelerations
         :return: list of initial action specs, array of jerks until the merge, array of times until the merge
         """
@@ -109,19 +129,12 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         st_tot = time.time()
 
         st = time.time()
-        ego_fstate = simple_state.ego_fstate
-
-        t_grid = np.arange(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, BP_ACTION_T_LIMITS[LIMIT_MAX],
-                           RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION)
-        v_grid = np.arange(0, VELOCITY_LIMITS[LIMIT_MAX], RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)
-
-        # TODO: check safety also on the red line, besides the merge point
-
-        ds = simple_state.red_line_s - ego_fstate[FS_SX]
-
-        v_T, T = RuleBasedLaneMergePlanner._calculate_safe_target_points(simple_state.actors_s_vel_length, v_grid, t_grid, ds, params)
-
+        ego_fstate = state.ego_fstate
         # calculate the actions' distance (the same for all actions)
+        ds = state.red_line_s - ego_fstate[FS_SX]
+
+        v_T, T = RuleBasedLaneMergePlanner._calculate_safe_target_points(state.ego_length, state.actors_s_vel_length, ds, params)
+
         time_safety = time.time() - st
 
         st = time.time()
@@ -337,19 +350,24 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return valid_acc
 
     @staticmethod
-    def _calculate_safe_target_points(actors_data: np.array, v_grid: np.array, t_grid: np.array, target_s: float,
+    def _calculate_safe_target_points(ego_length: float, actors_data: np.array, target_s: float,
                                       params: ScenarioParams) -> [np.array, np.array]:
         """
         Create boolean 2D matrix of actions that are longitudinally safe (RSS) between red line & merge point w.r.t.
         all actors.
-        :param actors_data: array of actors, whose s is relative to ego
-        :param t_grid: grid of times
-        :param v_grid: grid of possible ego velocities
+        :param ego_length: [m] length of host car
+        :param actors_data: Nx3 array of actors' data. Each row contains: s (relative to ego), velocity, size.length
         :return: two 1D arrays of v_T & T, where ego is safe at target_s relatively to all actors
         """
+        # grid of possible planning times
+        t_grid = np.arange(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS,
+                           RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION)
+        # grid of possible target ego velocities
+        v_grid = np.arange(0, VELOCITY_LIMITS[LIMIT_MAX] + EPS, RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)
+
         actors_s = actors_data[:, 0, np.newaxis, np.newaxis]
         actors_v = actors_data[:, 1, np.newaxis, np.newaxis]
-        margins = actors_data[:, 2, np.newaxis, np.newaxis]
+        margins = 0.5 * (actors_data[:, 2, np.newaxis, np.newaxis] + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
         ego_v = v_grid[:, np.newaxis]  # target ego velocity should be in different dimension than planning time
 
         safety_matrix = RuleBasedLaneMergePlanner._create_safety_matrix(
@@ -376,19 +394,19 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :return: boolean matrix of size len(v_T) x len(T) of safe actions relatively to the given actor
         """
         front_v = np.maximum(0, actors_v - t_grid * wc_front_decel)  # target velocity of the front actor
-        front_T = np.repeat(t_grid[np.newaxis][np.newaxis], actors_s.shape[0], axis=0)
-        front_T = np.minimum(front_T, actors_v / wc_front_decel)
-        front_s = actors_s + front_T * actors_v - 0.5 * wc_front_decel * front_T * front_T - margins  # s of front actor at time t
-
         back_v = np.minimum(VELOCITY_LIMITS[LIMIT_MAX], actors_v + t_grid * wc_back_accel)  # target velocity of the front actor
-        back_v_from_zero_t = np.concatenate((actors_v, back_v), axis=-1)
-        back_v_interp = 0.5 * (back_v_from_zero_t[..., 1:] + back_v_from_zero_t[..., :-1])
-        back_s = actors_s + np.cumsum(back_v_interp, axis=-1) * RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION + margins  # s of back actor at time t
+        front_s = RuleBasedLaneMergePlanner._velocity_integral(np.concatenate((actors_v, front_v), axis=-1)) + actors_s - margins  # s of back actor at time t
+        back_s = RuleBasedLaneMergePlanner._velocity_integral(np.concatenate((actors_v, back_v), axis=-1)) + actors_s + margins  # s of back actor at time t
 
         front_side_safe = np.maximum(0, ego_v * ego_v - front_v * front_v) / (2 * front_rss_decel) + ego_hw * ego_v < front_s - target_s
         back_side_safe = np.maximum(0, back_v * back_v - ego_v * ego_v) / (2 * back_rss_decel) + actor_hw * back_v < target_s - back_s
         safety_matrix = np.logical_or(front_side_safe, back_side_safe).all(axis=0)
         return safety_matrix
+
+    @staticmethod
+    def _velocity_integral(velocity: np.array):
+        velocity_bin_area = (0.5 * RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION) * (velocity[..., 1:] + velocity[..., :-1])
+        return np.cumsum(velocity_bin_area, axis=-1)  # predicted s at time t
 
     # @staticmethod
     # def _create_safety_matrix_for_car(actor_s: float, actor_v: float, T: np.array, v_T: np.array, cars_margin: float,
