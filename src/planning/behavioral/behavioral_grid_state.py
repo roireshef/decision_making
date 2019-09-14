@@ -102,24 +102,27 @@ class BehavioralGridState:
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
-    def _project_objects_inside_intersection(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
+    def _find_projected_object_information(dynamic_objects: List[DynamicObject]) -> Tuple[List[int], List[int], List[int]]:
         """
-        Takes all the dynamic objects that are on intersections, and adds projected objects that are
-        located on the overlapping lanes.
-        An 'overloaded' dynamic object looks like this:
+        Provides information for creating projected objects
 
-        map_states of projected objects should have the following:
-            obj_id: the negative id of the original dynamic object id
-            timestamp: same as original dynamic object
-            cartesian_state: same as original dynamic object
-            map_state:  (lane id as the overlapping lane), lane_fstate as None for lazy initialization)
-            size: same as original dynamic object
-            confidence: same as original dynamic object
+        This function finds the dynamic objects that are in an area where it is desirable to create "ghost" objects in other
+        lanes and returns the necessary information to create those objects. The object ID associated with each projected object
+        is the negative value of the original dynamic object's ID with a concatenated number to distinguish between each overlapping
+        lane. In other words, if the original object ID is 10, the projected object IDs will be -101, -102, etc. The lane ID
+        associated with each projected object is the overlapping lane ID.
+
         :param dynamic_objects: list of DynamicObject
-        :return: list of all overloaded dynamic objects including both the original and  projected objects
+        :return: three element-wise-related lists containing the following information for each projected object:
+                    1. object ID
+                    2. lane ID
+                    3. index in dynamic_objects that the projected object is related to
         """
-        projected_dynamic_objects = []
-        for dynamic_object in dynamic_objects:
+        projected_object_ids = []
+        projected_object_lane_ids = []
+        original_object_indices = []
+
+        for dynamic_object_index, dynamic_object in enumerate(dynamic_objects):
             map_state = dynamic_object.map_state
             if map_state.is_on_road():
                 obj_lane_id = map_state.lane_id
@@ -131,21 +134,41 @@ class BehavioralGridState:
                     # TODO: add logic to also project actor outside the intersection  with their bounding box inside
                     overlapping_lane_ids = [lane_overlap.e_i_other_lane_segment_id for lane_overlap in obj_lane.as_lane_overlaps
                                             if (lane_overlap.a_l_source_lane_overlap_stations[0] <= map_state.lane_fstate[FS_SX]
-                                                <= lane_overlap.a_l_source_lane_overlap_stations[1] and
-                                                lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
-                                                                                       LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
-                    for lane_id in overlapping_lane_ids:
-                        # TODO: what to do in case object if map_state can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
-                        map_state = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
+                                                <= lane_overlap.a_l_source_lane_overlap_stations[1])
+                                               and (lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
+                                                                                           LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
+                    for i, lane_id in enumerate(overlapping_lane_ids, start=1):
+                        projected_object_ids.append(-int(str(dynamic_object.obj_id) + str(i)))
+                        projected_object_lane_ids.append(lane_id)
+                        original_object_indices.append(dynamic_object_index)
 
-                        projected_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
-                                                                       timestamp=dynamic_object.timestamp,
-                                                                       cartesian_state=dynamic_object.cartesian_state,
-                                                                       map_state=MapState(map_state, lane_id),
-                                                                       size=dynamic_object.size,
-                                                                       confidence=dynamic_object.confidence,
-                                                                       off_map=False))
-        return dynamic_objects + projected_dynamic_objects
+        return projected_object_ids, projected_object_lane_ids, original_object_indices
+
+    @staticmethod
+    def _create_projected_objects(object_ids: List[int], lane_ids: List[int], dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
+        """
+        Creates projected, "ghost" objects related to actual dynamic objects
+
+        :param object_ids: list of object IDs
+        :param lane_ids: list of lane IDs
+        :param dynamic_objects: list of dynamic objects related to each projected object
+        :return: list of projected dynamic objects
+        """
+        projected_dynamic_objects = []
+
+        for object_id, lane_id, dynamic_object in zip(object_ids, lane_ids, dynamic_objects):
+            # TODO: what to do if lane_fstate can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
+            # A projected object's fstate is the original dynamic object's fstate in the overlapping lane
+            lane_fstate = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
+
+            projected_dynamic_objects.append(DynamicObject(obj_id=object_id,
+                                                           timestamp=dynamic_object.timestamp,
+                                                           cartesian_state=dynamic_object.cartesian_state,
+                                                           map_state=MapState(lane_fstate, lane_id),
+                                                           size=dynamic_object.size,
+                                                           confidence=dynamic_object.confidence,
+                                                           off_map=False))
+        return projected_dynamic_objects
 
     @staticmethod
     @prof.ProfileFunction()
@@ -163,30 +186,43 @@ class BehavioralGridState:
                 corresponding extended_lane_frame
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
-
         # filter out off map dynamic objects
         on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
+        num_on_map_dynamic_objects = len(on_map_dynamic_objects)
 
-        # overload dynamic objects with projected actors which belong to the intersection
-        overloaded_dynamic_objects = BehavioralGridState._project_objects_inside_intersection(on_map_dynamic_objects)
+        # Get information on objects that need to be projected
+        projected_object_ids, projected_object_lane_ids, original_object_indices = \
+            BehavioralGridState._find_projected_object_information(on_map_dynamic_objects)
 
-        # calculate objects' segment map_states
-        objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
+        # Get all (i.e. actual and projected) object lane segment IDs
+        objects_segment_ids = np.array([obj.map_state.lane_id for obj in on_map_dynamic_objects] + projected_object_lane_ids)
 
         # Create boolean matrix that is true when a vehicle is in a relative lane
-        actor_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(overloaded_dynamic_objects))
+        objects_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(objects_segment_ids))
 
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for _, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
             # add as row to matrix
             relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
-            actor_lane_matrix = np.vstack([actor_lane_matrix, relevant_object_mask])
+            objects_lane_matrix = np.vstack([objects_lane_matrix, relevant_object_mask])
 
-        is_relevant_object = actor_lane_matrix.any(axis=0)
-        relevant_objects = list(np.array(overloaded_dynamic_objects)[is_relevant_object])
-        relevant_actor_lane_matrix = actor_lane_matrix[:, is_relevant_object]
+        # Boolean array that is True when an object is in any relative lane
+        is_relevant_object = objects_lane_matrix.any(axis=0)
 
+        # Parse information for creating relevant projected objects
+        relevant_projected_object_ids = list(np.array(projected_object_ids)[is_relevant_object[num_on_map_dynamic_objects:]])
+        relevant_projected_object_lane_ids = list(np.array(projected_object_lane_ids)[is_relevant_object[num_on_map_dynamic_objects:]])
+        relevant_original_object_indices = list(np.array(original_object_indices)[is_relevant_object[num_on_map_dynamic_objects:]])
+        original_objects_related_to_projected_objects = list(np.array(on_map_dynamic_objects)[relevant_original_object_indices])
+
+        # Create the relevant projected objects
+        projected_dynamic_objects = BehavioralGridState._create_projected_objects(
+            relevant_projected_object_ids, relevant_projected_object_lane_ids, original_objects_related_to_projected_objects)
+
+        # Collect relevant object data
+        relevant_objects = list(np.array(on_map_dynamic_objects)[is_relevant_object[:num_on_map_dynamic_objects]]) + projected_dynamic_objects
+        relevant_objects_lane_matrix = objects_lane_matrix[:, is_relevant_object]
         relevant_objects_map_states = [obj.map_state for obj in relevant_objects]
 
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
@@ -194,7 +230,7 @@ class BehavioralGridState:
 
         # get the rel. lanes for an object by looking at the columns of the matrix
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i],
-                                               np.array(list(extended_lane_frames.keys()))[relevant_actor_lane_matrix[:, i]].tolist())
+                                               np.array(list(extended_lane_frames.keys()))[relevant_objects_lane_matrix[:, i]].tolist())
                 for i, obj in enumerate(relevant_objects)]
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
