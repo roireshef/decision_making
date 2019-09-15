@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, BP_LON_ACC_STRICT_COEF
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
@@ -51,7 +51,7 @@ class FilterForKinematics(ActionSpecFilter):
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
         return KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, BP_LAT_ACC_STRICT_COEF * LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)
+            ctrajectories, VELOCITY_LIMITS, BP_LON_ACC_STRICT_COEF * LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
