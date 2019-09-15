@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Optional
+from enum import Enum
 
 import numpy as np
 import numpy_indexed as npi
@@ -39,18 +40,57 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_i_SegmentID, pubsubMsg.e_i_SStart, pubsubMsg.e_i_SEnd)
 
 
+class GFFType(Enum):
+    Normal = 0
+    Augmented = 1
+    Partial = 2
+    AugmentedPartial = 3
+
+    @staticmethod
+    def get(is_partial, is_augmented):
+        if is_partial and is_augmented:
+            return GFFType.AugmentedPartial
+        elif is_partial:
+            return GFFType.Partial
+        elif is_augmented:
+            return GFFType.Augmented
+        else:
+            return GFFType.Normal
+
+
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  segment_ids: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
-                 segments_ds: np.ndarray, segments_point_offset: np.ndarray):
+                 segments_ds: np.ndarray, segments_point_offset: np.ndarray, gff_type: Optional[GFFType] = None):
+        """
+        A generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
+        A special case might be a subsegment of a single frenet frame.
+        :param points: 2D numpy array of points sampled from a smooth curve (x,y axes; ideally a spline of high order)
+        :param T: 2D numpy array of tangent unit vectors (x,y axes) of <points>
+        :param N: 2D numpy array of normal unit vectors (x,y axes) of <points>
+        :param k: 1D numpy array of curvature values at each point in <points>
+        :param k_tag: 1D numpy array of values of 1st derivative of curvature at each point in <points>
+        :param segment_ids: id (usually lane id) of the frenet frames that make up the GFF
+        :param segments_s_start: starting longitudinal s to be taken into account for each frenet frame segment
+        :param segments_s_offsets: The accumulated longitudinal progress on the generalized frenet frame for each segment,
+                                    e.g. segments_s_offsets[2] contains the length of (subsegment #0 + subsegment #1)
+        :param segments_ds: the resolution of longitudinal distance along the curve (progress diff between points in <points>), per segment
+        :param segments_point_offset:The accumulated number of points participating in the generation of the generalized frenet frame
+                                     for each segment, segments_points_offset[2] contains the number of points taken from subsegment #0
+                                     plus the number of points taken from subsegment #1.
+        :param gff_type: type of GFF (Normal, Partial, Augmented, AugmentedPartial). This field is only used within the planning module,
+                         and will be lost when the object is published.
+        """
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
         self._segment_ids = segment_ids
         self._segments_s_start = segments_s_start
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
+        self._gff_type = gff_type
 
     def serialize(self) -> TsSYSGeneralizedFrenetSerretFrame:
+        # GFF Type information will be lost when serialized!
         pubsub_msg = TsSYSGeneralizedFrenetSerretFrame()
         pubsub_msg.s_Points = SerializationUtils.serialize_non_typed_array(self.O)
         pubsub_msg.s_T = SerializationUtils.serialize_non_typed_array(self.T)
@@ -67,6 +107,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSGeneralizedFrenetSerretFrame):
+        # GFF type will not be set when the message is deserialized.
+        # This must be manually set if the GFF is to be used. 
         return cls(SerializationUtils.deserialize_any_array(pubsubMsg.s_Points),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_T),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_N),
@@ -76,7 +118,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsSStart),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsSOffsets),
                    SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsDS),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsPointOffset))
+                   SerializationUtils.deserialize_any_array(pubsubMsg.s_SegmentsPointOffset),
+                   None)
 
     @property
     def segments(self) -> List[FrenetSubSegment]:
@@ -106,15 +149,18 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
 
     @classmethod
     @prof.ProfileFunction()
-    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
+    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment], gff_type: Optional[GFFType] = None):
         """
         Create a generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
         A special case might be a sub segment of a single frenet frame.
         :param frenet_frames: a list of all frenet frames involved in creating the new generalized frame.
         :param sub_segments: a list of FrenetSubSegment objects, used for segmenting the respective elements from
         the frenet_frames parameter.
+        :param gff_type: type of GFF (Normal, Partial, Augmented, AugmentedPartial)
         :return: A new GeneralizedFrenetSerretFrame built out of different other frenet frames.
         """
+        # If the GFF type is not provided, default to Normal
+        gff_type = gff_type or GFFType.Normal
 
         segments_id = np.array([sub_seg.e_i_SegmentID for sub_seg in sub_segments])
         segments_s_start = np.array([sub_seg.e_i_SStart for sub_seg in sub_segments])
@@ -159,11 +205,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segments_point_offset = np.insert(segments_num_points_so_far, 0, 0., axis=0)
 
         return cls(points, T, N, k, k_tag, segments_id, segments_s_start, segments_s_offsets, segments_ds,
-                   segments_point_offset)
+                   segments_point_offset, gff_type)
 
     def has_segment_id(self, segment_id: int) -> bool:
         """see has_segment_ids"""
         return self.has_segment_ids(np.array([segment_id]))[0]
+
+    @property
+    def gff_type(self):
+        return self._gff_type
 
     @property
     def segment_ids(self):

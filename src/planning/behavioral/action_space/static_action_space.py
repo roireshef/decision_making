@@ -52,13 +52,11 @@ class StaticActionSpace(ActionSpace):
         # get desired terminal velocity
         v_T = np.array([action_recipe.velocity for action_recipe in action_recipes])
 
-        v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
-        a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
-
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+        # fmin.reduce() is used instead of amin() as it ignores Nan values if it can
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
@@ -66,6 +64,8 @@ class StaticActionSpace(ActionSpace):
         # although it should be zero. Here we can't find a local minima as the equation is close to a linear line,
         # intersecting in T=0.
         # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
+        v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
+        a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
         T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>

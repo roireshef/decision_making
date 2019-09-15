@@ -1,5 +1,7 @@
 import numpy as np
 import sys
+from typing import NamedTuple
+from decision_making.src.messages.scene_static_enums import RoadObjectType
 
 ## TIMESTAMPS ##
 GlobalTimeStamp = int                   # global timestamp in [nanosec] since given time
@@ -89,6 +91,12 @@ CRT_LEN = 6
 # [s,d] Polynomials
 S5, S4, S3, S2, S1, S0, D5, D4, D3, D2, D1, D0 = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 
+## ROUTE PLANNER ##
+# Cost to be in a lane while traversing a lane segment
+LaneOccupancyCost = float
+# Cost to be in a lane at the end of a lane segment
+LaneEndCost = float
+
 ## MISC ##
 # A (two-cells) 1D numpy array represents limits (min, max)
 Limits = np.ndarray
@@ -101,5 +109,14 @@ LAT_CELL, LON_CELL = 0, 1
 # 1D Numpy array of indices (dtype = np.int)
 NumpyIndicesArray = np.ndarray
 
+RoadSegmentID = int
+LaneSegmentID = int
+
 # boolean array
 BoolArray = np.ndarray
+
+
+class RoadSignInfo(NamedTuple):
+    # Info on road signs
+    sign_type: RoadObjectType  # type of road sign
+    s: float  # distance from road sign
