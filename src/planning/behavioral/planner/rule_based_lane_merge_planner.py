@@ -68,6 +68,13 @@ class LaneMergeSequence:
 
 class SimpleLaneMergeState:
     def __init__(self, ego_length: float, ego_fstate: FrenetState1D, actors_s_vel_length: np.array, red_line_s: float):
+        """
+        simple lane merge state
+        :param ego_length: [m] length of the host car
+        :param ego_fstate: ego longitudinal Frenet state
+        :param actors_s_vel_length: Nx3 array of actors' data. Each row contains: s (relative to ego), velocity, size.length
+        :param red_line_s: s of the red line
+        """
         self.ego_length = ego_length
         self.ego_fstate = ego_fstate
         self.actors_s_vel_length = actors_s_vel_length
@@ -111,9 +118,42 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         v_T, T = RuleBasedLaneMergePlanner._calculate_safe_target_points(state.ego_length, state.actors_s_vel_length, ds, params)
 
+        # Assume that T is divided into two parts with constant acceleration in the each part.
+        # Acceleration should be lower than deceleration by a constant factor.
+        ACCELERATION_SIGN_RATIO = 3.  # the ratio between deceleration and acceleration
+        sign = 2 * (ds > 0.5 * (v_0 + v_T) * T) - 1  # 1 if required average velocity ds/T > average_vel, -1 otherwise
+        c = ACCELERATION_SIGN_RATIO ** sign  # 3 for initial acceleration, 1/3 for initial deceleration
+        # Solve system of two equations with two unknowns: vt and t, where t is the first part ending time,
+        # and vt is the velocity at time t:
+        # 1. Area under the graph should be s:
+        #       t * (v0 + vt)/2 + (T - t)(vt + vT)/2 = ds
+        # 2. If sign==1, initial acceleration should be 3 times weaker than final acceleration (c=3).
+        #    Otherwise initial acceleration should be 3 times stronger than final acceleration (c=1/3).
+        #       c * (vt - v0) / t = (vt - vT) / (T - t)
+        # Substitute variables rv and delta_v for more convenient calculation:
+        rv = ds / T - v_0  # required average velocity relative to the initial velocity
+        delta_v = v_0 - v_T
+        # Let x = vt - v0. Solve quadratic equation for x:
+        #       x^2 - 2*x * (ds/T - v0) - delta_v/(c+1) * (2*ds/T - v0 - vT) = 0
+        init_delta_v = rv + sign * np.sqrt(rv * rv + 2 * delta_v / (c + 1) * (rv + 0.5 * delta_v))  # vt - v0
+        init_T = c * init_delta_v * T / (init_delta_v * (c + 1) + delta_v)  # t (time of the initial part)
+        init_accel = init_delta_v / (init_T + EPS)  # acceleration of the first part
+        end_accel = (init_delta_v + delta_v) / (T - init_T + EPS)  # acceleration of the second part
 
+        # calculate init & end acceleration normalized by ACCELERATION_SIGN_RATIO
+        normalized_init_accel = np.maximum(c, 1) * np.abs(init_accel)
+        normalized_end_accel = np.maximum(1./c, 1) * np.abs(end_accel)
+        normalized_accel = np.maximum(normalized_init_accel, normalized_end_accel)
+        best_safe_point_idx = np.argmin(normalized_accel)
+
+        # # for the found safe point check if there is a quitic action with valid accelerations and velocities
+        # best_v_T, best_T = v_T[best_safe_point_idx], T[best_safe_point_idx]
+        # qintic_actions, _ = RuleBasedLaneMergePlanner._create_single_actions(
+        #       state.ego_fstate, best_v_T[np.newaxis], best_T[np.newaxis], ds)
+        #return len(qintic_actions) > 0
 
         print('time=', time.time() - st)
+        return normalized_accel[best_safe_point_idx] < 4.5
 
     @staticmethod
     def create_safe_actions(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
@@ -240,8 +280,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
                    for t, vT in zip(T[valid_idxs], v_T[valid_idxs])]
 
         # check if there are actions that try to violate maximal vel_limit
-        not_too_high_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc],
-                                                                  np.array([-np.inf, VELOCITY_LIMITS[1]]))
+        not_too_high_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], np.array([-np.inf, VELOCITY_LIMITS[1]]))
         return actions, (~not_too_high_vel).any()
 
     @staticmethod

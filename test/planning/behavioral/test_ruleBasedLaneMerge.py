@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, VELOCITY_LIMITS, EGO_LENGTH
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
-    ScenarioParams
+    ScenarioParams, SimpleLaneMergeState
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.behavioral.state.state import ObjectSize
 from unittest.mock import patch
@@ -10,10 +10,37 @@ from decision_making.src.planning.types import LIMIT_MAX
 import matplotlib.pyplot as plt
 
 
-def test_calculateSafeTargetPoints():
+def test_quinticApproximator_plotVelocityProfiles():
+
+    f = plt.figure(1)
+    for i in range(10):
+        v_0 = np.random.uniform(0, 30)
+        v_T = np.random.uniform(0, 30)
+        ds = np.random.uniform(50, 300)
+        T = 16
+        r = ds / T - v_0
+        dv = v_0 - v_T
+        sign = np.sign(ds - 0.5 * (v_0 + v_T) * T)  # 1 if required average velocity ds/T > average_vel, -1 otherwise
+        c = 3. ** sign  # ratio between deceleration and acceleration
+        first_dv = r + sign * np.sqrt(r * r + 2 * dv / (c + 1) * (r + 0.5 * dv))  # first_dv = v_t - v_0
+
+        v_t = first_dv + v_0
+        t = c * first_dv * T / (first_dv * (c+1) + v_0 - v_T)
+        if ds > 0.5 * (v_0 + v_T) * T:
+            assert np.isclose(3 * (v_t - v_0) / t, (v_t - v_T) / (T - t))
+        else:
+            assert np.isclose((v_0 - v_t) / t, 3 * (v_T - v_t) / (T - t))
+
+        plt.plot(np.array([0, t, T]), np.array([v_0, v_t, v_T]))
+    plt.xlabel('T')
+    plt.ylabel('v_T')
+    plt.show(f)
+
+
+def test_calculateSafeTargetPoints_plotSafePoints():
     ego_len = 5
     ds = 60
-    actor1 = np.array([-60, 20, ego_len])
+    actor1 = np.array([-90, 20, ego_len])
     actor2 = np.array([60, 20, ego_len])
     actors = np.vstack((actor1, actor2))
     #actors = actor1[np.newaxis]
@@ -29,6 +56,50 @@ def test_calculateSafeTargetPoints():
     plt.ylabel('v_T')
     plt.scatter(T, v_T)
     plt.show(f)
+
+
+def test_canSolveByRuleBased_fasterBackCarIsFar_success():
+    ego_fstate = np.array([60, 15, 0])
+    ego_len = 5
+    actor1 = np.array([-80, 20, ego_len])
+    actor2 = np.array([60, 20, ego_len])
+    actors = np.vstack((actor1, actor2))
+    red_line_s = 120
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    assert RuleBasedLaneMergePlanner.can_solve_by_rule_based(state)
+
+
+def test_canSolveByRuleBased_fasterBackCarIsNotFarEnough_failure():
+    ego_fstate = np.array([60, 15, 0])
+    ego_len = 5
+    actor1 = np.array([-70, 20, ego_len])
+    actor2 = np.array([60, 20, ego_len])
+    actors = np.vstack((actor1, actor2))
+    red_line_s = 120
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    assert not RuleBasedLaneMergePlanner.can_solve_by_rule_based(state)
+
+
+def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_failure():
+    ego_fstate = np.array([60, 20, 0])
+    ego_len = 5
+    actor1 = np.array([-60, 15, ego_len])
+    actor2 = np.array([30, 15, ego_len])
+    actors = np.vstack((actor1, actor2))
+    red_line_s = 90
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    assert not RuleBasedLaneMergePlanner.can_solve_by_rule_based(state)
+
+
+def test_canSolveByRuleBased_closeFrontCarRequiresBrake_success():
+    ego_fstate = np.array([60, 20, 0])
+    ego_len = 5
+    actor1 = np.array([-60, 15, ego_len])
+    actor2 = np.array([35, 15, ego_len])
+    actors = np.vstack((actor1, actor2))
+    red_line_s = 90
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    assert RuleBasedLaneMergePlanner.can_solve_by_rule_based(state)
 
 
 @patch('decision_making.src.planning.behavioral.rule_based_lane_merge.VELOCITY_LIMITS', [0, 18])
