@@ -133,7 +133,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # Substitute variables rv and delta_v for more convenient calculation:
         rv = ds / T - v_0  # required average velocity relative to the initial velocity
         delta_v = v_0 - v_T
-        # Let x = vt - v0. Solve quadratic equation for x:
+        # Let x = init_delta_v = vt - v0. Solve quadratic equation for x:
         #       x^2 - 2*x * (ds/T - v0) - delta_v/(c+1) * (2*ds/T - v0 - vT) = 0
         init_delta_v = rv + sign * np.sqrt(rv * rv + 2 * delta_v / (c + 1) * (rv + 0.5 * delta_v))  # vt - v0
         init_T = c * init_delta_v * T / (init_delta_v * (c + 1) + delta_v)  # t (time of the initial part)
