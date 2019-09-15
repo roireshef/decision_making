@@ -51,7 +51,7 @@ class FilterForKinematics(ActionSpecFilter):
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
         return KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)
+            ctrajectories, VELOCITY_LIMITS, BP_LAT_ACC_STRICT_COEF * LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
