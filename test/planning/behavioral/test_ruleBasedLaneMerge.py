@@ -58,7 +58,7 @@ def test_calculateSafeTargetPoints_plotSafePoints():
     plt.show(f)
 
 
-def test_canSolveByRuleBased_fasterBackCarIsFar_success():
+def test_canSolveByRuleBased_fasterBackCarIsFar_failure():
     ego_fstate = np.array([60, 15, 0])
     ego_len = 5
     actor1 = np.array([-80, 20, ego_len])
