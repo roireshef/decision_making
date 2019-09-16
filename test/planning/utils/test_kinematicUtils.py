@@ -65,7 +65,7 @@ def test_calcMinimalHeadwayOverTrajectory_constantSpeedRvFaster_returnsHeadwayAt
 
     minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
     expected_headway = (delta_s_init - safe_margin) / v1
-    assert abs(minimal_headway - expected_headway) < 0.01
+    assert abs(minimal_headway - expected_headway) == 0.0
 
 
 def test_calcMinimalHeadwayOverTrajectory_constantSpeedRvSlower_returnsHeadwayAtEnd():
@@ -80,7 +80,7 @@ def test_calcMinimalHeadwayOverTrajectory_constantSpeedRvSlower_returnsHeadwayAt
 
     minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
     expected_headway = (delta_s_init - safe_margin - T * (v1 - vT)) / v1
-    assert abs(minimal_headway - expected_headway) < 0.01
+    assert abs(minimal_headway - expected_headway) == 0.0
 
 
 def test_calcMinimalHeadwayOverTrajectory_constantAcceleration_returnsHeadwayAtEnd():
@@ -96,7 +96,7 @@ def test_calcMinimalHeadwayOverTrajectory_constantAcceleration_returnsHeadwayAtE
 
     minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
     expected_headway = (delta_s_init - safe_margin - a1 * T * T / 2) / (v1 + a1 * T)
-    assert abs(minimal_headway - expected_headway) < 0.01
+    assert abs(minimal_headway - expected_headway) == 0.0
 
 
 def test_calcMinimalHeadwayOverTrajectory_RvDeceleratesHvAccelerates_returnsHeadwayAtEnd():
@@ -113,7 +113,7 @@ def test_calcMinimalHeadwayOverTrajectory_RvDeceleratesHvAccelerates_returnsHead
 
     minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
     expected_headway = (delta_s_init - safe_margin - a1 * T * T / 2 + aT * T * T / 2) / (v1 + a1 *T)
-    assert abs(minimal_headway - expected_headway) < 0.01
+    assert abs(minimal_headway - expected_headway) == 0.0
 
 
 def test_calcMinimalHeadwayOverTrajectory_varyingAcceleration_returnsHeadwayAtMiddle():
