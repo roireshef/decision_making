@@ -85,7 +85,7 @@ def test_canSolveByRuleBased_fasterBackCarIsNotFarEnough_failure():
 def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_failure():
     ego_fstate = np.array([60, 20, 0])
     ego_len = 5
-    actor1 = np.array([-70, 25, ego_len])
+    actor1 = np.array([-68, 25, ego_len])
     actor2 = np.array([30, 25, ego_len])
     actors = np.vstack((actor1, actor2))
     red_line_s = 90
@@ -96,7 +96,7 @@ def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_failure():
 def test_canSolveByRuleBased_closeFrontCarRequiresBrake_success():
     ego_fstate = np.array([60, 20, 0])
     ego_len = 5
-    actor1 = np.array([-71, 25, ego_len])
+    actor1 = np.array([-69, 25, ego_len])
     actor2 = np.array([30, 25, ego_len])
     actors = np.vstack((actor1, actor2))
     red_line_s = 90

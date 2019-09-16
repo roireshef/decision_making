@@ -157,7 +157,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         safety_matrix = RuleBasedLaneMergePlanner._create_safety_matrix(
             actors_s, actors_v, margins, target_v, target_t, target_s,
             params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
-            params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel)
+            params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel,
+            params.max_velocity)
 
         print('\ntime=', time.time() - st)
         return safety_matrix[0]
@@ -472,44 +473,49 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         safety_matrix = RuleBasedLaneMergePlanner._create_safety_matrix(
             actors_s, actors_v, margins, ego_v, t_grid, target_s,
             params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
-            params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel)
+            params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel,
+            params.max_velocity)
 
         vi, ti = np.where(safety_matrix)
         return v_grid[vi], t_grid[ti]
 
     @staticmethod
     def _create_safety_matrix(actors_s: np.array, actors_v: np.array, margins: np.array,
-                              ego_v: np.array, t_grid: np.array, target_s: float,
+                              target_v: np.array, target_t: np.array, target_s: float,
                               wc_front_decel: float, wc_back_accel: float, ego_hw: float, actor_hw: float,
-                              front_rss_decel: float, back_rss_decel: float) -> np.array:
+                              rss_front_decel: float, rss_back_decel: float, actors_max_vel: float) -> np.array:
         """
         Given an actor on the main road and two grids of planning times and target velocities, create boolean matrix
         of all possible actions that are longitudinally safe (RSS) at actions' endpoint target_s.
         :param actors_s: current s of actor relatively to the merge point (negative or positive)
         :param actors_v: current actor's velocity
-        :param t_grid: array of possible planning times
-        :param ego_v: array of possible target velocities
         :param margins: half sum of cars' lengths + safety margin
-        :return: boolean matrix of size len(v_T) x len(T) of safe actions relatively to the given actor
+        :param target_t: array of planning times
+        :param target_v: array of target velocities
+        :param target_s: target s
+        :param wc_front_decel: worst case predicted deceleration of front actor before target_t
+        :param wc_back_accel: worst case predicted acceleration of back actor before target_t
+        :param ego_hw: safety headway of ego
+        :param actor_hw: safety headway of an actor
+        :param rss_front_decel: maximal deceleration of front actor at target_t
+        :param rss_back_decel: maximal deceleration of back actor at target_t (to enable yield use rss_back_decel < rss_front_decel)
+        :param actors_max_vel: maximal velocity for actors
+        :return: True if the action is safe relatively to the given actor
         """
-        front_v = np.maximum(0, actors_v - t_grid * wc_front_decel)  # target velocity of the front actor
-        back_v = np.minimum(VELOCITY_LIMITS[LIMIT_MAX], actors_v + t_grid * wc_back_accel)  # target velocity of the front actor
-        time_resolution = t_grid if np.isscalar(t_grid) else RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION
-        front_s = RuleBasedLaneMergePlanner._velocity_integral(
-            np.concatenate((actors_v, front_v), axis=-1), time_resolution) + actors_s - margins  # s of back actor at time t
-        back_s = RuleBasedLaneMergePlanner._velocity_integral(
-            np.concatenate((actors_v, back_v), axis=-1), time_resolution) + actors_s + margins  # s of back actor at time t
+        front_braking_time = np.minimum(actors_v / wc_front_decel, target_t)
+        front_v = actors_v - front_braking_time * wc_front_decel  # target velocity of the front actor
+        front_s = actors_s + 0.5 * (actors_v + front_v) * front_braking_time
+
+        back_accel_time = np.minimum((actors_max_vel - actors_v) / wc_back_accel, target_t)
+        back_max_vel_time = target_t - back_accel_time  # time of moving with maximal velocity of the back actor
+        back_v = actors_v + target_t * wc_back_accel  # target velocity of the back actor
+        back_s = actors_s + 0.5 * (actors_v + back_v) * back_accel_time + actors_max_vel * back_max_vel_time
 
         # calculate if ego is safe according to the longitudinal RSS formula
-        front_side_safe = np.maximum(0, ego_v * ego_v - front_v * front_v) / (2 * front_rss_decel) + ego_hw * ego_v < front_s - target_s
-        back_side_safe = np.maximum(0, back_v * back_v - ego_v * ego_v) / (2 * back_rss_decel) + actor_hw * back_v < target_s - back_s
+        front_side_safe = np.maximum(0, target_v * target_v - front_v * front_v) / (2 * rss_front_decel) + ego_hw * target_v < front_s - target_s - margins
+        back_side_safe = np.maximum(0, back_v * back_v - target_v * target_v) / (2 * rss_back_decel) + actor_hw * back_v < target_s - back_s - margins
         safety_matrix = np.logical_or(front_side_safe, back_side_safe).all(axis=0)
         return safety_matrix
-
-    @staticmethod
-    def _velocity_integral(velocity: np.array, time_resolution: float):
-        velocity_bin_area = (0.5 * time_resolution) * (velocity[..., 1:] + velocity[..., :-1])
-        return np.cumsum(velocity_bin_area, axis=-1)  # predicted s at time t
 
     # @staticmethod
     # def _create_safety_matrix_for_car(actor_s: float, actor_v: float, T: np.array, v_T: np.array, cars_margin: float,
