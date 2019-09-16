@@ -66,40 +66,42 @@ def test_canSolveByRuleBased_fasterBackCarIsFar_success():
     actors = np.vstack((actor1, actor2))
     red_line_s = 120
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    assert RuleBasedLaneMergePlanner.can_solve_by_rule_based(state)
+    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    assert not ret
 
 
 def test_canSolveByRuleBased_fasterBackCarIsNotFarEnough_failure():
-    ego_fstate = np.array([60, 15, 0])
+    ego_fstate = np.array([60, 23, 0])
     ego_len = 5
-    actor1 = np.array([-70, 20, ego_len])
-    actor2 = np.array([60, 20, ego_len])
+    actor1 = np.array([-70, 25, ego_len])
+    actor2 = np.array([60, 25, ego_len])
     actors = np.vstack((actor1, actor2))
     red_line_s = 120
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    assert not RuleBasedLaneMergePlanner.can_solve_by_rule_based(state)
+    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    assert not ret
 
 
 def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_failure():
     ego_fstate = np.array([60, 20, 0])
     ego_len = 5
-    actor1 = np.array([-60, 15, ego_len])
-    actor2 = np.array([30, 15, ego_len])
+    actor1 = np.array([-70, 25, ego_len])
+    actor2 = np.array([30, 25, ego_len])
     actors = np.vstack((actor1, actor2))
     red_line_s = 90
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    assert not RuleBasedLaneMergePlanner.can_solve_by_rule_based(state)
+    assert not RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
 
 
 def test_canSolveByRuleBased_closeFrontCarRequiresBrake_success():
     ego_fstate = np.array([60, 20, 0])
     ego_len = 5
-    actor1 = np.array([-60, 15, ego_len])
-    actor2 = np.array([35, 15, ego_len])
+    actor1 = np.array([-71, 25, ego_len])
+    actor2 = np.array([30, 25, ego_len])
     actors = np.vstack((actor1, actor2))
     red_line_s = 90
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    assert RuleBasedLaneMergePlanner.can_solve_by_rule_based(state)
+    assert RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
 
 
 @patch('decision_making.src.planning.behavioral.rule_based_lane_merge.VELOCITY_LIMITS', [0, 18])

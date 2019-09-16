@@ -2,7 +2,8 @@ from logging import Logger
 from typing import List
 import numpy as np
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LON_ACC_LIMITS, VELOCITY_LIMITS, \
-    EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, SPECIFICATION_HEADWAY, BP_ACTION_T_LIMITS, EPS
+    EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, SPECIFICATION_HEADWAY, BP_ACTION_T_LIMITS, EPS, \
+    TRAJECTORY_TIME_RESOLUTION
 
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, ActionRecipe, \
     RelativeLane, RelativeLongitudinalPosition
@@ -22,7 +23,8 @@ class ScenarioParams:
     def __init__(self, worst_case_back_actor_accel: float = WORST_CASE_BACK_CAR_ACCEL,
                  worst_case_front_actor_decel: float = WORST_CASE_FRONT_CAR_DECEL,
                  ego_reaction_time: float = SAFETY_HEADWAY, back_actor_reaction_time: float = SAFETY_HEADWAY,
-                 front_rss_decel: float = -LON_ACC_LIMITS[LIMIT_MIN], back_rss_decel: float = 3):
+                 front_rss_decel: float = -LON_ACC_LIMITS[LIMIT_MIN], back_rss_decel: float = 3,
+                 max_velocity: float=25):
         """
         :param worst_case_back_actor_accel: worst case braking deceleration of front actor prior the merge
         :param worst_case_front_actor_decel: worst case acceleration of back actor prior the merge
@@ -30,6 +32,7 @@ class ScenarioParams:
         :param back_actor_reaction_time: [sec] reaction delay of actor
         :param front_rss_decel: [m/s^2] maximal braking deceleration of ego & front actor
         :param back_rss_decel: [m/s^2] maximal braking deceleration of ego & back actor (may be lower)
+        :param max_velocity: [m/sec] maximal velocity of ego
         """
         # prediction parameters
         self.worst_case_back_actor_accel = worst_case_back_actor_accel
@@ -40,6 +43,7 @@ class ScenarioParams:
         self.back_actor_reaction_time = back_actor_reaction_time
         self.front_rss_decel = front_rss_decel
         self.back_rss_decel = back_rss_decel
+        self.max_velocity = max_velocity
 
 
 class LaneMergeSpec:
@@ -103,7 +107,56 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         self.actions = actions
 
     @staticmethod
-    def can_solve_by_rule_based(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
+    def acceleration_to_max_vel_is_safe(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
+        """
+        Check existence of rule-based solution that can merge safely, assuming the worst case scenario.
+        :param state: simple lane merge state, containing data about host and the main road vehicles
+        :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
+        :return: True if a rule-based solution exists
+        """
+        import time
+        st = time.time()
+
+        s_0, v_0, a_0 = state.ego_fstate
+        assert s_0 <= state.red_line_s
+
+        # calculate quartic action to maximal velocity
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+        spec_t, spec_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.max_velocity, np.array([w_T]), np.array([w_J]))
+        spec_t, spec_s = spec_t[0], spec_s[0]
+        if s_0 + spec_s > state.red_line_s:  # if the action crosses red line, check safety at the crossing point
+            poly_s = QuarticPoly1D.s_profile_coefficients(a_0, v_0, params.max_velocity, spec_t)
+            times = np.arange(0, spec_t, TRAJECTORY_TIME_RESOLUTION)
+            sampled_s = Math.polyval2d(poly_s, times)[0]
+            beyond_red_line_idxs = np.where(s_0 + sampled_s > state.red_line_s)[0]
+            if len(beyond_red_line_idxs) > 0:
+                target_t = times[beyond_red_line_idxs[0]]
+                target_s = sampled_s[beyond_red_line_idxs[0]]
+                poly_v = Math.polyder2d(poly_s, 1)
+                target_v = Math.polyval2d(poly_v, np.array([target_t]))[0][0]
+            else:  # spec_s is beyond red line, but the last sampled point is not
+                target_t = spec_t
+                target_v = params.max_velocity
+                target_s = spec_s
+        else:  # check safety beyond the action
+            target_v = params.max_velocity
+            target_t = spec_t + (state.red_line_s - (s_0 + spec_s)) / params.max_velocity
+            target_s = state.red_line_s - s_0
+
+        actors_s = state.actors_s_vel_length[:, 0, np.newaxis]
+        actors_v = state.actors_s_vel_length[:, 1, np.newaxis]
+        margins = 0.5 * (state.actors_s_vel_length[:, 2, np.newaxis] + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+
+        safety_matrix = RuleBasedLaneMergePlanner._create_safety_matrix(
+            actors_s, actors_v, margins, target_v, target_t, target_s,
+            params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
+            params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel)
+
+        print('\ntime=', time.time() - st)
+        return safety_matrix[0]
+
+    @staticmethod
+    def can_solve_by_two_constant_accelerations(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
         """
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario.
         :param state: simple lane merge state, containing data about host and the main road vehicles
@@ -343,7 +396,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         w_T = np.full(w_J.shape, BP_JERK_S_JERK_D_TIME_WEIGHTS[0, 2])
 
         # calculate initial quartic actions
-        T_init, s_init = RuleBasedLaneMergePlanner._specify(v_0, a_0, v_mid, w_T, w_J)
+        T_init, s_init = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, v_mid, w_T, w_J)
 
         # filter out initial specs and weights with exceeding T, s and acceleration
         valid_s_T_idxs = np.where((T_init <= np.max(T_max)) & (s_init <= s_max))[0]
@@ -356,7 +409,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         v_T_meshgrid = v_T_meshgrid.ravel()
         w_J_meshgrid = np.tile(w_J, v_T.shape[0])
         w_T_meshgrid = np.full(w_J_meshgrid.shape, w_T[0])
-        T_end, s_end = RuleBasedLaneMergePlanner._specify(v_mid, 0, v_T_meshgrid, w_T_meshgrid, w_J_meshgrid)
+        T_end, s_end = RuleBasedLaneMergePlanner._specify_quartic(v_mid, 0, v_T_meshgrid, w_T_meshgrid, w_J_meshgrid)
 
         # validate final specs with exceeding T, s and acceleration
         valid_s_T = (np.tile(T_init, v_T.shape[0]) + T_end <= np.repeat(T_max, w_J.shape[0])) & \
@@ -371,7 +424,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return T_init, s_init, T_end, s_end
 
     @staticmethod
-    def _specify(v_0: float, a_0: float, v_T: np.array, w_T: np.array, w_J: np.array) -> [np.array, np.array]:
+    def _specify_quartic(v_0: float, a_0: float, v_T: np.array, w_T: np.array, w_J: np.array) -> [np.array, np.array]:
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(w_T=w_T, w_J=w_J, a_0=a_0, v_0=v_0, v_T=v_T)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
@@ -434,17 +487,21 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         front_v = np.maximum(0, actors_v - t_grid * wc_front_decel)  # target velocity of the front actor
         back_v = np.minimum(VELOCITY_LIMITS[LIMIT_MAX], actors_v + t_grid * wc_back_accel)  # target velocity of the front actor
-        front_s = RuleBasedLaneMergePlanner._velocity_integral(np.concatenate((actors_v, front_v), axis=-1)) + actors_s - margins  # s of back actor at time t
-        back_s = RuleBasedLaneMergePlanner._velocity_integral(np.concatenate((actors_v, back_v), axis=-1)) + actors_s + margins  # s of back actor at time t
+        time_resolution = t_grid if np.isscalar(t_grid) else RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION
+        front_s = RuleBasedLaneMergePlanner._velocity_integral(
+            np.concatenate((actors_v, front_v), axis=-1), time_resolution) + actors_s - margins  # s of back actor at time t
+        back_s = RuleBasedLaneMergePlanner._velocity_integral(
+            np.concatenate((actors_v, back_v), axis=-1), time_resolution) + actors_s + margins  # s of back actor at time t
 
+        # calculate if ego is safe according to the longitudinal RSS formula
         front_side_safe = np.maximum(0, ego_v * ego_v - front_v * front_v) / (2 * front_rss_decel) + ego_hw * ego_v < front_s - target_s
         back_side_safe = np.maximum(0, back_v * back_v - ego_v * ego_v) / (2 * back_rss_decel) + actor_hw * back_v < target_s - back_s
         safety_matrix = np.logical_or(front_side_safe, back_side_safe).all(axis=0)
         return safety_matrix
 
     @staticmethod
-    def _velocity_integral(velocity: np.array):
-        velocity_bin_area = (0.5 * RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION) * (velocity[..., 1:] + velocity[..., :-1])
+    def _velocity_integral(velocity: np.array, time_resolution: float):
+        velocity_bin_area = (0.5 * time_resolution) * (velocity[..., 1:] + velocity[..., :-1])
         return np.cumsum(velocity_bin_area, axis=-1)  # predicted s at time t
 
     # @staticmethod
