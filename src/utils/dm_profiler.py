@@ -18,7 +18,7 @@ class DMProfiler:
 
     def __exit__(self, type, value, traceback):
         current_time = time.time()
-        self.logger.debug("%s{current_time: %s, label: %s, running_time: %s}" %
+        self.logger.debug("%s{'current_time': %s, 'label': '%s', 'running_time': %s}" %
                           (LOG_MSG_PROFILER_PREFIX, current_time, self.label, current_time - self.start_time))
 
 
