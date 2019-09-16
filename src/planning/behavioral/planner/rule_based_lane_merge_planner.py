@@ -512,8 +512,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         back_s = actors_s + 0.5 * (actors_v + back_v) * back_accel_time + actors_max_vel * back_max_vel_time
 
         # calculate if ego is safe according to the longitudinal RSS formula
-        front_side_safe = np.maximum(0, target_v * target_v - front_v * front_v) / (2 * rss_front_decel) + ego_hw * target_v < front_s - target_s - margins
-        back_side_safe = np.maximum(0, back_v * back_v - target_v * target_v) / (2 * rss_back_decel) + actor_hw * back_v < target_s - back_s - margins
+        front_side_safe = np.maximum(0, target_v * target_v - front_v * front_v) / (2 * rss_front_decel) + \
+                          ego_hw * target_v < front_s - target_s - margins
+        back_side_safe = np.maximum(0, back_v * back_v - target_v * target_v) / (2 * rss_back_decel) + \
+                         actor_hw * back_v + 0.5 * wc_back_accel * actor_hw * actor_hw < target_s - back_s - margins
         safety_matrix = np.logical_or(front_side_safe, back_side_safe).all(axis=0)
         return safety_matrix
 
