@@ -109,7 +109,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     @staticmethod
     def acceleration_to_max_vel_is_safe(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
         """
-        Check existence of rule-based solution that can merge safely, assuming the worst case scenario.
+        Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
+        main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.max_velocity).
+        If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
         :param state: simple lane merge state, containing data about host and the main road vehicles
         :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
         :return: True if a rule-based solution exists
@@ -120,11 +122,13 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         s_0, v_0, a_0 = state.ego_fstate
         assert s_0 <= state.red_line_s
 
-        # calculate quartic action to maximal velocity
+        # specify quartic action to maximal velocity
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
         spec_t, spec_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.max_velocity, np.array([w_T]), np.array([w_J]))
         spec_t, spec_s = spec_t[0], spec_s[0]
-        if s_0 + spec_s > state.red_line_s:  # if the action crosses red line, check safety at the crossing point
+
+        # if the action crosses the red line, then check safety at the crossing point
+        if s_0 + spec_s > state.red_line_s:
             poly_s = QuarticPoly1D.s_profile_coefficients(a_0, v_0, params.max_velocity, spec_t)
             times = np.arange(0, spec_t, TRAJECTORY_TIME_RESOLUTION)
             sampled_s = Math.polyval2d(poly_s, times)[0]
@@ -138,15 +142,18 @@ class RuleBasedLaneMergePlanner(BasePlanner):
                 target_t = spec_t
                 target_v = params.max_velocity
                 target_s = spec_s
-        else:  # check safety beyond the action
+        else:  # check safety beyond the action, assuming constant maximal velocity
             target_v = params.max_velocity
             target_t = spec_t + (state.red_line_s - (s_0 + spec_s)) / params.max_velocity
             target_s = state.red_line_s - s_0
 
+        # actors data
         actors_s = state.actors_s_vel_length[:, 0, np.newaxis]
         actors_v = state.actors_s_vel_length[:, 1, np.newaxis]
         margins = 0.5 * (state.actors_s_vel_length[:, 2, np.newaxis] + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 
+        # check safety by RSS, assuming the worst case scenario
+        # here safety_matrix is 1x1, since we check only one terminal point (v_T, T) at the red line
         safety_matrix = RuleBasedLaneMergePlanner._create_safety_matrix(
             actors_s, actors_v, margins, target_v, target_t, target_s,
             params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
