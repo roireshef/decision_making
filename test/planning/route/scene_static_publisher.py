@@ -58,6 +58,8 @@ class SceneStaticPublisher:
         # Time since the epoch
         timestamp_object = Timestamp.from_seconds(time())
 
+        lane_geometry = self._generate_geometry()
+        a_nominal_path_points = np.concatenate([l.a_nominal_path_points for l in lane_geometry], axis=0)
         return SceneStatic(
             s_Header=Header(e_Cnt_SeqNum=0,
                             s_Timestamp=timestamp_object,
@@ -76,7 +78,8 @@ class SceneStaticPublisher:
                                                                      e_Cnt_num_road_segments=len(self._road_segment_ids),
                                                                      as_scene_road_segment=self._generate_road_segments()),
                                    s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=0,
-                                                                             as_scene_lane_segments=self._generate_geometry()),
+                                                                             as_scene_lane_segments=lane_geometry,
+                                                                             a_nominal_path_points=a_nominal_path_points),
                                    s_NavigationPlan=NavigationPlan(e_Cnt_num_road_segments=len(self._navigation_plan),
                                                                    a_i_road_segment_ids=np.array(self._navigation_plan))))
 
