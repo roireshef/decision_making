@@ -201,7 +201,7 @@ class BehavioralGridState:
         objects_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(objects_segment_ids))
 
         # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
-        for _, extended_lane_frame in extended_lane_frames.items():
+        for extended_lane_frame in extended_lane_frames.values():
             # find all dynamic objects that belong to the current unified frame
             # add as row to matrix
             relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
