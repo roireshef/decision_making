@@ -93,7 +93,7 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 LAT_ACC_LIMITS = np.array([-2, 2])
 
 # BP has more strict lon. acceleration limits than TP. BP_LON_ACC_STRICT_COEF is the ratio between BP and TP limits
-BP_LON_ACC_STRICT_COEF = 0.97
+BP_LON_ACC_STRICT_COEF = 0.95
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 0.9
 
