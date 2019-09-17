@@ -25,7 +25,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     state_with_lane_split_on_left_and_right_right_first, state_with_object_after_merge, state_with_objects_around_3to1_merge, \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_on_left_and_right_left_first, \
-    route_plan_lane_splits_on_left_and_right_right_first
+    route_plan_lane_splits_on_left_and_right_right_first, state_with_five_objects_on_oval_track, route_plan_for_oval_track_file
 
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3, route_plan_left_lane_ends, route_plan_right_lane_ends, \
     route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
@@ -293,7 +293,7 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
 
 
-def test_findProjectedObjectInformation_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+def test_createProjectedObjects_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
     """
     Validate that projected object is correctly placed in overlapping lane
     """
@@ -303,13 +303,12 @@ def test_findProjectedObjectInformation_laneSplit_carInOverlap(scene_static_oval
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
                                                   map_state=MapState(np.array([5,1,0,0,0,0]), 19670532),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
 
-    assert projected_object_lane_ids[0] == 19670533
-    assert original_object_indices[0] == 0
+    assert projected_dynamic_objects[0].map_state.lane_id == 19670533
 
 
-def test_findProjectedObjectInformation_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+def test_createProjectedObjects_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
     """
     Validate that projected object is correctly placed in overlapping lane
     """
@@ -327,13 +326,12 @@ def test_findProjectedObjectInformation_laneMerge_carInOverlap(scene_static_oval
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
                                                   map_state=MapState(np.array([5, 1, 0, 0, 0, 0]), 58375684),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
 
-    assert projected_object_lane_ids[0] == 58375685
-    assert original_object_indices[0] == 0
+    assert projected_dynamic_objects[0].map_state.lane_id == 58375685
 
 
-def test_findProjectedObjectInformation_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
+def test_createProjectedObjects_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
     """
     Validate that no mirror object is created if there is no overlap
     """
@@ -341,10 +339,28 @@ def test_findProjectedObjectInformation_laneSplit_carNotInOverlap(scene_static_s
     # Create other car in lane 21 which does NOT overlap with any other lane
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1,1,0,0,0,0]), 21),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
-    projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
 
-    assert not projected_object_lane_ids
-    assert not original_object_indices
+    assert not projected_dynamic_objects
+
+
+@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_FORWARD_HORIZON', 20)
+@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_BACKWARD_HORIZON', 0)
+def test_filterIrrelevantDynamicObjects_fiveLanesOnOvalTrackWithObjects_IrrelevantObjectsFiltered(
+        state_with_five_objects_on_oval_track, route_plan_for_oval_track_file):
+    """
+    Validate that irrelevant objects are filtered correctly
+    """
+    extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(
+        state_with_five_objects_on_oval_track, route_plan_for_oval_track_file, None)
+
+    relevant_objects, relevant_objects_relative_lanes = BehavioralGridState._filter_irrelevant_dynamic_objects(
+        state_with_five_objects_on_oval_track.dynamic_objects, extended_lane_frames)
+
+    relevant_object_lane_ids = [dynamic_object.map_state.lane_id for dynamic_object in relevant_objects]
+
+    assert relevant_object_lane_ids == [19670530, 19670531, 19670532]
+    assert relevant_objects_relative_lanes == [[RelativeLane.LEFT_LANE], [RelativeLane.SAME_LANE], [RelativeLane.RIGHT_LANE]]
 
 
 def test_getGeneralizedFrenetFrames_onEndingLane_PartialGFFCreated(scene_static_left_lane_ends, route_plan_1_2):
