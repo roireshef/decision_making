@@ -121,14 +121,13 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         s_0, v_0, a_0 = state.ego_fstate
         assert s_0 <= state.red_line_s
-        v_T = np.full(BP_JERK_S_JERK_D_TIME_WEIGHTS.shape[0], params.max_velocity)
 
         # specify quartic actions to the maximal velocity with all aggressiveness levels
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
-        specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, v_T, w_T, w_J)
+        specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.max_velocity, w_T, w_J)
 
         # validate lon. acceleration limits and choose the most aggressive valid action
-        valid_acc, poly_s = RuleBasedLaneMergePlanner._validate_acceleration(v_0, a_0, v_T, specs_t)
+        valid_acc, poly_s = RuleBasedLaneMergePlanner._validate_acceleration(v_0, a_0, params.max_velocity, specs_t)
         most_aggressive_idx = np.where(~valid_acc)[0][0] - 1 if not valid_acc.all() else valid_acc.shape[0] - 1
         spec_t, spec_s = specs_t[most_aggressive_idx], specs_s[most_aggressive_idx]
 
@@ -384,11 +383,20 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return T, s
 
     @staticmethod
-    def _validate_acceleration(v_0: float, a_0: float, v_T: np.array, T: np.array) -> [np.array, np.array]:
+    def _validate_acceleration(v_0: float, a_0: float, v_T, T: np.array) -> [np.array, np.array]:
+        """
+        Check acceleration in limits for quartic polynomials.
+        * Use faster implementation than QuarticPoly1D.are_accelerations_in_limits
+        :param v_0: initial velocity
+        :param a_0: initial acceleration
+        :param v_T: target velocity(es): either scalar or array of size len(T)
+        :param T: array of planning times
+        :return: boolean array of size len(T) of valid actions and matrix Nx5: s_profile polynomials for all T
+        """
         # validate acceleration limits of the initial quartic action
         poly_s = np.zeros((T.shape[0], QuarticPoly1D.num_coefs()))
         validT = ~np.isnan(T)
-        poly_s[validT] = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T[validT], T[validT])
+        poly_s[validT] = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T if np.isscalar(v_T) else v_T[validT], T[validT])
         acc_poly = Math.polyder2d(poly_s[validT], m=2)
         jerk_poly = Math.polyder2d(acc_poly, m=1)
         roots = (-jerk_poly[:, 1] / jerk_poly[:, 0])[:, np.newaxis]
