@@ -30,7 +30,7 @@ from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import State, EgoState
+from decision_making.src.state.state import State, EgoState, MapState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
@@ -281,6 +281,14 @@ class BehavioralPlanningFacade(DmModule):
         expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
+
+        if updated_state.ego_state.map_state.lane_id != state.ego_state.map_state.lane_id:
+            # Since the ego lane ID for the updated_state can be different from the original state, specially for the
+            # case of multiple host hypotheses, we overwrite it with the selected ego lane ID from state here.
+            lane_frenet = MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id)
+            updated_state.ego_state._cached_map_state = MapState(lane_frenet.cstate_to_fstate(expected_ego_state.cartesian_state),
+                                                                 state.ego_state.map_state.lane_id)
+
         # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
         updated_state.is_sampled = True
 
