@@ -303,9 +303,8 @@ def test_findProjectedObjectInformation_laneSplit_carInOverlap(scene_static_oval
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
                                                   map_state=MapState(np.array([5,1,0,0,0,0]), 19670532),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    projected_object_ids, projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
+    projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
 
-    assert projected_object_ids[0] == -101
     assert projected_object_lane_ids[0] == 19670533
     assert original_object_indices[0] == 0
 
@@ -328,9 +327,8 @@ def test_findProjectedObjectInformation_laneMerge_carInOverlap(scene_static_oval
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
                                                   map_state=MapState(np.array([5, 1, 0, 0, 0, 0]), 58375684),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    projected_object_ids, projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
+    projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
 
-    assert projected_object_ids[0] == -101
     assert projected_object_lane_ids[0] == 58375685
     assert original_object_indices[0] == 0
 
@@ -343,9 +341,8 @@ def test_findProjectedObjectInformation_laneSplit_carNotInOverlap(scene_static_s
     # Create other car in lane 21 which does NOT overlap with any other lane
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1,1,0,0,0,0]), 21),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
-    projected_object_ids, projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
+    projected_object_lane_ids, original_object_indices = BehavioralGridState._find_projected_object_information([dyn_obj])
 
-    assert not projected_object_ids
     assert not projected_object_lane_ids
     assert not original_object_indices
 
