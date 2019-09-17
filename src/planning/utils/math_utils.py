@@ -160,8 +160,13 @@ class Math:
         # if polynomial is of degree 0 (f(x) = c), it has no roots
         if coef_matrix.shape[-1] < 2:
             return np.full(coef_matrix.shape, np.nan)
+        elif coef_matrix.shape[-1] == 2:  # linear equation(s)
+            roots = (-coef_matrix[..., 1] / coef_matrix[..., 0])[:, np.newaxis]
+        elif coef_matrix.shape[-1] == 3:  # quadratic equation(s)
+            roots = Math.solve_quadratic(coef_matrix[np.newaxis])[0] if coef_matrix.ndim == 1 else Math.solve_quadratic(coef_matrix)
+        else:
+            roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
 
-        roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
         is_in_limits = NumpyUtils.is_in_limits(real_roots, value_limits)
@@ -193,3 +198,20 @@ class Math:
         mod = np.subtract(a, np.multiply(div, b))
 
         return b * (np.fabs(mod - b) < precision) + mod * (np.fabs(mod - b) > precision) * (np.fabs(mod) > precision)
+
+    @staticmethod
+    def solve_quadratic(p):
+        """
+        Find the roots of a quadratic equation
+        :param p: a 2d numpy array [Mx3] having in each of the M rows the 3 polynomial coefficients vector [a, b, c]
+        :return: a 2d numpy array [Mx2] of roots for each poly1d instance, or None if no root exists. Smaller root is at index 0
+        """
+
+        a, b, c = np.hsplit(p, 3)
+        half_b = b * 0.5
+        discriminant = half_b * half_b - a * c
+        valid_roots = np.where(discriminant >= 0)[0]
+        roots = np.full((p.shape[0], 2), np.nan)
+        sqrt_disc = np.sqrt(discriminant[valid_roots])
+        roots[valid_roots] = np.c_[-half_b[valid_roots] - sqrt_disc, -half_b[valid_roots] + sqrt_disc] / a[valid_roots]
+        return roots
