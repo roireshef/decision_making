@@ -161,7 +161,7 @@ class Math:
         if coef_matrix.shape[-1] < 2:
             return np.full(coef_matrix.shape, np.nan)
         elif coef_matrix.shape[-1] == 2:  # linear equation(s)
-            roots = (-coef_matrix[..., 1] / coef_matrix[..., 0])[:, np.newaxis]
+            roots = np.expand_dims(-coef_matrix[..., 1] / coef_matrix[..., 0], axis=-1)
         elif coef_matrix.shape[-1] == 3:  # quadratic equation(s)
             roots = Math.solve_quadratic(coef_matrix[np.newaxis])[0] if coef_matrix.ndim == 1 else Math.solve_quadratic(coef_matrix)
         else:

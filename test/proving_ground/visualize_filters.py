@@ -8,7 +8,7 @@ from decision_making.src.planning.behavioral.action_space.action_space import Ac
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.road_sign_action_space import RoadSignActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
@@ -46,10 +46,10 @@ def plot_filters_map(log_file_path: str):
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                  RoadSignActionSpace(logger, predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
-    # TODO in the future remove this limitation of SAME_LANE
-    limit_relative_lane = [RelativeLane.SAME_LANE]  # currently limit to SAME_LANE to make visualization easier.
-    action_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane in limit_relative_lane]
-    valid_idxs = [idx for idx, recipe in enumerate(action_space.recipes) if recipe.relative_lane in limit_relative_lane]
+    valid_idxs = [idx for idx, recipe in enumerate(action_space.recipes)
+                  if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.action_type != ActionType.OVERTAKE_VEHICLE
+                  and (recipe.action_type == ActionType.FOLLOW_LANE or recipe.relative_lon == RelativeLongitudinalPosition.FRONT)]
+    action_recipes = np.array(action_space.recipes)[valid_idxs]
     y_values = [(recipe.action_type.__str__().split('_')[1][:4], recipe.relative_lane.__str__().split('.')[1][:4],
                  recipe.aggressiveness.__str__().split('.')[1][:4],
                  '%.1f' % recipe.velocity if recipe.action_type == ActionType.FOLLOW_LANE else '')

@@ -2,6 +2,7 @@ import numpy as np
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.road_sign_action_space import RoadSignActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_spec_evaluator import \
     AugmentedLaneActionSpecEvaluator
@@ -9,7 +10,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
     ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
-    DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING
+    DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from logging import Logger
 from typing import List
@@ -33,7 +34,8 @@ class SingleStepBehavioralPlanner(BasePlanner):
         self.route_plan = route_plan
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
-                                                          DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+                                                          DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
+                                                          RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
     def _create_actions(self) -> ActionSpecArray:
         action_recipes = self.action_space.recipes
