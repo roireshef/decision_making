@@ -156,7 +156,7 @@ def plot_dynamics(log_file_path: str):
 
     ax1 = plt.subplot(5, 2, 1)
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    longitudinal_dist_plot, = plt.plot(other_times, other_dists, '.')
+    longitudinal_dist_plot, = plt.plot(other_times, other_dists, '.-')
     multiple_ego_hypotheses = plt.scatter(multiple_ego_hypotheses_timestamp, [100] * len(multiple_ego_hypotheses_timestamp), s=5, c='k')
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
@@ -173,7 +173,7 @@ def plot_dynamics(log_file_path: str):
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
-    other_vel_plot,  = plt.plot(other_times, other_vels, '.')
+    other_vel_plot,  = plt.plot(other_times, other_vels, '.-')
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
     plt.legend([ego_sv_plot, other_vel_plot], ['ego_vel', 'other_vel'])
