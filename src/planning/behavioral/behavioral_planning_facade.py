@@ -11,7 +11,7 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTOR
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
-    RoutePlanningException, MappingException, raises
+    RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
     MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED
@@ -27,7 +27,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
-from decision_making.src.planning.types import FS_SX, FS_SV
+from decision_making.src.planning.types import FS_SX, FS_SV, C_X, C_Y
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState, MapState
@@ -291,8 +291,22 @@ class BehavioralPlanningFacade(DmModule):
             # Since the ego lane ID for the updated_state can be different from the original state, specially for the
             # case of multiple host hypotheses, we overwrite it with the selected ego lane ID from state here.
             lane_frenet = MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id)
-            updated_state.ego_state._cached_map_state = MapState(lane_frenet.cstate_to_fstate(expected_ego_state.cartesian_state),
-                                                                 state.ego_state.map_state.lane_id)
+            cartesian_state = expected_ego_state.cartesian_state
+
+            try:
+                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
+
+            except OutOfSegmentBack:
+                # TODO: check distance to first point
+                cartesian_state[[C_X, C_Y]] = lane_frenet.points[0]
+                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
+
+            except OutOfSegmentFront:
+                # TODO: check distance to last point
+                cartesian_state[[C_X, C_Y]] = lane_frenet.points[-1]
+                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
+
+            updated_state.ego_state._cached_map_state = MapState(lane_fstate, state.ego_state.map_state.lane_id)
 
         # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
         updated_state.is_sampled = True
