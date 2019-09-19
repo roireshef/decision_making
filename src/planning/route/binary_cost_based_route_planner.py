@@ -1,8 +1,10 @@
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, DownstreamLaneDataNotFound
-from decision_making.src.global_constants import HIGH_COST, LOW_COST
-from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan, \
+from typing import List, Optional
+from decision_making.src.exceptions import RoadSegmentLaneSegmentMismatch, raises, LaneAttributeNotFound,\
+    DownstreamLaneDataNotFound
+from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, MAX_COST, MIN_COST
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
     RoutePlanRoadSegment, RoutePlanRoadSegments
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
@@ -28,7 +30,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
             (bool):  lane connectivity diagnostics info, whether at least one downstream lane segment
                      (as described in the map) is in the downstream route road segment
         """
-        min_downstream_lane_segment_occupancy_cost = HIGH_COST
+        min_downstream_lane_segment_occupancy_cost = MAX_COST
 
         # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
         # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
@@ -87,11 +89,12 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         lane_occupancy_cost = RoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
 
         # Calculate lane end costs (from lane occupancy costs)
-        if not self._route_plan_lane_segments_reversed:  # if route_plan_lane_segments is empty indicating the last segment in route
-            if lane_occupancy_cost == HIGH_COST:  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=HIGH_COST)
-                lane_end_cost = HIGH_COST
+
+        if not self.get_route_plan_lane_segments():  # if route_plan_lane_segments is empty indicating the last segment in route
+            if (lane_occupancy_cost == MAX_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=MAX_COST)
+                lane_end_cost = MAX_COST
             else:
-                lane_end_cost = LOW_COST
+                lane_end_cost = MIN_COST
 
             downstream_lane_found_in_route = True
             # Because this is the last road segment in (current) route  we don't want to trigger RoadSegmentLaneSegmentMismatch
@@ -100,8 +103,8 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
 
             lane_end_cost, downstream_lane_found_in_route = self._lane_end_cost_calc(lane_segment_base_data=lane_segment_base_data)
 
-            if lane_occupancy_cost == HIGH_COST:  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=HIGH_COST)
-                lane_end_cost = HIGH_COST
+            if (lane_occupancy_cost == MAX_COST):  # Can't occupy the lane, can't occupy the end either. end cost must be MAX(=MAX_COST)
+                lane_end_cost = MAX_COST
 
         # Construct RoutePlanLaneSegment for the lane and add to the RoutePlanLaneSegment container for this Road Segment
         current_route_lane_segment = RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,

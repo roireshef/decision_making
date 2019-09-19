@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List
+from typing import List, Dict, Tuple
 
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_RoutePlan import TsSYSRoutePlan
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataRoutePlan import TsSYSDataRoutePlan
@@ -7,6 +7,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_RoutePlanLaneSe
 from decision_making.src.exceptions import RoadNotFound, raises
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
+from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 
 
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
@@ -149,6 +150,17 @@ class RoutePlan(PUBSUB_MSG_IMPL):
         self.s_Header = s_Header
         self.s_Data = s_Data
 
+    def to_costs_dict(self) -> Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]:
+        """
+         returns a complete dictionary of lane costs:
+         keys are lane_segment_ids and values are tuples containing the lane costs: (occupancy cost, end cost). The following are two
+         constants that hold the indices and can be used to access each cost: LANE_OCCUPANCY_COST_IND = 0 and LANE_END_COST_IND = 1
+        :return:
+        """
+        # TODO: cache when route plan header data is accurate
+        return {lane_segment.e_i_lane_segment_id: (lane_segment.e_cst_lane_occupancy_cost, lane_segment.e_cst_lane_end_cost)
+                for road_segment in self.s_Data.as_route_plan_lane_segments
+                for lane_segment in road_segment}
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):

@@ -17,6 +17,13 @@ class MapLaneType(Enum):
     BidirectionalLane = 11
 
 
+class LaneOverlapType(Enum):
+    CeSYS_e_LaneOverlapType_Unknown = 0
+    CeSYS_e_LaneOverlapType_Cross = 1
+    CeSYS_e_LaneOverlapType_Merge = 2
+    CeSYS_e_LaneOverlapType_Split = 3
+
+
 class MapRoadSegmentType(Enum):
     Normal = 0
     Intersection = 1
@@ -31,21 +38,22 @@ class MovingDirection(Enum):
 
 
 class ManeuverType(Enum):
-    STRAIGHT_CONNECTION = 0
-    LEFT_TURN_CONNECTION = 1
-    RIGHT_TURN_CONNECTION = 2
-    LEFT_MERGE_CONNECTION = 3
-    RIGHT_MERGE_CONNECTION = 4
-    LEFT_EXIT_CONNECTION = 5
-    RIGHT_EXIT_CONNECTION = 6
-    LEFT_FORK_CONNECTION = 7
-    RIGHT_FORK_CONNECTION = 8
-    TRAFFIC_CIRCLE_CONNECTION = 9
-    LEFT_LANE_CHANGE_CONNECTION = 10
-    RIGHT_LANE_CHANGE_CONNECTION = 11
-    NO_ALLOWED_CONNECTION = 12
-    LEFT_SPLIT = 13
-    RIGHT_SPLIT = 14
+    UNKNOWN = 0
+    STRAIGHT_CONNECTION = 1
+    LEFT_TURN_CONNECTION = 2
+    RIGHT_TURN_CONNECTION = 3
+    LEFT_MERGE_CONNECTION = 4
+    RIGHT_MERGE_CONNECTION = 5
+    LEFT_EXIT_CONNECTION = 6
+    RIGHT_EXIT_CONNECTION = 7
+    LEFT_FORK_CONNECTION = 8
+    RIGHT_FORK_CONNECTION = 9
+    TRAFFIC_CIRCLE_CONNECTION = 10
+    LEFT_LANE_CHANGE_CONNECTION = 11
+    RIGHT_LANE_CHANGE_CONNECTION = 12
+    NO_ALLOWED_CONNECTION = 13
+    LEFT_SPLIT = 14
+    RIGHT_SPLIT = 15
 
 
 class MapLaneMarkerType(Enum):
@@ -162,9 +170,8 @@ class NominalPathPoint(Enum):
     CeSYS_NominalPathPoint_e_l_s = 7
     CeSYS_NominalPathPoint_e_l_left_offset = 8
     CeSYS_NominalPathPoint_e_l_right_offset = 9
-    
-    
-    
+
+
 class RoutePlanLaneSegmentAttr(IntEnum):
     CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus = 0
     CeSYS_e_RoutePlanLaneSegmentAttr_GMFA = 1
@@ -181,7 +188,7 @@ class LaneMappingStatusType(IntEnum):
     CeSYS_e_LaneMappingStatusType_LidarMap = 16
     CeSYS_e_LaneMappingStatusType_METAMap = 32
     CeSYS_e_LaneMappingStatusType_Obsolete = 128
-    
+
 
 class MapLaneDirection(IntEnum):
     CeSYS_e_MapLaneDirection_SameAs_HostVehicle = 0
@@ -190,7 +197,8 @@ class MapLaneDirection(IntEnum):
     CeSYS_e_MapLaneDirection_Left_AwayFrom_HostVehicle = 3
     CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle = 4
     CeSYS_e_MapLaneDirection_Right_AwayFrom_HostVehicle = 5
-    
+
+
 class GMAuthorityType(IntEnum):
     CeSYS_e_GMAuthorityType_None = 0
     CeSYS_e_GMAuthorityType_RoadConstruction = 1

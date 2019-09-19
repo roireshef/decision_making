@@ -52,9 +52,9 @@ class RoutePlanSubscriber(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC, None)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN, None)
 
-    # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
-        pass
+        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
+        self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -76,8 +76,8 @@ class RoutePlanSubscriber(DmModule):
 
             # calculate the takeover message
             behavior_facade_mock = BehavioralFacadeMock(pubsub=PubSub(), logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING),
-                                                trajectory_params=None,
-                                                visualization_msg=None, trigger_pos=None)
+                                                        trajectory_params=None,
+                                                        visualization_msg=None, trigger_pos=None)
 
             takeover_msg = behavior_facade_mock._mock_takeover_message(route_plan_data=route_plan.s_Data,
                                                                         ego_state=mock_state.ego_state,

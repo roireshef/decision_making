@@ -5,6 +5,7 @@ from decision_making.src.global_constants import MINIMUM_REQUIRED_TRAJECTORY_TIM
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFilter
+from decision_making.src.planning.types import BoolArray
 from typing import Any, List
 import numpy as np
 
@@ -118,11 +119,11 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :param action_specs:
         :return: A list of action specs with potentially extended copies of short ones
         """
-        return [spec if spec.t >= MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON else
-                ActionSpec(spec.t, spec.v,  spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
+        return [spec if spec.t >= min_action_time else
+                ActionSpec(min_action_time, spec.v, spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
                 for spec in action_specs]
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """
         The filter function
         No need to implement this method in your subclass
@@ -139,5 +140,5 @@ class ConstraintSpecFilter(ActionSpecFilter):
             except ConstraintFilterHaltWithValue as e:
                 mask_value = e.value
             mask.append(mask_value)
-        return mask
+        return np.array(mask)
 
