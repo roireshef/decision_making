@@ -5,8 +5,6 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
-HIGH_COST = 1.0
-LOW_COST = 0.0
 
 MPH_TO_MPS = 2.23694
 
