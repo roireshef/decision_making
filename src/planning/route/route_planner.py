@@ -10,7 +10,7 @@ from decision_making.src.exceptions import MissingInputInformation, RepeatedRoad
     NavigationSceneDataMismatch, LaneSegmentDataNotFound, RoadSegmentDataNotFound, LaneAttributeNotFound
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, \
     MapLaneDirection, GMAuthorityType, LaneConstructionType
-from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, HIGH_COST, LOW_COST
+from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, MAX_COST, MIN_COST
 
 RoadSegmentDict = Dict[int, SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int, SceneLaneSegmentBase]
@@ -264,12 +264,12 @@ class RoutePlanner(metaclass=ABCMeta):
         """
         Cost of lane map type. Current implementation is binary cost.
         :param mapping_status_attribute: type of mapped
-        :return: normalized cost (LOW_COST to HIGH_COST)
+        :return: normalized cost (MIN_COST to MAX_COST)
         """
         if ((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
                 (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
-            return LOW_COST
-        return HIGH_COST
+            return MIN_COST
+        return MAX_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -277,12 +277,12 @@ class RoutePlanner(metaclass=ABCMeta):
         """
         Cost of construction zone type. Current implementation is binary cost.
         :param construction_zone_attribute: type of lane construction
-        :return: Normalized cost (LOW_COST to HIGH_COST)
+        :return: Normalized cost (MIN_COST to MAX_COST)
         """
         if ((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
                 (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
-            return LOW_COST
-        return HIGH_COST
+            return MIN_COST
+        return MAX_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -290,13 +290,13 @@ class RoutePlanner(metaclass=ABCMeta):
         """
         Cost of lane direction. Current implementation is binary cost.
         :param lane_dir_in_route_attribute: map lane direction in respect to host
-        :return: Normalized cost (LOW_COST to HIGH_COST)
+        :return: Normalized cost (MIN_COST to MAX_COST)
         """
         if ((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
                 (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
                 (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
-            return LOW_COST
-        return HIGH_COST
+            return MIN_COST
+        return MAX_COST
 
     @staticmethod
     # Following method is kept public in order to unit test the method from outside the class
@@ -304,11 +304,11 @@ class RoutePlanner(metaclass=ABCMeta):
         """
         Cost of GM authorized driving area. Current implementation is binary cost.
         :param gm_authority_attribute: type of GM authority
-        :return: Normalized cost (LOW_COST to HIGH_COST)
+        :return: Normalized cost (MIN_COST to MAX_COST)
         """
         if gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None:
-            return LOW_COST
-        return HIGH_COST
+            return MIN_COST
+        return MAX_COST
 
     @staticmethod
     @raises(LaneAttributeNotFound)
@@ -320,7 +320,7 @@ class RoutePlanner(metaclass=ABCMeta):
         according to the (input) lane attribute, which lane attribute method to invoke
         :param lane_attribute_index: pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
         :param lane_attribute_value: value of the pointed lane attribute
-        :return: Normalized lane occupancy cost based on the concerned lane attribute (LOW_COST to HIGH_COST)
+        :return: Normalized lane occupancy cost based on the concerned lane attribute (MIN_COST to MAX_COST)
         """
         attribute_based_occupancy_cost_methods = {}
         if 'attribute_based_occupancy_cost_methods' not in RoutePlanner.lane_attribute_based_occupancy_cost.__dict__:
@@ -383,10 +383,10 @@ class RoutePlanner(metaclass=ABCMeta):
             lane_attribute_occupancy_cost = RoutePlanner.lane_attribute_based_occupancy_cost(
                 lane_attribute_index=lane_attribute_index, lane_attribute_value=lane_attribute_value)
             # Check if the lane is unoccupiable
-            if (lane_attribute_occupancy_cost == HIGH_COST):
-                return HIGH_COST
+            if (lane_attribute_occupancy_cost == MAX_COST):
+                return MAX_COST
 
-        return LOW_COST
+        return MIN_COST
 
     @abstractmethod
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
