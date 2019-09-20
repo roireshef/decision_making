@@ -259,7 +259,8 @@ MIN_COST = 0.0
 # different from the actual maximum cost (= MAX_COST).
 SATURATED_COST = 1.0
 
-ROUTE_PLAN_BACKPROP_DISCOUNT_FACTOR = 0.9
+# Discount factor used to limit the effect of backpropagating downstream lane end costs
+BACKPROP_DISCOUNT_FACTOR = 0.9
 
 # State #
 
