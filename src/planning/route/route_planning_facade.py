@@ -12,14 +12,14 @@ from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
-from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner, RoutePlannerInputData
+from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
 class RoutePlanningFacade(DmModule):
-    def __init__(self, pubsub: PubSub, logger: Logger, route_planner: CostBasedRoutePlanner):
+    def __init__(self, pubsub: PubSub, logger: Logger, route_planner: RoutePlanner):
         """
         :param pubsub:
         :param logger:
