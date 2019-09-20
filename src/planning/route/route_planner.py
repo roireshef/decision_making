@@ -252,9 +252,6 @@ class RoutePlanner(metaclass=ABCMeta):
         self._route_plan_lane_segments_reversed: RoutePlanRoadSegment = []
         self._route_plan_input_data: RoutePlannerInputData = None
 
-    def get_route_plan_lane_segments(self) -> RoutePlanRoadSegment:
-        return list(reversed(self._route_plan_lane_segments_reversed))
-
     @abstractmethod
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """Abstract route planner method. Implementation details will be in child class/methods """
