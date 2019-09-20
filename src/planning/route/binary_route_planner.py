@@ -7,13 +7,13 @@ from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRES
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, DataRoutePlan,\
     RoutePlanRoadSegment, RoutePlanRoadSegments
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
-from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner, RoutePlannerInputData
 from typing import List
 
 
-class BinaryCostBasedRoutePlanner(RoutePlanner):
+class BinaryRoutePlanner(CostBasedRoutePlanner):
     """
-    child class (of abstract class RoutePlanner), which contains implementation details of binary cost based route planner
+    child class (of abstract class CostBasedRoutePlanner), which contains implementation details of binary route planner
     """
 
     def __init__(self):
@@ -86,7 +86,7 @@ class BinaryCostBasedRoutePlanner(RoutePlanner):
         lane_segment_id = lane_segment_base_data.e_i_lane_segment_id
 
         # Calculate lane occupancy costs for a lane
-        lane_occupancy_cost = RoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
+        lane_occupancy_cost = CostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
 
         # Calculate lane end costs (from lane occupancy costs)
 
