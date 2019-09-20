@@ -65,10 +65,8 @@ class BackpropagatingRoutePlanner(CostBasedRoutePlanner):
 
                 backprop_downstream_lane_segment_end_cost = backprop_end_cost if backprop_end_cost > BACKPROP_COST_THRESHOLD else MIN_COST
 
-                min_downstream_lane_segment_occupancy_cost = min(min(min_downstream_lane_segment_occupancy_cost,
-                                                                     downstream_lane_segment_occupancy_cost +
-                                                                     backprop_downstream_lane_segment_end_cost),
-                                                                 MAX_COST)
+                min_downstream_lane_segment_occupancy_cost = min(min_downstream_lane_segment_occupancy_cost,
+                                                                 downstream_lane_segment_occupancy_cost + backprop_downstream_lane_segment_end_cost)
             else:
                 # Downstream lane segment not in route. Do nothing.
                 pass
