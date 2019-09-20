@@ -71,8 +71,7 @@ class CostBasedRoutePlanner(RoutePlanner):
     @staticmethod
     @raises(LaneAttributeNotFound)
     # Following method is kept public in order to unit test the method from outside the class
-    def lane_attribute_based_occupancy_cost(lane_attribute_index: int,
-                                            lane_attribute_value: int) -> float:  # if else logic
+    def lane_attribute_based_occupancy_cost(lane_attribute_index: int, lane_attribute_value: int) -> float:
         """
         This method is a wrapper on the individual lane attribute cost calculations and arbitrates
         according to the (input) lane attribute, which lane attribute method to invoke
@@ -101,11 +100,10 @@ class CostBasedRoutePlanner(RoutePlanner):
 
         if lane_attribute_index in attribute_based_occupancy_cost_methods:
             # Following is equivalent of (pythonic way) executing a switch statement
-            occupancy_cost_method = attribute_based_occupancy_cost_methods[lane_attribute_index]  #
+            occupancy_cost_method = attribute_based_occupancy_cost_methods[lane_attribute_index]
             return occupancy_cost_method(lane_attribute_value)
         else:
-            raise LaneAttributeNotFound(
-                'Cost Based Route Planner: lane_attribute_index {0} not supported'.format(lane_attribute_index))
+            raise LaneAttributeNotFound('Cost Based Route Planner: lane_attribute_index {0} not supported'.format(lane_attribute_index))
 
     @staticmethod
     @raises(LaneAttributeNotFound)
@@ -123,17 +121,14 @@ class CostBasedRoutePlanner(RoutePlanner):
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attributes):
                 lane_attribute_value = lane_segment_base_data.a_cmp_lane_attributes[lane_attribute_index]
             else:
-                raise LaneAttributeNotFound(
-                    'Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute value'
-                    .format(lane_attribute_index))
+                raise LaneAttributeNotFound('Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute value'
+                                            .format(lane_attribute_index))
 
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attribute_confidences):
-                lane_attribute_confidence = lane_segment_base_data.a_cmp_lane_attribute_confidences[
-                    lane_attribute_index]
+                lane_attribute_confidence = lane_segment_base_data.a_cmp_lane_attribute_confidences[lane_attribute_index]
             else:
-                raise LaneAttributeNotFound(
-                    'Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute '
-                    'confidence value'.format(lane_attribute_index))
+                raise LaneAttributeNotFound('Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute '
+                                            'confidence value'.format(lane_attribute_index))
 
             if (lane_attribute_confidence < LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD):
                 continue

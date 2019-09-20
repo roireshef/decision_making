@@ -5,8 +5,8 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
-
 MPH_TO_MPS = 2.23694
+
 
 # Communication Layer
 
@@ -330,5 +330,4 @@ PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
 PG_PICKLE_FILE_NAME = 'PG.pkl'
 ACCEL_TOWARDS_VEHICLE_SCENE_STATIC_PICKLE_FILE_NAME = 'accel_scene_static.pkl'
 ACCEL_TOWARDS_VEHICLE_SCENE_DYNAMIC_PICKLE_FILE_NAME = 'accel_scene_dynamic.pkl'
-OVAL_WITH_SPLITS_PICKLE_FILE_NAME = 'oval_with_splits.pkl'
-
+OVAL_WITH_SPLITS_FILE_NAME = 'oval_with_splits.pkl'

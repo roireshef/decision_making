@@ -66,4 +66,5 @@ class BinaryRoutePlanner(CostBasedRoutePlanner):
                 pass
 
         lane_end_cost = min_downstream_lane_segment_occupancy_cost
+
         return lane_end_cost, downstream_lane_found_in_route

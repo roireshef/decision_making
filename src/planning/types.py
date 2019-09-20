@@ -109,9 +109,8 @@ LAT_CELL, LON_CELL = 0, 1
 # 1D Numpy array of indices (dtype = np.int)
 NumpyIndicesArray = np.ndarray
 
-LaneSegmentID = int
-LaneEndCost = float  # Lane end cost assigned by Route Planner
 RoadSegmentID = int
+LaneSegmentID = int
 
 # boolean array
 BoolArray = np.ndarray
