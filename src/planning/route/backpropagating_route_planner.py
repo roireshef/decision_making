@@ -1,6 +1,6 @@
 import numpy as np
 from decision_making.src.exceptions import raises, DownstreamLaneDataNotFound
-from decision_making.src.global_constants import MAX_COST, BACKPROP_DISCOUNT_FACTOR
+from decision_making.src.global_constants import MAX_COST, BACKPROP_DISCOUNT_FACTOR, LANE_LENGTH_SCALE_FACTOR, MIN_COST, BACKPROP_COST_THRESHOLD
 from decision_making.src.messages.route_plan_message import RoutePlanRoadSegment
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
 from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
@@ -60,9 +60,10 @@ class BackpropagatingRoutePlanner(CostBasedRoutePlanner):
 
                 downstream_lane_segment_length = MapUtils.get_lane(downstream_lane_segment_id).e_l_length
 
-                backprop_downstream_lane_segment_end_cost = downstream_route_lane_segment.e_cst_lane_end_cost * \
-                                                            BACKPROP_DISCOUNT_FACTOR ** \
-                                                            downstream_lane_segment_length
+                backprop_end_cost = downstream_route_lane_segment.e_cst_lane_end_cost \
+                                    * (BACKPROP_DISCOUNT_FACTOR ** (downstream_lane_segment_length / LANE_LENGTH_SCALE_FACTOR))
+
+                backprop_downstream_lane_segment_end_cost = backprop_end_cost if backprop_end_cost > BACKPROP_COST_THRESHOLD else MIN_COST
 
                 min_downstream_lane_segment_occupancy_cost = min(min(min_downstream_lane_segment_occupancy_cost,
                                                                      downstream_lane_segment_occupancy_cost +
