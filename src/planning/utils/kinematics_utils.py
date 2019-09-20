@@ -34,8 +34,7 @@ class KinematicUtils:
         # add headway
         poly_diff[1:] -= vel_poly * headway
 
-        first_non_zero = np.argmin(np.equal(poly_diff, 0))
-        roots = Math.find_real_roots_in_limits(poly_diff[first_non_zero:], time_range)
+        roots = Math.find_real_roots_in_limits(poly_diff, time_range)
 
         return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
 
