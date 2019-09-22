@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.planner.base_planner import BasePla
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState1D, LIMIT_MIN, LIMIT_MAX, FS_1D_LEN
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 
 WORST_CASE_FRONT_CAR_DECEL = 3  # [m/sec^2]
@@ -107,7 +107,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         self.actions = actions
 
     @staticmethod
-    def acceleration_to_max_vel_is_safe(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
+    def acceleration_to_max_vel_is_safe_(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
         """
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
         main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.max_velocity).
@@ -126,10 +126,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
         specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.max_velocity, w_T, w_J)
 
-        # validate lon. acceleration limits and choose the most aggressive valid action
+        # validate lon. acceleration limits and choose the most calm valid action
         valid_acc, poly_s = RuleBasedLaneMergePlanner._validate_acceleration(v_0, a_0, params.max_velocity, specs_t)
-        most_aggressive_idx = np.where(~valid_acc)[0][0] - 1 if not valid_acc.all() else valid_acc.shape[0] - 1
-        spec_t, spec_s = specs_t[most_aggressive_idx], specs_s[most_aggressive_idx]
+        most_calm_idx = np.argmax(valid_acc)  # always there is an action with valid acceleration
+        spec_t, spec_s = specs_t[most_calm_idx], specs_s[most_calm_idx]
 
         # if the action crosses the red line, then check safety at the crossing point
         if s_0 + spec_s > state.red_line_s:
@@ -165,6 +165,59 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         print('\ntime=', time.time() - st)
         return safety_matrix[0]
+
+    @staticmethod
+    def acceleration_to_max_vel_is_safe(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
+        """
+        Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
+        main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.max_velocity).
+        If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
+        :param state: simple lane merge state, containing data about host and the main road vehicles
+        :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
+        :return: True if a rule-based solution exists
+        """
+        import time
+        st = time.time()
+
+        s_0, v_0, a_0 = state.ego_fstate
+        assert s_0 <= state.red_line_s
+
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
+        specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.max_velocity, w_T, w_J)
+
+        # validate lon. acceleration limits and choose the most calm valid action
+        valid_acc, poly_s = RuleBasedLaneMergePlanner._validate_acceleration(v_0, a_0, params.max_velocity, specs_t)
+        poly_s = poly_s[valid_acc]
+        specs_s = specs_s[valid_acc]
+        specs_t = specs_t[valid_acc]
+
+        target_t = np.array([specs_t + (state.red_line_s - specs_s) / params.max_velocity])
+        target_v = np.array([params.max_velocity])
+        target_s = np.array([state.red_line_s - state.ego_fstate[FS_SX]])
+
+        overflow_actions = state.red_line_s < specs_s[valid_acc]
+        trajectories = Poly1D.polyval_with_derivatives(poly_s[overflow_actions], specs_t[overflow_actions])
+
+        red_line_idxs = np.argmax(trajectories[:, :, FS_SX] >= state.red_line_s, axis=1)
+        for red_line_idx in red_line_idxs:
+            target_idxs = np.arange(red_line_idx, spec_t / TRAJECTORY_TIME_RESOLUTION).astype(int)
+            target_t = target_idxs * TRAJECTORY_TIME_RESOLUTION
+            target_v = trajectory[target_idxs, FS_SV]
+            target_s = trajectory[target_idxs, FS_SX] - state.ego_fstate[FS_SX]
+
+        actors_s = state.actors_s_vel_length[:, 0, np.newaxis]
+        actors_v = state.actors_s_vel_length[:, 1, np.newaxis]
+        margins = 0.5 * (state.actors_s_vel_length[:, 2, np.newaxis] + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+
+        # check safety assuming the worst case scenario
+        # here safety_matrix is 1x1, since we check only one terminal point (v_T, T) at the red line
+        is_safe = RuleBasedLaneMergePlanner._check_safety(
+            actors_s, actors_v, margins, target_v, target_t, target_s,
+            params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
+            SAFETY_HEADWAY, SAFETY_HEADWAY, params.max_velocity)
+
+        print('\ntime=', time.time() - st)
+        return is_safe
 
     @staticmethod
     def can_solve_by_two_constant_accelerations(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
@@ -383,7 +436,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return T, s
 
     @staticmethod
-    def _validate_acceleration(v_0: float, a_0: float, v_T, T: np.array) -> [np.array, np.array]:
+    def _validate_acceleration(v_0: float, a_0: float, v_T: float, T: np.array) -> [np.array, np.array]:
         """
         Check acceleration in limits for quartic polynomials.
         * Use faster implementation than QuarticPoly1D.are_accelerations_in_limits
