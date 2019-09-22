@@ -169,14 +169,14 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
     @staticmethod
     def acceleration_to_max_vel_is_safe(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
-            [bool, np.array]:
+            np.array:
         """
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
         main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.max_velocity).
         If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
         :param state: simple lane merge state, containing data about host and the main road vehicles
         :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
-        :return: True if a rule-based solution exists, accelerations array
+        :return: accelerations array or None if there is no safe action
         """
         import time
         st = time.time()
@@ -225,10 +225,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             accelerations = np.zeros(OUTPUT_LENGTH)
             accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
             print('\ntime=', time.time() - st)
-            return True, accelerations
+            return accelerations
 
         print('\ntime=', time.time() - st)
-        return False, None
+        return None
 
     @staticmethod
     def can_solve_by_two_constant_accelerations(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
