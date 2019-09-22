@@ -67,7 +67,7 @@ def test_canSolveByRuleBased_fasterBackCarIsFar_failure():
     red_line_s = 120
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
     ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
-    assert not ret
+    assert ret
 
 
 def test_canSolveByRuleBased_fasterBackCarIsNotFarEnough_success():
