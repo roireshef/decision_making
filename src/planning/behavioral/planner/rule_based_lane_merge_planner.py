@@ -85,6 +85,9 @@ class SimpleLaneMergeState:
         self.actors_s_vel_length = actors_s_vel_length
         self.red_line_s = red_line_s
 
+    def to_string(self):
+        return f'EGO: {self.ego_fstate} + \r\nACTORS:{self.actors_s_vel_length}'
+
     @classmethod
     def create_from_lane_merge_state(cls, lane_merge_state: LaneMergeState):
         # extract main road actors
@@ -108,7 +111,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         self.actions = actions
 
     @staticmethod
-    def acceleration_to_max_vel_is_safe_(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
+    def acceleration_to_max_vel_is_safe_RSS(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
         """
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
         main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.max_velocity).
@@ -182,8 +185,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         st = time.time()
 
         s_0, v_0, a_0 = state.ego_fstate
-        assert s_0 <= state.red_line_s
-
+        rel_red_line_s = state.red_line_s - s_0
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
         specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.max_velocity, w_T, w_J)
 
@@ -193,18 +195,19 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         specs_s = specs_s[valid_acc]
         specs_t = specs_t[valid_acc]
 
-        target_t = specs_t + (state.red_line_s - specs_s) / params.max_velocity
+        target_t = specs_t + (rel_red_line_s - specs_s) / params.max_velocity
         target_v = np.full(specs_t.shape[0], params.max_velocity)
-        target_s = np.full(specs_t.shape[0], state.red_line_s - state.ego_fstate[FS_SX])
+        target_s = np.full(specs_t.shape[0], rel_red_line_s)
 
-        overflow_actions = state.red_line_s < specs_s
+        overflow_actions = rel_red_line_s < specs_s
 
-        times = np.arange(0, np.max(specs_t[overflow_actions]), TRAJECTORY_TIME_RESOLUTION)
-        s_values = Math.polyval2d(poly_s[overflow_actions], times)
-        red_line_idxs = np.argmax(s_values >= state.red_line_s - state.ego_fstate[FS_SX], axis=1)
-        target_t[overflow_actions] = red_line_idxs * TRAJECTORY_TIME_RESOLUTION
-        # target_v[overflow_actions] = trajectories[np.arange(trajectories.shape[0]), red_line_idxs, FS_SV]
-        target_s[overflow_actions] = s_values[np.arange(s_values.shape[0]), red_line_idxs]
+        if overflow_actions.any():
+            times = np.arange(0, np.max(specs_t[overflow_actions]), TRAJECTORY_TIME_RESOLUTION)
+            s_values = Math.polyval2d(poly_s[overflow_actions], times)
+            red_line_idxs = np.argmax(s_values >= rel_red_line_s, axis=1)
+            target_t[overflow_actions] = red_line_idxs * TRAJECTORY_TIME_RESOLUTION
+            # target_v[overflow_actions] = trajectories[np.arange(trajectories.shape[0]), red_line_idxs, FS_SV]
+            target_s[overflow_actions] = s_values[np.arange(s_values.shape[0]), red_line_idxs]
 
         actors_s = state.actors_s_vel_length[:, 0, np.newaxis]
         actors_v = state.actors_s_vel_length[:, 1, np.newaxis]
