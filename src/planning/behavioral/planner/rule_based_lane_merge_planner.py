@@ -195,19 +195,23 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         specs_s = specs_s[valid_acc]
         specs_t = specs_t[valid_acc]
 
-        target_t = specs_t + (rel_red_line_s - specs_s) / params.max_velocity
+        target_t = specs_t + np.maximum(0, rel_red_line_s - specs_s) / params.max_velocity
         target_v = np.full(specs_t.shape[0], params.max_velocity)
-        target_s = np.full(specs_t.shape[0], rel_red_line_s)
+        target_s = np.full(specs_t.shape[0], np.maximum(specs_s, rel_red_line_s))
 
         overflow_actions = rel_red_line_s < specs_s
 
         if overflow_actions.any():
             times = np.arange(0, np.max(specs_t[overflow_actions]), TRAJECTORY_TIME_RESOLUTION)
             s_values = Math.polyval2d(poly_s[overflow_actions], times)
+            poly_vel = Math.polyder2d(poly_s[overflow_actions], m=1)
             red_line_idxs = np.argmax(s_values >= rel_red_line_s, axis=1)
-            target_t[overflow_actions] = red_line_idxs * TRAJECTORY_TIME_RESOLUTION
-            # target_v[overflow_actions] = trajectories[np.arange(trajectories.shape[0]), red_line_idxs, FS_SV]
-            target_s[overflow_actions] = s_values[np.arange(s_values.shape[0]), red_line_idxs]
+            overflow_target_t = red_line_idxs * TRAJECTORY_TIME_RESOLUTION
+            overflow_target_v = Math.zip_polyval2d(poly_vel, overflow_target_t[:, np.newaxis])[:, 0]
+            overflow_target_s = s_values[np.arange(s_values.shape[0]), red_line_idxs]
+            target_t = np.concatenate((target_t, overflow_target_t))
+            target_v = np.concatenate((target_v, overflow_target_v))
+            target_s = np.concatenate((target_s, overflow_target_s))
 
         actors_s = state.actors_s_vel_length[:, 0, np.newaxis]
         actors_v = state.actors_s_vel_length[:, 1, np.newaxis]
@@ -215,10 +219,13 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         # check safety assuming the worst case scenario
         # here safety_matrix is 1x1, since we check only one terminal point (v_T, T) at the red line
-        is_safe_action = RuleBasedLaneMergePlanner._check_headway_safety(
+        is_safe_concatenated = RuleBasedLaneMergePlanner._check_headway_safety(
             actors_s, actors_v, margins, target_v, target_t, target_s,
             params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
             SAFETY_HEADWAY, SAFETY_HEADWAY, params.max_velocity)
+
+        is_safe_action = is_safe_concatenated[:len(specs_t)]
+        is_safe_action[overflow_actions] &= is_safe_concatenated[len(specs_t):]
 
         OUTPUT_LENGTH = 10
         if is_safe_action.any():
