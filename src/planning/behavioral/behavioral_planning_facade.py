@@ -112,7 +112,7 @@ class BehavioralPlanningFacade(DmModule):
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
-                                  "according to previous plan")
+                                  "according to previous plan.  %s", updated_state.ego_state)
             else:
                 updated_state = state
 
