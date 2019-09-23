@@ -115,28 +115,34 @@ class TargetActionSpace(ActionSpace):
         const_vel = a_T > -1
         a_T[const_vel] = 0
         T_s = np.zeros_like(ds)
+        stopped = np.zeros_like(ds).astype(bool)
+        T_m = SPECIFICATION_HEADWAY
         if not const_vel.all():
             cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_with_accel(
                 w_T=weights[~const_vel, 2], w_J=weights[~const_vel, 0], a_0=projected_ego_fstates[~const_vel, FS_SA],
                 v_0=projected_ego_fstates[~const_vel, FS_SV], v_1=v_1[~const_vel], a_T=a_T[~const_vel], dx=ds[~const_vel],
-                T_m=SPECIFICATION_HEADWAY)
+                T_m=T_m)
             # TODO see https://confluence.gm.com/display/ADS133317/Stop+at+Geo+location+remaining+issues for possibly extending the allowed action time
             roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
             T_s[~const_vel] = np.fmin.reduce(roots_s, axis=-1)
-            const_vel[~const_vel] = (T_s[~const_vel] >= v_1[~const_vel] / -a_T[~const_vel])
+            const_vel[~const_vel] = (T_s[~const_vel] <= T_m)
+            stopped[~const_vel] = (T_s[~const_vel] >= v_1[~const_vel] / -a_T[~const_vel])
+            const_vel[stopped] = True
+            ds[stopped] += v_1[stopped] ** 2 / (-2 * a_T[stopped])
+            v_1[stopped] = 0
             a_T[const_vel] = 0
-            print('a=', a_T[0], 'T_s=', T_s)
+            print('===> a=', a_T[0], 'T_s=', T_s, 'v_1=', v_1[0])
 
         if const_vel.any():
             # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
             cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
                 w_T=weights[const_vel, 2], w_J=weights[const_vel, 0], dx=ds[const_vel], a_0=projected_ego_fstates[const_vel, FS_SA],
-                v_0=projected_ego_fstates[const_vel, FS_SV], v_T=v_1[const_vel], T_m=SPECIFICATION_HEADWAY)
+                v_0=projected_ego_fstates[const_vel, FS_SV], v_T=v_1[const_vel], T_m=T_m)
             roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
             T_s[const_vel] = np.fmin.reduce(roots_s, axis=-1)
             print('a=', a_T[0], 'T_s=', T_s)
 
-        v_T = np.maximum(0, v_1 + a_T * T_s)
+        v_T = np.maximum(0, v_1 + a_T * (T_s - T_m))
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
@@ -162,7 +168,7 @@ class TargetActionSpace(ActionSpace):
         # to keep from the target vehicle.
         distance_s = QuinticPoly1D.distance_profile_function_with_accel(
             a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_1=v_1, a_T=a_T, T=T, dx=ds,
-            T_m=SPECIFICATION_HEADWAY)(T)
+            T_m=T_m)(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
