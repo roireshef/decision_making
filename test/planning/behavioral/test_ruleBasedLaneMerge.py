@@ -83,6 +83,28 @@ def test_canSolveByRuleBased_fastEgo():
     assert ret is not None
 
 
+def test_canSolveByRuleBased_slowEgoSafe():
+    ego_fstate = np.array([228.72611638,  0.30320583,   0.59706981])
+    ego_len = 5
+    actor1 = np.array([-186.02611638, 25., 5])
+    actors = np.array([actor1])
+    red_line_s = 240
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    assert ret is not None
+
+
+def test_canSolveByRuleBased_slowEgoUnsafe():
+    ego_fstate = np.array([229.45172369,  1.156745,   1.11542085])
+    ego_len = 5
+    actor1 = np.array([-161.75172369, 25., 5])
+    actors = np.array([actor1])
+    red_line_s = 240
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    assert ret is None
+
+
 def test_canSolveByRuleBased_fasterBackCarIsFar_failure():
     ego_fstate = np.array([60, 15, 0])
     ego_len = 5
