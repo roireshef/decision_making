@@ -202,10 +202,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         overflow_actions = rel_red_line_s < specs_s
 
         if overflow_actions.any():
-            times = np.arange(0, np.max(specs_t[overflow_actions]), TRAJECTORY_TIME_RESOLUTION)
+            times = np.arange(0, np.max(specs_t[overflow_actions]) + EPS, TRAJECTORY_TIME_RESOLUTION)
             s_values = Math.polyval2d(poly_s[overflow_actions], times)
             poly_vel = Math.polyder2d(poly_s[overflow_actions], m=1)
-            red_line_idxs = np.argmax(s_values >= rel_red_line_s, axis=1)
+            red_line_idxs = np.argmin(np.abs(s_values - rel_red_line_s), axis=1)
             overflow_target_t = red_line_idxs * TRAJECTORY_TIME_RESOLUTION
             overflow_target_v = Math.zip_polyval2d(poly_vel, overflow_target_t[:, np.newaxis])[:, 0]
             overflow_target_s = s_values[np.arange(s_values.shape[0]), red_line_idxs]
@@ -454,6 +454,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
         T = np.fmin.reduce(roots_s, axis=-1)
         s = QuarticPoly1D.distance_profile_function(a_0=a_0, v_0=v_0, v_T=v_T, T=T)(T)
+        s[np.isclose(T, 0)] = 0
         return T, s
 
     @staticmethod
