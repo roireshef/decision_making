@@ -228,7 +228,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         is_safe_action[overflow_actions] &= is_safe_concatenated[len(specs_t):]
 
         OUTPUT_LENGTH = 10
-        if is_safe_action.any():
+        if is_safe_action.any() or rel_red_line_s < 0:
             action_idx = np.argmax(is_safe_action)  # the most calm safe action
             poly_acc = np.polyder(poly_s[action_idx], m=2)
             times = np.arange(0, min(OUTPUT_LENGTH * TRAJECTORY_TIME_RESOLUTION, specs_t[action_idx]), TRAJECTORY_TIME_RESOLUTION)
