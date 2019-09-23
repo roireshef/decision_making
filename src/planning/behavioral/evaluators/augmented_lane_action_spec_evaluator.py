@@ -1,6 +1,7 @@
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
+from collections import OrderedDict
 
 import numpy as np
 
@@ -43,9 +44,10 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         # on the straight lane if no actions are available on the augmented lane
 
         # A set is used to prevent duplicates when minimum_cost_lane==RelativeLane.SAME_LANE
-        lanes_to_try = {minimum_cost_lane, RelativeLane.SAME_LANE}
+        # Since no ordered set is available, use an OrderedDict to achieve such functionality
+        lanes_to_try = OrderedDict.fromkeys([minimum_cost_lane, RelativeLane.SAME_LANE])
 
-        for target_lane in lanes_to_try:
+        for target_lane in lanes_to_try.keys():
             # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE
             selected_follow_vehicle_idx = self._get_follow_vehicle_valid_action_idx(action_recipes, action_specs_mask,
                                                                                     target_lane)
