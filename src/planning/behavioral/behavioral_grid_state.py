@@ -367,6 +367,33 @@ class BehavioralGridState:
                         chosen_upstream_lane_id = upstream_lane_id
                         break
 
+
+            # TODO: REMOVE WHEN OVAL MAP IS FIXED
+            if chosen_upstream_lane_id == 0:
+                # first right split
+                if lane_id == 2596357:
+                    chosen_upstream_lane_id = 2584324
+                # lane after first right split
+                elif lane_id == 2594821:
+                    chosen_upstream_lane_id = 2596357
+                # lane where 1st right split merges back
+                elif lane_id == 2597637:
+                    chosen_upstream_lane_id = 2594821
+                # 2nd right split
+                elif lane_id == 2605317:
+                    chosen_upstream_lane_id = 2585348
+                # lane after 2nd right split
+                elif lane_id == 2605829:
+                    chosen_upstream_lane_id = 2605317
+                # 2nd lane after 2nd right split
+                elif lane_id == 2584837:
+                    chosen_upstream_lane_id = 2605829
+                # 3rd lane after 2nd right split
+                elif lane_id == 2588677:
+                    chosen_upstream_lane_id = 2584837
+
+
+
             # Second, determine the start and end stations for the subsegment
             end_station = MapUtils.get_lane(chosen_upstream_lane_id).e_l_length
             upstream_distance += end_station

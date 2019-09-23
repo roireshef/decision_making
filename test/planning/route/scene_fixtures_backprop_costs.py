@@ -4,7 +4,7 @@ import pytest
 from typing import List, Dict, Tuple
 
 from decision_making.paths import Paths
-from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, BACKPROP_DISCOUNT_FACTOR
+from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME, BACKPROP_DISCOUNT_FACTOR, LANE_LENGTH_SCALE_FACTOR
 
 from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_enums import LaneConstructionType,\
@@ -141,7 +141,8 @@ def construction_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i+1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR**MapUtils.get_lane(expected_output.as_route_plan_lane_segments[i+1][j].e_i_lane_segment_id).e_l_length
+                    BACKPROP_DISCOUNT_FACTOR**(MapUtils.get_lane(expected_output.as_route_plan_lane_segments[i+1][j].e_i_lane_segment_id).e_l_length
+                                               / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_three":
         lane_modifications = {251: [(True,
@@ -168,8 +169,8 @@ def construction_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
-                        expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
+                        expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length / LANE_LENGTH_SCALE_FACTOR)
 
     else:
         lane_modifications = {}
@@ -236,8 +237,9 @@ def map_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     else:
         lane_modifications = {}
@@ -283,8 +285,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_three":
         lane_modifications = {232: [(True,
@@ -299,8 +302,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_four":
         lane_modifications = {242: [(True,
@@ -315,8 +319,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_five":
         lane_modifications = {252: [(True,
@@ -331,8 +336,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_six":
         lane_modifications = {262: [(True,
@@ -347,8 +353,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_seven":
         lane_modifications = {272: [(True,
@@ -363,8 +370,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_eight":
         lane_modifications = {282: [(True,
@@ -379,8 +387,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_nine":
         lane_modifications = {292: [(True,
@@ -395,8 +404,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     elif request.param is "scene_ten":
         lane_modifications = {292: [(True,
@@ -411,8 +421,9 @@ def gmfa_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
     else:
         lane_modifications = {}
@@ -483,8 +494,9 @@ def combined_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
         # Road Segment 22
         expected_output.as_route_plan_lane_segments[2][1].e_cst_lane_occupancy_cost = 1.0
@@ -496,8 +508,9 @@ def combined_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
         # Road Segment 21
         expected_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
@@ -508,8 +521,9 @@ def combined_scene_and_expected_output(request):
             for j in range(expected_output.a_Cnt_num_lane_segments[i]):
                 expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost = \
                     expected_output.as_route_plan_lane_segments[i + 1][j].e_cst_lane_end_cost * \
-                    BACKPROP_DISCOUNT_FACTOR ** MapUtils.get_lane(
+                    BACKPROP_DISCOUNT_FACTOR ** (MapUtils.get_lane(
                         expected_output.as_route_plan_lane_segments[i + 1][j].e_i_lane_segment_id).e_l_length
+                        / LANE_LENGTH_SCALE_FACTOR)
 
         # Road Segment 20
         expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
