@@ -109,17 +109,19 @@ class ActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
-    def __init__(self, t: float, v: float, s: float, d: float, recipe: ActionRecipe):
+    def __init__(self, t: float, v: float, a: float, s: float, d: float, recipe: ActionRecipe):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
-        :param v: velocity [m/s]
+        :param v: target velocity [m/s]
+        :param a: target acceleration [m/s^2]
         :param s: global longitudinal position in Frenet frame [m]
         :param d: global lateral position in Frenet frame [m]
         :param recipe: the original recipe that the action space originated from (redundant but stored for efficiency)
         """
         self.t = t
         self.v = v
+        self.a = a
         self.s = s
         self.d = d
         self.recipe = recipe
@@ -137,4 +139,4 @@ class ActionSpec:
         return str({k: str(v) for (k, v) in self.__dict__.items()})
 
     def as_fstate(self) -> FrenetState2D:
-        return np.array([self.s, self.v, 0, self.d, 0, 0])
+        return np.array([self.s, self.v, self.a, self.d, 0, 0])

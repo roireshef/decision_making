@@ -9,7 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
     ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import FS_SV
+from decision_making.src.planning.types import FS_SV, FS_SA
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import DynamicObject
 from sklearn.utils.extmath import cartesian
@@ -53,11 +53,11 @@ class DynamicActionSpace(TargetActionSpace):
 
         return target_lengths
 
-    def _get_target_velocities(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_dynamics(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
-        v_T = np.array([self._get_closest_target(action_recipe, behavioral_state).map_state.lane_fstate[FS_SV]
-                        for action_recipe in action_recipes])
-        return v_T
+        vel_acc = np.array([self._get_closest_target(action_recipe, behavioral_state).map_state.lane_fstate[FS_SV:(FS_SA+1)]
+                            for action_recipe in action_recipes])
+        return vel_acc
 
     def _get_end_target_relative_position(self, action_recipes: List[DynamicActionRecipe]) -> np.ndarray:
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1

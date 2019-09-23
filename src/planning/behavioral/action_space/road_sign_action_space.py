@@ -38,7 +38,7 @@ class RoadSignActionSpace(TargetActionSpace):
             -> np.ndarray:
         return np.full(len(action_recipes), ROAD_SIGN_LENGTH)
 
-    def _get_target_velocities(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_dynamics(self, action_recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         return np.zeros(len(action_recipes))  # TODO: will need modification for other road signs
 

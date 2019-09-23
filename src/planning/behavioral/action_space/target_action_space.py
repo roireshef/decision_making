@@ -47,7 +47,7 @@ class TargetActionSpace(ActionSpace):
         pass
 
     @abstractmethod
-    def _get_target_velocities(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
+    def _get_target_dynamics(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
             -> np.ndarray:
         """
         Should return the velocities of the targets
@@ -95,7 +95,8 @@ class TargetActionSpace(ActionSpace):
         # collect targets' lengths, lane_ids and fstates
         # Targets are other vehicles, on the target grid box that ego plans to enter, sorted by S
         target_lengths = self._get_target_lengths(action_recipes, behavioral_state)
-        v_T = self._get_target_velocities(action_recipes, behavioral_state)
+        vel_acc = self._get_target_dynamics(action_recipes, behavioral_state)
+        v_1, a_T = vel_acc.T
         margin_sign = self._get_end_target_relative_position(action_recipes)
 
         # calculate initial longitudinal differences between all target objects and ego along target lanes
@@ -111,13 +112,31 @@ class TargetActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (
                 self.margin_to_keep_from_targets + behavioral_state.ego_state.size.length / 2 + target_lengths / 2)
 
-        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
-            v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_HEADWAY)
-        # TODO see https://confluence.gm.com/display/ADS133317/Stop+at+Geo+location+remaining+issues for possibly extending the allowed action time
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-        T_s = np.fmin.reduce(roots_s, axis=-1)
+        const_vel = a_T > -1
+        a_T[const_vel] = 0
+        T_s = np.zeros_like(ds)
+        if not const_vel.all():
+            cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_with_accel(
+                w_T=weights[~const_vel, 2], w_J=weights[~const_vel, 0], a_0=projected_ego_fstates[~const_vel, FS_SA],
+                v_0=projected_ego_fstates[~const_vel, FS_SV], v_1=v_1[~const_vel], a_T=a_T[~const_vel], dx=ds[~const_vel],
+                T_m=SPECIFICATION_HEADWAY)
+            # TODO see https://confluence.gm.com/display/ADS133317/Stop+at+Geo+location+remaining+issues for possibly extending the allowed action time
+            roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+            T_s[~const_vel] = np.fmin.reduce(roots_s, axis=-1)
+            const_vel[~const_vel] = (T_s[~const_vel] >= v_1[~const_vel] / -a_T[~const_vel])
+            a_T[const_vel] = 0
+            print('a=', a_T[0], 'T_s=', T_s)
+
+        if const_vel.any():
+            # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+            cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
+                w_T=weights[const_vel, 2], w_J=weights[const_vel, 0], dx=ds[const_vel], a_0=projected_ego_fstates[const_vel, FS_SA],
+                v_0=projected_ego_fstates[const_vel, FS_SV], v_T=v_1[const_vel], T_m=SPECIFICATION_HEADWAY)
+            roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+            T_s[const_vel] = np.fmin.reduce(roots_s, axis=-1)
+            print('a=', a_T[0], 'T_s=', T_s)
+
+        v_T = np.maximum(0, v_1 + a_T * T_s)
 
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically thus we probably got nan for T_s
@@ -141,16 +160,15 @@ class TargetActionSpace(ActionSpace):
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution.
         # distance_s also takes into account the safe distance that depends on target vehicle velocity that we want
         # to keep from the target vehicle.
-        distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
-                                                             v_0=projected_ego_fstates[:, FS_SV],
-                                                             v_T=v_T, T=T, dx=ds,
-                                                             T_m=SPECIFICATION_HEADWAY)(T)
+        distance_s = QuinticPoly1D.distance_profile_function_with_accel(
+            a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_1=v_1, a_T=a_T, T=T, dx=ds,
+            T_m=SPECIFICATION_HEADWAY)(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, vt, st, 0, recipe)
+        action_specs = [ActionSpec(t, vt, at, st, 0, recipe)
                         if ~np.isnan(t) else None
-                        for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
+                        for recipe, t, vt, at, st in zip(action_recipes, T, v_T, a_T, target_s)]
 
         return action_specs

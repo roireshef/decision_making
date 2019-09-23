@@ -498,6 +498,44 @@ class QuinticPoly1D(Poly1D):
                      - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * dx * v_T * w_J - 3600 * dx ** 2 * w_J]
 
     @staticmethod
+    def time_cost_function_derivative_coefs_with_accel(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
+                                                       v_1: np.ndarray, a_T: np.array, dx: np.ndarray, T_m: np.ndarray):
+        """
+        For given weights and constraints on a jerk-optimal polynomial solution, this function returns a matrix that
+        contains (in each row:) the coefficients of the derivative of the cost function use for finding the optimal time
+        horizon: f(T) = w_T * T + w_J * J(T) where J(T) is the accumulated jerk for given time horizon T.
+        Here we assume a constant acceleration of the target object.
+        :param w_T: weight for Time component
+        :param w_J: weight for Jerk component
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_1: [m/sec] object's velocity (at time 0)
+        :param a_T: [m/sec^2] object's acceleration
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T_m: T_m: [sec] T_m * v_T is added to dx
+        :return: coefficient matrix for all possibilities
+        """
+        zeros = np.zeros(w_T.shape[0])
+        return np.c_[w_T,
+                     zeros,
+                     -9.0 * w_J * (a_T - a_0) ** 2,
+                     48.0 * w_J * (5 * T_m * a_T * (a_T - a_0) + 3 * a_T * v_0 - 3 * a_T * v_1 - 3 * a_0 * v_0 + 3 * a_0 * v_1),
+                     72.0 * w_J * (5 * T_m * a_T * (-6 * T_m * a_T - 6 * v_0 + 7 * v_1) - 5 * T_m * a_0 * v_1 -
+                                   5 * a_T * dx + 5 * a_0 * dx - 8 * (v_1 - v_0) ** 2),
+                     2880.0 * w_J * ((T_m * v_1 - dx) * (v_1 - v_0 - 2 * T_m * a_T)),
+                     -3600.0 * w_J * (T_m * v_1 - dx) ** 2]
+
+    # 1.0 * T ** 6 * w_T - 9.0 * T ** 4 * a ** 2 * w_J + 18.0 * T ** 4 * a * a_0 * w_J - 9.0 * T ** 4 * a_0 ** 2 * w_J + \
+    # 240.0 * T ** 3 * T_m * a ** 2 * w_J - 240.0 * T ** 3 * T_m * a * a_0 * w_J + 144.0 * T ** 3 * a * v_0 * w_J - \
+    # 144.0 * T ** 3 * a * v_1 * w_J - 144.0 * T ** 3 * a_0 * v_0 * w_J + 144.0 * T ** 3 * a_0 * v_1 * w_J - \
+    # 2160.0 * T ** 2 * T_m ** 2 * a ** 2 * w_J - 2160.0 * T ** 2 * T_m * a * v_0 * w_J + 2520.0 * T ** 2 * T_m * a * v_1 * w_J - \
+    # 360.0 * T ** 2 * T_m * a_0 * v_1 * w_J - 360.0 * T ** 2 * a * ds * w_J + 360.0 * T ** 2 * a_0 * ds * w_J - \
+    # 576.0 * T ** 2 * v_0 ** 2 * w_J + 1152.0 * T ** 2 * v_0 * v_1 * w_J - 576.0 * T ** 2 * v_1 ** 2 * w_J - \
+    # 5760.0 * T * T_m ** 2 * a * v_1 * w_J + 5760.0 * T * T_m * a * ds * w_J - 2880.0 * T * T_m * v_0 * v_1 * w_J + \
+    # 2880.0 * T * T_m * v_1 ** 2 * w_J + 2880.0 * T * ds * v_0 * w_J - 2880.0 * T * ds * v_1 * w_J - \
+    # 3600.0 * T_m ** 2 * v_1 ** 2 * w_J + 7200.0 * T_m * ds * v_1 * w_J - 3600.0 * ds ** 2 * w_J
+
+    @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
         """
         relative distance travelled by ego at time t, given a solution to the conditions in the parameters
@@ -516,6 +554,25 @@ class QuinticPoly1D(Poly1D):
                                       T - T_m)) + t ** 4 * (
                                       -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (
                                      2 * T ** 5)
+
+    @staticmethod
+    def distance_profile_function_with_accel(a_0: float, v_0: float, v_1: float, a_T: float, dx: float, T: float, T_m: float):
+        """
+        relative distance travelled by ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_1: [m/sec] initial velocity of the target object
+        :param a_T: [m/sec^2] constant acceleration of the target object
+        :param dx: [m] distance to travel between time 0 and time T (see T_m as well)
+        :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
+        travelled since time 0
+        """
+        return lambda t: t*(T**5*(a_0*t + 2*v_0) + T**2*t**2*
+                            (10.0*T**2*a_T + T**2*(a_T - 3*a_0) + 20*T*v_1 - 4*T*(2*T*a_T + 3*v_0 + 2*v_1) - 20*T_m*(T*a_T + v_1) + 20*dx) +
+                            T*t**3*(-15.0*T**2*a_T + T**2*(-2*a_T + 3*a_0) - 30*T*v_1 + 2*T*(7*T*a_T + 8*v_0 + 7*v_1) + 30*T_m*(T*a_T + v_1) - 30*dx) +
+                            t**4*(6.0*T**2*a_T + T**2*(a_T - a_0) + 12*T*v_1 - 6*T*(T*a_T + v_0 + v_1) - 12*T_m*(T*a_T + v_1) + 12*dx))/(2*T**5)
 
     @staticmethod
     def distance_from_target(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
