@@ -15,8 +15,8 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 
-WORST_CASE_FRONT_CAR_DECEL = 2  # [m/sec^2]
-WORST_CASE_BACK_CAR_ACCEL = 1  # [m/sec^2]
+WORST_CASE_FRONT_CAR_DECEL = 2.  # [m/sec^2]
+WORST_CASE_BACK_CAR_ACCEL = 1.  # [m/sec^2]
 
 
 class ScenarioParams:
@@ -24,7 +24,7 @@ class ScenarioParams:
                  worst_case_front_actor_decel: float = WORST_CASE_FRONT_CAR_DECEL,
                  ego_reaction_time: float = SAFETY_HEADWAY, back_actor_reaction_time: float = SAFETY_HEADWAY,
                  front_rss_decel: float = -LON_ACC_LIMITS[LIMIT_MIN], back_rss_decel: float = 5.0,
-                 max_velocity: float = 25.):
+                 ego_max_velocity: float = 25., actors_max_velocity: float = 28.):
         """
         :param worst_case_back_actor_accel: worst case braking deceleration of front actor prior the merge
         :param worst_case_front_actor_decel: worst case acceleration of back actor prior the merge
@@ -32,7 +32,8 @@ class ScenarioParams:
         :param back_actor_reaction_time: [sec] reaction delay of actor
         :param front_rss_decel: [m/s^2] maximal braking deceleration of ego & front actor
         :param back_rss_decel: [m/s^2] maximal braking deceleration of ego & back actor (may be lower)
-        :param max_velocity: [m/sec] maximal velocity of ego
+        :param ego_max_velocity: [m/sec] maximal velocity of ego
+        :param actors_max_velocity: [m/sec] maximal velocity of actors
         """
         # prediction parameters
         self.worst_case_back_actor_accel = worst_case_back_actor_accel
@@ -43,7 +44,8 @@ class ScenarioParams:
         self.back_actor_reaction_time = back_actor_reaction_time
         self.front_rss_decel = front_rss_decel
         self.back_rss_decel = back_rss_decel
-        self.max_velocity = max_velocity
+        self.ego_max_velocity = ego_max_velocity
+        self.actors_max_velocity = actors_max_velocity
 
 
 class LaneMergeSpec:
@@ -114,7 +116,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             np.array:
         """
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
-        main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.max_velocity).
+        main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
         If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
         :param state: simple lane merge state, containing data about host and the main road vehicles
         :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
@@ -126,16 +128,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         s_0, v_0, a_0 = state.ego_fstate
         rel_red_line_s = state.red_line_s - s_0
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
-        specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.max_velocity, w_T, w_J)
+        specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.ego_max_velocity, w_T, w_J)
 
         # validate lon. acceleration limits and choose the most calm valid action
-        valid_acc, poly_s = RuleBasedLaneMergePlanner._validate_acceleration(v_0, a_0, params.max_velocity, specs_t)
+        valid_acc, poly_s = RuleBasedLaneMergePlanner._validate_acceleration(v_0, a_0, params.ego_max_velocity, specs_t)
         poly_s = poly_s[valid_acc]
         specs_s = specs_s[valid_acc]
         specs_t = specs_t[valid_acc]
 
-        target_t = specs_t + np.maximum(0, rel_red_line_s - specs_s) / params.max_velocity
-        target_v = np.full(specs_t.shape[0], params.max_velocity, dtype=float)
+        target_t = specs_t + np.maximum(0, rel_red_line_s - specs_s) / params.ego_max_velocity
+        target_v = np.full(specs_t.shape[0], params.ego_max_velocity, dtype=float)
         target_s = np.full(specs_t.shape[0], np.maximum(specs_s, rel_red_line_s), dtype=float)
 
         overflow_actions = rel_red_line_s < specs_s
@@ -159,7 +161,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             actors_s, actors_v, margins, target_v, target_t, target_s,
             params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
             params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel,
-            params.max_velocity + 2)  # enable back actor to exceed max_vel to remain consistent with control errors
+            params.actors_max_velocity)  # enable back actor to exceed max_vel to remain consistent with control errors
 
         # if overflow_actions.any():
         #     times = np.arange(0, np.max(specs_t[overflow_actions]) + EPS, TRAJECTORY_TIME_RESOLUTION)
@@ -182,7 +184,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # is_safe_concatenated = RuleBasedLaneMergePlanner._check_headway_safety(
         #     actors_s, actors_v, margins, target_v, target_t, target_s,
         #     params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
-        #     params.ego_reaction_time, params.back_actor_reaction_time, params.max_velocity)
+        #     params.ego_reaction_time, params.back_actor_reaction_time, params.actors_max_velocity)
         #
         # is_safe_action = is_safe_concatenated[:len(specs_t)]
         # is_safe_action[overflow_actions] &= is_safe_concatenated[len(specs_t):]
@@ -466,7 +468,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             actors_s, actors_v, margins, ego_v, t_grid, target_s,
             params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
             params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel,
-            params.max_velocity)
+            params.actors_max_velocity)
 
         vi, ti = np.where(safety_matrix)
         return v_grid[vi], t_grid[ti]
