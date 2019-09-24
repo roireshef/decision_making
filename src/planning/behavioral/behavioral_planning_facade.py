@@ -297,12 +297,12 @@ class BehavioralPlanningFacade(DmModule):
                 lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
 
             except OutOfSegmentBack:
-                # TODO: check distance to first point
+                # TODO: check distance to first point before overwriting cartesian position
                 cartesian_state[[C_X, C_Y]] = lane_frenet.points[0]
                 lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
 
             except OutOfSegmentFront:
-                # TODO: check distance to last point
+                # TODO: check distance to last point before overwriting cartesian position
                 cartesian_state[[C_X, C_Y]] = lane_frenet.points[-1]
                 lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
 
