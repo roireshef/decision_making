@@ -66,7 +66,7 @@ class RoutePlanningFacade(DmModule):
 
             self.logger.info("{} {}".format(LOG_MSG_ROUTE_PLANNER_IMPL_TIME, time.time() - start_time))
 
-            MetricLogger.get_logger().report()
+            # MetricLogger.get_logger().report()
 
         except MsgDeserializationError as e:
             self.logger.warning("RoutePlanningFacade: MsgDeserializationError was raised. Skipping planning. " +
@@ -74,7 +74,7 @@ class RoutePlanningFacade(DmModule):
             self.logger.debug(str(e))
 
         except RoutePlanningException as e:
-            self.logger.warning(e)
+            self.logger.warning(str(e))
 
         except Exception as e:
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
