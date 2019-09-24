@@ -24,7 +24,7 @@ class ScenarioParams:
                  worst_case_front_actor_decel: float = WORST_CASE_FRONT_CAR_DECEL,
                  ego_reaction_time: float = SAFETY_HEADWAY, back_actor_reaction_time: float = SAFETY_HEADWAY,
                  front_rss_decel: float = -LON_ACC_LIMITS[LIMIT_MIN], back_rss_decel: float = 5.0,
-                 max_velocity: float = 25):
+                 max_velocity: float = 25.):
         """
         :param worst_case_back_actor_accel: worst case braking deceleration of front actor prior the merge
         :param worst_case_front_actor_decel: worst case acceleration of back actor prior the merge
@@ -195,8 +195,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         specs_t = specs_t[valid_acc]
 
         target_t = specs_t + np.maximum(0, rel_red_line_s - specs_s) / params.max_velocity
-        target_v = np.full(specs_t.shape[0], params.max_velocity)
-        target_s = np.full(specs_t.shape[0], np.maximum(specs_s, rel_red_line_s))
+        target_v = np.full(specs_t.shape[0], params.max_velocity, dtype=float)
+        target_s = np.full(specs_t.shape[0], np.maximum(specs_s, rel_red_line_s), dtype=float)
 
         overflow_actions = rel_red_line_s < specs_s
 

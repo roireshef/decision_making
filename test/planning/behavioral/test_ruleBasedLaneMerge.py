@@ -106,9 +106,9 @@ def test_canSolveByRuleBased_slowEgoUnsafe():
 
 
 def test_canSolveByRuleBased_safe():
-    ego_fstate = np.array([216.673335, 4.94965072, 0.121094783])
+    ego_fstate = np.array([2.25006479e+02, 1.83408332e-03, 0.00000000e+00])
     ego_len = 5
-    actor1 = np.array([-160.48382643,   25.91440489, 5])
+    actor1 = np.array([-74.80647901,   25., 5])
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
@@ -117,9 +117,9 @@ def test_canSolveByRuleBased_safe():
 
 
 def test_canSolveByRuleBased_unsafe():
-    ego_fstate = np.array([221.79694493,   5.36091871,   0.69665924])
+    ego_fstate = np.array([225.11986475,   0.30318166,   0.59706987])
     ego_len = 5
-    actor1 = np.array([-139.4741962,    26.30561088, 5])
+    actor1 = np.array([-1.97419865e+02,    25., 5])
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
