@@ -293,15 +293,26 @@ class BehavioralPlanningFacade(DmModule):
             lane_frenet = MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id)
             cartesian_state = expected_ego_state.cartesian_state
 
+            # Lambda function for calculating distance between two points
+            distance_between_points = lambda x, y: (((x[C_X] - y[C_X]) ** 2) + ((x[C_Y] - y[C_Y]) ** 2)) ** (1 / 2)
+
             try:
                 lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
 
             except OutOfSegmentBack:
+                self.logger.warning(f"OutOfSegmentBack was raised. Host is "
+                                    f"{distance_between_points(cartesian_state[[C_X, C_Y]], lane_frenet.points[0])}"
+                                    f"from first point in Frenet frame.")
+
                 # TODO: check distance to first point before overwriting cartesian position
                 cartesian_state[[C_X, C_Y]] = lane_frenet.points[0]
                 lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
 
             except OutOfSegmentFront:
+                self.logger.warning(f"OutOfSegmentFront was raised. Host is "
+                                    f"{distance_between_points(cartesian_state[[C_X, C_Y]], lane_frenet.points[-1])}"
+                                    f"from last point in Frenet frame.")
+
                 # TODO: check distance to last point before overwriting cartesian position
                 cartesian_state[[C_X, C_Y]] = lane_frenet.points[-1]
                 lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
