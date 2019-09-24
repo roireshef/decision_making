@@ -24,9 +24,10 @@ class QuinticMotionSymbolicsCreator:
         """
         T = symbols('T')
         t = symbols('t')
-        Tm = symbols('T_m')  # safety margin in seconds
+        T_m = symbols('T_m')  # safety margin in seconds
 
-        s0, v0, a0, sT, vT, aT = symbols('s_0 v_0 a_0 s_T v_T a_T')
+        # v_1 is the velocity of the target at time 0
+        v_0, a_0, dx, v_1, a_T = symbols('v_0 a_0 dx v_1 a_T')
 
         A = Matrix([
             [0, 0, 0, 0, 0, 1],
@@ -37,9 +38,12 @@ class QuinticMotionSymbolicsCreator:
             [20 * T ** 3, 12 * T ** 2, 6 * T, 2, 0, 0]]
         )
 
-        # solve to get solution
-        # this assumes a0=aT==0 (constant velocity)
-        [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([s0, v0, a0, sT + vT * (T - Tm), vT, aT])
+        # v_T is the front car velocity at time T - T_m
+        v_T = v_1 + a_T * (T - T_m)
+        # the s_T is s of the front car at time T minus the distance ego will pass during the next T_m seconds
+        s_T = dx + v_1 * T + 0.5 * a_T * T * T - (v_1 + a_T * (T - 0.5 * T_m)) * T_m
+
+        [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([0, v_0, a_0, s_T, v_T, a_T])
 
         x_t = (c5 * t ** 5 + c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
         v_t = sp.diff(x_t, t).simplify()
@@ -47,26 +51,23 @@ class QuinticMotionSymbolicsCreator:
         j_t = sp.diff(a_t, t).simplify()
 
         J = sp.integrate(j_t ** 2, (t, 0, T)).simplify()
-
-        wJ, wT = symbols('w_J w_T')
-
-        cost = (wJ * J + wT * T).simplify()
-
-        cost = cost.subs(s0, 0).subs(aT, 0).simplify()
+        w_J, w_T = symbols('w_J w_T')
+        cost = (w_J * J + w_T * T).simplify()
+        cost = cost.simplify()
         cost_diff = sp.diff(cost, T).simplify()
 
-        package_v_t = v_t.subs(s0, 0).subs(aT, 0).simplify()
-        package_delta_s_t = (sT + vT * t - x_t.subs(s0, 0).subs(aT, 0)).simplify()
+        package_v_t = v_t.subs(a_T, 0).simplify()
+        package_delta_s_t = (s_T + v_T * t - x_t.subs(a_T, 0)).simplify()
         package_distance_from_target_deriv = sp.diff(package_delta_s_t, t).simplify()
         package_a_t = sp.diff(package_v_t, t).simplify()
         package_j_t = sp.diff(package_a_t, t).simplify()
 
-        cost_desmos = cost.subs(a0, 0).simplify()
-        cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
-        delta_s_t_desmos = package_delta_s_t.subs(a0, 0).simplify()
-        v_t_desmos = package_v_t.subs(a0, 0).simplify()
-        a_t_desmos = package_a_t.subs(a0, 0).simplify()
-        j_t_desmos = package_j_t.subs(a0, 0).simplify()
+        cost_desmos = cost.subs(a_0, 0).simplify()
+        cost_diff_desmos = cost_diff.subs(a_0, 0).simplify()
+        delta_s_t_desmos = package_delta_s_t.subs(a_0, 0).simplify()
+        v_t_desmos = package_v_t.subs(a_0, 0).simplify()
+        a_t_desmos = package_a_t.subs(a_0, 0).simplify()
+        j_t_desmos = package_j_t.subs(a_0, 0).simplify()
 
         return package_v_t, package_delta_s_t, package_distance_from_target_deriv, package_a_t, package_j_t,\
                cost_desmos, cost_diff_desmos, delta_s_t_desmos, v_t_desmos, a_t_desmos, j_t_desmos
