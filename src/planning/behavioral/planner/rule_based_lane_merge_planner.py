@@ -15,7 +15,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 
-WORST_CASE_FRONT_CAR_DECEL = 3  # [m/sec^2]
+WORST_CASE_FRONT_CAR_DECEL = 2  # [m/sec^2]
 WORST_CASE_BACK_CAR_ACCEL = 1  # [m/sec^2]
 
 
@@ -219,7 +219,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             actors_s, actors_v, margins, target_v, target_t, target_s,
             params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
             params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel,
-            params.max_velocity + 1)  # enable back actor to exceed max_vel to remain consistent with control errors
+            params.max_velocity + 2)  # enable back actor to exceed max_vel to remain consistent with control errors
 
         # if overflow_actions.any():
         #     times = np.arange(0, np.max(specs_t[overflow_actions]) + EPS, TRAJECTORY_TIME_RESOLUTION)
