@@ -23,7 +23,7 @@ class ScenarioParams:
     def __init__(self, worst_case_back_actor_accel: float = WORST_CASE_BACK_CAR_ACCEL,
                  worst_case_front_actor_decel: float = WORST_CASE_FRONT_CAR_DECEL,
                  ego_reaction_time: float = SAFETY_HEADWAY, back_actor_reaction_time: float = SAFETY_HEADWAY,
-                 front_rss_decel: float = -LON_ACC_LIMITS[LIMIT_MIN], back_rss_decel: float = 5.5,
+                 front_rss_decel: float = -LON_ACC_LIMITS[LIMIT_MIN], back_rss_decel: float = 5.0,
                  max_velocity: float = 25):
         """
         :param worst_case_back_actor_accel: worst case braking deceleration of front actor prior the merge
