@@ -1,21 +1,24 @@
 from collections import defaultdict
-
-import numpy as np
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
+import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.exceptions import MappingException
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
+from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
+    RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound, NavigationPlanTooShort
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
+    MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
+    FrenetSubSegment
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.messages.scene_static_enums import LaneOverlapType, NominalPathPoint
+from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.utils.math_utils import Math
 
 
@@ -25,15 +28,17 @@ class DynamicObjectWithRoadSemantics:
     its frenet state.
     """
 
-    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float, relative_lane: Optional[RelativeLane]):
+    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float,
+                 relative_lanes: Optional[List[RelativeLane]] = None):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
-        :param relative_lane: relative lane w.r.t. ego; None if the object is far laterally (not on adjacent lane)
+        :param relative_lanes: list of relative lanes w.r.t. ego; None if the object is far laterally (not on adjacent lane)
+                               usually just one, but can be multiple in the case of a merge
         """
         self.dynamic_object = dynamic_object
         self.longitudinal_distance = longitudinal_distance
-        self.relative_lane = relative_lane
+        self.relative_lanes = relative_lanes
 
 
 # Define semantic cell
@@ -80,6 +85,10 @@ class BehavioralGridState:
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
 
+        # TODO: Make sure to account for all relevant actors on all upstream lanes. For example, there may be an actor outside of an
+        #  upstream merge area that is moving quickly. If we predict that this actor will come close to the host, we have to consider
+        #  it as well.
+
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
             sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
@@ -87,30 +96,38 @@ class BehavioralGridState:
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
+
+        BehavioralGridState._log_grid_data(multi_object_grid, state.ego_state.timestamp_in_sec, logger)
+
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
-    def _project_actors_inside_intersection(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
+    def _create_projected_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
         """
-        Takes all the dynamic objects that are on intersections, and adds projected objects that are
-        located on the overlapping lanes.
-        An 'overloaded' dynamic object looks like this:
+        Creates projected, "ghost" objects related to actual dynamic objects
 
-        map_states of projected objects should have the following:
-            obj_id: the negative id of the original dynamic object id
+        This function finds the dynamic objects that are in an area where it is desirable to create "ghost" objects in other
+        lanes and creates those objects. Projected objects have the following form:
+            obj_id: same as original dynamic object
             timestamp: same as original dynamic object
             cartesian_state: same as original dynamic object
-            map_state:  (lane id as the overlapping lane), lane_fstate as None for lazy initialization)
+            map_state:
+                lane_fstate: original dynamic object's fstate in the overlapping lane
+                lane_id: overlapping lane ID
             size: same as original dynamic object
             confidence: same as original dynamic object
-        :param dynamic_objects: list of DynamicObject
-        :return: list of all overloaded dynamic objects including both the original and  projected objects
+            off_map: same as original dynamic object
+            is_ghost: True
+
+        :param dynamic_objects: list of dynamic objects
+        :return: list of projected dynamic objects
         """
         projected_dynamic_objects = []
+
         for dynamic_object in dynamic_objects:
             map_state = dynamic_object.map_state
-            if map_state.is_on_road():
-                obj_lane_id = map_state.lane_id
+            obj_lane_id = map_state.lane_id
+            if map_state.is_on_road() and BehavioralGridState.is_object_in_lane(dynamic_object, obj_lane_id):
                 obj_lane = MapUtils.get_lane(obj_lane_id)
                 # Only project if actor has overlapping lane
                 if obj_lane.e_Cnt_lane_overlap_count > 0:
@@ -119,40 +136,22 @@ class BehavioralGridState:
                     # TODO: add logic to also project actor outside the intersection  with their bounding box inside
                     overlapping_lane_ids = [lane_overlap.e_i_other_lane_segment_id for lane_overlap in obj_lane.as_lane_overlaps
                                             if (lane_overlap.a_l_source_lane_overlap_stations[0] <= map_state.lane_fstate[FS_SX]
-                                                <= lane_overlap.a_l_source_lane_overlap_stations[1] and
-                                                lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
-                                                                                       LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
+                                                <= lane_overlap.a_l_source_lane_overlap_stations[1])
+                                               and (lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
+                                                                                           LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
-                        # project only if the vehicle is in the overlapping lane
-                        if BehavioralGridState.is_object_in_lane(dynamic_object, lane_id):
-                            projected_dynamic_objects.append(DynamicObject(obj_id=-dynamic_object.obj_id,
-                                                                           timestamp=dynamic_object.timestamp,
-                                                                           cartesian_state=dynamic_object.cartesian_state,
-                                                                           map_state=MapState(None, lane_id),
-                                                                           size=dynamic_object.size,
-                                                                           confidence=dynamic_object.confidence,
-                                                                           off_map=False))
+                        # TODO: what to do if lane_fstate can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
+                        lane_fstate = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
 
-        return dynamic_objects + projected_dynamic_objects
-
-    @staticmethod
-    def _lazy_set_map_states(dynamic_objects: List[DynamicObject],
-                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                             rel_lanes_per_obj: np.array):
-        """
-        Takes the relevant map_states and calculates the fstate ( map_states with None fstate and not None rel_lanes_per_obj)
-        TODO: Fix double Conversion
-        :param object_map_states:
-        :param extended_lane_frames:
-        :param rel_lanes_per_obj:
-        :return:
-        """
-        for i, dynamic_object in enumerate(dynamic_objects):
-            if dynamic_object.map_state.lane_fstate is None:
-                obj_fstate_on_GFF = extended_lane_frames[rel_lanes_per_obj[i]]. \
-                    cstate_to_fstate(dynamic_object.cartesian_state)
-                dynamic_object.map_state.lane_fstate = extended_lane_frames[rel_lanes_per_obj[i]]. \
-                    convert_to_segment_state(obj_fstate_on_GFF)[1]
+                        projected_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id,
+                                                                       timestamp=dynamic_object.timestamp,
+                                                                       cartesian_state=dynamic_object.cartesian_state,
+                                                                       map_state=MapState(lane_fstate, lane_id),
+                                                                       size=dynamic_object.size,
+                                                                       confidence=dynamic_object.confidence,
+                                                                       off_map=dynamic_object.off_map,
+                                                                       is_ghost=True))
+        return projected_dynamic_objects
 
     @staticmethod
     @prof.ProfileFunction()
@@ -170,44 +169,59 @@ class BehavioralGridState:
                 corresponding extended_lane_frame
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
-
         # filter out off map dynamic objects
         on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
 
-        # overload dynamic objects with projected actors which belong to the intersection
-        overloaded_dynamic_objects = BehavioralGridState._project_actors_inside_intersection(on_map_dynamic_objects)
+        # Create projected objects as needed
+        projected_dynamic_objects = BehavioralGridState._create_projected_objects(on_map_dynamic_objects)
 
-        # calculate objects' segment map_states
-        objects_segment_ids = np.array([obj.map_state.lane_id for obj in overloaded_dynamic_objects])
+        # Filter irrelevant objects
+        relevant_objects, relevant_objects_relative_lanes = BehavioralGridState._filter_irrelevant_dynamic_objects(
+            on_map_dynamic_objects + projected_dynamic_objects, extended_lane_frames)
 
-        # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj = np.full(len(overloaded_dynamic_objects), None)
-        # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
-        for rel_lane, extended_lane_frame in extended_lane_frames.items():
-            # find all dynamic objects that belong to the current unified frame
-            relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
-            rel_lanes_per_obj[relevant_objects] = rel_lane
+        relevant_objects_map_states = [obj.map_state for obj in relevant_objects]
 
-        # filter relevant objects
-        # the list comprehension works as such:  [(rel_lane1, obj1), (rel_lane2, obj2)] -> (rel_lane1, rel_lane2), (obj1, obj2)
-        # -> [rel_lane1, rel_lane2], [obj1, obj2]
-        relevant_dynamic_objects_lane, relevant_dynamic_objects = \
-            [list(l) for l in zip(*[(rel_lane, obj) for rel_lane, obj in \
-                                    zip(rel_lanes_per_obj, overloaded_dynamic_objects) if rel_lane is not None])] \
-            or ([], [])
-
-        # setting the missing map_states to pseudo-objects
-        BehavioralGridState._lazy_set_map_states(relevant_dynamic_objects, extended_lane_frames,
-                                                 relevant_dynamic_objects_lane)
-
-        object_map_states = [obj.map_state for obj in relevant_dynamic_objects]
-
-        # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
-            extended_lane_frames, projected_ego_fstates, object_map_states)
+            extended_lane_frames, projected_ego_fstates, relevant_objects_map_states)
 
-        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], relevant_dynamic_objects_lane[i])
-                for i, obj in enumerate(relevant_dynamic_objects)]
+        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], relevant_objects_relative_lanes[i])
+                for i, obj in enumerate(relevant_objects)]
+
+    @staticmethod
+    def _filter_irrelevant_dynamic_objects(dynamic_objects: List[DynamicObject],
+                                           extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> \
+            Tuple[List[DynamicObject], List[List[RelativeLane]]]:
+        """
+        Filters dynamic objects that are on a lane segment that is not contained in any GFF
+
+        :param dynamic_objects: list of dynamic objects
+        :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
+        :return: two related lists; the first list contains the relevant dynamic objects, and the other contains lists of
+                 relative lanes for each relevant dynamic object
+        """
+        # Get lane segment ID for each dynamic object
+        objects_segment_ids = np.array([obj.map_state.lane_id for obj in dynamic_objects])
+
+        # Create boolean matrix that is true when a vehicle is in a relative lane
+        objects_lane_matrix = np.array([], dtype=np.bool).reshape(0, len(objects_segment_ids))
+
+        # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
+        for extended_lane_frame in extended_lane_frames.values():
+            # find all dynamic objects that belong to the current unified frame
+            # add as row to matrix
+            relevant_object_mask = extended_lane_frame.has_segment_ids(objects_segment_ids)
+            objects_lane_matrix = np.vstack([objects_lane_matrix, relevant_object_mask])
+
+        # Boolean array that is True when an object is in any relative lane
+        is_relevant_object = objects_lane_matrix.any(axis=0)
+
+        # Collect relevant object data
+        relevant_objects = list(np.array(dynamic_objects)[is_relevant_object])
+        relevant_objects_lane_matrix = objects_lane_matrix[:, is_relevant_object]
+        relative_lane_keys = np.array(list(extended_lane_frames.keys()))
+        relevant_objects_relative_lanes = [list(relative_lane_keys[relevant_objects_lane_matrix[:, i]]) for i in range(len(relevant_objects))]
+
+        return relevant_objects, relevant_objects_relative_lanes
 
     def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
@@ -260,42 +274,285 @@ class BehavioralGridState:
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
-        contain multiple original lane segments.
-        :param state:
-        :param route_plan:
-        :param logger:
+        contain multiple original lane segments. Augmented frenet frames may be created if there are lane splits ahead.
+        :param state: the current world state
+        :param route_plan: the route plan which contains lane costs
+        :param logger: Logger object to log warning messages
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
         ego_lane_id = state.ego_state.map_state.lane_id
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
-        # create generalized_frames for the nearest lanes
-        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
 
-        # TODO: remove this hack when all unit-tests have enough margin backward
-        # if there is no long enough road behind ego, set ref_route_start = 0
-        ref_route_start = suggested_ref_route_start \
-            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
-            else 0
+        # Augmented GFFS can be created only if the lanes don't currently exist
+        can_augment = [rel_lane for rel_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                       if rel_lane not in closest_lanes_dict.keys()]
 
-        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
-
-        # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}
-        for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
-            try:
-                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
-                    lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                    lookahead_dist=frame_length, route_plan=route_plan)
-            except MappingException as e:
-                # TODO: when lane split activity will be resolved, GFF creation failure should not be ignored
-                error_message = "Trying to fetch data for %s, but data is unavailable. %s" % (rel_lane, str(e))
-                if rel_lane != RelativeLane.SAME_LANE:
-                    logger.warning(error_message)
-                else:  # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
-                    raise AssertionError(error_message)
+
+        # Create generalized Frenet frame for the host's lane
+        try:
+            lane_gff_dict = BehavioralGridState._get_generalized_frenet_frames(
+                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=state.ego_state.map_state.lane_fstate[FS_SX],
+                route_plan=route_plan, can_augment=can_augment)
+        except MappingException as e:
+            # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
+            raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
+
+        # set the SAME_LANE first since it cannot be augmented
+        extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
+
+        host_cartesian_point = np.array([state.ego_state.cartesian_state[C_X],
+                                         state.ego_state.cartesian_state[C_Y]])
+
+        # If an adjacent lane exists, create a generalized Frenet frame for it
+        for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
+            # can_augment is True only if the adjacent lane does not exist. Therefore, the only thing that can be done is to
+            # create an augmented GFF
+            if relative_lane in can_augment:
+                # Even though a lane augmentation is possible, it may not exist
+                # (e.g. right lane doesn't exist allowing for an augmented GFF, but there are no right splits ahead)
+                # Need to check if the augmented GFF was actually created
+                if relative_lane in lane_gff_dict:
+                    extended_lane_frames[relative_lane] = lane_gff_dict[relative_lane]
+            else:
+                try:
+                    # Find station in the relative lane that is adjacent to the host's station in the lane it is occupying
+                    adjacent_lane_frenet_frame = MapUtils.get_lane_frenet_frame(closest_lanes_dict[relative_lane])
+                    host_station_in_adjacent_lane = adjacent_lane_frenet_frame.cpoint_to_fpoint(host_cartesian_point)[FP_SX]
+
+                except OutOfSegmentBack:
+                    # The host's position on the adjacent lane could not be found because the frame is ahead of the host. This may happen
+                    # as the host is transitioning between road segments. The host should be close to the beginning of the road segment
+                    # though so the initial station is used here.
+                    host_station_in_adjacent_lane = 0.0
+
+                    # TODO: Should we check the actual distance from the host to the first point on the frame and do something if the
+                    #  distance is too large?
+
+                except OutOfSegmentFront:
+                    # The host's position on the adjacent lane could not be found because the frame is behind the host. This may happen
+                    # as the host is transitioning between road segments. The host should be close to the end of the road segment
+                    # though so the max station is used here.
+                    host_station_in_adjacent_lane = adjacent_lane_frenet_frame.s_max
+
+                    # TODO: Should we check the actual distance from the host to the last point on the frame and do something if the
+                    #  distance is too large?
+
+                # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
+                try:
+                    lane_gffs = BehavioralGridState._get_generalized_frenet_frames(
+                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan)
+
+                    # Note that the RelativeLane keys that are in the returned dictionary from _get_lookahead_frenet_frames are
+                    # with respect to the lane ID provided to the function. Therefore, since the lane ID for the left/right lane is
+                    # provided to the function above, the RelativeLane.SAME_LANE key in the returned dictionary actually refers to the
+                    # left/right lane. That makes the use of this key below correct.
+                    extended_lane_frames[relative_lane] = lane_gffs[RelativeLane.SAME_LANE]
+                except MappingException as e:
+                    logger.warning("Trying to fetch data for %s, but data is unavailable. %s" % (relative_lane, str(e)))
 
         return extended_lane_frames
+
+    @staticmethod
+    @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound, StraightConnectionNotFound, NavigationPlanTooShort)
+    @prof.ProfileFunction()
+    def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan,
+                                       can_augment: Optional[List[RelativeLane]] = None) -> \
+            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
+        """
+        Create Generalized Frenet frame(s) along lane center, starting from given lane and station. If augmented lanes can be created, they will
+        be returned in the dictionary under the RelativeLane.LEFT_LANE/RIGHT_LANE keys.
+        :param lane_id: starting lane_id
+        :param station: starting station [m]
+        :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param can_augment: List of RelativeLane. All relative lanes inside this can be augmented.
+        :return: Dict of generalized Frenet frames with the relative lane as keys
+                 The relative lane key is with respect to the provided lane_id. The dictionary will always contain the GFF for the provided
+                 lane_id, and the RelativeLane.SAME_LANE key can be used to access it. If possible, augmented GFFs will also be returned,
+                 and they can be accessed with the respective relative lane key.
+        """
+        if station < MAX_BACKWARD_HORIZON:
+            # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane, and the
+            # upstream lane subsegments need to be found. The starting station for the forward lookahead should be the beginning of the
+            # current lane, and the forward lookahead distance should include the maximum forward horizon ahead of the given station and
+            # the backward distance to the beginning of the lane (i.e. the station).
+            starting_station = 0.0
+            lookahead_distance = MAX_FORWARD_HORIZON + station
+            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON)
+        else:
+            # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
+            # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
+            # distance should include the maximum forward and backward horizons ahead of and behind the given station, respectively. In
+            # other words, if we're at station = 150 m on a lane and the maximum forward and backward horizons are 400 m and 100 m,
+            # respectively, then starting station = 50 m and forward lookahead distance = 400 + 100 = 500 m. This is the case where the GFF
+            # does not include any upstream lanes.
+            starting_station = station - MAX_BACKWARD_HORIZON
+            lookahead_distance = MAX_FORWARD_HORIZON + MAX_BACKWARD_HORIZON
+            upstream_lane_subsegments = []
+
+        lane_subsegments_dict = BehavioralGridState._get_downstream_lane_subsegments(initial_lane_id=lane_id, initial_s=starting_station,
+                                                                                     lookahead_distance=lookahead_distance, route_plan=route_plan,
+                                                                                     can_augment=can_augment)
+
+        gffs_dict = {}
+
+        # Build GFFs from the Frenet Subsegments for the lane/augmented lanes that were created.
+        for rel_lane in lane_subsegments_dict:
+            lane_subsegments, is_partial, is_augmented, _ = lane_subsegments_dict[rel_lane]
+            gff_type = GFFType.get(is_partial, is_augmented)
+
+            concatenated_lane_subsegments = upstream_lane_subsegments + lane_subsegments
+
+            # Create Frenet frame for each sub segment
+            frenet_frames = [MapUtils.get_lane_frenet_frame(lane_subsegment.e_i_SegmentID)
+                             for lane_subsegment in concatenated_lane_subsegments]
+
+            # Create GFF
+            gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, concatenated_lane_subsegments, gff_type)
+
+        return gffs_dict
+
+    @staticmethod
+    @raises(UpstreamLaneNotFound, LaneNotFound)
+    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float) -> List[FrenetSubSegment]:
+        """
+        Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
+        :param initial_lane_id: ID of lane to start from
+        :param initial_station: Station on given lane
+        :param backward_distance: Distance [m] to look backwards
+        :return: List of upstream lane subsegments
+        """
+        lane_id = initial_lane_id
+        upstream_distance = initial_station
+        upstream_lane_subsegments = []
+
+        while upstream_distance < backward_distance:
+            # First, choose an upstream lane
+            upstream_lane_ids = MapUtils.get_upstream_lane_ids(lane_id)
+            num_upstream_lanes = len(upstream_lane_ids)
+
+            if num_upstream_lanes == 0:
+                raise UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id))
+            elif num_upstream_lanes == 1:
+                chosen_upstream_lane_id = upstream_lane_ids[0]
+            elif num_upstream_lanes > 1:
+                # If there are multiple upstream lanes and one of those lanes has a STRAIGHT_CONNECTION maneuver type, choose that lane to
+                # follow. Otherwise, default to choosing the first upstream lane in the list.
+                chosen_upstream_lane_id = upstream_lane_ids[0]
+                upstream_lane_maneuver_types = MapUtils.get_upstream_lane_maneuver_types(lane_id)
+
+                for upstream_lane_id in upstream_lane_ids:
+                    if upstream_lane_maneuver_types[upstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION:
+                        chosen_upstream_lane_id = upstream_lane_id
+                        break
+
+            # Second, determine the start and end stations for the subsegment
+            end_station = MapUtils.get_lane(chosen_upstream_lane_id).e_l_length
+            upstream_distance += end_station
+            start_station = max(0.0, upstream_distance - backward_distance)
+
+            # Third, create and append the upstream lane subsegment
+            upstream_lane_subsegments.append(FrenetSubSegment(chosen_upstream_lane_id, start_station, end_station))
+
+            # Last, set lane for next loop
+            lane_id = chosen_upstream_lane_id
+
+        # Before returning, reverse the order of the subsegments so that they are in the order that they would have been traveled on. In
+        # other words, the first subsegment should be the furthest from the host, and the last subsegment should be the closest to the host.
+        upstream_lane_subsegments.reverse()
+
+        return upstream_lane_subsegments
+
+    @staticmethod
+    @raises(StraightConnectionNotFound, RoadNotFound, NavigationPlanTooShort, LaneNotFound)
+    def _get_downstream_lane_subsegments(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+                                         route_plan: RoutePlan, can_augment: Optional[List[RelativeLane]] = None) -> \
+            Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
+        """
+        Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
+        further according to costs of each FrenetFrame, and finally return a configuration of lane-subsegments.
+        If <desired_lon> is more than the distance to end of the plan, a LongitudeOutOfRoad exception is thrown.
+        :param initial_lane_id: the initial lane_id (the vehicle is current on)
+        :param initial_s: initial longitude along <initial_lane_id>
+        :param lookahead_distance: the desired distance of lookahead in [m].
+        :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param can_augment: List of RelativeLane. All relative lanes inside this can be augmented.
+        :return: Dictionary with potential keys: [RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                 These keys represent the non-augmented, left-augmented, and right-augmented gffs that can be created.
+                 The key-value pair for the non-augmented lane (i.e. RelativeLane.SAME_LANE) will always exist, and it refers
+                 to the provided initial_lane_id. The left-augmented and right-augmented keys (i.e. RelativeLane.LEFT_LANE
+                 and RelativeLane.RIGHT_LANE) will only exist when an augmented GFF can be created. The values are tuples
+                 that contain a list of FrenetSubSegments that will be used to create the GFF and two flags that denote the
+                 GFF type. The first flag denotes a partial GFF and the second flag denotes an augmented GFF.
+                 Lastly, the total length of the GFF is returned
+        """
+        # initialize default arguments
+        can_augment = can_augment or []
+
+        lane_subsegments_dict = {}
+
+        lane_subsegments, cumulative_distance = MapUtils._advance_on_plan(
+            initial_lane_id, initial_s, lookahead_distance, route_plan)
+
+        current_lane_id = lane_subsegments[-1].e_i_SegmentID
+        valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
+
+        # traversal reached the end of desired horizon
+        if cumulative_distance >= lookahead_distance:
+            lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, False, False, cumulative_distance)
+            return lane_subsegments_dict
+
+        # a dead-end reached (no downstream lanes at all)
+        if len(valid_downstream_lanes) == 0:
+            lane_subsegments_dict[RelativeLane.SAME_LANE] = (lane_subsegments, True, False, cumulative_distance)
+            return lane_subsegments_dict
+
+        augmented = []  # store all relative lanes that are actually augmented in this code block
+        # Deal with "splitting" direction (create augmented lane) in the split #
+        for rel_lane, maneuver_type in [(RelativeLane.RIGHT_LANE, ManeuverType.RIGHT_SPLIT),
+                                        (RelativeLane.LEFT_LANE, ManeuverType.LEFT_SPLIT)]:
+            # Check if augmented lanes can be created
+            if (rel_lane in can_augment) and maneuver_type in valid_downstream_lanes:
+                # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
+                augmented_lane_dict = BehavioralGridState._get_downstream_lane_subsegments(
+                    initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
+                    lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan)
+
+                # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
+                # Read the return value description above for more information.
+                augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = \
+                augmented_lane_dict[RelativeLane.SAME_LANE]
+
+                # Assign information to dictionary accordingly
+                lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
+                                                   True, cumulative_distance + augmented_cumulative_distance)
+                augmented.append(rel_lane)
+
+        # remove the already augmented lanes from options to augment after taking the straight connection
+        can_still_augment = [rel_lane for rel_lane in can_augment if rel_lane not in augmented]
+
+        # Deal with "straight" direction in the split #
+        if ManeuverType.STRAIGHT_CONNECTION in valid_downstream_lanes:
+            # recursive call to construct the "keep straight" sequence of lanes (GFF)
+            straight_lane_dict = BehavioralGridState._get_downstream_lane_subsegments(
+                initial_lane_id=valid_downstream_lanes[ManeuverType.STRAIGHT_CONNECTION], initial_s=0.0,
+                lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan,
+                can_augment=can_still_augment)
+
+            for rel_lane, _ in straight_lane_dict.items():
+                # Get returned information.
+                straight_lane_subsegments, is_straight_partial, is_straight_augmented, straight_cumulative_distance = \
+                straight_lane_dict[rel_lane]
+
+                # Concatenate and assign information to dictionary accordingly
+                lane_subsegments_dict[rel_lane] = (lane_subsegments + straight_lane_subsegments, is_straight_partial,
+                                                   is_straight_augmented,
+                                                   cumulative_distance + straight_cumulative_distance)
+        else:
+            raise StraightConnectionNotFound("Straight downstream connection not found for lane=%d", current_lane_id)
+
+        return lane_subsegments_dict
 
     @staticmethod
     @prof.ProfileFunction()
@@ -317,11 +574,12 @@ class BehavioralGridState:
         # We consider only object on the adjacent lanes
         for obj in objects:
             # ignore vehicles out of pre-defined range and vehicles not in adjacent lanes
-            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and obj.relative_lane is not None:
+            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and obj.relative_lanes is not None:
                 # compute longitudinal projection on the grid
                 object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
-
-                grid[(obj.relative_lane, object_relative_long)].append(obj)
+                # loop through all the rel_lanes in the case of an obj belonging to more than one (splits/merges)
+                for rel_lane in obj.relative_lanes:
+                    grid[(rel_lane, object_relative_long)].append(obj)
 
         return grid
 
@@ -347,6 +605,27 @@ class BehavioralGridState:
             return RelativeLongitudinalPosition.REAR
         else:
             return RelativeLongitudinalPosition.PARALLEL
+
+    @staticmethod
+    def _log_grid_data(multi_object_grid: Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]],
+                       timestamp_in_sec: float, logger: Logger):
+        """
+        Write to log front object ID, its velocity and the distance from ego
+        :param multi_object_grid: dictionary of the behavioral grid: from cell to objects' list
+        :param timestamp_in_sec: current state time
+        :param logger:
+        """
+        if logger is None:
+            return
+        front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        front_obj = None
+        front_obj_dist = 0  # write zeros if there is no front object
+
+        if front_cell in multi_object_grid and len(multi_object_grid[front_cell]) > 0:
+            front_obj = multi_object_grid[front_cell][0].dynamic_object
+            front_obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
+        logger.debug("%s: time %f, dist_from_front_object %f, front_object: %s" %
+                     (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
 
     @staticmethod
     def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int) -> bool:

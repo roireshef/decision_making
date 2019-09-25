@@ -275,7 +275,7 @@ def ego_samplable_trajectory(static_cartesian_state: CartesianExtendedState) -> 
 
 
 @pytest.fixture(scope='function')
-def original_state_with_sorrounding_objects(scene_static_testable):
+def original_state_with_surrounding_objects(scene_static_testable):
     SceneStaticModel.get_instance().set_scene_static(scene_static_testable)
 
     # Stub of occupancy grid

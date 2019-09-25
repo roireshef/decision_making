@@ -5,9 +5,9 @@ import numpy as np
 from decision_making.paths import Paths
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, EPS
 from decision_making.src.messages.scene_common_messages import Timestamp
+from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y
 from decision_making.src.state.state import EgoState
-
 
 def plot_dynamics(log_file_path: str):
     """
@@ -16,16 +16,15 @@ def plot_dynamics(log_file_path: str):
     :return: a showable matplotlib figure
     """
     f = open(log_file_path, 'r')
+    ego_hypothesis_num = []
+    multiple_ego_hypotheses_timestamp = []
     ego_cv = []
     ego_ca = []
     ego_curv = []
     ego_sa = []
     ego_sv = []
     ego_sx = []
-    other_cv = []
-    other_sv = []
-    other_sx = []
-    euclid_dist = []
+    other_vels = []
     timestamp_in_sec = []
 
     spec_t = []
@@ -33,7 +32,8 @@ def plot_dynamics(log_file_path: str):
     spec_s = []
     spec_time = []
 
-    recipe_desc = []
+    recipe_action = []
+    recipe_aggresiveness = []
     recipe_time = []
 
     cnt = 0
@@ -50,48 +50,48 @@ def plot_dynamics(log_file_path: str):
     trajectory_time = []
     no_valid_traj_timestamps = []
     no_action_in_bp_timestamps = []
+    other_ids = []
+    other_times = []
+    other_dists = []
 
     while True:
         text = f.readline()
         if not text:
             break
 
-        if '_scene_dynamic_callback' in text:
-            split_str = text.split('Publishing State ')
-            if len(split_str) < 2:
-                cnt += 1
-                continue
-            state_str = split_str[1]
-            try:
-                state_dict = ast.literal_eval(state_str)
-            except ValueError as e:
-                cnt += 1
-                continue
+        if 'Received state' in text:
+            state_str = text.split('Received state: ')[1]
+            state_dict = ast.literal_eval(state_str)
             ego_cv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_V])
             ego_ca.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_A])
             ego_curv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_K])
-            ego_sa.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SA])
-            ego_sv.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SV])
-            ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
+            if state_dict['ego_state']['_cached_map_state'] is not None:
+                ego_sa.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SA])
+                ego_sv.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SV])
+                ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
+            else:
+                ego_sa.append(0)
+                ego_sv.append(0)
+                ego_sx.append(0)
             timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
 
-            dyn_obj_list = state_dict['dynamic_objects']['iterable']
-            if len(dyn_obj_list) == 0:
-                other_cv.append(0.0)
-                other_sv.append(0.0)
-                other_sx.append(0.0)
-                euclid_dist.append(0.0)
-            else:
-                other_cv.append(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_V])
-                if dyn_obj_list[0]['_cached_map_state'] is not None:
-                    other_sv.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SV])
-                    other_sx.append(dyn_obj_list[0]['_cached_map_state']['lane_fstate']['array'][FS_SX])
-                else:
-                    other_sv.append(0)
-                    other_sx.append(0)
-                ego_cx_cy = np.array(state_dict['ego_state']['_cached_cartesian_state']['array'][C_X: C_Y + 1])
-                other_cx_cy = np.array(dyn_obj_list[0]['_cached_cartesian_state']['array'][C_X: C_Y + 1])
-                euclid_dist.append(np.linalg.norm(ego_cx_cy - other_cx_cy))
+        if 'BehavioralGrid: time' in text:
+            behavioral_grid_str = text.split('BehavioralGrid: time')[1]
+            time = float(behavioral_grid_str.split(', ')[0])
+            obj_dist = float(behavioral_grid_str.split('dist_from_front_object ')[1].split(',')[0])
+            obj_str = behavioral_grid_str.split('front_object: ')[1]
+            obj_dict = ast.literal_eval(obj_str)
+            obj_id = obj_dict['obj_id'] if obj_dict is not None else 0
+            obj_vel = obj_dict['_cached_cartesian_state']['array'][C_V] if obj_dict is not None else 0
+            other_times.append(time)
+            other_ids.append(obj_id)
+            other_vels.append(obj_vel)
+            other_dists.append(obj_dist)
+
+        if 'Scene Dynamic host localization published' in text:
+            ego_hypothesis_num.append(int(text.split('Number of Hypotheses: ')[1].split(', Hypotheses')[0]))
+            if ego_hypothesis_num[-1] > 1:
+                multiple_ego_hypotheses_timestamp.append(float(text.split('at timestamp: ')[1].split(', Number of Hypotheses:')[0]))
 
         if 'Chosen behavioral action spec' in text:
             spec_str = text.split('Chosen behavioral action spec ')[1]
@@ -113,7 +113,11 @@ def plot_dynamics(log_file_path: str):
 
             time = float(recipe_str.split(' (ego_timestamp: ')[1][:-2])
 
-            recipe_desc.append('%s\n%s' % (recipe_dict['action_type'], recipe_dict['aggressiveness']))
+            action_type = int(recipe_dict['action_type'].replace('>', '').split(':')[1])
+            action_type = action_type + 2 if action_type < ActionType.OVERTAKE_VEHICLE.value else action_type + 1  # remove the OVERTAKE - not in use
+            aggressiveness = int(recipe_dict['aggressiveness'].replace('>', '').split(':')[1])
+            recipe_action.append(action_type)
+            recipe_aggresiveness.append(aggressiveness)
 
             recipe_time.append(float(time))
 
@@ -150,40 +154,59 @@ def plot_dynamics(log_file_path: str):
 
     ax1 = plt.subplot(5, 2, 1)
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    other_sx_plot,  = plt.plot(timestamp_in_sec, other_sx)
-    euclid_dist_plot, = plt.plot(timestamp_in_sec, euclid_dist)
+    longitudinal_dist_plot, = plt.plot(other_times, other_dists)
+    multiple_ego_hypotheses = plt.scatter(multiple_ego_hypotheses_timestamp, [100] * len(multiple_ego_hypotheses_timestamp), s=5, c='k')
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
-    plt.legend([ego_sx_plot, other_sx_plot, euclid_dist_plot], ['ego_s', 'other_s', 'euclid_dist'])
+    plt.legend([ego_sx_plot, longitudinal_dist_plot, multiple_ego_hypotheses], ['ego_s', 'longitudinal_dist', 'multiple_ego_hypotheses'])
+    other_times, other_ids, other_dists = np.array(other_times, dtype=float), np.array(other_ids, dtype=int), np.array(other_dists, dtype=float)
+    switch_idx = np.where(other_ids[:-1] - other_ids[1:] != 0)[0] + 1
+    if len(switch_idx) > 0:
+        switch_idx = np.concatenate(([0], switch_idx))
+        plt.scatter(other_times[switch_idx], other_dists[switch_idx], marker='o', c=longitudinal_dist_plot.get_color())
+        for idx in switch_idx:
+            plt.annotate(str(other_ids[idx]), (other_times[idx], other_dists[idx]))
+    plt.ticklabel_format(useOffset=False, style='plain')
+    plt.grid(True)
 
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
-    other_sv_plot,  = plt.plot(timestamp_in_sec, other_sv)
+    other_vel_plot,  = plt.plot(other_times, other_vels, '.-')
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
-    plt.legend([ego_sv_plot, other_sv_plot], ['ego_sv', 'other_sv'])
+    plt.legend([ego_sv_plot, other_vel_plot], ['ego_vel', 'other_vel'])
+    plt.grid(True)
 
     ax3 = plt.subplot(5, 2, 5, sharex=ax1)
     ego_sa_plot,  = plt.plot(timestamp_in_sec, ego_sa)
     plt.xlabel('time[s]')
-    plt.ylabel('acceleration[m]')
+    plt.ylabel('acceleration[m/s^2]')
     plt.legend([ego_sa_plot], ['ego_sa'])
+    plt.grid(True)
 
-    ax4 = plt.subplot(5, 2, 7, sharex=ax1)
-    plt.plot(recipe_time, recipe_desc, 'o--')
+    ax4 = plt.subplot(5, 2, 2, sharex=ax1)
+    plt.plot(recipe_time, recipe_action, '.-', color='g')
+    plt.plot(recipe_time, recipe_aggresiveness, '.-', color='m')
     plt.xlabel('time[s]')
-    plt.ylabel('recipe')
+    plt.ylabel('Chosen Recipe')
+    y_values = [str(aggressiveness).split('.')[1].lower() for aggressiveness in AggressivenessLevel] + \
+               [str(action).split('.')[1].lower() for action in ActionType if action != ActionType.OVERTAKE_VEHICLE]
+    y_axis = np.arange(len(y_values))
+    plt.yticks(y_axis, y_values)
+    plt.axhline(y=2.5, linewidth=1, color='k', linestyle='-')
+    plt.grid(True)
 
-    ax5 = plt.subplot(5, 2, 9, sharex=ax1)
+    ax5 = plt.subplot(5, 2, 4, sharex=ax1)
     spec_t_plot,  = plt.plot(spec_time, spec_t, 'o-')
     spec_v_plot,  = plt.plot(spec_time, spec_v, 'o-')
     bp_no_actions_plot = plt.scatter(no_action_in_bp_timestamps, [1]*len(no_action_in_bp_timestamps), s=5, c='k')
 
     plt.xlabel('time[s]')
-    plt.ylabel('spec_time/spec_velocity')
+    plt.ylabel('Action Horizon\nTarget Velocity')
     plt.legend([spec_t_plot, spec_v_plot, bp_no_actions_plot], ['spec_t [s]', 'spec_v [m/s]', 'no_actions_bp'])
+    plt.grid(True)
 
-    ax6 = plt.subplot(5, 2, 2, sharex=ax1)
+    ax6 = plt.subplot(5, 2, 9, sharex=ax1)
     bp_if_lon,  = plt.plot(bp_if_time, bp_if_lon_err, 'o-.')
     bp_if_lat,  = plt.plot(bp_if_time, bp_if_lat_err, 'o--')
     tp_if_lon,  = plt.plot(tp_if_time, tp_if_lon_err, 'o-.')
@@ -196,36 +219,45 @@ def plot_dynamics(log_file_path: str):
     plt.ylabel('loc/tracking errors')
     plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th],
                ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
+    plt.grid(True)
 
-    ax7 = plt.subplot(5, 2, 4, sharex=ax1)
-    for t, traj in zip(trajectory_time, trajectory):
-        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_X], '-.')
+    ax7 = plt.subplot(5, 2, 7, sharex=ax1)
+    ego_curv_plt, = plt.plot(timestamp_in_sec, ego_curv)
+    plt.legend([ego_curv_plt], ['curvature (cartesian)'])
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (x position)')
+    plt.ylabel('curvature [1/m]')
+    plt.grid(True)
 
     ax8 = plt.subplot(5, 2, 6, sharex=ax1)
     for t, traj in zip(trajectory_time, trajectory):
+        plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_X], '-.')
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_Y], '-.')
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (y position)')
+    plt.ylabel('location (x,y) requests \n(trajectory)')
+    plt.grid(True)
 
     ax9 = plt.subplot(5, 2, 8, sharex=ax1)
+    ego_sv_plt, = plt.plot(timestamp_in_sec, ego_sv, 'k-', alpha=0.2)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_V], '-.')
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (vel.)')
+    plt.ylabel('velocity requests\n(trajectory)')
+    plt.legend([ego_sv_plt], ['actual vel.'])
+    plt.grid(True)
 
     ax10 = plt.subplot(5, 2, 10, sharex=ax1)
+    ego_sa_plt, = plt.plot(timestamp_in_sec, ego_sa, 'k-', alpha=0.2)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_A], '-.')
     no_valid_traj_plot = plt.scatter(no_valid_traj_timestamps, [1]*len(no_valid_traj_timestamps), s=5, c='k')
 
     plt.xlabel('time[s]')
-    plt.ylabel('trajectories (acc.)')
-    plt.legend([no_valid_traj_plot], ['no_val_traj'])
+    plt.ylabel('acceleration requests\n(trajectory)')
+    plt.legend([ego_sa_plt, no_valid_traj_plot], ['actual acc.', 'no_valid_traj_tp'])
+    plt.grid(True)
 
     return f
 

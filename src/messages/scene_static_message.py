@@ -157,8 +157,8 @@ class LaneOverlap(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSLaneOverlap):
-        return cls(pubsubMsg.e_i_other_lane_segment_id, pubsubMsg.a_l_source_lane_overlap_stations[:2],
-                   pubsubMsg.a_l_other_lane_overlap_stations[:2],
+        return cls(pubsubMsg.e_i_other_lane_segment_id, pubsubMsg.a_l_source_lane_overlap_stations,
+                   pubsubMsg.a_l_other_lane_overlap_stations,
                    LaneOverlapType(pubsubMsg.e_e_lane_overlap_type))
 
 class BoundaryPoint(PUBSUB_MSG_IMPL):
@@ -336,10 +336,9 @@ class SceneLaneSegmentGeometry(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSSceneLaneSegmentGeometry):
-
-        a_nominal_path_points = pubsubMsg.a_nominal_path_points[:pubsubMsg.e_Cnt_nominal_path_point_count,
-                                :MAX_NOMINAL_PATH_POINT_FIELDS]
+    def deserialize(cls,
+                    pubsubMsg: TsSYSSceneLaneSegmentGeometry,
+                    a_nominal_path_points: np.ndarray):
 
         as_left_boundary_points = list()
         for i in range(pubsubMsg.e_Cnt_left_boundary_points_count):
@@ -359,7 +358,9 @@ class SceneStaticGeometry(PUBSUB_MSG_IMPL):
     e_Cnt_num_lane_segments = int
     as_scene_lane_segments = List[SceneLaneSegmentGeometry]
 
-    def __init__(self, e_Cnt_num_lane_segments: int, as_scene_lane_segments: List[SceneLaneSegmentGeometry]):
+    def __init__(self, e_Cnt_num_lane_segments: int,
+                 as_scene_lane_segments: List[SceneLaneSegmentGeometry],
+                 a_nominal_path_points: np.ndarray):
         """
         Scene provider's static scene information
         :param e_b_Valid:
@@ -368,11 +369,13 @@ class SceneStaticGeometry(PUBSUB_MSG_IMPL):
         """
         self.e_Cnt_num_lane_segments = e_Cnt_num_lane_segments
         self.as_scene_lane_segments = as_scene_lane_segments
+        self.a_nominal_path_points = a_nominal_path_points
 
     def serialize(self) -> TsSYSSceneStaticGeometry:
         pubsub_msg = TsSYSSceneStaticGeometry()
 
         pubsub_msg.e_Cnt_num_lane_segments = self.e_Cnt_num_lane_segments
+        pubsub_msg.a_nominal_path_points = self.a_nominal_path_points
         for i in range(pubsub_msg.e_Cnt_num_lane_segments):
             pubsub_msg.as_scene_lane_segments[i] = self.as_scene_lane_segments[i].serialize()
 
@@ -383,10 +386,21 @@ class SceneStaticGeometry(PUBSUB_MSG_IMPL):
 
         lane_segments_geometry = list()
         for i in range(pubsubMsg.e_Cnt_num_lane_segments):
-            lane_segments_geometry.append(SceneLaneSegmentGeometry.deserialize(pubsubMsg.as_scene_lane_segments[i]))
+            # Get the current lane relevant nominal path points
+            e_cnt_nominal_path_point_count = pubsubMsg.as_scene_lane_segments[i].e_Cnt_nominal_path_point_count
+            # todo: replace "e_i_nominal_path_point_start_index"] with .e_i_nominal_path_point_start_index once conmmon_data integrated
+
+            e_i_nominal_path_point_start_index = pubsubMsg.as_scene_lane_segments[i]._dic["e_i_nominal_path_point_start_index"]
+            e_i_nominal_path_point_end_index = e_i_nominal_path_point_start_index + e_cnt_nominal_path_point_count
+            curr_lane_a_nominal_path_points = pubsubMsg.a_nominal_path_points[
+                                              e_i_nominal_path_point_start_index:e_i_nominal_path_point_end_index, :
+                                              ]
+            lane_segments_geometry.append(SceneLaneSegmentGeometry.deserialize(pubsubMsg.as_scene_lane_segments[i],
+                                                                               curr_lane_a_nominal_path_points))
 
         return cls(pubsubMsg.e_Cnt_num_lane_segments,
-                   lane_segments_geometry)
+                   lane_segments_geometry,
+                   pubsubMsg.a_nominal_path_points)
 
 class NavigationPlan(PUBSUB_MSG_IMPL):
     e_Cnt_num_road_segments = int
