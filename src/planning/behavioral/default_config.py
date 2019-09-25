@@ -34,7 +34,7 @@ DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone()
                                                              FilterForSLimit(),
                                                              FilterForKinematics(),
                                                              FilterForLaneSpeedLimits(),
-                                                             FilterForSafetyTowardsTargetVehicle(),
+                                                             #FilterForSafetyTowardsTargetVehicle(),
                                                              # TODO The 2 filters below + FilterRoadSignActions make the planner disregard road signs altogether
                                                              # StaticTrafficFlowControlFilter(),
                                                              # BeyondSpecStaticTrafficFlowControlFilter(),

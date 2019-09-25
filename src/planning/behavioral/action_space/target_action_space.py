@@ -6,7 +6,7 @@ from typing import Optional, List, Type
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe
@@ -112,35 +112,33 @@ class TargetActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (
                 self.margin_to_keep_from_targets + behavioral_state.ego_state.size.length / 2 + target_lengths / 2)
 
-        const_vel = a_T > -1
-        a_T[const_vel] = 0
-        T_s = np.zeros_like(ds)
-        stopped = np.zeros_like(ds).astype(bool)
+        a_T[a_T > 0] = 0
         T_m = SPECIFICATION_HEADWAY
-        if not const_vel.all():
-            cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_with_accel(
-                w_T=weights[~const_vel, 2], w_J=weights[~const_vel, 0], a_0=projected_ego_fstates[~const_vel, FS_SA],
-                v_0=projected_ego_fstates[~const_vel, FS_SV], v_1=v_1[~const_vel], a_T=a_T[~const_vel], dx=ds[~const_vel],
-                T_m=T_m)
-            # TODO see https://confluence.gm.com/display/ADS133317/Stop+at+Geo+location+remaining+issues for possibly extending the allowed action time
-            roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-            T_s[~const_vel] = np.fmin.reduce(roots_s, axis=-1)
-            const_vel[~const_vel] = (T_s[~const_vel] <= T_m)
-            stopped[~const_vel] = (T_s[~const_vel] >= v_1[~const_vel] / -a_T[~const_vel])
-            const_vel[stopped] = True
-            ds[stopped] += v_1[stopped] ** 2 / (-2 * a_T[stopped])
-            v_1[stopped] = 0
-            a_T[const_vel] = 0
-            print('===> a=', a_T[0], 'T_s=', T_s, 'v_1=', v_1[0])
+        cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_with_accel(
+            w_T=weights[:, 2], w_J=weights[:, 0], a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV],
+            v_1=v_1, a_T=a_T, dx=ds, T_m=T_m)
+        # TODO see https://confluence.gm.com/display/ADS133317/Stop+at+Geo+location+remaining+issues for possibly extending the allowed action time
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+        T_s = np.fmin.reduce(roots_s, axis=-1)
 
-        if const_vel.any():
+        T_s[:2] = np.nan  # choose only aggressive action
+
+        #const_vel[~const_vel] = (T_s[~const_vel] <= T_m)
+        stopped = np.logical_and(np.abs(a_T * v_1) > EPS, T_s >= np.abs(v_1) / (np.abs(a_T) + EPS))
+        ds[stopped] += v_1[stopped] ** 2 / (2 * np.abs(a_T[stopped]) + EPS)
+        v_1[stopped] = 0
+        a_T[stopped] = 0
+        print('===> time', behavioral_state.ego_state.timestamp_in_sec, 'v0 a0 =', projected_ego_fstates[0, 1:3],
+              'a=', a_T[-1], 'T_s=', T_s, 'v_1=', v_1[-1], 'ds=', ds[-1], 'v_T=', v_1[-1] + a_T[-1] * (T_s[-1] - T_m))
+
+        if stopped.any():
             # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-            cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-                w_T=weights[const_vel, 2], w_J=weights[const_vel, 0], dx=ds[const_vel], a_0=projected_ego_fstates[const_vel, FS_SA],
-                v_0=projected_ego_fstates[const_vel, FS_SV], v_T=v_1[const_vel], T_m=T_m)
+            cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_with_accel(
+                w_T=weights[stopped, 2], w_J=weights[stopped, 0], dx=ds[stopped], a_0=projected_ego_fstates[stopped, FS_SA],
+                v_0=projected_ego_fstates[stopped, FS_SV], v_1=v_1[stopped], a_T=a_T[stopped], T_m=T_m)
             roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-            T_s[const_vel] = np.fmin.reduce(roots_s, axis=-1)
-            print('a=', a_T[0], 'T_s=', T_s)
+            T_s[stopped] = np.fmin.reduce(roots_s, axis=-1)
+            print('time', behavioral_state.ego_state.timestamp_in_sec, 'a=', a_T[0], 'T_s=', T_s)
 
         v_T = np.maximum(0, v_1 + a_T * (T_s - T_m))
 

@@ -4,7 +4,7 @@ from typing import List, Dict
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX, FrenetTrajectories2D, \
-    FrenetStates2D, FrenetState1D, FrenetTrajectories1D
+    FrenetStates2D, FrenetState1D, FrenetTrajectories1D, FS_SA
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, DynamicObject
@@ -108,12 +108,13 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         N = objects_fstates.shape[0]
         if N == 0:
             return []
-        zero_slice = np.zeros([N, T])
 
-        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons
-        v = np.tile(objects_fstates[:, np.newaxis, FS_SV], T)
+        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons + \
+            0.5 * objects_fstates[:, np.newaxis, FS_SA] * horizons * horizons
+        v = objects_fstates[:, np.newaxis, FS_SV] + objects_fstates[:, np.newaxis, FS_SA] * horizons
+        a = np.tile(objects_fstates[:, np.newaxis, FS_SA], T)
 
-        return np.dstack((s, v, zero_slice))
+        return np.dstack((s, v, a))
 
     def predict_2d_frenet_states(self, objects_fstates: FrenetStates2D, horizons: np.ndarray) -> FrenetTrajectories2D:
         """
@@ -126,8 +127,10 @@ class RoadFollowingPredictor(EgoAwarePredictor):
             return []
         zero_slice = np.zeros([N, T])
 
-        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons
-        v = np.tile(objects_fstates[:, np.newaxis, FS_SV], T)
+        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons + \
+            0.5 * objects_fstates[:, np.newaxis, FS_SA] * horizons * horizons
+        v = objects_fstates[:, np.newaxis, FS_SV] + objects_fstates[:, np.newaxis, FS_SA] * horizons
+        a = np.tile(objects_fstates[:, np.newaxis, FS_SA], T)
         d = np.tile(objects_fstates[:, np.newaxis, FS_DX], T)
 
-        return np.dstack((s, v, zero_slice, d, zero_slice, zero_slice))
+        return np.dstack((s, v, a, d, zero_slice, zero_slice))

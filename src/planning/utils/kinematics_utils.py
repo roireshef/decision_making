@@ -3,7 +3,7 @@ from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRI
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX
+    FS_DX, S3, FS_SA
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -167,7 +167,7 @@ class KinematicUtils:
         :return: a tuple of Nx6 matrices (s(t), d(t)) polynomial coefficient arrays
         """
         # zero 4 highest coefficients of poly_s: from x^5 until x^2 (including)
-        poly_s = np.c_[np.zeros((frenet_states.shape[0], S2+1)), frenet_states[:, FS_SV], frenet_states[:, FS_SX]]
+        poly_s = np.c_[np.zeros((frenet_states.shape[0], S3+1)), 0.5 * frenet_states[:, FS_SA], frenet_states[:, FS_SV], frenet_states[:, FS_SX]]
         # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
         poly_d = np.zeros((frenet_states.shape[0], QuinticPoly1D.num_coefs()))
         return poly_s, poly_d
@@ -180,8 +180,10 @@ class KinematicUtils:
         :param ego_to_goal_time: the difference between the goal time and ego time
         :return: ego by goal frenet state
         """
-        return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV],
-                         goal_frenet_state[FS_SV], 0, 0, 0, 0])
+        return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV] -
+                                    0.5 * ego_to_goal_time * ego_to_goal_time * goal_frenet_state[FS_SA],
+                         goal_frenet_state[FS_SV] - ego_to_goal_time * goal_frenet_state[FS_SA],
+                         goal_frenet_state[FS_SA], 0, 0, 0])
 
     @staticmethod
     def calc_poly_coefs(T: np.array, initial_fstates, terminal_fstates, padding_mode: np.array) -> [np.array, np.array]:
