@@ -235,7 +235,7 @@ class BehavioralPlanningFacade(DmModule):
                 # lane end costs are equal to 1, there is no where for the host to go. Set the takeover flag to True and break the loop.
                 lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
 
-                if np.all(lane_end_costs == MAX_COST):
+                if np.all(lane_end_costs >= MAX_COST):
                     takeover_flag = True
                     break
 
