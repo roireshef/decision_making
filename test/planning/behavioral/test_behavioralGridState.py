@@ -4,14 +4,15 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLongitu
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
 from rte.python.logger.AV_logger import AV_Logger
 from unittest.mock import patch
-
-from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.scene_static_message import SceneStatic
-
 import numpy as np
+from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.state.state import DynamicObject, MapState, ObjectSize
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
+from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
     state_with_surrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, \
@@ -24,16 +25,15 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     state_with_lane_split_on_left_and_right_right_first, state_with_object_after_merge, state_with_objects_around_3to1_merge, \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_on_left_and_right_left_first, \
-    route_plan_lane_splits_on_left_and_right_right_first
+    route_plan_lane_splits_on_left_and_right_right_first, state_with_five_objects_on_oval_track, route_plan_for_oval_track_file
 
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3, route_plan_left_lane_ends, route_plan_right_lane_ends, \
     route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
-from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
+
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_left_first, \
-    scene_static_lane_splits_on_left_and_right_right_first, scene_static_short_testable
-from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
+    scene_static_lane_splits_on_left_and_right_right_first, scene_static_oval_with_splits
 
 SMALL_DISTANCE_ERROR = 0.01
 
@@ -57,7 +57,6 @@ def test_createFromState_objectsAroundMerge_objectsCorrectlyAssigned(state_with_
     assert np.array_equal(np.sort(front_same_grid_ids), [1, 2, 3])
     assert np.array_equal(np.sort(front_left_grid_ids), [1, 2, 4])
     assert np.array_equal(np.sort(front_right_grid_ids), [1, 2, 5])
-
 
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_surrounding_objects, route_plan_20_30):
     """
@@ -90,7 +89,6 @@ def test_createFromState_eightObjectsAroundEgo_IgnoreThreeOffMapObjects(state_wi
         assert rel_lane != RelativeLane.RIGHT_LANE
         dynamic_objects_on_grid = behavioral_state.road_occupancy_grid[(rel_lane, rel_lon)]
         assert np.all([not obj.dynamic_object.off_map for obj in dynamic_objects_on_grid])
-
 
 def test_createFromState_leftLaneEnds_partialGffOnLeft(state_with_left_lane_ending, route_plan_left_lane_ends):
     """
@@ -293,6 +291,76 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         target_gff_fstate = behavioral_grid_state.extended_lane_frames[rel_lane].convert_from_segment_state(
             map_state.lane_fstate, map_state.lane_id)
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
+
+
+def test_createProjectedObjects_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+    """
+    Validate that projected object is correctly placed in overlapping lane
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
+
+    # Create other car in lane 21, which overlaps with lane 22
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
+                                                  map_state=MapState(np.array([5,1,0,0,0,0]), 19670532),
+                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
+
+    assert projected_dynamic_objects[0].map_state.lane_id == 19670533
+
+
+def test_createProjectedObjects_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+    """
+    Validate that projected object is correctly placed in overlapping lane
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
+
+    overlaps = {}
+    geo_lane_ids = [lane.e_i_lane_segment_id  for lane in scene_static_oval_with_splits.s_Data.s_SceneStaticGeometry.as_scene_lane_segments]
+    for lane in scene_static_oval_with_splits.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        if lane.e_Cnt_lane_overlap_count > 0 and lane.e_i_lane_segment_id in geo_lane_ids:
+            for overlap in lane.as_lane_overlaps:
+                overlaps[lane.e_i_lane_segment_id] = (
+                overlap.e_i_other_lane_segment_id, overlap.e_e_lane_overlap_type)
+
+    # Create other car in lane 21, which overlaps with lane 22
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
+                                                  map_state=MapState(np.array([5, 1, 0, 0, 0, 0]), 58375684),
+                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
+
+    assert projected_dynamic_objects[0].map_state.lane_id == 58375685
+
+
+def test_createProjectedObjects_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
+    """
+    Validate that no mirror object is created if there is no overlap
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+    # Create other car in lane 21 which does NOT overlap with any other lane
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1,1,0,0,0,0]), 21),
+                                                  size=ObjectSize(1,1,1), confidence=1, off_map=False)
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
+
+    assert not projected_dynamic_objects
+
+
+@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_FORWARD_HORIZON', 20)
+@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_BACKWARD_HORIZON', 0)
+def test_filterIrrelevantDynamicObjects_fiveLanesOnOvalTrackWithObjects_IrrelevantObjectsFiltered(
+        state_with_five_objects_on_oval_track, route_plan_for_oval_track_file):
+    """
+    Validate that irrelevant objects are filtered correctly
+    """
+    extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(
+        state_with_five_objects_on_oval_track, route_plan_for_oval_track_file, None)
+
+    relevant_objects, relevant_objects_relative_lanes = BehavioralGridState._filter_irrelevant_dynamic_objects(
+        state_with_five_objects_on_oval_track.dynamic_objects, extended_lane_frames)
+
+    relevant_object_lane_ids = [dynamic_object.map_state.lane_id for dynamic_object in relevant_objects]
+
+    assert relevant_object_lane_ids == [19670530, 19670531, 19670532]
+    assert relevant_objects_relative_lanes == [[RelativeLane.LEFT_LANE], [RelativeLane.SAME_LANE], [RelativeLane.RIGHT_LANE]]
 
 
 def test_getGeneralizedFrenetFrames_onEndingLane_PartialGFFCreated(scene_static_left_lane_ends, route_plan_1_2):

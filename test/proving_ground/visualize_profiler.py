@@ -1,8 +1,10 @@
+import ast
 from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
-from decision_making.src.utils.dm_profiler import PROF_FILE, PROF_INDICATOR
+from decision_making.paths import Paths
+from decision_making.src.global_constants import LOG_MSG_PROFILER_PREFIX
 from tabulate import tabulate
 
 
@@ -17,27 +19,26 @@ def plot_timed_series_labeled(timed_series, label):
     plt.plot(times, measurements, label=label)
 
 
-def get_profs():
+def get_profs(filename):
     """
     :return: a dictionary with keys as labels and time_series as values
     """
     data = defaultdict(list)
-    with open(PROF_FILE, 'r') as f:
+    with open(filename, 'r') as f:
         for line in f:
-            if line.find(PROF_INDICATOR) == -1:
-                continue
-            _, label, time_stamp, instance = line.split(':')
-            data[label].append((float(time_stamp), float(instance)))
+            prefix_index = line.find(LOG_MSG_PROFILER_PREFIX)
+            if prefix_index > -1:
+                msg_dict = ast.literal_eval(line[prefix_index+len(LOG_MSG_PROFILER_PREFIX):])
+                data[msg_dict['label']].append((float(msg_dict['current_time']), float(msg_dict['running_time'])))
     return data
 
 
-def plot_profiler(label_pattern):
+def plot_profiler(profs, label_pattern):
     """
      Plot all timed_series of a certain label_pattern
     :param label_pattern:
     :return:
     """
-    profs = get_profs()
     for p, timed_series in profs.items():
         if p.find(label_pattern) != -1:
             plot_timed_series_labeled(timed_series, p)
@@ -45,22 +46,10 @@ def plot_profiler(label_pattern):
     plt.show()
 
 
-def get_start_time():
-    """
-    :return: start time of the run
-    """
-    with open(PROF_FILE, 'r') as f:
-        for line in f:
-            if line.find('START_TIME') != -1:
-                return ':'.join(line.split(':')[1:])
-
-
-def summarize_profiler():
+def summarize_profiler(profs):
     """
     Outputs statistics summary table for all profiled code-snippets
     """
-    profs = get_profs()
-    print(f' Profiling data date: {get_start_time()}')
     data = []
     headers = ['label', '#calls', 'avg.time', 'max.time', 'stdev.', '25%', '50%', '75%', '95%', 'cumulative_time']
     for p, timed_series in profs.items():
@@ -78,5 +67,13 @@ def summarize_profiler():
 
 
 if __name__ == '__main__':
-    summarize_profiler()
-    plot_profiler('')
+    file_path = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
+
+    # read data
+    profs = get_profs(file_path)
+
+    # output table of statistics
+    summarize_profiler(profs)
+
+    # A search string for the label can be provided
+    plot_profiler(profs, '')

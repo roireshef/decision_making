@@ -30,7 +30,7 @@ from decision_making.src.planning.types import CartesianExtendedState, Cartesian
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.planning.behavioral.state.state import State
+from decision_making.src.planning.behavioral.state.state import State, MapState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger
@@ -105,7 +105,8 @@ class TrajectoryPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
+                sampled_state = self._get_state_with_expected_ego(state, params.reference_route) \
+                    if self._last_trajectory is not None else None
                 updated_state = sampled_state
             else:
                 updated_state = state
@@ -233,21 +234,28 @@ class TrajectoryPlanningFacade(DmModule):
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_VISUALIZATION, debug_msg.serialize())
 
     @prof.ProfileFunction()
-    def _get_state_with_expected_ego(self, state: State) -> State:
+    def _get_state_with_expected_ego(self, state: State, reference_route: GeneralizedFrenetSerretFrame = None) -> State:
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
         timestamp according to the last trajectory cached in the facade's self._last_trajectory.
         Note: lateral velocity is zeroed since we don't plan for drifts and lateral components are being reflected in
         yaw and curvature.
         :param state: the state to process
+        :param reference_route: the frenet frame of the reference route
         :return: a new state object with a new ego-vehicle localization
         """
         current_time = state.ego_state.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
         expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec,
                                                                         state.ego_state.timestamp_in_sec)
-
         updated_state = state.clone_with(ego_state=expected_ego_state)
+
+        if reference_route is not None:
+            # create the map_state for the ego in the updated state
+            gff_fstate = reference_route.cstate_to_fstate(updated_state.ego_state.cartesian_state)
+            lane_id ,lane_fstate = reference_route.convert_to_segment_state(gff_fstate)
+            updated_state.ego_state._cached_map_state = MapState(lane_fstate, lane_id)
+
         # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
         updated_state.is_sampled = True
 

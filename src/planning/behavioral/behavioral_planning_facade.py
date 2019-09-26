@@ -11,7 +11,7 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTOR
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
-    RoutePlanningException, MappingException, raises
+    RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
     MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED
@@ -29,10 +29,10 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
-from decision_making.src.planning.types import FS_SX, FS_SV
+from decision_making.src.planning.types import FS_SX, FS_SV, C_X, C_Y
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.planning.behavioral.state.state import State, EgoState
+from decision_making.src.planning.behavioral.state.state import State, EgoState, MapState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
@@ -91,13 +91,18 @@ class BehavioralPlanningFacade(DmModule):
 
                 state.handle_negative_velocities(self.logger)
 
-            if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count > 1:
-                self.logger.debug("Multiple localization hypotheses published for ego vehicle at timestamp: %f," +
-                                  " Number of Hypotheses: %d",
-                                  state.ego_state.timestamp_in_sec,
-                                  scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count)
-
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
+
+            self.logger.debug("Scene Dynamic host localization published at timestamp: %f," +
+                              " Number of Hypotheses: %d, Hypotheses (lane_id, road_id, lane_maneuver_type): %s," +
+                              " last gff lane segment IDs : %s, selected ego_state lane ID: %d",
+                              state.ego_state.timestamp_in_sec,
+                              scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count,
+                              [(hyp.e_i_lane_segment_id, hyp.e_i_road_segment_id,
+                                MapUtils.get_lane_maneuver_type(hyp.e_i_lane_segment_id)) for hyp in
+                               scene_dynamic.s_Data.s_host_localization.as_host_hypothesis],
+                              self._last_gff_segment_ids,
+                              state.ego_state.map_state.lane_id)
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
@@ -107,7 +112,7 @@ class BehavioralPlanningFacade(DmModule):
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
-                                  "according to previous plan")
+                                  "according to previous plan.  %s", updated_state.ego_state)
             else:
                 updated_state = state
 
@@ -288,6 +293,39 @@ class BehavioralPlanningFacade(DmModule):
         expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
+
+        if updated_state.ego_state.map_state.lane_id != state.ego_state.map_state.lane_id:
+            # Since the ego lane ID for the updated_state can be different from the original state, specially for the
+            # case of multiple host hypotheses, we overwrite it with the selected ego lane ID from state here.
+            lane_frenet = MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id)
+            cartesian_state = expected_ego_state.cartesian_state
+
+            # Lambda function for calculating distance between two points
+            distance_between_points = lambda x, y: (((x[C_X] - y[C_X]) ** 2) + ((x[C_Y] - y[C_Y]) ** 2)) ** (1 / 2)
+
+            try:
+                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
+
+            except OutOfSegmentBack:
+                self.logger.warning(f"OutOfSegmentBack was raised. Host is "
+                                    f"{distance_between_points(cartesian_state[[C_X, C_Y]], lane_frenet.points[0])}"
+                                    f"from first point in Frenet frame.")
+
+                # TODO: check distance to first point before overwriting cartesian position
+                cartesian_state[[C_X, C_Y]] = lane_frenet.points[0]
+                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
+
+            except OutOfSegmentFront:
+                self.logger.warning(f"OutOfSegmentFront was raised. Host is "
+                                    f"{distance_between_points(cartesian_state[[C_X, C_Y]], lane_frenet.points[-1])}"
+                                    f"from last point in Frenet frame.")
+
+                # TODO: check distance to last point before overwriting cartesian position
+                cartesian_state[[C_X, C_Y]] = lane_frenet.points[-1]
+                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
+
+            updated_state.ego_state._cached_map_state = MapState(lane_fstate, state.ego_state.map_state.lane_id)
+
         # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
         updated_state.is_sampled = True
 

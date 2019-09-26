@@ -59,9 +59,10 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     size = ObjectSize
     confidence = float
     off_map = bool
+    is_ghost = bool
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map):
-        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool) -> None
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, is_ghost = False):
+        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool, bool) -> None
         """
         Data object that hold
         :param obj_id: object id
@@ -71,6 +72,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         :param off_map: indicates if the vehicle is off the map
+        :param is_ghost: indicates whether the object is a projection of a real object in a different lane
         """
         self.obj_id = obj_id
         self.timestamp = timestamp
@@ -79,6 +81,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self.size = copy.copy(size)
         self.confidence = confidence
         self.off_map = off_map
+        self.is_ghost = is_ghost
 
     @property
     def x(self):
