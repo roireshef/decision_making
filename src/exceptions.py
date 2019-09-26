@@ -192,10 +192,6 @@ class DownstreamLaneDataNotFound(RoutePlanningException):
     pass
 
 
-class RoutePlanNotDefinedForAnyRoadSegment(RoutePlanningException):
-    pass
-
-
 def raises(*e):
     """
     A decorator that determines that a function may raise a specific exception
