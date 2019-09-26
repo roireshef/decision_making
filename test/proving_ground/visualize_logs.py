@@ -37,8 +37,6 @@ def plot_dynamics(log_file_path: str):
     recipe_aggresiveness = []
     recipe_time = []
 
-    cnt = 0
-
     bp_if_lon_err = []
     bp_if_lat_err = []
     bp_if_time = []
