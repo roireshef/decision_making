@@ -62,7 +62,7 @@ class RL_LaneMergePlanner(BasePlanner):
         :param action_specs: array of ActionSpec (part of actions may be None)
         :return: array of ActionSpec of the original size, with None for filtered actions
         """
-        valid_specs_idxs = np.where(action_specs != None)[0]
+        valid_specs_idxs = np.where(action_specs.astype(bool))[0]
         spec_v, spec_s = np.array([[spec.v, spec.s] for spec in action_specs[valid_specs_idxs]]).T
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE]
         braking_distances = BrakingDistances.calc_actions_distances_for_given_weights(w_T, w_J, spec_v, np.zeros_like(spec_v))
@@ -81,16 +81,17 @@ class RL_LaneMergePlanner(BasePlanner):
         logits, _, _, _ = RL_policy.model({SampleBatch.CUR_OBS: np.array([encoded_state])}, [])
         actions_distribution = RL_policy.dist_class(logits[0])
 
-        actions_distribution[action_specs == None] = 0  # set zero probability for filtered actions
+        actions_distribution[~action_specs.astype(bool)] = 0  # set zero probability for filtered actions
         prob_sum = np.sum(actions_distribution)
         if prob_sum == 0:
-            raise NoActionsLeftForBPError()
+            raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
+                                          self.behavioral_state.ego_state.timestamp_in_sec)
         costs = 1 - actions_distribution / prob_sum
         return costs
 
     def _choose_action(self, action_specs: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
         # choose action with the minimal cost
-        selected_action_index = np.argmin(costs)
+        selected_action_index = int(np.argmin(costs))
         best_action_spec = action_specs[selected_action_index]
         # convert spec.s from LaneMergeState to GFF
         best_action_spec.s += self.lane_merge_state.ego_state.map_state.lane_fstate[FS_SX]

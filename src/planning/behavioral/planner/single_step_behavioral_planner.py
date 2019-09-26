@@ -78,8 +78,8 @@ class SingleStepBehavioralPlanner(BasePlanner):
         """
         action_spec_evaluator = AugmentedLaneActionSpecEvaluator(self.logger)
         return action_spec_evaluator.evaluate(self.behavioral_state, self.action_space.recipes, action_specs,
-                                              list(action_specs != None), self.route_plan)
+                                              list(action_specs.astype(bool)), self.route_plan)
 
     def _choose_action(self, action_specs: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
-        selected_action_index = np.argmin(costs)
+        selected_action_index = int(np.argmin(costs))
         return self.action_space.recipes[selected_action_index], action_specs[selected_action_index]
