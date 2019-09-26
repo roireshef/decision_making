@@ -88,11 +88,10 @@ def plot_dynamics(log_file_path: str):
             other_vels.append(obj_vel)
             other_dists.append(obj_dist)
 
-        if 'Multiple localization hypotheses' in text:
-            ego_hypothesis_num.append(int(text.split('Number of Hypotheses: ')[1]))
-            multiple_ego_hypotheses_timestamp.append(float(text.split('at timestamp: ')[1].split(', Number of Hypotheses:')[0]))
-        else:
-            ego_hypothesis_num.append(1)
+        if 'Scene Dynamic host localization published' in text:
+            ego_hypothesis_num.append(int(text.split('Number of Hypotheses: ')[1].split(', Hypotheses')[0]))
+            if ego_hypothesis_num[-1] > 1:
+                multiple_ego_hypotheses_timestamp.append(float(text.split('at timestamp: ')[1].split(', Number of Hypotheses:')[0]))
 
         if 'Chosen behavioral action spec' in text:
             spec_str = text.split('Chosen behavioral action spec ')[1]
