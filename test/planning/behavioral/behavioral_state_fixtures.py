@@ -26,7 +26,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
     right_lane_split_scene_static, left_lane_split_scene_static, left_right_lane_split_scene_static, \
     scene_static_lane_split_on_right_ends, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_end, \
     scene_static_lane_splits_on_left_and_right_left_first, scene_static_lane_splits_on_left_and_right_right_first, \
-    scene_static_merge_right, scene_static_merge_left_right_to_center
+    scene_static_merge_right, scene_static_merge_left_right_to_center, scene_static_oval_with_splits
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
 from decision_making.test.planning.custom_fixtures import route_plan_1_2
 
@@ -186,7 +186,7 @@ def create_route_plan_msg(road_segment_ids):
 
 
 @pytest.fixture(scope='function')
-def ego_state_for_takover_message_simple_scene():
+def ego_state_for_takeover_message_simple_scene():
 
     ego_lane_id = 101
     ego_lane_lon = 0  # station along the lane
@@ -201,7 +201,7 @@ def ego_state_for_takover_message_simple_scene():
 
 
 @pytest.fixture(scope='function')
-def ego_state_for_takover_message_default_scene():
+def ego_state_for_takeover_message_default_scene():
 
     ego_lane_id = 201
     ego_lane_lon = 100  # station along the lane
@@ -329,6 +329,33 @@ def state_with_objects_around_3to1_merge(route_plan_1_2: RoutePlan):
     dynamic_objects.append(EgoState.create_from_map_state(obj_id=5, timestamp=0,
                                                           map_state= MapState(np.array([870., 10, 0, 0, 0, 0]), lane_id = 10),
                                                           size=car_size, confidence=1., off_map=False))
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+@pytest.fixture(scope='function')
+def state_with_five_objects_on_oval_track():
+    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits())
+
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    # Ego state
+    ego_lane_lon = 0.0
+    ego_vel = 10
+    ego_lane_id = 19670531   # host in middle lane
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+
+    dynamic_objects: List[DynamicObject] = []
+
+    # Place an object in each lane ahead of the host
+    for obj_id, lane_id in enumerate([19670529, 19670530, 19670531, 19670532, 19670533], start=1):
+        dynamic_objects.append(EgoState.create_from_map_state(obj_id=obj_id, timestamp=0,
+                                                              map_state=MapState(lane_fstate=np.array([10, ego_vel, 0, 0, 0, 0]), lane_id=lane_id),
+                                                              size=car_size, confidence=1.0, off_map=False))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
