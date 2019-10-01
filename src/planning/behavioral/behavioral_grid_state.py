@@ -639,12 +639,19 @@ class BehavioralGridState:
         :param lane_id:
         :return:
         """
+        if dynamic_object.map_state.lane_id == lane_id:
+            return True
+
         lane_frame = MapUtils.get_lane_frenet_frame(lane_id)
         obj_lane = MapUtils.get_lane(dynamic_object.map_state.lane_id)
 
         # determine if the lane is to the left or right of the object
         in_left = lane_id in [lane.e_i_lane_segment_id for lane in obj_lane.as_left_adjacent_lanes]
         in_right = lane_id in [lane.e_i_lane_segment_id for lane in obj_lane.as_right_adjacent_lanes]
+
+        # if not in left or right adjacent, don't check geometry
+        if not in_left and not in_right:
+            return False
 
         bbox = dynamic_object.bounding_box()
         # add center of vehicle to the list of points being considered
@@ -661,7 +668,6 @@ class BehavioralGridState:
         closest_bbox_index = np.argmin(distances_to_lane)
         closest_s_on_lane = lane_frame.cpoint_to_fpoint(closest_nominal_points[closest_bbox_index])[FP_SX]
         border_right, border_left = MapUtils.get_dist_to_lane_borders(lane_id, closest_s_on_lane)
-        lane_width = border_left + border_right
 
         # check boundary points if lane is an adjacent lane
         # otherwise, if the closest distance to the nominal path is less than the lane's width, the vehicle must be in the lane.
@@ -670,4 +676,4 @@ class BehavioralGridState:
         elif in_right:
             return min_distance < border_right
         else:
-            return min_distance < lane_width/2.0
+            return False
