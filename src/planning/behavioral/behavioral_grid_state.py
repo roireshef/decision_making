@@ -127,7 +127,7 @@ class BehavioralGridState:
         for dynamic_object in dynamic_objects:
             map_state = dynamic_object.map_state
             obj_lane_id = map_state.lane_id
-            if map_state.is_on_road() and BehavioralGridState.is_object_in_lane(dynamic_object, obj_lane_id):
+            if map_state.is_on_road():
                 obj_lane = MapUtils.get_lane(obj_lane_id)
                 # Only project if actor has overlapping lane
                 if obj_lane.e_Cnt_lane_overlap_count > 0:
@@ -140,17 +140,18 @@ class BehavioralGridState:
                                                and (lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
                                                                                            LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
-                        # TODO: what to do if lane_fstate can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
-                        lane_fstate = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
+                        if BehavioralGridState.is_object_in_lane(dynamic_object, lane_id):
+                            # TODO: what to do if lane_fstate can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
+                            lane_fstate = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
 
-                        projected_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id,
-                                                                       timestamp=dynamic_object.timestamp,
-                                                                       cartesian_state=dynamic_object.cartesian_state,
-                                                                       map_state=MapState(lane_fstate, lane_id),
-                                                                       size=dynamic_object.size,
-                                                                       confidence=dynamic_object.confidence,
-                                                                       off_map=dynamic_object.off_map,
-                                                                       is_ghost=True))
+                            projected_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id,
+                                                                           timestamp=dynamic_object.timestamp,
+                                                                           cartesian_state=dynamic_object.cartesian_state,
+                                                                           map_state=MapState(lane_fstate, lane_id),
+                                                                           size=dynamic_object.size,
+                                                                           confidence=dynamic_object.confidence,
+                                                                           off_map=dynamic_object.off_map,
+                                                                           is_ghost=True))
         return projected_dynamic_objects
 
     @staticmethod
