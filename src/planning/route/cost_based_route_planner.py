@@ -10,15 +10,23 @@ from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegment
     MapLaneDirection, GMAuthorityType, LaneConstructionType
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, MAX_COST, MIN_COST
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.utils.function_utils import FunctionUtils
 
 
 class CostBasedRoutePlanner(RoutePlanner):
     def __init__(self):
         super().__init__()
+        self._occupancy_cost_methods = {RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value:
+                                            CostBasedRoutePlanner._mapping_status_based_occupancy_cost,
+                                        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value:
+                                            CostBasedRoutePlanner._gm_authority_based_occupancy_cost,
+                                        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value:
+                                            CostBasedRoutePlanner._construction_zone_based_occupancy_cost,
+                                        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction.value:
+                                            CostBasedRoutePlanner._lane_dir_in_route_based_occupancy_cost}
 
     @staticmethod
-    # Following method is kept public in order to unit test the method from outside the class
-    def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
+    def _mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
         """
         Cost of lane map type. Current implementation is binary cost.
         :param mapping_status_attribute: type of mapped
@@ -30,8 +38,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         return MAX_COST
 
     @staticmethod
-    # Following method is kept public in order to unit test the method from outside the class
-    def construction_zone_based_occupancy_cost(construction_zone_attribute: LaneConstructionType) -> float:
+    def _construction_zone_based_occupancy_cost(construction_zone_attribute: LaneConstructionType) -> float:
         """
         Cost of construction zone type. Current implementation is binary cost.
         :param construction_zone_attribute: type of lane construction
@@ -43,8 +50,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         return MAX_COST
 
     @staticmethod
-    # Following method is kept public in order to unit test the method from outside the class
-    def lane_dir_in_route_based_occupancy_cost(lane_dir_in_route_attribute: MapLaneDirection) -> float:
+    def _lane_dir_in_route_based_occupancy_cost(lane_dir_in_route_attribute: MapLaneDirection) -> float:
         """
         Cost of lane direction. Current implementation is binary cost.
         :param lane_dir_in_route_attribute: map lane direction in respect to host
@@ -57,8 +63,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         return MAX_COST
 
     @staticmethod
-    # Following method is kept public in order to unit test the method from outside the class
-    def gm_authority_based_occupancy_cost(gm_authority_attribute: GMAuthorityType) -> float:
+    def _gm_authority_based_occupancy_cost(gm_authority_attribute: GMAuthorityType) -> float:
         """
         Cost of GM authorized driving area. Current implementation is binary cost.
         :param gm_authority_attribute: type of GM authority
@@ -68,10 +73,8 @@ class CostBasedRoutePlanner(RoutePlanner):
             return MIN_COST
         return MAX_COST
 
-    @staticmethod
     @raises(LaneAttributeNotFound)
-    # Following method is kept public in order to unit test the method from outside the class
-    def lane_attribute_based_occupancy_cost(lane_attribute_index: int, lane_attribute_value: int) -> float:
+    def _lane_attribute_based_occupancy_cost(self, lane_attribute_index: int, lane_attribute_value: int) -> float:
         """
         This method is a wrapper on the individual lane attribute cost calculations and arbitrates
         according to the (input) lane attribute, which lane attribute method to invoke
@@ -79,42 +82,24 @@ class CostBasedRoutePlanner(RoutePlanner):
         :param lane_attribute_value: value of the pointed lane attribute
         :return: Normalized lane occupancy cost based on the concerned lane attribute (MIN_COST to MAX_COST)
         """
-        attribute_based_occupancy_cost_methods = {}
-        if 'attribute_based_occupancy_cost_methods' not in CostBasedRoutePlanner.lane_attribute_based_occupancy_cost.__dict__:
-            # The above if check and then setting of attribute_based_occupancy_cost_methods within the if block is equivalent of
-            # making attribute_based_occupancy_cost_methods a static dictionary (of [lane_attribute_index, lane attribute based occupancy_cost
-            # calculation methods])
-            attribute_based_occupancy_cost_methods = {
-                RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus:
-                    CostBasedRoutePlanner.mapping_status_based_occupancy_cost,
+        if lane_attribute_index in self._occupancy_cost_methods:
+            occupancy_cost_method = self._occupancy_cost_methods[lane_attribute_index]
 
-                RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA:
-                    CostBasedRoutePlanner.gm_authority_based_occupancy_cost,
+            # Find attribute type for conversion
+            argument_annotations = FunctionUtils.get_argument_annotations(occupancy_cost_method)
+            attribute_type = argument_annotations[0]
 
-                RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction:
-                    CostBasedRoutePlanner.construction_zone_based_occupancy_cost,
-
-                RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction:
-                    CostBasedRoutePlanner.lane_dir_in_route_based_occupancy_cost
-            }
-
-        if lane_attribute_index in attribute_based_occupancy_cost_methods:
-            # Following is equivalent of (pythonic way) executing a switch statement
-            occupancy_cost_method = attribute_based_occupancy_cost_methods[lane_attribute_index]
-            return occupancy_cost_method(lane_attribute_value)
+            return occupancy_cost_method(attribute_type(lane_attribute_value))
         else:
             raise LaneAttributeNotFound('Cost Based Route Planner: lane_attribute_index {0} not supported'.format(lane_attribute_index))
 
-    @staticmethod
     @raises(LaneAttributeNotFound)
-    # Following method is kept public in order to unit test the method from outside the class
-    def lane_occupancy_cost_calc(lane_segment_base_data: SceneLaneSegmentBase) -> float:
+    def _lane_occupancy_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> float:
         """
         Calculates lane occupancy cost for a single lane segment
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
         :return: LaneOccupancyCost, cost to the AV if it occupies the lane.
         """
-
         # Now iterate over all the active lane attributes for the lane segment
         for lane_attribute_index in lane_segment_base_data.a_i_active_lane_attribute_indices:
             # lane_attribute_index gives the index lookup for lane attributes and confidences
@@ -133,7 +118,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             if (lane_attribute_confidence < LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD):
                 continue
 
-            lane_attribute_occupancy_cost = CostBasedRoutePlanner.lane_attribute_based_occupancy_cost(
+            lane_attribute_occupancy_cost = self._lane_attribute_based_occupancy_cost(
                 lane_attribute_index=lane_attribute_index, lane_attribute_value=lane_attribute_value)
             # Check if the lane is unoccupiable
             if (lane_attribute_occupancy_cost == MAX_COST):
@@ -179,7 +164,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             lane_end_cost, downstream_lane_found_in_route = self._lane_end_cost_calc(lane_segment_base_data=lane_segment_base_data)
 
         # Calculate lane occupancy costs for a lane
-        lane_occupancy_cost = CostBasedRoutePlanner.lane_occupancy_cost_calc(lane_segment_base_data)
+        lane_occupancy_cost = self._lane_occupancy_cost_calc(lane_segment_base_data)
 
         # If we can't occupy a lane, then we can't be in it at the end either. Override the lane end cost here.
         if lane_occupancy_cost == MAX_COST:
