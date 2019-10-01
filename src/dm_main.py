@@ -19,7 +19,7 @@ from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_sp
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
-from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
+from decision_making.src.planning.route.backpropagating_route_planner import BackpropagatingRoutePlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
@@ -43,7 +43,7 @@ class DmInitialization:
 
         pubsub = PubSub()
 
-        planner = BinaryCostBasedRoutePlanner()
+        planner = BackpropagatingRoutePlanner()
 
         route_planning_module = RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
         return route_planning_module

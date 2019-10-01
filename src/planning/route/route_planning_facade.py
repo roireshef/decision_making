@@ -1,4 +1,3 @@
-import pickle
 from logging import Logger
 import time
 import traceback
@@ -14,6 +13,7 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
@@ -52,6 +52,8 @@ class RoutePlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
+
+            SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             route_planner_input = RoutePlannerInputData()
             route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
