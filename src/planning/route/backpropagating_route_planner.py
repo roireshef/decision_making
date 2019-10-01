@@ -19,7 +19,17 @@ class BackpropagatingRoutePlanner(CostBasedRoutePlanner):
         """
         Calculates lane end cost for a single lane segment
 
-        TODO: Add implementation details
+        If a downstream lane with an occupancy cost less then MAX_COST doesn't exist, then the end cost will also be
+        set to MAX_COST; otherwise, the end cost will be equal to the minimum backpropagated end cost from the
+        downstream lanes. The equation for calculating backpropagated end costs is as follows:
+
+                                                   (l / alpha)
+            backpropagated end cost = cost * gamma^
+
+            where cost = end cost for downstream lane
+                 gamma = discount factor
+                     l = length of downstream lane
+                 alpha = scaling factor for lane length
 
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
         :return:
@@ -28,6 +38,7 @@ class BackpropagatingRoutePlanner(CostBasedRoutePlanner):
                      (as described in the map) is in the downstream route road segment
         """
         min_downstream_lane_segment_occupancy_cost = MAX_COST
+        min_downstream_lane_segment_end_cost = MAX_COST
 
         # Search iteratively for the next lane segments that are downstream to the current lane and in the route.
         downstream_lane_found_in_route = False
@@ -56,8 +67,11 @@ class BackpropagatingRoutePlanner(CostBasedRoutePlanner):
                                                      'not present in route_plan_lane_segment structure for downstream road segment'
                                                      .format(downstream_lane_segment_id, lane_segment_base_data.e_i_lane_segment_id))
 
-                downstream_lane_segment_occupancy_cost = downstream_route_lane_segment.e_cst_lane_occupancy_cost
+                # Keep track of minimum downstream lane occupancy cost
+                min_downstream_lane_segment_occupancy_cost = min(min_downstream_lane_segment_occupancy_cost,
+                                                                 downstream_route_lane_segment.e_cst_lane_occupancy_cost)
 
+                # Calculate backpropagated end cost for downstream lane and keep track of the minimum
                 downstream_lane_segment_length = MapUtils.get_lane(downstream_lane_segment_id).e_l_length
 
                 backprop_end_cost = downstream_route_lane_segment.e_cst_lane_end_cost \
@@ -65,12 +79,15 @@ class BackpropagatingRoutePlanner(CostBasedRoutePlanner):
 
                 backprop_downstream_lane_segment_end_cost = backprop_end_cost if backprop_end_cost > BACKPROP_COST_THRESHOLD else MIN_COST
 
-                min_downstream_lane_segment_occupancy_cost = min(min_downstream_lane_segment_occupancy_cost,
-                                                                 downstream_lane_segment_occupancy_cost + backprop_downstream_lane_segment_end_cost)
+                min_downstream_lane_segment_end_cost = min(min_downstream_lane_segment_end_cost,
+                                                           backprop_downstream_lane_segment_end_cost)
             else:
                 # Downstream lane segment not in route. Do nothing.
                 pass
 
-        lane_end_cost = min_downstream_lane_segment_occupancy_cost
+        if min_downstream_lane_segment_occupancy_cost == MAX_COST:
+            lane_end_cost = MAX_COST
+        else:
+            lane_end_cost = min_downstream_lane_segment_end_cost
 
         return lane_end_cost, downstream_lane_found_in_route
