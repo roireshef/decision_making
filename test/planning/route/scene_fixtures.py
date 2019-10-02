@@ -405,41 +405,45 @@ def combined_scene_and_expected_output(request):
         """
         The other scenes in this file are on a straight road so visualization is easier. This geometry is a little more
         complicated so the diagram below was added for clarity. In this scene, no lanes will be blocked, but the goal
-        is to reach lane 51.
+        is to reach lane 71.
 
-            12 -> 23 -> 32
-            11 -> 22 -> 31
-              `-> 21   ,-> 42 -> 51
-                    `-<
-                       `-> 41 -> 61
+            12 -> 22 -> 33 -> 42
+            11 -> 21 -> 32 -> 41
+                    `-> 31   ,-> 52 -> 71
+                          `-<
+                             `-> 51 -> 61
         """
-        road_segment_ids = [1, 2, 3, 4, 5, 6]
+        road_segment_ids = [1, 2, 3, 4, 5, 6, 7]
 
         lane_segment_ids = [[11, 12],
-                            [21, 22, 23],
-                            [31, 32],
+                            [21, 22],
+                            [31, 32, 33],
                             [41, 42],
-                            [51],
-                            [61]]
+                            [51, 52],
+                            [61],
+                            [71]]
 
-        navigation_plan = [1, 2, 4, 5]
+        navigation_plan = [1, 2, 3, 5, 7]
 
         downstream_road_segment_ids = {1: [2],
-                                       2: [3, 4],
-                                       3: [],
-                                       4: [5, 6],
-                                       5: [],
-                                       6: []}
+                                       2: [3],
+                                       3: [4, 5],
+                                       4: [],
+                                       5: [6, 7],
+                                       6: [],
+                                       7: []}
 
-        downstream_lane_connectivity = {11: [(21, ManeuverType.RIGHT_EXIT_CONNECTION),
-                                             (22, ManeuverType.STRAIGHT_CONNECTION)],
-                                        12: [(23, ManeuverType.STRAIGHT_CONNECTION)],
-                                        22: [(31, ManeuverType.STRAIGHT_CONNECTION)],
-                                        23: [(32, ManeuverType.STRAIGHT_CONNECTION)],
-                                        21: [(41, ManeuverType.RIGHT_FORK_CONNECTION),
-                                             (42, ManeuverType.LEFT_FORK_CONNECTION)],
-                                        41: [(61, ManeuverType.STRAIGHT_CONNECTION)],
-                                        42: [(51, ManeuverType.STRAIGHT_CONNECTION)]}
+        downstream_lane_connectivity = {11: [(21, ManeuverType.STRAIGHT_CONNECTION)],
+                                        12: [(22, ManeuverType.STRAIGHT_CONNECTION)],
+                                        21: [(31, ManeuverType.RIGHT_EXIT_CONNECTION),
+                                             (32, ManeuverType.STRAIGHT_CONNECTION)],
+                                        22: [(33, ManeuverType.STRAIGHT_CONNECTION)],
+                                        32: [(41, ManeuverType.STRAIGHT_CONNECTION)],
+                                        33: [(42, ManeuverType.STRAIGHT_CONNECTION)],
+                                        31: [(51, ManeuverType.RIGHT_FORK_CONNECTION),
+                                             (52, ManeuverType.LEFT_FORK_CONNECTION)],
+                                        51: [(61, ManeuverType.STRAIGHT_CONNECTION)],
+                                        52: [(71, ManeuverType.STRAIGHT_CONNECTION)]}
 
         scene_static_publisher = SceneStaticPublisher(road_segment_ids=road_segment_ids,
                                                       lane_segment_ids=lane_segment_ids,
@@ -451,7 +455,7 @@ def combined_scene_and_expected_output(request):
         expected_binary_output = DataRoutePlan(e_b_is_valid=True,
                                                e_Cnt_num_road_segments = len(navigation_plan),
                                                a_i_road_segment_ids = np.array(navigation_plan),
-                                               a_Cnt_num_lane_segments = np.array([2, 3, 2, 1]),
+                                               a_Cnt_num_lane_segments = np.array([2, 2, 3, 2, 1]),
                                                as_route_plan_lane_segments = [[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
                                                                                                     e_cst_lane_occupancy_cost=0.0,
                                                                                                     e_cst_lane_end_cost=0.0)
@@ -459,11 +463,11 @@ def combined_scene_and_expected_output(request):
                                                                               for road_segment_id in navigation_plan])
 
         # Road Segment 2
-        expected_binary_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
-        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 4
-        expected_binary_output.as_route_plan_lane_segments[2][0].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[3][0].e_cst_lane_end_cost = 1.0
 
         return RoutePlanTestData(scene_static=scene_static_publisher.generate_data(),
                                  expected_binary_output=expected_binary_output,
