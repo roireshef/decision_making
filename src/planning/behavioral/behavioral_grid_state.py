@@ -639,6 +639,7 @@ class BehavioralGridState:
         :param lane_id:
         :return:
         """
+        # skip checks if checking object's assigned lane
         if dynamic_object.map_state.lane_id == lane_id:
             return True
 
@@ -649,7 +650,7 @@ class BehavioralGridState:
         in_left = lane_id in [lane.e_i_lane_segment_id for lane in obj_lane.as_left_adjacent_lanes]
         in_right = lane_id in [lane.e_i_lane_segment_id for lane in obj_lane.as_right_adjacent_lanes]
 
-        # if not in left or right adjacent, don't check geometry
+        # object can only overlap with adjacent lanes
         if not in_left and not in_right:
             return False
 
@@ -665,7 +666,8 @@ class BehavioralGridState:
                              for point in bbox]
         distances_to_lane = [np.linalg.norm(bbox[i] - closest_nominal_points[i]) for i in range(len(bbox))]
         min_distance = np.min(distances_to_lane)
-        closest_bbox_index = np.argmin(distances_to_lane)
+        # cast to int since np.argmin returns an 0-dimensional array
+        closest_bbox_index = int(np.argmin(distances_to_lane))
         closest_s_on_lane = lane_frame.cpoint_to_fpoint(closest_nominal_points[closest_bbox_index])[FP_SX]
         border_right, border_left = MapUtils.get_dist_to_lane_borders(lane_id, closest_s_on_lane)
 
