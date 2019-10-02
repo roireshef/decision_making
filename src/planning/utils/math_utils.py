@@ -198,7 +198,8 @@ class Math:
     @staticmethod
     def find_closest_point_in_array(point: np.ndarray, arr: np.ndarray):
         """
-        Finds closest point in an array to a given point. Recursively checks only half of array to achieve log(n) time.
+        Finds closest point in an array to a given point using binary search.
+        Recursively checks only half of array to achieve log(n) time.
         Assumes the distances to the point are monotonic.
         :param point: cartesian point. [X, Y]
         :param arr: array of cartesian points: [[X1, Y1], [X2, Y2], ...]
