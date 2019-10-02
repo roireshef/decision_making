@@ -47,7 +47,7 @@ def test_plan_normalScene_accurateRoutePlanOutput(scene_static_pg_split: SceneSt
 def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = construction_scene_and_expected_output.scene_static
-    expected_output = construction_scene_and_expected_output.expected_output
+    expected_output = construction_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
@@ -88,7 +88,7 @@ def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_
 def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = map_scene_and_expected_output.scene_static
-    expected_output = map_scene_and_expected_output.expected_output
+    expected_output = map_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
@@ -118,7 +118,7 @@ def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: R
 def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = gmfa_scene_and_expected_output.scene_static
-    expected_output = gmfa_scene_and_expected_output.expected_output
+    expected_output = gmfa_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
@@ -148,7 +148,7 @@ def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output:
 def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = lane_direction_scene_and_expected_output.scene_static
-    expected_output = lane_direction_scene_and_expected_output.expected_output
+    expected_output = lane_direction_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
@@ -178,7 +178,7 @@ def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_a
 def test_plan_combinedScenes_accurateRoutePlanOutput(combined_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = combined_scene_and_expected_output.scene_static
-    expected_output = combined_scene_and_expected_output.expected_output
+    expected_output = combined_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
