@@ -6,7 +6,7 @@ from decision_making.paths import Paths
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, EPS
 from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
-from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y, FS_DX
+from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y
 from decision_making.src.state.state import EgoState
 
 def plot_dynamics(log_file_path: str):
@@ -24,7 +24,6 @@ def plot_dynamics(log_file_path: str):
     ego_sa = []
     ego_sv = []
     ego_sx = []
-    ego_dx = []
     other_vels = []
     timestamp_in_sec = []
 
@@ -36,6 +35,8 @@ def plot_dynamics(log_file_path: str):
     recipe_action = []
     recipe_aggresiveness = []
     recipe_time = []
+
+    cnt = 0
 
     bp_if_lon_err = []
     bp_if_lat_err = []
@@ -53,13 +54,6 @@ def plot_dynamics(log_file_path: str):
     other_times = []
     other_dists = []
 
-    stop_dist = []
-    stop_dist_timestamp = []
-
-    ego_lane_id = None
-    vel_limit = []
-    vel_limit_time = []
-
     while True:
         text = f.readline()
         if not text:
@@ -75,13 +69,10 @@ def plot_dynamics(log_file_path: str):
                 ego_sa.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SA])
                 ego_sv.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SV])
                 ego_sx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_SX])
-                ego_dx.append(state_dict['ego_state']['_cached_map_state']['lane_fstate']['array'][FS_DX])
-                ego_lane_id = state_dict['ego_state']['_cached_map_state']['lane_id']
             else:
                 ego_sa.append(0)
                 ego_sv.append(0)
                 ego_sx.append(0)
-                ego_dx.append(0)
             timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
 
         if 'BehavioralGrid: time' in text:
@@ -159,26 +150,15 @@ def plot_dynamics(log_file_path: str):
         if 'CartesianLimitsViolated' in text:
             no_valid_traj_timestamps.append(float(text.split('timestamp_in_sec: ')[1].split(',')[0]))
 
-        if 'STOP RoadSign distance:' in text:
-            stop_dist.append(float(text.split('STOP RoadSign distance:')[1]))
-            stop_dist_timestamp.append(time)
-
-        if 'Speed limits at time' in text:
-            if ego_lane_id is not None:
-                speed_limit_per_lane = ast.literal_eval(text.split('Speed limits at time')[1].split(': ', maxsplit=1)[1])
-                vel_limit.append(speed_limit_per_lane[ego_lane_id])
-                vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
-
     f = plt.figure(1)
 
     ax1 = plt.subplot(5, 2, 1)
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
     longitudinal_dist_plot, = plt.plot(other_times, other_dists)
-    stop_dist_plt, = plt.plot(stop_dist_timestamp, stop_dist)
     multiple_ego_hypotheses = plt.scatter(multiple_ego_hypotheses_timestamp, [100] * len(multiple_ego_hypotheses_timestamp), s=5, c='k')
     plt.xlabel('time[s]')
     plt.ylabel('longitude[m]/distance[m]')
-    plt.legend([ego_sx_plot, longitudinal_dist_plot, multiple_ego_hypotheses, stop_dist_plt], ['ego_s', 'longitudinal_dist', 'multiple_ego_hypotheses', 'stop dist'])
+    plt.legend([ego_sx_plot, longitudinal_dist_plot, multiple_ego_hypotheses], ['ego_s', 'longitudinal_dist', 'multiple_ego_hypotheses'])
     other_times, other_ids, other_dists = np.array(other_times, dtype=float), np.array(other_ids, dtype=int), np.array(other_dists, dtype=float)
     switch_idx = np.where(other_ids[:-1] - other_ids[1:] != 0)[0] + 1
     if len(switch_idx) > 0:
@@ -192,20 +172,16 @@ def plot_dynamics(log_file_path: str):
     ax2 = plt.subplot(5, 2, 3, sharex=ax1)
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_vel_plot,  = plt.plot(other_times, other_vels, '.-')
-    speed_limit_plt, = plt.plot(vel_limit_time, vel_limit, '--', color='k')
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
-    plt.legend([ego_sv_plot, other_vel_plot, speed_limit_plt], ['ego_vel', 'other_vel', 'lane_limit'])
+    plt.legend([ego_sv_plot, other_vel_plot], ['ego_vel', 'other_vel'])
     plt.grid(True)
 
     ax3 = plt.subplot(5, 2, 5, sharex=ax1)
     ego_sa_plot,  = plt.plot(timestamp_in_sec, ego_sa)
-    ego_sj = [(sa2-sa1)/(t2-t1) for (sa2,sa1,t2,t1) in zip (ego_sa[1:], ego_sa[0:-1], timestamp_in_sec[1:], timestamp_in_sec[0:-1]) if (t2-t1>0.01)]
-    ego_sj_time = [t2 for (t2,t1) in zip (timestamp_in_sec[1:], timestamp_in_sec[0:-1]) if (t2-t1>0.01)]
-    ego_sj_plot,  = plt.plot(ego_sj_time, ego_sj)
     plt.xlabel('time[s]')
     plt.ylabel('acceleration[m/s^2]')
-    plt.legend([ego_sa_plot, ego_sj_plot], ['ego_sa', 'ego_sj'])
+    plt.legend([ego_sa_plot], ['ego_sa'])
     plt.grid(True)
 
     ax4 = plt.subplot(5, 2, 2, sharex=ax1)

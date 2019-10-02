@@ -137,7 +137,6 @@ def left_lane_split_scene_static():
 
     return scene
 
-
 @pytest.fixture()
 def left_right_lane_split_scene_static():
     """
@@ -185,55 +184,6 @@ def left_right_lane_split_scene_static():
     scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
     return scene
 
-
-@pytest.fixture()
-def multiple_lane_split_scene_static():
-    scene = short_testable_scene_static_mock()
-    # disconnect right and left lanes in 1st road segment
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_right_adjacent_lanes = []
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_right_adjacent_lane_count = 0
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_left_adjacent_lanes = []
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_left_adjacent_lane_count = 0
-
-    # add connection from 11 to 20 and 22
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].e_Cnt_downstream_lane_count = 3
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes.append(LaneSegmentConnectivity(20,
-                                                                                                                ManeuverType.RIGHT_SPLIT))
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes.append(LaneSegmentConnectivity(22,
-                                                                                                                ManeuverType.LEFT_SPLIT))
-
-    # add upstream connections from 20 and 22 to 11
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_upstream_lanes = LaneSegmentConnectivity(11, ManeuverType.RIGHT_SPLIT)
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[5].as_upstream_lanes = LaneSegmentConnectivity(11, ManeuverType.LEFT_SPLIT)
-
-    # change type of 2nd road segment
-    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[1].e_e_road_segment_type = MapRoadSegmentType.Intersection
-
-    # delete left lane in 1st road segment prior to right lane because it has a higher index
-    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[2]
-    scene.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments -= 1
-
-    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].a_i_lane_segment_ids = np.delete(
-        scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].a_i_lane_segment_ids, 2)
-    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].e_Cnt_lane_segment_id_count -= 1
-
-    del scene.s_Data.s_SceneStaticGeometry.as_scene_lane_segments[2]
-    scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
-
-    # delete right lane in 1st road segment
-    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0]
-    scene.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments -= 1
-
-    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].a_i_lane_segment_ids = np.delete(
-        scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].a_i_lane_segment_ids, 0)
-    scene.s_Data.s_SceneStaticBase.as_scene_road_segment[0].e_Cnt_lane_segment_id_count -= 1
-
-    del scene.s_Data.s_SceneStaticGeometry.as_scene_lane_segments[0]
-    scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
-
-    return scene
-
-
 @pytest.fixture()
 def scene_static_left_fork():
     scene = short_testable_scene_static_mock()
@@ -252,7 +202,6 @@ def scene_static_left_fork():
     lane30.e_i_road_segment_id = 3
 
     return scene
-
 
 @pytest.fixture()
 def scene_static_left_lane_ends():
@@ -282,7 +231,6 @@ def scene_static_left_lane_ends():
 
     return scene
 
-
 @pytest.fixture()
 def scene_static_right_lane_ends():
     """
@@ -310,7 +258,6 @@ def scene_static_right_lane_ends():
     ssb.e_Cnt_num_lane_segments -= 1
 
     return scene
-
 
 @pytest.fixture(scope='function')
 def scene_static_lane_split_on_right_ends():
@@ -417,7 +364,6 @@ def scene_static_lane_split_on_left_ends():
 
     return scene_static
 
-
 @pytest.fixture(scope='function')
 def scene_static_lane_splits_on_left_and_right_end():
     """
@@ -480,7 +426,6 @@ def scene_static_lane_splits_on_left_and_right_end():
 
     return scene_static
 
-
 @pytest.fixture(scope='function')
 def scene_static_lane_splits_on_left_and_right_left_first():
     """
@@ -540,7 +485,6 @@ def scene_static_lane_splits_on_left_and_right_left_first():
         scene_static_geometry.e_Cnt_num_lane_segments -= 1
 
     return scene_static
-
 
 @pytest.fixture(scope='function')
 def scene_static_lane_splits_on_left_and_right_right_first():
@@ -602,7 +546,6 @@ def scene_static_lane_splits_on_left_and_right_right_first():
 
     return scene_static
 
-
 @pytest.fixture()
 def scene_static_merge_right():
     scene = short_testable_scene_static_mock()
@@ -619,7 +562,6 @@ def scene_static_merge_right():
     scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
 
     return scene
-
 
 @pytest.fixture()
 def scene_static_merge_left_right_to_center():
