@@ -293,44 +293,6 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
 
 
-def test_createProjectedObjects_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
-    """
-    Validate that projected object is correctly placed in overlapping lane
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
-
-    # Create other car in lane 21, which overlaps with lane 22
-    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
-                                                  map_state=MapState(np.array([5,1,0,0,0,0]), 19670532),
-                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
-
-    assert projected_dynamic_objects[0].map_state.lane_id == 19670533
-
-
-def test_createProjectedObjects_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
-    """
-    Validate that projected object is correctly placed in overlapping lane
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
-
-    overlaps = {}
-    geo_lane_ids = [lane.e_i_lane_segment_id  for lane in scene_static_oval_with_splits.s_Data.s_SceneStaticGeometry.as_scene_lane_segments]
-    for lane in scene_static_oval_with_splits.s_Data.s_SceneStaticBase.as_scene_lane_segments:
-        if lane.e_Cnt_lane_overlap_count > 0 and lane.e_i_lane_segment_id in geo_lane_ids:
-            for overlap in lane.as_lane_overlaps:
-                overlaps[lane.e_i_lane_segment_id] = (
-                overlap.e_i_other_lane_segment_id, overlap.e_e_lane_overlap_type)
-
-    # Create other car in lane 21, which overlaps with lane 22
-    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
-                                                  map_state=MapState(np.array([5, 1, 0, 0, 0, 0]), 58375684),
-                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
-
-    assert projected_dynamic_objects[0].map_state.lane_id == 58375685
-
-
 def test_createProjectedObjects_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
     """
     Validate that no mirror object is created if there is no overlap
