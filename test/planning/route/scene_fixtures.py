@@ -402,15 +402,25 @@ def combined_scene_and_expected_output(request):
         expected_binary_output.as_route_plan_lane_segments[8][0].e_cst_lane_occupancy_cost = 1.0
         expected_binary_output.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_two":
-        # Scenario in Slides
+        """
+        The other scenes in this file are on a straight road so visualization is easier. This geometry is a little more
+        complicated so the diagram below was added for clarity. In this scene, lanes 12 and 23 will be blocked, and
+        the goal is to reach lane 51.
+
+            12 -> 23 -> 32
+            11 -> 22 -> 31
+              `-> 21   ,-> 42 -> 51
+                    `-<
+                       `-> 41 -> 61
+        """
         road_segment_ids = [1, 2, 3, 4, 5, 6]
 
-        lane_segment_ids = [[1, 2],
-                            [7, 3, 4],
-                            [5, 6],
-                            [8, 9],
-                            [10],
-                            [11]]
+        lane_segment_ids = [[11, 12],
+                            [21, 22, 23],
+                            [31, 32],
+                            [41, 42],
+                            [51],
+                            [61]]
 
         navigation_plan = [1, 2, 4, 5]
 
@@ -421,21 +431,21 @@ def combined_scene_and_expected_output(request):
                                        5: [],
                                        6: []}
 
-        downstream_lane_connectivity = {1: [(7, ManeuverType.RIGHT_EXIT_CONNECTION),
-                                            (3, ManeuverType.STRAIGHT_CONNECTION)],
-                                        2: [(4, ManeuverType.STRAIGHT_CONNECTION)],
-                                        3: [(5, ManeuverType.STRAIGHT_CONNECTION)],
-                                        4: [(6, ManeuverType.STRAIGHT_CONNECTION)],
-                                        7: [(8, ManeuverType.RIGHT_FORK_CONNECTION),
-                                            (9, ManeuverType.LEFT_FORK_CONNECTION)],
-                                        8: [(11, ManeuverType.STRAIGHT_CONNECTION)],
-                                        9: [(10, ManeuverType.STRAIGHT_CONNECTION)]}
+        downstream_lane_connectivity = {11: [(21, ManeuverType.RIGHT_EXIT_CONNECTION),
+                                             (22, ManeuverType.STRAIGHT_CONNECTION)],
+                                        12: [(23, ManeuverType.STRAIGHT_CONNECTION)],
+                                        22: [(31, ManeuverType.STRAIGHT_CONNECTION)],
+                                        23: [(32, ManeuverType.STRAIGHT_CONNECTION)],
+                                        21: [(41, ManeuverType.RIGHT_FORK_CONNECTION),
+                                             (42, ManeuverType.LEFT_FORK_CONNECTION)],
+                                        41: [(61, ManeuverType.STRAIGHT_CONNECTION)],
+                                        42: [(51, ManeuverType.STRAIGHT_CONNECTION)]}
 
-        lane_modifications = {2: [(True,
+        lane_modifications = {12: [(True,
                                    RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
                                    LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
                                    1.0)],
-                              4: [(True,
+                              23: [(True,
                                    RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                    GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                    1.0)]}
