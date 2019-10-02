@@ -222,18 +222,6 @@ class RoutePlannerInputData():
 
         return self._prev_road_segment_id[road_segment_id]
 
-    @raises(RoadSegmentDataNotFound)
-    def get_road_segment(self, road_segment_id: int) -> SceneRoadSegment:
-        """
-         This method retrieves the road segment by its ID
-         :param road_segment_id:
-         :return:
-        """
-        if road_segment_id not in self._route_road_segments_as_dict:
-            raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry found for road segment ID {0}'.format(road_segment_id))
-
-        return self._route_road_segments_as_dict[road_segment_id]
-
     def __str__(self) -> str:
         """
          This method is a helper for pretty print of the RoutePlannerInputData(route_lane_segments only as the dictionaries are ususally not
