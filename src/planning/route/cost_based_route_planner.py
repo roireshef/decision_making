@@ -81,7 +81,10 @@ class CostBasedRoutePlanner(RoutePlanner):
         if lane_attribute_index in self._occupancy_cost_methods:
             occupancy_cost_method = self._occupancy_cost_methods[lane_attribute_index]
 
-            # Find attribute type for conversion
+            # The occupancy cost methods expect an enum, not an int. So, in order to convert lane_attribute_value to
+            # the proper enum, we have to determine the enumeration type from the selected occupancy cost method.
+            # All of the enumeration types are included in the function annotations so we can get the proper
+            # enumeration type from there.
             argument_annotations = FunctionUtils.get_argument_annotations(occupancy_cost_method)
             attribute_type = argument_annotations[0]
 
