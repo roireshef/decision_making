@@ -17,16 +17,15 @@ class CostBasedRoutePlanner(RoutePlanner):
     def __init__(self):
         super().__init__()
         self._occupancy_cost_methods = {RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value:
-                                            CostBasedRoutePlanner._mapping_status_based_occupancy_cost,
+                                            self._mapping_status_based_occupancy_cost,
                                         RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value:
-                                            CostBasedRoutePlanner._gm_authority_based_occupancy_cost,
+                                            self._gm_authority_based_occupancy_cost,
                                         RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value:
-                                            CostBasedRoutePlanner._construction_zone_based_occupancy_cost,
+                                            self._construction_zone_based_occupancy_cost,
                                         RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction.value:
-                                            CostBasedRoutePlanner._lane_dir_in_route_based_occupancy_cost}
+                                            self._lane_dir_in_route_based_occupancy_cost}
 
-    @staticmethod
-    def _mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
+    def _mapping_status_based_occupancy_cost(self, mapping_status_attribute: LaneMappingStatusType) -> float:
         """
         Cost of lane map type. Current implementation is binary cost.
         :param mapping_status_attribute: type of mapped
@@ -37,8 +36,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             return MIN_COST
         return MAX_COST
 
-    @staticmethod
-    def _construction_zone_based_occupancy_cost(construction_zone_attribute: LaneConstructionType) -> float:
+    def _construction_zone_based_occupancy_cost(self, construction_zone_attribute: LaneConstructionType) -> float:
         """
         Cost of construction zone type. Current implementation is binary cost.
         :param construction_zone_attribute: type of lane construction
@@ -49,8 +47,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             return MIN_COST
         return MAX_COST
 
-    @staticmethod
-    def _lane_dir_in_route_based_occupancy_cost(lane_dir_in_route_attribute: MapLaneDirection) -> float:
+    def _lane_dir_in_route_based_occupancy_cost(self, lane_dir_in_route_attribute: MapLaneDirection) -> float:
         """
         Cost of lane direction. Current implementation is binary cost.
         :param lane_dir_in_route_attribute: map lane direction in respect to host
@@ -62,8 +59,7 @@ class CostBasedRoutePlanner(RoutePlanner):
             return MIN_COST
         return MAX_COST
 
-    @staticmethod
-    def _gm_authority_based_occupancy_cost(gm_authority_attribute: GMAuthorityType) -> float:
+    def _gm_authority_based_occupancy_cost(self, gm_authority_attribute: GMAuthorityType) -> float:
         """
         Cost of GM authorized driving area. Current implementation is binary cost.
         :param gm_authority_attribute: type of GM authority
