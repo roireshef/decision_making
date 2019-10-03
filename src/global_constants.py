@@ -260,7 +260,7 @@ MIN_COST = 0.0
 SATURATED_COST = 1.0
 
 # Discount factor used to limit the effect of backpropagating downstream lane end costs
-BACKPROP_DISCOUNT_FACTOR = 0.9
+BACKPROP_DISCOUNT_FACTOR = 0.75
 
 # [m] Value used to scale lane lengths while calculating backpropagated lane end costs
 LANE_LENGTH_SCALE_FACTOR = 1000.0
