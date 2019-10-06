@@ -196,11 +196,11 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             times = np.arange(0, min(OUTPUT_LENGTH * TRAJECTORY_TIME_RESOLUTION, specs_t[action_idx]), TRAJECTORY_TIME_RESOLUTION)
             accelerations = np.zeros(OUTPUT_LENGTH)
             accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
-            print('\ntime=', time.time() - st)
+            #print('\ntime=', time.time() - st)
             return accelerations
 
-        print('\ntime=', time.time() - st)
-        return None
+        #print('\ntime=', time.time() - st)
+        return np.array([])
 
     @staticmethod
     def can_solve_by_two_constant_accelerations(state: SimpleLaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
