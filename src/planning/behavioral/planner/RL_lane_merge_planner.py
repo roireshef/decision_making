@@ -13,6 +13,12 @@ from decision_making.src.planning.types import ActionSpecArray, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
+from planning_research.src.flow_rl.models.simple_model import SimpleModel
+from ray.rllib.evaluation import SampleBatch
+from pathlib import Path
+import torch
+from gym.gym.spaces.tuple import Tuple as GymTuple
+from gym.gym.spaces.box import Box
 
 
 class RL_LaneMergePlanner(BasePlanner):
@@ -21,6 +27,18 @@ class RL_LaneMergePlanner(BasePlanner):
         super().__init__(lane_merge_state, logger)
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
+
+        # TODO: use global constant for the model path
+        checkpoint_path = str(Path.home()) + '/ray_results/checkpoint.torch'
+        model_state_dict = torch.load(checkpoint_path)
+
+        # TODO: create global constants for observation space initialization
+        ego_box = Box(low=-np.inf, high=np.inf, shape=(1, 3), dtype=np.float32)
+        actors_box = Box(low=-np.inf, high=np.inf, shape=(54, 2), dtype=np.float32)
+        obs_space = GymTuple((ego_box, actors_box))
+        options = {"custom_options": {"hidden_size": 64}}
+        self.model = SimpleModel(obs_space=obs_space, num_outputs=6, options=options)
+        self.model.load_state_dict(model_state_dict)
 
     def _create_actions(self) -> np.array:
         action_recipes = self.action_space.recipes
@@ -76,17 +94,18 @@ class RL_LaneMergePlanner(BasePlanner):
         :param action_specs: np.array of action specs
         :return: array of actions costs: the lower the better
         """
-        encoded_state = self.lane_merge_state.encode_state_for_RL()
-
-        logits, _, _, _ = RL_policy.model({SampleBatch.CUR_OBS: np.array([encoded_state])}, [])
-        actions_distribution = RL_policy.dist_class(logits[0])
-
-        actions_distribution[~action_specs.astype(bool)] = 0  # set zero probability for filtered actions
-        prob_sum = np.sum(actions_distribution)
-        if prob_sum == 0:
+        if not action_specs.astype(bool).any():
             raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
                                           self.behavioral_state.ego_state.timestamp_in_sec)
-        costs = 1 - actions_distribution / prob_sum
+
+        encoded_state = self.lane_merge_state.encode_state_for_RL()
+
+        logits = self.model._forward({SampleBatch.CUR_OBS: encoded_state}, [])[0]
+        logits[~action_specs.astype(bool)] = -np.inf
+        chosen_action_idx = np.argmax(logits)
+
+        costs = np.full(len(action_specs), 1)
+        costs[chosen_action_idx] = 0
         return costs
 
     def _choose_action(self, action_specs: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
