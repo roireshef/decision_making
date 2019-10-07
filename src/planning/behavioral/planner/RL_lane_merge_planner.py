@@ -16,8 +16,8 @@ from decision_making.src.planning.behavioral.state.lane_merge_state import LaneM
 from ray.rllib.evaluation import SampleBatch
 from pathlib import Path
 import torch
-from gym.gym.spaces.tuple import Tuple as GymTuple
-from gym.gym.spaces.box import Box
+from gym.spaces.tuple import Tuple as GymTuple
+from gym.spaces.box import Box
 
 from planning_research.src.flow_rl.models.simple_model import SimpleModel  #TODO: remove dependence on planning_research
 
