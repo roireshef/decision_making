@@ -493,10 +493,10 @@ class QuinticPoly1D(Poly1D):
         return np.c_[w_T,
                      zeros,
                      -9 * a_0 ** 2 * w_J,
-                     -144 * a_0 * v_0 * w_J + 144 * a_0 * v_T * w_J,
-                     -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * dx * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
-                     -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * dx * v_0 * w_J - 2880 * dx * v_T * w_J,
-                     - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * dx * v_T * w_J - 3600 * dx ** 2 * w_J]
+                     144 * w_J * a_0 * (v_T - v_0),
+                     -72 * w_J * (5 * a_0 * (T_m * v_T - dx) + 8 * (v_T - v_0) ** 2),
+                     2880 * w_J * (T_m * v_T - dx) * (v_T - v_0),
+                     -3600 * w_J * (T_m * v_T - dx) ** 2]
 
     @staticmethod
     def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array):
