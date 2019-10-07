@@ -17,7 +17,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-PLANNING_LOOKAHEAD_DIST = 100.0
+PLANNING_LOOKAHEAD_DIST = 150.0
 
 # [m] Maximum forward horizon for building Generalized Frenet Frames
 MAX_FORWARD_HORIZON = 600.0
@@ -136,6 +136,14 @@ MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
 # Time threshold to raise takeover flag
 TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
 
+# Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the speed reduction of the target for the action spec
+SLOW_DOWN_FACTOR = 0.5
+# Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the lower bound on the speed
+# reduction of the target for the action spec. Set to a lower value to account for the fact that deceleration is not immediate
+MAX_IMMEDIATE_DECEL = - LON_ACC_LIMITS[0] - 1
+# Headway to select calm/aggressive dynamic action. Must be larger than SAFETY_HEADWAY
+REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION = 1.4
+REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2
 
 # Trajectory Planner #
 
@@ -321,6 +329,8 @@ LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_
 LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from desired location (desired frenet: %s, actual frenet: %s)"
 LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from actual location (actual frenet: %s)"
 LOG_MSG_BEHAVIORAL_GRID = "BehavioralGrid"
+LOG_MSG_PROFILER_PREFIX = "DMProfiler Stats: "
+
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
