@@ -18,7 +18,7 @@ class MapState(PUBSUB_MSG_IMPL):
         Returns true of the object is on the road. False otherwise.
         :return: Returns true of the object is on the road. False otherwise.
         """
-        on_road_longitudinally = (0 <= self.lane_fstate[FS_SX] < MapUtils.get_lane_length(self.lane_id))
+        on_road_longitudinally = (0 <= self.lane_fstate[FS_SX] < MapUtils.get_lane(self.lane_id).e_l_length)
         dist_from_right, dist_from_left = MapUtils.get_dist_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
         on_road_laterally = (-dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH)
         return on_road_longitudinally and on_road_laterally

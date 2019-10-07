@@ -5,9 +5,8 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
-TRUE_COST = 1.0
-FALSE_COST = 0.0
 MPH_TO_MPS = 2.23694
+
 
 # Communication Layer
 
@@ -18,13 +17,22 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-PLANNING_LOOKAHEAD_DIST = 100.0
+PLANNING_LOOKAHEAD_DIST = 150.0
 
-# [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 400
+# [m] Maximum forward horizon for building Generalized Frenet Frames
+MAX_FORWARD_HORIZON = 600.0
+
+# [m] Maximum backward horizon for building Generalized Frenet Frames
+MAX_BACKWARD_HORIZON = 100.0
+
+# [m] distance to the end of a partial GFF at which the vehicle must not be in
+PARTIAL_GFF_END_PADDING = 5.0
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
+
+# Prefer left or right split when the costs are the same
+PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False
 
 # After a change of TP costs run the following test:
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
@@ -69,7 +77,7 @@ VELOCITY_STEP = 5/MPH_TO_MPS
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([0.0, 15.0])
+BP_ACTION_T_LIMITS = np.array([0.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -95,9 +103,19 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 # safety checks accordingly
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
+
+# [m/sec] zero speed
+ZERO_SPEED = 0.0
+
+# [m] road sign length
+ROAD_SIGN_LENGTH = 0
+
+# define acceptable distance [m] between stop_bar and stop_sign to be considered as related
+CLOSE_ENOUGH = 3.0
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
@@ -116,6 +134,14 @@ MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
 # Time threshold to raise takeover flag
 TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
 
+# Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the speed reduction of the target for the action spec
+SLOW_DOWN_FACTOR = 0.5
+# Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the lower bound on the speed
+# reduction of the target for the action spec. Set to a lower value to account for the fact that deceleration is not immediate
+MAX_IMMEDIATE_DECEL = - LON_ACC_LIMITS[0] - 1
+# Headway to select calm/aggressive dynamic action. Must be larger than SAFETY_HEADWAY
+REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION = 1.4
+REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2
 
 # Trajectory Planner #
 
@@ -150,14 +176,14 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference 
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 15
+TRAJECTORY_NUM_POINTS = 20
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 2.5
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 3.0
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
@@ -219,6 +245,24 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 # Route Planner #
 LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 
+# Indices for the route plan cost tuple
+LANE_OCCUPANCY_COST_IND = 0
+LANE_END_COST_IND = 1
+
+# Maximum value for RP's lane end and occupancy costs
+# Lane end cost = MAX_COST --> Do not leave the road segment in this lane
+# Lane occupancy cost = MAX_COST --> Do not drive in this lane
+MAX_COST = 1.0
+
+# Minimum value for RP's lane end and occupancy costs
+# Lane end cost = MIN_COST --> There is no penalty for being in this lane as we transition to the next road segment
+# Lane occupancy cost = MIN_COST --> We are allowed to drive in this lane
+MIN_COST = 0.0
+
+# Tunable parameter that defines the cost at which a lane is no longer considered to be valid. For example, a lane may
+# have an end or occupancy cost equal to 0.99, and it may be desirable to not consider it as a valid lane. This is
+# different from the actual maximum cost (= MAX_COST).
+SATURATED_COST = 1.0
 
 
 # State #
@@ -249,8 +293,6 @@ ROUTE_PLANNING_MODULE_PERIOD = 1
 
 #### NAMES OF MODULES FOR LOGGING ####
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
-NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
-NAVIGATION_PLANNING_NAME_FOR_METRICS = "NP"
 ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
@@ -258,7 +300,6 @@ TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
 ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
-STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 
 #### MetricLogger
 METRIC_LOGGER_DELIMITER = '_'
@@ -267,6 +308,7 @@ METRIC_LOGGER_DELIMITER = '_'
 # TODO: update decision_making_sim messages
 LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
 LOG_MSG_SCENE_STATIC_RECEIVED = "Received SceneStatic message with Timestamp: "
+LOG_MSG_SCENE_DYNAMIC_RECEIVED = "Received SceneDynamic message with Timestamp: "
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
 LOG_MSG_ROUTE_PLANNER_OUTPUT = "RoutePlanningFacade output is"
@@ -274,7 +316,6 @@ LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action 
 LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
 LOG_MSG_RECEIVED_STATE = "Received state"
-LOG_MSG_STATE_MODULE_PUBLISH_STATE = "Publishing State"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
 LOG_MSG_ROUTE_PLANNER_IMPL_TIME = "ROUTE Facade._periodic_action_impl time"
@@ -282,6 +323,9 @@ LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_
                                        "%f while trajectory time range is [%f, %f]"
 LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from desired location (desired frenet: %s, actual frenet: %s)"
 LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from actual location (actual frenet: %s)"
+LOG_MSG_BEHAVIORAL_GRID = "BehavioralGrid"
+LOG_MSG_PROFILER_PREFIX = "DMProfiler Stats: "
+
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9

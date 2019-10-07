@@ -119,8 +119,8 @@ class ConstraintSpecFilter(ActionSpecFilter):
         :param action_specs:
         :return: A list of action specs with potentially extended copies of short ones
         """
-        return [spec if spec.t >= MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON else
-                ActionSpec(spec.t, spec.v,  spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
+        return [spec if spec.t >= min_action_time else
+                ActionSpec(min_action_time, spec.v, spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
                 for spec in action_specs]
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
