@@ -13,12 +13,13 @@ from decision_making.src.planning.types import ActionSpecArray, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
-from planning_research.src.flow_rl.models.simple_model import SimpleModel
 from ray.rllib.evaluation import SampleBatch
 from pathlib import Path
 import torch
 from gym.gym.spaces.tuple import Tuple as GymTuple
 from gym.gym.spaces.box import Box
+
+from planning_research.src.flow_rl.models.simple_model import SimpleModel  #TODO: remove dependence on planning_research
 
 
 class RL_LaneMergePlanner(BasePlanner):
