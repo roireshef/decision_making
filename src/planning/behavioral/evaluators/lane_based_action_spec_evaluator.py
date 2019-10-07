@@ -5,13 +5,18 @@ import numpy as np
 
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
-    StaticActionRecipe, AggressivenessLevel
+    StaticActionRecipe, AggressivenessLevel, DynamicActionRecipe, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT
+from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT, EPS, \
+    TRAJECTORY_TIME_RESOLUTION, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, \
+    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
 from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
+from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX, LAT_CELL, FS_SA, FS_SX, FS_SV, Limits
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
 class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
@@ -23,11 +28,14 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
         pass
 
 
-    def _get_follow_vehicle_valid_action_idx(self, action_recipes: List[ActionRecipe], action_specs_mask: List[bool], target_lane: RelativeLane) -> int:
+    def _get_follow_vehicle_valid_action_idx(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
+                                             action_specs: List[ActionSpec], action_specs_mask: List[bool], target_lane: RelativeLane) -> int:
         """
         Try to find a valid dynamic action (FOLLOW_VEHICLE)
         The selection is only by aggressiveness, since it relies on the fact that we only follow a vehicle on the
         target lane, which means there is only 1 possible vehicle to follow, so there is only 1 target vehicle speed.
+        :param behavioral_state: semantic behavioral state, containing the semantic grid.
+        :param action_recipes: semantic actions list.
         :param action_specs: specifications of action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
         :param target_lane: lane to choose actions from
@@ -37,7 +45,11 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
                                             if action_specs_mask[i]
                                             and recipe.relative_lane == target_lane
                                             and recipe.action_type == ActionType.FOLLOW_VEHICLE]
-        return follow_vehicle_valid_action_idxs[0] if len(follow_vehicle_valid_action_idxs) > 0 else -1
+        if len(follow_vehicle_valid_action_idxs) > 0:
+            return self._choose_aggressiveness_of_dynamic_action_by_headway(action_recipes, action_specs,
+                                                                            behavioral_state, follow_vehicle_valid_action_idxs)
+        else:
+            return -1
 
     def _get_follow_road_sign_valid_action_idx(self, action_recipes: List[ActionRecipe], action_specs_mask: List[bool], target_lane: RelativeLane) -> int:
         """
@@ -204,3 +216,111 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
             minimum_cost_lane = RelativeLane.RIGHT_LANE
 
         return minimum_cost_lane
+
+    def _choose_aggressiveness_of_dynamic_action_by_headway(self, action_recipes: List[ActionRecipe], action_specs: List[ActionSpec],
+                                                            behavioral_state: BehavioralGridState, follow_vehicle_valid_action_idxs: List[int]) -> int:
+        """ choose aggressiveness level for dynamic action according to the headway safety margin from the front car.
+        If the headway becomes small, be more aggressive.
+        :param action_recipes: recipes
+        :param action_specs: specs
+        :param behavioral_state: state of the world
+        :param follow_vehicle_valid_action_idxs: indices of valid dynamic actions
+        :return: the index of the chosen dynamic action
+        """
+        dynamic_specs = [action_specs[action_idx] for action_idx in follow_vehicle_valid_action_idxs]
+        min_headways = LaneBasedActionSpecEvaluator._calc_minimal_headways(dynamic_specs, behavioral_state)
+        aggr_levels = np.array([action_recipes[idx].aggressiveness.value for idx in follow_vehicle_valid_action_idxs])
+        calm_idx = np.where(aggr_levels == AggressivenessLevel.CALM.value)[0]
+        standard_idx = np.where(aggr_levels == AggressivenessLevel.STANDARD.value)[0]
+        aggr_idx = np.where(aggr_levels == AggressivenessLevel.AGGRESSIVE.value)[0]
+        if len(calm_idx) > 0 and min_headways[calm_idx[0]] > REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION:
+            chosen_level = calm_idx[0]
+        elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION:
+            chosen_level = standard_idx[0]
+        else:
+            chosen_level = -1  # the most aggressive
+        self.logger.debug("Headway min %1.2f, %1.2f ,%1.2f,  %d, %f",
+                          -1 if len(calm_idx) == 0 else min_headways[calm_idx[0]],
+                          -1 if len(standard_idx) == 0 else min_headways[standard_idx[0]],
+                          -1 if len(aggr_idx) == 0 else min_headways[aggr_idx[0]],
+                          chosen_level,
+                          behavioral_state.ego_state.timestamp_in_sec)
+        return follow_vehicle_valid_action_idxs[chosen_level]
+
+    @staticmethod
+    def _calc_minimal_headways(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[int]:
+        """
+        Calculate the minimal headway between ego and targets over the whole trajectory of the action.
+        :param action_specs: action specs, defining the trajectories.
+        :param behavioral_state: state of the world, from which the target state is extracted.
+        :return:
+        """
+        # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
+        # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
+        relative_cells = [(spec.recipe.relative_lane,
+                           spec.recipe.relative_lon if isinstance(spec.recipe, DynamicActionRecipe) else RelativeLongitudinalPosition.FRONT)
+                          for spec in action_specs]
+        target_vehicles = [behavioral_state.road_occupancy_grid[cell][0]
+                           if len(behavioral_state.road_occupancy_grid[cell]) > 0 else None
+                           for cell in relative_cells]
+        T = np.array([spec.t for spec in action_specs])
+
+        # represent initial and terminal boundary conditions (for s axis)
+        initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
+        terminal_fstates = np.array([spec.as_fstate() for spec in action_specs])
+
+        poly_coefs_s = QuinticPoly1D.position_profile_coefficients(
+            initial_fstates[:, FS_SA], initial_fstates[:, FS_SV], terminal_fstates[:, FS_SV],
+            terminal_fstates[:, FS_SX] - initial_fstates[:, FS_SX], T)
+        poly_coefs_s[:, -1] = initial_fstates[:, FS_SX]
+
+        min_headways = []
+        for poly_s, cell, target, spec in zip(poly_coefs_s, relative_cells, target_vehicles, action_specs):
+            if target is None:
+                min_headways.append(np.inf)
+                continue
+
+            target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
+                target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
+            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
+
+            # minimal margin used in addition to headway (center-to-center of both objects)
+            # Uses LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT and not LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, as otherwise
+            # when approaching the leading vehicle, the distance becomes 0, and so does the headway,
+            # leading to a selection of AGGRESSIVE action for no reason. Especially noticeable in stop&go tests
+            margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
+                     behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
+
+            # calculate safety margin (on frenet longitudinal axis)
+            min_headway = LaneBasedActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_s, target_poly_s, margin, np.array([0, spec.t]))
+            min_headways.append(min_headway)
+
+        return min_headways
+
+    @staticmethod
+    def calc_minimal_headway_over_trajectory(poly_host: np.array, poly_target: np.array, margin: float, time_range: Limits):
+        """
+        Given two s(t) longitudinal polynomials (one for host, one for target), this function calculates the minimal
+        headway over the whole trajectory specified by <time_range>.
+        Restriction: only relevant for positive velocities.
+        :param poly_host: 1d numpy array - coefficients of host's polynomial s(t)
+        :param poly_target: 1d numpy array - coefficients of target's polynomial s(t)
+        :param margin: the minimal stopping distance to keep in meters (in addition to headway, highly relevant for stopping)
+        :param time_range: the relevant range of t for checking the polynomials, i.e. [0, T]
+        :return: minimal (on time axis) difference between min. safe distance and actual distance
+        """
+        # coefficients of host vehicle velocity v_h(t) of host
+        vel_poly = np.polyder(poly_host, 1)
+
+        # poly_diff is the polynomial of the distance between poly2 and poly1 with subtracting the required distance
+        poly_diff = poly_target - poly_host
+        poly_diff[-1] -= margin
+
+        suspected_times = np.arange(time_range[LIMIT_MIN], time_range[LIMIT_MAX] + EPS, TRAJECTORY_TIME_RESOLUTION)
+
+        # This calculates the margin in headway time by checking 64 points evenly spaced in the time range
+        # selects the time at which the headway time is minimal
+        distances = np.polyval(poly_diff, suspected_times)
+        velocities = np.polyval(vel_poly, suspected_times)
+        min_headway = np.min(distances / np.maximum(velocities, EPS))
+        return min_headway

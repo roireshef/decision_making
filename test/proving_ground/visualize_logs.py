@@ -9,6 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType, Agg
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y, FS_DX
 from decision_making.src.planning.behavioral.state.state import EgoState
 
+
 def plot_dynamics(log_file_path: str):
     """
     Plot various graphs concerning localization, BP and TP outputs
@@ -52,6 +53,16 @@ def plot_dynamics(log_file_path: str):
     other_ids = []
     other_times = []
     other_dists = []
+
+    min_headway_calm = []
+    min_headway_std = []
+    min_headway_aggr = []
+    min_headway_chosen = []
+    min_headway_time = []
+    v_T_mod = []
+    v_T_mod1 = []
+    v_T_mod_time = []
+    lower_root = []
 
     stop_dist = []
     stop_dist_timestamp = []
@@ -160,6 +171,24 @@ def plot_dynamics(log_file_path: str):
         if 'CartesianLimitsViolated' in text:
             no_valid_traj_timestamps.append(float(text.split('timestamp_in_sec: ')[1].split(',')[0]))
 
+        if 'Headway min' in text:
+            try:
+                split_str = text.split('Headway min')[1].split(',')
+                min_headway_calm.append(float(split_str[0]))
+                min_headway_std.append(float(split_str[1]))
+                min_headway_aggr.append(float(split_str[2]))
+                min_headway_chosen.append(int(split_str[3]))
+                min_headway_time.append(float(split_str[4]))
+            except:
+                pass
+
+        if 'SlowDown' in text:
+            split_str = text.split('SlowDown')[1].split(',')
+            v_T_mod1.append(float(split_str[2]))
+            v_T_mod.append(float(split_str[3]))
+            lower_root.append(float(split_str[4]))
+            v_T_mod_time.append(float(split_str[5]))
+
         if 'STOP RoadSign distance:' in text:
             stop_dist.append(float(text.split('STOP RoadSign distance:')[1]))
             stop_dist_timestamp.append(time)
@@ -194,16 +223,22 @@ def plot_dynamics(log_file_path: str):
     ego_sv_plot,  = plt.plot(timestamp_in_sec, ego_sv)
     other_vel_plot,  = plt.plot(other_times, other_vels, '.-')
     speed_limit_plt, = plt.plot(vel_limit_time, vel_limit, '--', color='k')
+    # un remark the lines below to see the way the target speed is modified
+    # mod_v_t_plot, = plt.plot(v_T_mod_time, v_T_mod, 'x')
+    # mod_v_t1_plot, = plt.plot(v_T_mod_time, v_T_mod1, '+')
+    # lower_root_plot, = plt.plot(v_T_mod_time, lower_root, 's')
     plt.xlabel('time[s]')
     plt.ylabel('velocity[m/s]')
     plt.legend([ego_sv_plot, other_vel_plot, speed_limit_plt], ['ego_vel', 'other_vel', 'lane_limit'])
+    # plt.legend([ego_sv_plot, other_sv_plot, mod_v_t_plot, mod_v_t1_plot, lower_root_plot], ['ego_sv', 'other_sv', 'other_mod', 'other_mod1', 'lower root'], loc='upper right')
     plt.grid(True)
 
     ax3 = plt.subplot(5, 2, 5, sharex=ax1)
     ego_sa_plot,  = plt.plot(timestamp_in_sec, ego_sa)
-    ego_sj = [(sa2-sa1)/(t2-t1) for (sa2,sa1,t2,t1) in zip (ego_sa[1:], ego_sa[0:-1], timestamp_in_sec[1:], timestamp_in_sec[0:-1]) if (t2-t1>0.01)]
-    ego_sj_time = [t2 for (t2,t1) in zip (timestamp_in_sec[1:], timestamp_in_sec[0:-1]) if (t2-t1>0.01)]
-    ego_sj_plot,  = plt.plot(ego_sj_time, ego_sj)
+    ego_sj = [(sa2 - sa1) / (t2 - t1) for (sa2, sa1, t2, t1) in
+              zip(ego_sa[1:], ego_sa[0:-1], timestamp_in_sec[1:], timestamp_in_sec[0:-1]) if (t2 - t1 > 0.01)]
+    ego_sj_time = [t2 for (t2, t1) in zip(timestamp_in_sec[1:], timestamp_in_sec[0:-1]) if (t2 - t1 > 0.01)]
+    ego_sj_plot, = plt.plot(ego_sj_time, ego_sj)
     plt.xlabel('time[s]')
     plt.ylabel('acceleration[m/s^2]')
     plt.legend([ego_sa_plot, ego_sj_plot], ['ego_sa', 'ego_sj'])
@@ -253,6 +288,24 @@ def plot_dynamics(log_file_path: str):
     plt.xlabel('time[s]')
     plt.ylabel('curvature [1/m]')
     plt.grid(True)
+    # min_headway_time = np.array(min_headway_time)
+    # min_headway_calm = np.array(min_headway_calm)
+    # valid_idx = np.where((min_headway_calm > 0.0) & (min_headway_calm < 5.0))[0]
+    # min_headway_calm_plt, = plt.plot(min_headway_time[valid_idx], min_headway_calm[valid_idx], 'x')
+    # min_headway_std = np.array(min_headway_std)
+    # valid_idx = np.where((min_headway_std > 0.0) & (min_headway_calm < 5.0))[0]
+    # min_headway_std_plt, = plt.plot(min_headway_time[valid_idx], 2+min_headway_std[valid_idx], 'o')
+    # min_headway_aggr = np.array(min_headway_aggr)
+    # valid_idx = np.where((min_headway_aggr > 0.0) & (min_headway_calm < 5.0))[0]
+    # min_headway_agg_plt, = plt.plot(min_headway_time[valid_idx], 4+min_headway_aggr[valid_idx], '+')
+    # min_headway_chosen = np.array(min_headway_chosen)
+    # valid_idx = np.where(min_headway_chosen >= 0)[0]
+    # min_headway_chosen_plt, = plt.plot(min_headway_time[valid_idx], min_headway_chosen[valid_idx], '.')
+    # plt.xlabel('time[s]')
+    # plt.ylabel('headway')
+    # plt.legend([min_headway_calm_plt, min_headway_std_plt, min_headway_agg_plt, min_headway_chosen_plt],
+    #            ['min_calm', 'min std', 'min aggr', 'chosen'])
+    # plt.grid(True)
 
     ax8 = plt.subplot(5, 2, 6, sharex=ax1)
     for t, traj in zip(trajectory_time, trajectory):

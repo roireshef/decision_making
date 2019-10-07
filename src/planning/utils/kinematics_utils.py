@@ -8,7 +8,6 @@ from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
-from typing import List
 
 
 class KinematicUtils:
@@ -260,7 +259,7 @@ class BrakingDistances:
         if poly is not QuarticPoly1D:
             raise NotImplementedError('Currently function expects only QuarticPoly1D')
         # TODO: Once Quintic might be used, pull `s_profile_coefficients` method up
-        s_profile_coefs = poly.s_profile_coefficients(a_0, v_0, v_T, T)
+        s_profile_coefs = poly.position_profile_coefficients(a_0, v_0, v_T, T)
         in_limits = poly.are_accelerations_in_limits(s_profile_coefs, T, LON_ACC_LIMITS)
 
         # Distances for accelerations which are not in limits are defined as infinity. This implied that braking on

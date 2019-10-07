@@ -380,7 +380,7 @@ class QuarticPoly1D(Poly1D):
         return coefs
 
     @staticmethod
-    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
+    def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
         """
         Given a set of quartic actions, i.e. arrays of v_0, v_T, a_0 and T (all arrays of the same size), calculate
         coefficients for longitudinal polynomial profile for each action.
@@ -499,7 +499,7 @@ class QuinticPoly1D(Poly1D):
                      - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * dx * v_T * w_J - 3600 * dx ** 2 * w_J]
 
     @staticmethod
-    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array):
+    def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array):
         """
         Given a set of quintic actions, i.e. arrays of v_0, v_T, a_0, dx and T (all arrays of the same size), calculate
         coefficients for longitudinal polynomial profile for each action.
