@@ -380,7 +380,7 @@ class QuarticPoly1D(Poly1D):
         return coefs
 
     @staticmethod
-    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
+    def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
         """
         Given a set of quartic actions, i.e. arrays of v_0, v_T, a_0 and T (all arrays of the same size), calculate
         coefficients for longitudinal polynomial profile for each action.
@@ -496,6 +496,27 @@ class QuinticPoly1D(Poly1D):
                      -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * dx * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
                      -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * dx * v_0 * w_J - 2880 * dx * v_T * w_J,
                      - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * dx * v_T * w_J - 3600 * dx ** 2 * w_J]
+
+    @staticmethod
+    def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array):
+        """
+        Given a set of quintic actions, i.e. arrays of v_0, v_T, a_0, dx and T (all arrays of the same size), calculate
+        coefficients for longitudinal polynomial profile for each action.
+        :param a_0: array of initial accelerations
+        :param v_0: array of initial velocities
+        :param v_T: array of target velocities
+        :param dx: [m] array of distances to travel between time 0 and time T
+        :param T: [sec] array of action times
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        zeros = np.zeros_like(T)
+        return np.c_[
+            -a_0 / (2 * T ** 3) - 3 * v_0 / T ** 4 - 3 * v_T / T ** 4 + 6 * dx / T ** 5,
+            3 * a_0 / (2 * T ** 2) + 8 * v_0 / T ** 3 + 7 * v_T / T ** 3 - 15 * dx / T ** 4,
+            -3 * a_0 / (2 * T) - 6 * v_0 / T ** 2 - 4 * v_T / T ** 2 + 10 * dx / T ** 3,
+            0.5 * a_0 + zeros,
+            v_0 + zeros,
+            zeros]
 
     @staticmethod
     def time_cost_function_derivative_coefs_with_accel(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,

@@ -6,7 +6,7 @@ from typing import Optional, List, Type
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, EPS
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe
@@ -112,6 +112,7 @@ class TargetActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (
                 self.margin_to_keep_from_targets + behavioral_state.ego_state.size.length / 2 + target_lengths / 2)
 
+        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         a_T[a_T > 0] = 0
         T_m = SPECIFICATION_HEADWAY
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_with_accel(
@@ -149,7 +150,7 @@ class TargetActionSpace(ActionSpace):
         # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
-        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, SPECIFICATION_HEADWAY)] = 0
+        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T_mod, a_0, ds, SPECIFICATION_HEADWAY)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
