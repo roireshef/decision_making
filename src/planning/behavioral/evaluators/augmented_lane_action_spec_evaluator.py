@@ -5,10 +5,13 @@ from typing import List
 import numpy as np
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe
 from decision_making.src.planning.behavioral.evaluators.lane_based_action_spec_evaluator import LaneBasedActionSpecEvaluator
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.turn_signal_message import TurnSignal, TurnSignalState
+
 
 
 class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
@@ -16,7 +19,7 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         super().__init__(logger)
 
     def evaluate(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                 action_specs: List[ActionSpec], action_specs_mask: List[bool], route_plan: RoutePlan) -> np.ndarray:
+                 action_specs: List[ActionSpec], action_specs_mask: List[bool], route_plan: RoutePlan, turn_signal: TurnSignal) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
         * First chooses the relative with the lowest cost based on route_plan
@@ -32,6 +35,9 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
 
+        # First check if a lane change is being requested - prioritize those actions
+        requested_lane = turn_signal.s_Data.e_e_TurnSignalState
+
         # Choose the minimum cost lane based on route plan costs.
         # The minimum cost lane is defined as the lane who has the minimum cost at the first point where
         # it diverges from the SAME_LANE.
@@ -39,11 +45,19 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
 
         costs = np.full(len(action_recipes), 1)
 
-        # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
+        # If an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
         # on the straight lane if no actions are available on the augmented lane
+        lanes_to_try = {RelativeLane.SAME_LANE}
 
-        # A set is used to prevent duplicates when minimum_cost_lane==RelativeLane.SAME_LANE
-        lanes_to_try = {minimum_cost_lane, RelativeLane.SAME_LANE}
+        # If no augmented lanes are chosen based on the route plan, allow for the possibility of lane change
+        if minimum_cost_lane == RelativeLane.SAME_LANE:
+            if requested_lane in [TurnSignalState.CeSYS_e_TurnLeft, TurnSignalState.CeSYS_e_TurnRight]:
+                # If turn signal is activated, look for actions targeting the signaled lane
+                lanes_to_try = {requested_lane, RelativeLane.SAME_LANE}
+        # If an augmented lane is chosen, choose actions targeting it regardless of turn signal status
+        else:
+            # A set is used to prevent duplicates when minimum_cost_lane==RelativeLane.SAME_LANE
+            lanes_to_try = {minimum_cost_lane, RelativeLane.SAME_LANE}
 
         for target_lane in lanes_to_try:
             # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE

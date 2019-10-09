@@ -116,6 +116,8 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     predictor_logger.error.assert_not_called()
     predictor_logger.critical.assert_not_called()
 
+    #TODO: Fake turn signal message needs to be created
+
     pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_testable.serialize())
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()

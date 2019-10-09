@@ -1,6 +1,7 @@
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -16,6 +17,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.state import State
 from logging import Logger
 from typing import Optional, List
+
 
 
 class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
@@ -36,7 +38,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in action_spec_validator._filters])
 
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool], route_plan: RoutePlan) -> (int, ActionSpec):
+                      recipes_mask: List[bool], route_plan: RoutePlan, turn_signal: TurnSignal) -> (int, ActionSpec):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
@@ -67,7 +69,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask, route_plan)
+        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask,
+                                                           route_plan, turn_signal)
 
         # approximate cost-to-go per terminal state
         terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
@@ -88,7 +91,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan):
+    def plan(self, state: State, route_plan: RoutePlan, turn_signal: TurnSignal):
 
         action_recipes = self.action_space.recipes
 
@@ -102,7 +105,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
-                                                                         recipes_mask, route_plan)
+                                                                         recipes_mask, route_plan, turn_signal)
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
             behavioral_state=behavioral_state, action_spec=selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(

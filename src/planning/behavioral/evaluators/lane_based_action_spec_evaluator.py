@@ -10,6 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, A
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.turn_signal_message import TurnSignal, TurnSignalState
 from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT, EPS, \
     TRAJECTORY_TIME_RESOLUTION, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, \
     REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
@@ -25,7 +26,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
         super().__init__(logger)
 
     def evaluate(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                 action_specs: List[ActionSpec], action_specs_mask: List[bool], route_plan: RoutePlan) -> np.ndarray:
+                 action_specs: List[ActionSpec], action_specs_mask: List[bool], route_plan: RoutePlan, turn_signal: TurnSignal) -> np.ndarray:
         pass
 
 

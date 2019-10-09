@@ -9,6 +9,7 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STA
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
@@ -24,6 +25,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.messages.turn_signal_message import TurnSignal, TurnSignalState
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
@@ -57,11 +59,13 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_TURN_SIGNAL)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.unsubscribe(UC_SYSTEM_TURN_SIGNAL)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -90,6 +94,9 @@ class BehavioralPlanningFacade(DmModule):
                                                               logger=self.logger)
 
                 state.handle_negative_velocities(self.logger)
+
+            turn_signal = self._get_current_turn_signal()
+
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -123,7 +130,7 @@ class BehavioralPlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
-                                                                                                           route_plan)
+                                                                                                           route_plan, turn_signal)
 
             self._last_trajectory = samplable_trajectory
 
@@ -271,6 +278,22 @@ class BehavioralPlanningFacade(DmModule):
             raise MsgDeserializationError("SceneDynamic was received without any host localization")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_dynamic
+
+    def _get_current_turn_signal(self) -> TurnSignal:
+        """
+        Returns the last received turn signal data
+        We assume that if no updates have been received since the last call,
+        then we will output the last received state.
+        :return: deserialized RoutePlan
+        """
+        is_success, serialized_turn_signal = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TURN_SIGNAL)
+        if serialized_turn_signal is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_TURN_SIGNAL)
+        turn_signal = RoutePlan.deserialize(serialized_turn_signal)
+        if turn_signal.s_Data.e_e_TurnSignalState != TurnSignalState.CeSYS_e_TurnNoActivation:
+            self.logger.debug("Detected Turn Signal: %s" % turn_signal)
+        return turn_signal
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """

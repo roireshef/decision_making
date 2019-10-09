@@ -16,6 +16,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
+from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
@@ -53,7 +54,7 @@ class CostBasedBehavioralPlanner:
 
     @abstractmethod
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool], route_plan: RoutePlan):
+                      recipes_mask: List[bool], route_plan: RoutePlan, turn_signal: TurnSignal):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
@@ -68,7 +69,7 @@ class CostBasedBehavioralPlanner:
         pass
 
     @abstractmethod
-    def plan(self, state: State, route_plan: RoutePlan):
+    def plan(self, state: State, route_plan: RoutePlan, turn_signal: TurnSignal):
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
