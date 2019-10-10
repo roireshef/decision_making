@@ -17,6 +17,7 @@ from decision_making.src.planning.behavioral.state.lane_merge_state import LaneM
 
 WORST_CASE_FRONT_CAR_DECEL = 2.  # [m/sec^2]
 WORST_CASE_BACK_CAR_ACCEL = 1.  # [m/sec^2]
+MAX_VELOCITY = 25.
 
 
 class ScenarioParams:
@@ -24,7 +25,7 @@ class ScenarioParams:
                  worst_case_front_actor_decel: float = WORST_CASE_FRONT_CAR_DECEL,
                  ego_reaction_time: float = SAFETY_HEADWAY, back_actor_reaction_time: float = SAFETY_HEADWAY,
                  front_rss_decel: float = -LON_ACC_LIMITS[LIMIT_MIN], back_rss_decel: float = 5.0,
-                 ego_max_velocity: float = 25., actors_max_velocity: float = 28.):
+                 ego_max_velocity: float = MAX_VELOCITY, actors_max_velocity: float = MAX_VELOCITY + 1):
         """
         :param worst_case_back_actor_accel: worst case braking deceleration of front actor prior the merge
         :param worst_case_front_actor_decel: worst case acceleration of back actor prior the merge
@@ -193,7 +194,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         if is_safe_action.any() or rel_red_line_s < 0:
             action_idx = np.argmax(is_safe_action)  # the most calm safe action
             poly_acc = np.polyder(poly_s[action_idx], m=2)
-            times = np.arange(0, min(OUTPUT_LENGTH * TRAJECTORY_TIME_RESOLUTION, specs_t[action_idx]), TRAJECTORY_TIME_RESOLUTION)
+            times = np.arange(0.5, min(OUTPUT_LENGTH + 1, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
             accelerations = np.zeros(OUTPUT_LENGTH)
             accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
             #print('\ntime=', time.time() - st)

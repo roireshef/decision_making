@@ -127,10 +127,21 @@ def test_canSolveByRuleBased_unsafe():
     assert len(ret) == 0
 
 
-def test_canSolveByRuleBased_unsafe1():
+def test_canSolveByRuleBased_safe1():
     ego_fstate = np.array([222.73911072, 0.75504523, 1.46551048])
     ego_len = 5
     actor1 = np.array([-167.53911072,    25., 5])
+    actors = np.array([actor1])
+    red_line_s = 240
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    assert len(ret) == 0
+
+
+def test_canSolveByRuleBased_unsafe1():
+    ego_fstate = np.array([224.36529455, 2.40255969, 1.85108462])
+    ego_len = 5
+    actor1 = np.array([-144.16529455,    25., 5])
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
