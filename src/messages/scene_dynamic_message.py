@@ -3,17 +3,17 @@ from typing import List
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_BoundingBoxSize import \
+from interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
+from interface.Rte_Types.python.sub_structures.TsSYS_BoundingBoxSize import \
     TsSYSBoundingBoxSize
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneDynamic import \
+from interface.Rte_Types.python.sub_structures.TsSYS_DataSceneDynamic import \
     TsSYSDataSceneDynamic
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_HostLocalization import \
+from interface.Rte_Types.python.sub_structures.TsSYS_HostLocalization import \
     TsSYSHostLocalization
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_HostHypothesis import TsSYSHostHypothesis
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectHypothesis import \
+from interface.Rte_Types.python.sub_structures.TsSYS_HostHypothesis import TsSYSHostHypothesis
+from interface.Rte_Types.python.sub_structures.TsSYS_ObjectHypothesis import \
     TsSYSObjectHypothesis
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_ObjectLocalization import \
+from interface.Rte_Types.python.sub_structures.TsSYS_ObjectLocalization import \
     TsSYSObjectLocalization
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
