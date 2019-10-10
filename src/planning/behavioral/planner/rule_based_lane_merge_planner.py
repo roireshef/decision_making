@@ -194,7 +194,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         if is_safe_action.any() or rel_red_line_s < 0:
             action_idx = np.argmax(is_safe_action)  # the most calm safe action
             poly_acc = np.polyder(poly_s[action_idx], m=2)
-            times = np.arange(0.5, min(OUTPUT_LENGTH + 1, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
+            times = np.arange(0.5, min(OUTPUT_LENGTH, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
             accelerations = np.zeros(OUTPUT_LENGTH)
             accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
             #print('\ntime=', time.time() - st)
