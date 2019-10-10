@@ -433,7 +433,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # validate acceleration limits of the initial quartic action
         poly_s = np.zeros((T.shape[0], QuarticPoly1D.num_coefs()))
         validT = ~np.isnan(T)
-        poly_s[validT] = QuarticPoly1D.s_profile_coefficients(a_0, v_0, v_T if np.isscalar(v_T) else v_T[validT], T[validT])
+        poly_s[validT] = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T if np.isscalar(v_T) else v_T[validT], T[validT])
         # acc_poly = Math.polyder2d(poly_s[validT], m=2)
         # jerk_poly = Math.polyder2d(acc_poly, m=1)
         # roots = (-jerk_poly[:, 1] / jerk_poly[:, 0])[:, np.newaxis]
