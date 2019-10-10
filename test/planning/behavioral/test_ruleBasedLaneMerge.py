@@ -135,7 +135,7 @@ def test_canSolveByRuleBased_safe1():
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
     ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
-    assert len(ret) == 0
+    assert len(ret) > 0
 
 
 def test_canSolveByRuleBased_unsafe1():
