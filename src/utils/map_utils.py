@@ -211,12 +211,26 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: distance from the right lane border, distance from the left lane border
         """
+        right_borders, left_borders =  MapUtils.get_dists_to_lane_borders(lane_id, np.array([s]))
+        return right_borders[0], left_borders[0]
+
+    @staticmethod
+    def get_dists_to_lane_borders(lane_id: int, ss: np.ndarray) -> (np.ndarray, np.ndarray):
+        """
+        get distances from the lane center to the lane borders at given longitudes from the lane's origin
+        :param lane_id:
+        :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
+        :return: distance from the right lane border, distance from the left lane border
+        """
         nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 
-        closest_s_idx = np.argmin(np.abs(nominal_points[:,
-                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s))
-        return (nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
-                -nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
+        closest_s_idxs = [np.argmin(np.abs(nominal_points[:,
+                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s)) for s in ss]
+
+        return [nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value]
+                    for closest_s_idx in closest_s_idxs], \
+               [- nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value]
+                    for closest_s_idx in closest_s_idxs]
 
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:

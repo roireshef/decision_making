@@ -328,23 +328,22 @@ class State(PUBSUB_MSG_IMPL):
         :return: None
         """
         if self.ego_state.cartesian_state[C_V] < 0:
+            logger.warning('Ego was received with negative velocity %f' % self.ego_state.cartesian_state[C_V])
             self.ego_state.cartesian_state[C_V] = 0
             self.ego_state.map_state.lane_fstate[FS_SV] = 0
-            logger.warning('Ego was received with negative velocity %f' % self.ego_state.cartesian_state[C_V])
         elif self.ego_state.cartesian_state[C_V] == 0 and self.ego_state.cartesian_state[C_A] < 0:
+            logger.warning('Ego was received with zero velocity and negative acceleration %f'
+                           % self.ego_state.cartesian_state[C_A])
             self.ego_state.cartesian_state[C_A] = 0
             self.ego_state.map_state.lane_fstate[FS_SA] = 0
-            logger.warning(
-                'Ego was received with zero velocity and negative acceleration %f' % self.ego_state.cartesian_state[
-                    C_A])
 
         for i in range(len(self.dynamic_objects)):
             if self.dynamic_objects[i].cartesian_state[C_V] < 0:
-                self.dynamic_objects[i].cartesian_state[C_V] = 0
-                self.dynamic_objects[i].map_state.lane_fstate[FS_SV] = 0
                 logger.warning(
                     'Dynamic object with obj_id %s was received with negative velocity %f',
                     self.dynamic_objects[i].obj_id, self.dynamic_objects[i].cartesian_state[C_V])
+                self.dynamic_objects[i].cartesian_state[C_V] = 0
+                self.dynamic_objects[i].map_state.lane_fstate[FS_SV] = 0
 
     @classmethod
     def create_state_from_scene_dynamic(cls, scene_dynamic: SceneDynamic,

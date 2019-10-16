@@ -665,17 +665,21 @@ class BehavioralGridState:
         closest_nominal_points = [Math.find_closest_point_in_array(point, nominal_path_coords)
                              for point in bbox]
         distances_to_lane = [np.linalg.norm(bbox[i] - closest_nominal_points[i]) for i in range(len(bbox))]
-        min_distance = np.min(distances_to_lane)
-        # cast to int since np.argmin returns an 0-dimensional array
-        closest_bbox_index = int(np.argmin(distances_to_lane))
-        closest_s_on_lane = lane_frame.cpoint_to_fpoint(closest_nominal_points[closest_bbox_index])[FP_SX]
-        border_right, border_left = MapUtils.get_dist_to_lane_borders(lane_id, closest_s_on_lane)
+
+        # min_distance = np.min(distances_to_lane)
+        # # cast to int since np.argmin returns an 0-dimensional array
+        # closest_bbox_index = int(np.argmin(distances_to_lane))
+        # closest_s_on_lane_single = lane_frame.cpoint_to_fpoint(closest_nominal_points[closest_bbox_index])[FP_SX]
+
+        closest_ss_on_lane = lane_frame.cpoints_to_fpoints(np.array(closest_nominal_points))[:,FP_SX]
+
+        borders_right, borders_left = MapUtils.get_dists_to_lane_borders(lane_id, closest_ss_on_lane)
 
         # check boundary points if lane is an adjacent lane
         # otherwise, if the closest distance to the nominal path is less than the lane's width, the vehicle must be in the lane.
         if in_left:
-            return min_distance < border_left
+            return any([distances_to_lane[i] < borders_left[i] for i in range(len(bbox))])
         elif in_right:
-            return min_distance < border_right
+            return any([distances_to_lane[i] < borders_right[i] for i in range(len(bbox))])
         else:
             return False
