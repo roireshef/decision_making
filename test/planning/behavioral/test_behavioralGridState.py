@@ -10,7 +10,7 @@ from decision_making.src.utils.map_utils import MapUtils
 import numpy as np
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import DynamicObject, MapState, ObjectSize
+from decision_making.src.state.state import DynamicObject, MapState, ObjectSize, State
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
 
@@ -33,7 +33,8 @@ from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_left_first, \
-    scene_static_lane_splits_on_left_and_right_right_first, scene_static_oval_with_splits
+    scene_static_lane_splits_on_left_and_right_right_first, scene_static_oval_with_splits, scene_static_mound_road_north, \
+    scene_dynamic_obj_intruding_in_lane_mound_road_north
 
 SMALL_DISTANCE_ERROR = 0.01
 
@@ -775,4 +776,12 @@ def test_isObjectInLane_laneMerge_carInOverlap(scene_static_oval_with_splits: Sc
     _ = dyn_obj.cartesian_state
     assert BehavioralGridState.is_object_in_lane(dyn_obj, 58375684) == True
     assert BehavioralGridState.is_object_in_lane(dyn_obj, 58375685) == True
+
+def test_isObjectInLane_moundRoadNorth_carIntrudingInLane(scene_static_mound_road_north, scene_dynamic_obj_intruding_in_lane_mound_road_north):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_mound_road_north)
+    state = State.create_state_from_scene_dynamic(scene_dynamic_obj_intruding_in_lane_mound_road_north, [], None)
+    # check object's assigned lane (22166020)
+    assert BehavioralGridState.is_object_in_lane(state.dynamic_objects[0], state.dynamic_objects[0].map_state.lane_id) == True
+    # check the lane the object is poking into
+    assert BehavioralGridState.is_object_in_lane(state.dynamic_objects[0], 22166019) == True
 
