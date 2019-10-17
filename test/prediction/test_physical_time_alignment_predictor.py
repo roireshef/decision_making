@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
-from decision_making.src.planning.behavioral.state import DynamicObject, EgoState, State
+from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.test.prediction.utils import Utils
 
 from decision_making.test.prediction.conftest import DYNAMIC_OBJECT_ID

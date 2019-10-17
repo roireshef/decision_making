@@ -7,7 +7,7 @@ from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEG
 from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y, FS_DX
-from decision_making.src.planning.behavioral.state.state import EgoState
+from decision_making.src.state.state import EgoState
 
 
 def plot_dynamics(log_file_path: str):

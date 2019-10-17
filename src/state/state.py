@@ -5,7 +5,7 @@ from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoSt
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
     EGO_HEIGHT, LANE_END_COST_IND
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
-from decision_making.src.planning.behavioral.state.map_state import MapState
+from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List, Optional, Dict, Tuple, TypeVar
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization

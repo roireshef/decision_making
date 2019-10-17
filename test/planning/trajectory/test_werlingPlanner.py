@@ -1,7 +1,7 @@
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.test.utils.scene_static_utils import SceneStaticUtils
-from decision_making.src.planning.behavioral.state import MapState
+from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List
 from unittest.mock import patch
@@ -22,7 +22,7 @@ from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_D
     CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.planning.behavioral.state import State, ObjectSize, DynamicObject, EgoState
+from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidBoxObstacle, \
     WerlingVisualizer
 from decision_making.src.utils.geometry_utils import CartesianFrame

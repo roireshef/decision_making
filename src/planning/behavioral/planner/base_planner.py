@@ -2,8 +2,6 @@ import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
-from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
 
@@ -24,8 +22,8 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.planning.behavioral.state.map_state import MapState
-from decision_making.src.planning.behavioral.state.state import ObjectSize
+from decision_making.src.state.map_state import MapState
+from decision_making.src.state.state import ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
 
 

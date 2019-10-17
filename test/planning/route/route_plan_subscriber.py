@@ -18,8 +18,8 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
-from decision_making.src.planning.behavioral.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
-from decision_making.src.planning.behavioral.state import MapState
+from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
+from decision_making.src.state.map_state import MapState
 
 
 def generate_mock_state(ego_lane_id:int, ego_lane_station:float) -> State :

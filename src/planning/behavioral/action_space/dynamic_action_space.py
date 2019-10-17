@@ -11,7 +11,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, A
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.planning.behavioral.state.state import DynamicObject
+from decision_making.src.state.state import DynamicObject
 from sklearn.utils.extmath import cartesian
 
 

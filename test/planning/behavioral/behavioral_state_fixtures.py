@@ -15,8 +15,8 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
-from decision_making.src.planning.behavioral.state.map_state import MapState
-from decision_making.src.planning.behavioral.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
+from decision_making.src.state.map_state import MapState
+from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
     scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends, \

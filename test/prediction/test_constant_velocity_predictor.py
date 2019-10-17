@@ -4,7 +4,7 @@ import numpy as np
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.behavioral.state import DynamicObject, State, EgoState
+from decision_making.src.state.state import DynamicObject, State, EgoState
 from decision_making.test.prediction.conftest import DYNAMIC_OBJECT_ID, CARTESIAN_CREATION
 from decision_making.test.prediction.utils import Utils
 from decision_making.src.prediction.ego_aware_prediction.maneuver_based_predictor import ManeuverBasedPredictor

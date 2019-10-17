@@ -11,7 +11,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.planning.behavioral.state.state import State
+from decision_making.src.state.state import State
 from decision_making.src.utils.geometry_utils import CartesianFrame
 
 

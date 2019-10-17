@@ -13,9 +13,9 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, R
 from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
     FrenetSubSegment
-from decision_making.src.planning.behavioral.state.map_state import MapState
-from decision_making.src.planning.behavioral.state.state import DynamicObject, EgoState
-from decision_making.src.planning.behavioral.state.state import State
+from decision_making.src.state.map_state import MapState
+from decision_making.src.state.state import DynamicObject, EgoState
+from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.messages.scene_static_enums import LaneOverlapType
 from decision_making.src.messages.scene_static_enums import ManeuverType

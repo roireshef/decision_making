@@ -5,7 +5,7 @@ import numpy as np
 
 from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D, CartesianExtendedState, C_X, C_Y, C_YAW
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.planning.behavioral.state import DynamicObject, State
+from decision_making.src.state.state import DynamicObject, State
 from decision_making.src.utils.geometry_utils import CartesianFrame
 
 

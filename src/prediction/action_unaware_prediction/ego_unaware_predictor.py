@@ -3,7 +3,7 @@ from typing import List, Dict
 import numpy as np
 from logging import Logger
 
-from decision_making.src.planning.behavioral.state import State, DynamicObject
+from decision_making.src.state.state import State, DynamicObject
 
 
 class EgoUnawarePredictor(metaclass=ABCMeta):

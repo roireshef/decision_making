@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.behavioral.state import DynamicObject
+from decision_making.src.state.state import DynamicObject
 
 
 class Utils:

@@ -8,7 +8,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.planning.behavioral.state import ObjectSize, State, EgoState, DynamicObject
+from decision_making.src.state.state import ObjectSize, State, EgoState, DynamicObject
 
 
 # test specify for dynamic action from a slightly unsafe position:
