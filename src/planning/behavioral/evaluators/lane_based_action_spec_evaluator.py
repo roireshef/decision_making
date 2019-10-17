@@ -1,10 +1,9 @@
-from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
 
 import numpy as np
 
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe, AggressivenessLevel, DynamicActionRecipe, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
