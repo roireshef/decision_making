@@ -15,15 +15,18 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
-from decision_making.src.planning.behavioral.state import MapState
-from decision_making.src.planning.behavioral.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
+from decision_making.src.planning.behavioral.state.map_state import MapState
+from decision_making.src.planning.behavioral.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
-    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends, scene_static_right_lane_ends, \
+    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends, \
+    scene_static_right_lane_ends, \
     right_lane_split_scene_static, left_lane_split_scene_static, left_right_lane_split_scene_static, \
-    scene_static_lane_split_on_right_ends, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_end, \
+    scene_static_lane_split_on_right_ends, scene_static_lane_split_on_left_ends, \
+    scene_static_lane_splits_on_left_and_right_end, \
     scene_static_lane_splits_on_left_and_right_left_first, scene_static_lane_splits_on_left_and_right_right_first, \
-    scene_static_merge_right, scene_static_merge_left_right_to_center, scene_static_oval_with_splits
+    scene_static_merge_right, scene_static_merge_left_right_to_center, scene_static_oval_with_splits, \
+    scene_static_merge_left
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
 from decision_making.test.planning.custom_fixtures import route_plan_1_2
 
@@ -287,6 +290,48 @@ def state_with_object_after_merge(route_plan_1_2: RoutePlan):
     dynamic_objects.append(dynamic_object)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
+def state_with_objects_before_merge(route_plan_1_2: RoutePlan):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_merge_left())
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+    # Ego state
+    ego_s = 800.
+    ego_vel = 10
+    ego_lane_id = 10
+
+    map_state = MapState(np.array([ego_s, ego_vel, 0, 0, 0, 0]), ego_lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+
+    dynamic_objects: List[DynamicObject] = list()
+    obj_lane_id = 11
+    obj_vel = 25
+
+    dynamic_objects.append(EgoState.create_from_map_state(obj_id=4, timestamp=0,
+                                                          map_state=MapState(np.array([ego_s-100, obj_vel, 0, 0, 0, 0]),
+                                                                             lane_id=obj_lane_id),
+                                                          size=car_size, confidence=1., off_map=False))
+    dynamic_objects.append(EgoState.create_from_map_state(obj_id=3, timestamp=0,
+                                                          map_state=MapState(np.array([ego_s-50, obj_vel, 0, 0, 0, 0]),
+                                                                             lane_id=obj_lane_id),
+                                                          size=car_size, confidence=1., off_map=False))
+    dynamic_objects.append(EgoState.create_from_map_state(obj_id=2, timestamp=0,
+                                                          map_state=MapState(np.array([ego_s, obj_vel, 0, 0, 0, 0]),
+                                                                             lane_id=obj_lane_id),
+                                                          size=car_size, confidence=1., off_map=False))
+    dynamic_objects.append(EgoState.create_from_map_state(obj_id=1, timestamp=0,
+                                                          map_state=MapState(np.array([ego_s+50, obj_vel, 0, 0, 0, 0]),
+                                                                             lane_id=obj_lane_id),
+                                                          size=car_size, confidence=1., off_map=False))
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
 
 @pytest.fixture(scope='function')
 def state_with_objects_around_3to1_merge(route_plan_1_2: RoutePlan):

@@ -13,7 +13,7 @@ from decision_making.test.constants import BP_NEGLIGIBLE_DISPOSITION_LON, BP_NEG
 
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.planning.behavioral.state import EgoState, State
+from decision_making.src.planning.behavioral.state.state import EgoState, State
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.takeover_message import Takeover
 from decision_making.src.exceptions import RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, \

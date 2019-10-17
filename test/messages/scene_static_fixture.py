@@ -550,9 +550,9 @@ def scene_static_lane_splits_on_left_and_right_right_first():
 def scene_static_merge_right():
     scene = short_testable_scene_static_mock()
     # disconnect 11 from 21, add connection to 20
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes = [LaneSegmentConnectivity(20, ManeuverType.STRAIGHT_CONNECTION)]
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[1].as_downstream_lanes = [LaneSegmentConnectivity(20, ManeuverType.LEFT_MERGE_CONNECTION)]
     # add upstream connection from 20 to 11
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_upstream_lanes.append(LaneSegmentConnectivity(11, ManeuverType.STRAIGHT_CONNECTION))
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_upstream_lanes.append(LaneSegmentConnectivity(11, ManeuverType.LEFT_MERGE_CONNECTION))
     scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].e_Cnt_upstream_lane_count += 1
     # remove adjacent lanes from 20
     scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_left_adjacent_lanes = []
@@ -560,8 +560,25 @@ def scene_static_merge_right():
     # delete lane 21
     del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4]
     scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
-
     return scene
+
+
+@pytest.fixture()
+def scene_static_merge_left():
+    scene = short_testable_scene_static_mock()
+    # disconnect 10 from 20, add connection to 21
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_downstream_lanes = [LaneSegmentConnectivity(21, ManeuverType.RIGHT_MERGE_CONNECTION)]
+    # add upstream connection from 21 to 10
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].as_upstream_lanes.append(LaneSegmentConnectivity(10, ManeuverType.RIGHT_MERGE_CONNECTION))
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].e_Cnt_upstream_lane_count += 1
+    # remove adjacent lanes from 21
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].as_right_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].e_Cnt_right_adjacent_lane_count = 0
+    # delete lane 20
+    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3]
+    scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
+    return scene
+
 
 @pytest.fixture()
 def scene_static_merge_left_right_to_center():

@@ -377,7 +377,12 @@ class BehavioralGridState:
             # the backward distance to the beginning of the lane (i.e. the station).
             starting_station = 0.0
             lookahead_distance = MAX_FORWARD_HORIZON + station
-            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON)
+            try:
+                upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON)
+            except UpstreamLaneNotFound:
+                starting_station = 0
+                lookahead_distance = MAX_FORWARD_HORIZON + station
+                upstream_lane_subsegments = []
         else:
             # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
             # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead

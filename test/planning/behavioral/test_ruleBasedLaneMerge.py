@@ -2,12 +2,11 @@ import numpy as np
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, VELOCITY_LIMITS, EGO_LENGTH
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams, SimpleLaneMergeState
-from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
-from decision_making.src.planning.behavioral.state.state import ObjectSize
-from unittest.mock import patch
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.planning.types import LIMIT_MAX
 import matplotlib.pyplot as plt
+from rte.python.logger.AV_logger import AV_Logger
 
 
 def test_quinticApproximator_plotVelocityProfiles():
@@ -231,3 +230,21 @@ def test_statistics():
     plt.plot(ego_range, results_per_ego_s/states_num)
     plt.show()
 
+
+from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
+from gym.spaces.tuple_space import Tuple as GymTuple
+from ray.rllib.evaluation import SampleBatch
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_objects_before_merge, route_plan_1_2
+
+
+def test_load_model(state_with_objects_before_merge, route_plan_1_2):
+
+    model = RL_LaneMergePlanner.load_model()
+
+    logger = AV_Logger.get_logger()
+    behavioral_state = BehavioralGridState.create_from_state(state_with_objects_before_merge, route_plan_1_2, logger)
+    lane_merge_state = LaneMergeState.create_from_behavioral_state(behavioral_state)
+    encoded_state: GymTuple = lane_merge_state.encode_state_for_RL()
+    logits = model._forward({SampleBatch.CUR_OBS: encoded_state}, [])[0]
+    ret = logits

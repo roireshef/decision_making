@@ -14,12 +14,14 @@ from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from ray.rllib.evaluation import SampleBatch
-from pathlib import Path
 import torch
-from gym.spaces.tuple import Tuple as GymTuple
+from gym.spaces.tuple_space import Tuple as GymTuple
 from gym.spaces.box import Box
 
-from planning_research.src.flow_rl.models.simple_model import SimpleModel  #TODO: remove dependence on planning_research
+from planning_research.src.flow_rl.models.dual_input_model import DualInputModel  #TODO: remove dependence on planning_research
+
+from pathlib import Path
+CHECKPOINT_PATH = str(Path.home()) + '/temp/checkpoint_31201/checkpoint-31201.torch'
 
 
 class RL_LaneMergePlanner(BasePlanner):
@@ -28,18 +30,22 @@ class RL_LaneMergePlanner(BasePlanner):
         super().__init__(lane_merge_state, logger)
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
-
         # TODO: use global constant for the model path
-        checkpoint_path = str(Path.home()) + '/ray_results/checkpoint.torch'
-        model_state_dict = torch.load(checkpoint_path)
+        self.model = RL_LaneMergePlanner.load_model()
+
+    @staticmethod
+    def load_model():
+        # TODO: use global constant for the model path
+        model_state_dict = torch.load(CHECKPOINT_PATH)
 
         # TODO: create global constants for observation space initialization
         ego_box = Box(low=-np.inf, high=np.inf, shape=(1, 3), dtype=np.float32)
         actors_box = Box(low=-np.inf, high=np.inf, shape=(54, 2), dtype=np.float32)
         obs_space = GymTuple((ego_box, actors_box))
         options = {"custom_options": {"hidden_size": 64}}
-        self.model = SimpleModel(obs_space=obs_space, num_outputs=6, options=options)
-        self.model.load_state_dict(model_state_dict)
+        model = DualInputModel(obs_space=obs_space, num_outputs=6, options=options)
+        model.load_state_dict(model_state_dict)
+        return model
 
     def _create_actions(self) -> np.array:
         action_recipes = self.action_space.recipes
@@ -99,7 +105,7 @@ class RL_LaneMergePlanner(BasePlanner):
             raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
                                           self.behavioral_state.ego_state.timestamp_in_sec)
 
-        encoded_state = self.lane_merge_state.encode_state_for_RL()
+        encoded_state: GymTuple = self.lane_merge_state.encode_state_for_RL()
 
         logits = self.model._forward({SampleBatch.CUR_OBS: encoded_state}, [])[0]
         logits[~action_specs.astype(bool)] = -np.inf

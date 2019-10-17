@@ -10,7 +10,7 @@ from decision_making.src.utils.map_utils import MapUtils
 import numpy as np
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import DynamicObject, MapState, ObjectSize
+from decision_making.src.planning.behavioral.state.state import DynamicObject, MapState, ObjectSize
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
 
