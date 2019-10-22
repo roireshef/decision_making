@@ -252,10 +252,10 @@ class SmoothMapPoints:
         p.show()
 
 
-SmoothMapPoints.smooth_points(path="/home/lzm9ww/Clinton/", desired_velocities=14)
+#SmoothMapPoints.smooth_points(path="/home/mz8cj6/temp/Clinton/", desired_velocities=14)
 #
-# SmoothMapPoints.smooth_points(path="/home/lzm9ww/Clinton/right/",
-#                               desired_velocities=13.333,  # m/sec
-#                               split_lane_id=103296514,    # first lane after the split
-#                               merge_lane_id=103297538     # last lane before the merge
-#                               )
+SmoothMapPoints.smooth_points(path="/home/mz8cj6/temp/Clinton/right/",
+                              desired_velocities=13.333,  # m/sec
+                              split_lane_id=103296514,    # first lane after the split
+                              merge_lane_id=103297538     # last lane before the merge
+                              )
