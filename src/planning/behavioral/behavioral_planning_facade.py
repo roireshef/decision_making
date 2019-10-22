@@ -121,8 +121,8 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_takeover(takeover_message)
 
             # choose scenario and planner
-            scenario = Scenario.identify_scenario(state, route_plan)
-            planner = scenario.choose_planner(state, route_plan, self.logger)
+            scenario = Scenario.identify_scenario(updated_state, route_plan)
+            planner = scenario.choose_planner(updated_state, route_plan, self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan()

@@ -274,6 +274,7 @@ class BehavioralGridState:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
         contain multiple original lane segments. Augmented frenet frames may be created if there are lane splits ahead.
+        :param ego_state: ego state from scene_dynamic
         :param route_plan: the route plan which contains lane costs
         :param logger: Logger object to log warning messages
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
