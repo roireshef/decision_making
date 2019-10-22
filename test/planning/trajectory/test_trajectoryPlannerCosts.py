@@ -1,4 +1,5 @@
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 from logging import Logger
 
 import numpy as np

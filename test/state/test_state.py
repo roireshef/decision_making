@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from unittest.mock import patch
 
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.global_constants import VELOCITY_MINIMAL_THRESHOLD, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
@@ -7,6 +8,10 @@ from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.state.state import DynamicObjectsData, State
 from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, \
+    scene_dynamic_fix_single_host_hypothesis, scene_dynamic_fix_two_host_hypotheses, \
+    scene_dynamic_fix_three_host_hypotheses, pubsub, dynamic_objects_negative_velocity
+from decision_making.test.messages.scene_static_fixture import scene_static_oval_with_splits, scene_static_pg_split
 
 
 # @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)

@@ -14,6 +14,27 @@ from decision_making.src.state.state import DynamicObject, MapState, ObjectSize
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
 
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
+    state_with_surrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, \
+    state_with_left_lane_ending, state_with_right_lane_ending, state_with_same_lane_ending_no_left_lane, \
+    state_with_same_lane_ending_no_right_lane, state_with_lane_split_on_right, state_with_lane_split_on_left, \
+    state_with_lane_split_on_left_and_right, state_with_lane_split_on_right_ending, route_plan_lane_split_on_right_ends, \
+    state_with_lane_split_on_left_ending, route_plan_lane_split_on_left_ends, state_with_lane_split_on_left_and_right_ending, \
+    route_plan_lane_splits_on_left_and_right_end, route_plan_lane_splits_on_left_and_right_left_first, \
+    state_with_lane_split_on_left_and_right_left_first, route_plan_lane_splits_on_left_and_right_right_first, \
+    state_with_lane_split_on_left_and_right_right_first, state_with_object_after_merge, state_with_objects_around_3to1_merge, \
+    behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
+    route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_on_left_and_right_left_first, \
+    route_plan_lane_splits_on_left_and_right_right_first, state_with_five_objects_on_oval_track, route_plan_for_oval_track_file
+
+from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3, route_plan_left_lane_ends, route_plan_right_lane_ends, \
+    route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
+
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
+    left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
+    left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_left_first, \
+    scene_static_lane_splits_on_left_and_right_right_first, scene_static_oval_with_splits
+
 SMALL_DISTANCE_ERROR = 0.01
 
 def test_createFromState_objectAfterMerge_objectAssignedToAllGffs(state_with_object_after_merge, route_plan_1_2):

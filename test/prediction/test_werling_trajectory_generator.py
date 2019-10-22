@@ -8,6 +8,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.prediction.conftest import PREDICTION_HORIZON
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
     WerlingTrajectoryGenerator
+from decision_making.test.prediction.conftest import original_state_with_surrounding_objects
 
 DEBUG_PLOT = False
 
