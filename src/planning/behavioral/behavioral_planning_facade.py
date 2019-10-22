@@ -121,13 +121,9 @@ class BehavioralPlanningFacade(DmModule):
 
             self._publish_takeover(takeover_message)
 
-            # create road semantic grid from the raw State object
-            # behavioral_state contains road_occupancy_grid and ego_state
-            behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
-
             # choose scenario and planner
-            scenario = Scenario.identify_scenario(behavioral_state)
-            planner = scenario.choose_planner(behavioral_state, route_plan, self.logger)
+            scenario = Scenario.identify_scenario(state, route_plan)
+            planner = scenario.choose_planner(state, route_plan, self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan()

@@ -1,49 +1,48 @@
+from decision_making.src.global_constants import MERGE_LOOKAHEAD
+from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 import numpy as np
-from decision_making.src.planning.types import FP_SX, FS_DX, FS_SX
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN
+from decision_making.src.utils.map_utils import MapUtils
 from gym.spaces.tuple_space import Tuple as GymTuple
 from planning_research.src.flow_rl.common_constants import DEFAULT_ADDITIONAL_ENV_PARAMS  # TODO: move from planning research
 import torch
 
-MAX_BACK_HORIZON = 300   # on the main road
-MAX_AHEAD_HORIZON = 100  # on the main road
-MERGE_LOOKAHEAD = 300    # on the ego road
-
 
 class LaneMergeState(BehavioralGridState):
     def __init__(self, behavioral_state: BehavioralGridState,
-                 merge_side: RelativeLane, red_line_s: float):
+                 merge_side: RelativeLane, red_line_s: float, lanes_s_diff: float):
         super().__init__(behavioral_state.road_occupancy_grid, behavioral_state.ego_state,
                          behavioral_state.extended_lane_frames, behavioral_state.projected_ego_fstates)
         self.merge_side = merge_side
         self.red_line_s = red_line_s
+        self.lanes_s_diff = lanes_s_diff
 
     @classmethod
-    def create_from_behavioral_state(cls, behavioral_state: BehavioralGridState):
-        ego_state = behavioral_state.ego_state
+    def create_from_behavioral_state(cls, behavioral_state: BehavioralGridState, route_plan: RoutePlan):
         ego_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-        same_lane_segments = ego_gff.segment_ids
-        same_lane_offsets = ego_gff._segments_s_offsets
+        projected_ego = behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]
 
-        for rel_lane, target_gff in behavioral_state.extended_lane_frames.items():
-            if rel_lane == RelativeLane.SAME_LANE:
-                continue
-            # if target_gff.gff_type != GFFType.Augmented:
-            #     continue
-            common_lanes = np.where(same_lane_segments == ego_state.map_state.lane_id)[0]
-            if len(common_lanes) == 0:
-                continue
-            current_index = common_lanes[0]
-            max_index = min(len(same_lane_segments), len(target_gff.segment_ids))
-            merge_indices = np.where(target_gff.segment_ids[:max_index] == same_lane_segments[:max_index])[0]
-            if len(merge_indices) == 0 or merge_indices[0] <= current_index:  # the merge point should be ahead
-                continue
-            merge_side = rel_lane
-            red_line_s = same_lane_offsets[merge_indices[0]] - ego_state.size.length / 2
-            return cls(behavioral_state, merge_side, red_line_s)
+        # find merge lane_id of ego_gff, merge side and the first common lane_id
+        merge_lane_id, maneuver_type, common_lane_id = MapUtils.get_closest_lane_merge(
+            ego_gff, projected_ego[FS_SX], merge_lookahead=MERGE_LOOKAHEAD)
+        relative_lane = RelativeLane.LEFT_LANE if maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION else RelativeLane.RIGHT_LANE
 
-        return None
+        red_line_s = ego_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), merge_lane_id)[FS_SX]
+        merge_point_on_ego_gff = ego_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), common_lane_id)[FS_SX]
+        merge_point_from_ego = merge_point_on_ego_gff - projected_ego[FS_SX]
+
+        # create target GFF for the merge
+        target_gff = behavioral_state._get_generalized_frenet_frames(
+            common_lane_id, station=0, route_plan=route_plan, forward_horizon=MERGE_LOOKAHEAD - merge_point_from_ego,
+            backward_horizon=MERGE_LOOKAHEAD + merge_point_from_ego)[RelativeLane.SAME_LANE]
+
+        merge_point_on_target_gff = target_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), common_lane_id)[FS_SX]
+        lanes_s_diff = merge_point_on_target_gff - merge_point_on_ego_gff
+
+        return cls(behavioral_state, relative_lane, red_line_s, lanes_s_diff)
 
     def encode_state_for_RL(self) -> GymTuple:
 
@@ -79,7 +78,9 @@ class LaneMergeState(BehavioralGridState):
 
         return torch.from_numpy(host_state[np.newaxis, np.newaxis, :]).float(), torch.from_numpy(actors_state[np.newaxis, :]).float()
 
-
+    # MAX_BACK_HORIZON = 300   # on the main road
+    # MAX_AHEAD_HORIZON = 100  # on the main road
+    #
     # @staticmethod
     # def build(state: State, behavioral_state: BehavioralGridState):
     #     """

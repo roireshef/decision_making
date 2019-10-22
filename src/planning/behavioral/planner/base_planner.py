@@ -31,7 +31,7 @@ from decision_making.src.utils.map_utils import MapUtils
 class BasePlanner:
     def __init__(self, behavioral_state: BehavioralGridState, logger: Logger):
         """
-        :param behavioral_state: current behavioral grid state
+        :param behavioral_state: behavioral grid state
         :param logger:
         """
         self.behavioral_state = behavioral_state
