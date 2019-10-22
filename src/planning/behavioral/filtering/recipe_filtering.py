@@ -1,7 +1,7 @@
 import six
 from abc import ABCMeta, abstractmethod
 
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe
 from logging import Logger
 from typing import List, Optional

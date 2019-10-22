@@ -6,9 +6,9 @@ from typing import Optional, List, Type
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DA, FS_DV, FS_DX
@@ -112,9 +112,12 @@ class TargetActionSpace(ActionSpace):
                 self.margin_to_keep_from_targets + behavioral_state.ego_state.size.length / 2 + target_lengths / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+        v_0 = projected_ego_fstates[:, FS_SV]
+        v_T_mod = self._modify_target_speed_if_ego_is_faster_than_target(behavioral_state, ds, v_0, v_T)
+        T_m = SPECIFICATION_HEADWAY
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
-            v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_HEADWAY)
+            v_0=projected_ego_fstates[:, FS_SV], v_T=v_T_mod, T_m=T_m)
         # TODO see https://confluence.gm.com/display/ADS133317/Stop+at+Geo+location+remaining+issues for possibly extending the allowed action time
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
         T_s = np.fmin.reduce(roots_s, axis=-1)
@@ -126,7 +129,7 @@ class TargetActionSpace(ActionSpace):
         # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
-        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T, a_0, ds, SPECIFICATION_HEADWAY)] = 0
+        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T_mod, a_0, ds, SPECIFICATION_HEADWAY)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -143,14 +146,60 @@ class TargetActionSpace(ActionSpace):
         # to keep from the target vehicle.
         distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
                                                              v_0=projected_ego_fstates[:, FS_SV],
-                                                             v_T=v_T, T=T, dx=ds,
-                                                             T_m=SPECIFICATION_HEADWAY)(T)
+                                                             v_T=v_T_mod, T=T, dx=ds,
+                                                             T_m=T_m)(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
         action_specs = [ActionSpec(t, vt, st, 0, recipe)
                         if ~np.isnan(t) else None
-                        for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
+                        for recipe, t, vt, st in zip(action_recipes, T, v_T_mod, target_s)]
 
         return action_specs
+
+    def _modify_target_speed_if_ego_is_faster_than_target(self, behavioral_state: BehavioralGridState, ds: np.ndarray, v_0: np.ndarray, v_T: np.ndarray):
+        """
+        If the speed of the ego is higher than that of the leading vehicle, set the v_T to be lower than the real v_T.
+        This will limit the ego's speed and help in case of sudden brake by the leading vehicle.
+        Does not impact RoadSign actions, as its v_T is already 0, so it won't be reduced
+        On top of this, need to make sure the v_T is not too low, as this might cause it to be filtered by the
+        kinematics filter due to too large deceleration.
+        Assume the ego starts at v_0 and breaks at deceleration A. Calculate at what speed the lead vehicle should drive
+        in order for the ego to match its speed at time t, and for the distance between vehicles to be the SAFETY
+        distance at the same time t.
+        This gives us the following 2 equations:
+        1. v_T = v_0 - A * t
+        2. S0 - (t *(v_T+v_0)/2) + (t * v_T) = SPECIFICATION_HEADWAY * v_T + LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+        Exchanging t from eq. 1 into eq. 2 gives a quadratic eq in v_T which we solve below.
+        We use the smaller root as a lower bound to the speed we can set.
+        There are a few special cases to note:
+        1. No roots to the equation: This happens when the initial S0 is too small relative to the required headway.
+        In this case we keep the v_T unchanged.
+        2. Root is larger than v_T. Happens if the leading vehicle is moving too slow and we want it to move faster.
+        In this case we keep the v_T unchanged.
+        3. Negative root. This happens if the initial S0 is too large relative to v_T. The lead vehicle needs to
+        drive in reverse to be at the desired location. In this case we ignore the bound.
+        :param behavioral_state: world's state. Used for debug only.
+        :param ds: distance between vehicles after subtracting the car's length and the specify margin
+        :param v_0: initial ego speed [m/s]
+        :param v_T: real target speed [m/s]
+        :return: target speed to set for the action
+        """
+        v_diff = v_T - v_0
+        # indices where the leading vehicle is slower than the ego
+        mod_idx = np.where(v_diff < CLOSE_TO_ZERO_NEGATIVE_VELOCITY)[0]
+        v_T_mod = v_T.copy()
+        lower_root = Math.solve_quadratic(np.c_[np.ones(len(mod_idx)),
+                                                2 * (MAX_IMMEDIATE_DECEL * SPECIFICATION_HEADWAY - v_0[mod_idx]),
+                                                v_0[mod_idx] * v_0[mod_idx] - 2 * MAX_IMMEDIATE_DECEL * ds[mod_idx]])[:, 0]
+        valid_root_idx = np.where(~np.isnan(lower_root) & (lower_root < v_T[mod_idx]))[0]
+        valid_idx = mod_idx[valid_root_idx]
+        # select the reduced value where possible
+        v_T_mod[valid_idx] = np.maximum(0, v_T_mod[valid_idx] + (v_diff[valid_idx] * SLOW_DOWN_FACTOR))
+        # limit by the lower bound
+        v_T_mod[valid_idx] = np.maximum(v_T_mod[valid_idx], lower_root[valid_idx])
+        self.logger.debug("SlowDown %1.2f, %1.2f, %1.2f, %1.2f, %1.2f, %f", v_T[0], v_0[0], max(0, v_T[0] + (v_diff[0] * SLOW_DOWN_FACTOR)), v_T_mod[0],
+                          lower_root[0] if (len(mod_idx) > 0 and ~np.isnan(lower_root[0])) else 0,
+                          behavioral_state.ego_state.timestamp_in_sec)
+        return v_T_mod

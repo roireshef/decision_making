@@ -6,7 +6,7 @@ from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_
     CLOSE_ENOUGH
 from decision_making.src.messages.scene_static_enums import RoadObjectType
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
     RoadSignActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
