@@ -1,6 +1,6 @@
 from logging import Logger
 
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from typing import Any
 

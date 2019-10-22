@@ -12,7 +12,7 @@ from typing import Optional
 from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, BoolArray
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
