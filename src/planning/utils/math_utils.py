@@ -58,8 +58,8 @@ class Math:
         and x holds in each row a vector of values to assign to the corresponding poly1d in p.
         this enjoys matrix-operations efficiency
         :param p: a 2d numpy array [MxL] having in each of the M rows the L polynomial coefficients vector
-        :param x: a 2d numpy array [N] of samples
-        :return: a 2d numpy array [MxN] of polynom values for each poly1d instance and sample
+        :param x: a 2d numpy array [MxN] of samples
+        :return: a 2d numpy array [MxN] of polynomial values for each poly1d instance and sample
         """
         assert p.shape[0] == x.shape[0], 'number of values and polynomials is not equal'
         m = p.shape[0]

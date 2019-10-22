@@ -1,10 +1,9 @@
 import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
-from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
-from typing import Optional, List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, \
@@ -16,109 +15,97 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
-from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
-from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
-    ActionRecipeEvaluator
-from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
-from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import State, ObjectSize
+from decision_making.src.state.state import ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
 
 
 @six.add_metaclass(ABCMeta)
-class CostBasedBehavioralPlanner:
-    def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator],
-                 action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
-        self.action_space = action_space
-        self.recipe_evaluator = recipe_evaluator
-        self.action_spec_evaluator = action_spec_evaluator
-        self.action_spec_validator = action_spec_validator or ActionSpecFiltering(filters=None, logger=logger)
-        self.value_approximator = value_approximator
-        self.predictor = predictor
+class BasePlanner:
+    def __init__(self, behavioral_state: BehavioralGridState, logger: Logger):
+        """
+        :param behavioral_state: behavioral grid state
+        :param logger:
+        """
+        self.behavioral_state = behavioral_state
         self.logger = logger
 
-        self._last_action: Optional[ActionRecipe] = None
-        self._last_action_spec: Optional[ActionSpec] = None
-
-    @abstractmethod
-    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool], route_plan: RoutePlan):
-        """
-        upon receiving an input state, return an action specification and its respective index in the given list of
-        action recipes.
-        :param recipes_mask: A list of boolean values, which are True if respective action recipe in
-        input argument action_recipes is valid, else False.
-        :param state: the current world state
-        :param behavioral_state: processed behavioral state
-        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
-        :param route_plan -  a route_plane message
-        :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
-        """
-        pass
-
-    @abstractmethod
-    def plan(self, state: State, route_plan: RoutePlan):
+    @prof.ProfileFunction()
+    def plan(self):
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
         and evaluating actions. Its output will be further handled and used to create a trajectory in Trajectory Planner
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
         cost params and strategy.
-        :param state: the current world state
-        :param route_plan: A route plan message
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
+        actions = self._create_actions()
+        filtered_actions = self._filter_actions(actions)
+        costs = self._evaluate_actions(filtered_actions)
+        selected_action_recipe, selected_action_spec = self._choose_action(actions, costs)
+
+        trajectory_parameters = self._generate_trajectory_params(action_spec=selected_action_spec)
+        visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
+
+        timestamp_in_sec = self.behavioral_state.ego_state.timestamp_in_sec
+        baseline_trajectory = BasePlanner.generate_baseline_trajectory(
+            timestamp_in_sec, selected_action_spec, trajectory_parameters,
+            self.behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
+
+        # self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
+        #                   action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
+        self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)", selected_action_spec, timestamp_in_sec)
+        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_recipe, timestamp_in_sec)
+        self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
+                          % (timestamp_in_sec, selected_action_recipe, selected_action_spec.t))
+
+        return trajectory_parameters, baseline_trajectory, visualization_message
+
+    @abstractmethod
+    def _create_actions(self) -> np.array:
+        pass
+
+    @abstractmethod
+    def _filter_actions(self, actions: np.array) -> np.array:
+        pass
+
+    @abstractmethod
+    def _evaluate_actions(self, actions: np.array) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def _choose_action(self, action_specs: np.array, costs: np.array) -> [ActionRecipe, ActionSpec]:
         pass
 
     @prof.ProfileFunction()
-    def _generate_terminal_states(self, state: State, behavioral_state: BehavioralGridState,
-                                  action_specs: List[ActionSpec], mask: np.ndarray, route_plan: RoutePlan) \
-            -> List[BehavioralGridState]:
-        """
-        Given current state and action specifications, generate a corresponding list of future states using the
-        predictor. Uses mask over list of action specifications to avoid unnecessary computation
-        :param state: the current world state
-        :param action_specs: list of action specifications
-        :param mask: 1D mask vector (boolean) for filtering valid action specifications
-        :return: a list of terminal states
-        """
-        # TODO: implement after M0
-        return [None] * len(action_specs)
-
-    @staticmethod
-    @prof.ProfileFunction()
-    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> TrajectoryParams:
+    def _generate_trajectory_params(self, action_spec: ActionSpec) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
          Given the target longitude and latitude, we create a reference route in global coordinates, where:
          latitude is constant and equal to the target latitude;
          longitude starts from ego current longitude, and end in the target longitude.
-        :param behavioral_state: processed behavioral state
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
-        ego = behavioral_state.ego_state
+        ego = self.behavioral_state.ego_state
         # get action's unified frame (GFF)
-        action_frame = behavioral_state.extended_lane_frames[action_spec.relative_lane]
+        action_frame = self.behavioral_state.extended_lane_frames[action_spec.relative_lane]
 
         # goal Frenet state w.r.t. spec_lane_id
         projected_goal_fstate = action_spec.as_fstate()
 
         # calculate trajectory cost_params using original goal map_state (from the map)
         goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
-                                                                       ego_size=ego.size)
+        cost_params = BasePlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
+                                                        ego_size=ego.size)
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
@@ -133,7 +120,6 @@ class CostBasedBehavioralPlanner:
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                                  trajectory_end_time=trajectory_end_time,
                                                  bp_time=ego.timestamp)
-
         return trajectory_parameters
 
     @staticmethod
