@@ -323,8 +323,8 @@ def test_createProjectedObjects_laneSplit_carNotInOverlap(scene_static_short_tes
     assert not projected_dynamic_objects
 
 
-@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_FORWARD_HORIZON', 20)
-@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_BACKWARD_HORIZON', 0)
+@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 20)
+@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_BACKWARD_HORIZON', 0)
 def test_filterIrrelevantDynamicObjects_fiveLanesOnOvalTrackWithObjects_IrrelevantObjectsFiltered(
         state_with_five_objects_on_oval_track, route_plan_for_oval_track_file):
     """
@@ -443,7 +443,7 @@ def test_getGeneralizedFrenetFrames_CanAugmentButNoSplit_NoAugmentedCreated(scen
     assert RelativeLane.LEFT_LANE not in gff_dict
     assert RelativeLane.RIGHT_LANE not in gff_dict
 
-@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_FORWARD_HORIZON', 400)
+@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 400)
 def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_left_first,
                                                                                   route_plan_lane_splits_on_left_and_right_left_first):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first)
@@ -461,7 +461,7 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(s
     assert np.array_equal(gff_dict[RelativeLane.LEFT_LANE].segment_ids, [201, 211, 222, 232, 242])
     assert np.array_equal(gff_dict[RelativeLane.RIGHT_LANE].segment_ids, [201, 211, 221, 230, 240])
 
-@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_FORWARD_HORIZON', 400)
+@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 400)
 def test_getGeneralizedFrenetFrames_OffsetSplitsRightFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_right_first,
                                                                                    route_plan_lane_splits_on_left_and_right_right_first):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_right_first)
@@ -514,7 +514,7 @@ def test_getGeneralizedFrenetFrames_frenetStartsBehindAndEndsAheadOfCurrentLane_
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
-@patch('decision_making.src.planning.behavioral.behavioral_grid_state.MAX_FORWARD_HORIZON', 900)
+@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 900)
 def test_getGeneralizedFrenetFrames_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
     """
     Make sure that partial/augmentedPartial GFFS are created when the forward horizon is set to be very far ahead
