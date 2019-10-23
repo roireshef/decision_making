@@ -95,7 +95,7 @@ class SimpleLaneMergeState:
         # extract main road actors
         actors_data = []
         for lon_pos in RelativeLongitudinalPosition:
-            for obj in lane_merge_state.road_occupancy_grid[(lane_merge_state.merge_side, lon_pos)]:
+            for obj in lane_merge_state.road_occupancy_grid[(lane_merge_state.target_relative_lane, lon_pos)]:
                 actors_data.append([obj.longitudinal_distance, obj.dynamic_object.velocity, obj.dynamic_object.size.length])
 
         ego_fstate = lane_merge_state.projected_ego_fstates[RelativeLane.SAME_LANE][:FS_1D_LEN]

@@ -243,8 +243,7 @@ def test_load_model(state_with_objects_before_merge, route_plan_1_2):
     model = RL_LaneMergePlanner.load_model()
 
     logger = AV_Logger.get_logger()
-    behavioral_state = BehavioralGridState.create_from_state(state_with_objects_before_merge, route_plan_1_2, logger)
-    lane_merge_state = LaneMergeState.create_from_behavioral_state(behavioral_state)
+    lane_merge_state = LaneMergeState.create_from_state(state_with_objects_before_merge, route_plan_1_2, logger)
     encoded_state: GymTuple = lane_merge_state.encode_state_for_RL()
     logits = model._forward({SampleBatch.CUR_OBS: encoded_state}, [])[0]
     ret = logits
