@@ -2,15 +2,10 @@ from abc import abstractmethod
 from logging import Logger
 
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.state.state import State
-
-
-class Planner:
-    @staticmethod
-    def plan(state: State):
-        pass
 
 
 class Scenario:
@@ -21,19 +16,33 @@ class Scenario:
         Given the current state, identify the planning scenario (e.g. check existence of the lane merge ahead)
         :param state: current state
         :param route_plan: route plan
-        :return: scenario type
+        :return: the chosen scenario class
         """
+        # TODO: implement the function
+
+        # currently always returns the default scenario
         return DefaultScenario
 
     @staticmethod
     @abstractmethod
-    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
+    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger) -> BasePlanner:
+        """
+        Choose the appropriate planner for the specific scenario, given the current state. Each scenario has its own
+        list of planners.
+        :param state: current state
+        :param route_plan: route plan
+        :param logger:
+        :return: the chosen planner instance, initialized by the current state
+        """
         pass
 
 
 class DefaultScenario(Scenario):
     @staticmethod
-    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
+    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger) -> BasePlanner:
+        """
+        see base class
+        """
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=logger)
 
