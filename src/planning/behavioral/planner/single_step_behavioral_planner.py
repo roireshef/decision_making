@@ -38,6 +38,9 @@ class SingleStepBehavioralPlanner(BasePlanner):
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
     def _create_actions(self) -> ActionSpecArray:
+        """
+        see base class
+        """
         action_recipes = self.action_space.recipes
 
         # Recipe filtering
@@ -58,6 +61,9 @@ class SingleStepBehavioralPlanner(BasePlanner):
         return action_specs
 
     def _filter_actions(self, action_specs: ActionSpecArray) -> ActionSpecArray:
+        """
+        see base class
+        """
         action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, self.behavioral_state)
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
@@ -81,5 +87,8 @@ class SingleStepBehavioralPlanner(BasePlanner):
                                               list(action_specs.astype(bool)), self.route_plan)
 
     def _choose_action(self, action_specs: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
+        """
+        see base class
+        """
         selected_action_index = int(np.argmin(costs))
         return self.action_space.recipes[selected_action_index], action_specs[selected_action_index]

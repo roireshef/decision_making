@@ -3,6 +3,7 @@ from logging import Logger
 
 from decision_making.src.global_constants import MERGE_LOOKAHEAD
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
@@ -13,12 +14,6 @@ from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 
 
-class Planner:
-    @staticmethod
-    def plan(state: State):
-        pass
-
-
 class Scenario:
 
     @staticmethod
@@ -27,7 +22,7 @@ class Scenario:
         Given the current state, identify the planning scenario (e.g. check existence of the lane merge ahead)
         :param state: current state
         :param route_plan: route plan
-        :return: scenario type
+        :return: the chosen scenario class
         """
         ego_map_state = state.ego_state.map_state
 
@@ -38,13 +33,24 @@ class Scenario:
 
     @staticmethod
     @abstractmethod
-    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
+    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger) -> BasePlanner:
+        """
+        Choose the appropriate planner for the specific scenario, given the current state. Each scenario has its own
+        list of planners.
+        :param state: current state
+        :param route_plan: route plan
+        :param logger:
+        :return: the chosen planner instance, initialized by the current state
+        """
         pass
 
 
 class DefaultScenario(Scenario):
     @staticmethod
-    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
+    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger) -> BasePlanner:
+        """
+        see base class
+        """
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=logger)
 

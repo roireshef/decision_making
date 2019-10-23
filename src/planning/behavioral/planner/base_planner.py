@@ -20,7 +20,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Act
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, ActionSpecArray
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize
@@ -70,19 +70,42 @@ class BasePlanner:
         return trajectory_parameters, baseline_trajectory, visualization_message
 
     @abstractmethod
-    def _create_actions(self) -> np.array:
+    def _create_actions(self) -> ActionSpecArray:
+        """
+        Given a default action space (self.action_space.recipes), where filtered recipes are None,
+        create action specifications for all actions.
+        :return: array of action specifications of the same size as the action space
+        """
         pass
 
     @abstractmethod
-    def _filter_actions(self, actions: np.array) -> np.array:
+    def _filter_actions(self, actions: ActionSpecArray) -> ActionSpecArray:
+        """
+        Given array of all action specifications (some specs are None), filter them according to
+        DEFAULT_ACTION_SPEC_FILTERING and return array of specs, where filtered actions are None
+        :param actions: array of action specifications
+        :return: array of action specifications of the same size as input
+        """
         pass
 
     @abstractmethod
-    def _evaluate_actions(self, actions: np.array) -> np.ndarray:
+    def _evaluate_actions(self, actions: ActionSpecArray) -> np.ndarray:
+        """
+        Evaluates Action-Specifications based on a certain logic (depends on implementation)
+        :param actions: array of action specifications
+        :return: numpy array of costs of the actions: lower costs for better actions
+        """
         pass
 
     @abstractmethod
-    def _choose_action(self, action_specs: np.array, costs: np.array) -> [ActionRecipe, ActionSpec]:
+    def _choose_action(self, actions: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
+        """
+        Given action specifications and their costs, choose the best action (usually non-filtered action with the
+        lowest cost)
+        :param actions: array of action specifications
+        :param costs: array of actions costs
+        :return: tuple: the chosen action recipe and its specification
+        """
         pass
 
     @prof.ProfileFunction()
