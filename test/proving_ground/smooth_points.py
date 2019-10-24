@@ -20,7 +20,7 @@ class SmoothMapPoints:
 
     @staticmethod
     def smooth_points(path: str, desired_velocities: Union[float, Dict[int, float]],
-                      split_lane_id: int = None, merge_lane_id: int = None):
+                      split_lane_id: int = None, merge_lane_id: int = None, split_extention: int = 0):
         """
         Given points of downstream lane segments, smooth the points such that the planning will be able to go with
         given desired velocity.
@@ -42,10 +42,16 @@ class SmoothMapPoints:
         merge_lane_idx = np.where(all_lane_ids == merge_lane_id)[0][0] if merge_lane_id is not None else len(all_lane_ids) - 1
         split_point_idx = all_seams[split_lane_idx - 1] if split_lane_idx > 0 else 0
         merge_point_idx = all_seams[merge_lane_idx]
+
+        # fit points by splines in the interval between split and merge;
+        # to improve the fitting of too high curvature split, extend the interval by split_extention from two sides
+        split_point_idx -= split_extention
+        merge_point_idx += split_extention
+
         points = orig_points[split_point_idx:merge_point_idx+1]
         lane_ids, seams = all_lane_ids[split_lane_idx:merge_lane_idx+1], all_seams[split_lane_idx:merge_lane_idx+1] - split_point_idx
         velocities = [desired_velocities[lane_id] for lane_id in lane_ids] if type(desired_velocities) is dict else \
-            [desired_velocities] * len(lane_ids)
+            [desired_velocities] * (len(lane_ids) + 1)
 
         # To preserve Frenet frames continuity and differentiability between the split lane and its upstream lane
         # (or merge with its downstream) segment belonging to the main Frenet frame, we perform spline fitting with
@@ -134,6 +140,7 @@ class SmoothMapPoints:
             # calculate seams in Frenet points
             frenet_seams = np.array([np.argmin(np.linalg.norm(points[seam] - frenet.points, axis=1))
                                      for seam in seams if 0 <= seam < points.shape[0]])
+            frenet_seams = np.concatenate((frenet_seams, [frenet.k.shape[0]]))
 
             # loop on all lane segments and validate the obtained curvatures in frenet frame
             valid_curvatures = True
@@ -255,7 +262,8 @@ class SmoothMapPoints:
 #SmoothMapPoints.smooth_points(path="/home/mz8cj6/temp/Clinton/", desired_velocities=14)
 #
 SmoothMapPoints.smooth_points(path="/home/mz8cj6/temp/Clinton/right/",
-                              desired_velocities=13.333,  # m/sec
-                              split_lane_id=103296514,    # first lane after the split
-                              merge_lane_id=103297538     # last lane before the merge
+                              desired_velocities=12.0,  # m/sec
+                              split_lane_id=103296514,  # first lane after the split
+                              merge_lane_id=103297538,  # last lane before the merge
+                              split_extention=40        # number of points beyond split/merge
                               )
