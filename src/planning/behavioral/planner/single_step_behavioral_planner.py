@@ -37,7 +37,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
-    def _create_actions(self) -> ActionSpecArray:
+    def _create_action_specs(self) -> ActionSpecArray:
         """
         see base class
         """
