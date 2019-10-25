@@ -11,7 +11,7 @@ from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN, FS_SV, F
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from gym.spaces.tuple_space import Tuple as GymTuple
-from planning_research.src.flow_rl.common_constants import DEFAULT_ADDITIONAL_ENV_PARAMS  # TODO: move from planning research
+#from planning_research.src.flow_rl.common_constants import DEFAULT_ADDITIONAL_ENV_PARAMS  # TODO: move from planning research
 import torch
 
 

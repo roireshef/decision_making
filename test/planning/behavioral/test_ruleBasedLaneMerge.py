@@ -195,6 +195,20 @@ def test_canSolveByRuleBased_closeFrontCarRequiresBrake_success():
     assert RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
 
 
+def test_optimalPolicy():
+    ego_fstate = np.array([60, 20, 0])
+    ego_len = 5
+    actor1 = np.array([-250, 25, ego_len])
+    actor2 = np.array([-45, 25, ego_len])
+    actor3 = np.array([30, 25, ego_len])
+    actors = np.vstack((actor1, actor2, actor3))
+    red_line_s = 120
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    success, rule_based_trajectory = RuleBasedLaneMergePlanner.get_optimal_action_trajectory(
+        state, ScenarioParams(worst_case_back_actor_accel=0, worst_case_front_actor_decel=0))
+    success=success
+
+
 def test_statistics():
     actors_vel = 15
     actors_density = 0.3

@@ -67,6 +67,5 @@ class LaneMergeScenario(Scenario):
         lane_merge_state = LaneMergeState.create_from_state(state=state, route_plan=route_plan, logger=logger)
 
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        actions = RuleBasedLaneMergePlanner.create_safe_actions(lane_merge_state, ScenarioParams())
-        return RuleBasedLaneMergePlanner(lane_merge_state, actions, logger) if len(actions) > 0 \
-            else RL_LaneMergePlanner(lane_merge_state, logger)
+        success, _ = RuleBasedLaneMergePlanner.get_optimal_action_trajectory(lane_merge_state, ScenarioParams())
+        return RuleBasedLaneMergePlanner if success else RL_LaneMergePlanner
