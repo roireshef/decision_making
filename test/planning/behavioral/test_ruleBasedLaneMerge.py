@@ -206,6 +206,25 @@ def test_optimalPolicy():
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
     success, rule_based_trajectory = RuleBasedLaneMergePlanner.get_optimal_action_trajectory(
         state, ScenarioParams(worst_case_back_actor_accel=0, worst_case_front_actor_decel=0))
+    assert success
+
+
+def test_optimalPolicy1():
+    ego_fstate = np.array([210, 0, 0])
+    red_line_s = 240
+    ego_len = 5
+    actors_vel = 25
+
+    actors = []
+    for s in range(-100, 0, actors_vel):
+        actors.append(np.array([s, actors_vel, ego_len]))
+    for s in range(ego_fstate[0], actors_vel*32, 2*actors_vel):
+        actors.append(np.array([-s, actors_vel, ego_len]))
+    actors = np.array(actors)
+
+    state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
+    success, rule_based_trajectory = RuleBasedLaneMergePlanner.get_optimal_action_trajectory(
+        state, ScenarioParams(worst_case_back_actor_accel=0, worst_case_front_actor_decel=0))
     success=success
 
 

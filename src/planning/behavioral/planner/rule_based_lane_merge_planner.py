@@ -2,8 +2,7 @@ from logging import Logger
 from typing import List
 import numpy as np
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LON_ACC_LIMITS, \
-    EGO_LENGTH, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, BP_ACTION_T_LIMITS, EPS, \
-    TRAJECTORY_TIME_RESOLUTION
+    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, EPS, TRAJECTORY_TIME_RESOLUTION
 
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, ActionRecipe, \
     RelativeLane, RelativeLongitudinalPosition
@@ -19,6 +18,8 @@ WORST_CASE_FRONT_CAR_DECEL = 1.  # [m/sec^2]
 WORST_CASE_BACK_CAR_ACCEL = 1.  # [m/sec^2]
 MAX_VELOCITY = 25.
 OUTPUT_TRAJECTORY_LENGTH = 10
+ACTION_T_LIMITS = np.array([0, 30])
+
 
 class ScenarioParams:
     def __init__(self, worst_case_back_actor_accel: float = WORST_CASE_BACK_CAR_ACCEL,
@@ -324,6 +325,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # the fast analytic kinematic filter reduce the load on the regular kinematic filter
         # calculate actions that don't violate acceleration limits
         valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+        if not valid_acc.any():
+            return [], False
         valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], np.array([0, v_max]))
         valid_idxs = np.where(valid_acc)[0][valid_vel]
 
@@ -351,6 +354,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
         T_init, s_init, T_end_unique, s_end_unique = \
             RuleBasedLaneMergePlanner._specify_quartic_actions(v_0, a_0, v_mid, v_T_unique, T_max, ds)
+        if len(T_end_unique) == 0:
+            return []
         T_end, s_end = T_end_unique[v_T_unique_inverse], s_end_unique[v_T_unique_inverse]
 
         # calculate T_mid & s_mid
@@ -403,6 +408,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # filter out initial specs and weights with exceeding T, s and acceleration
         valid_s_T_idxs = np.where((T_init <= np.max(T_max)) & (s_init <= s_max))[0]
         valid_acc, _ = RuleBasedLaneMergePlanner._validate_acceleration(v_0, a_0, v_mid, T_init[valid_s_T_idxs])
+        if not valid_acc.any():
+            return np.array([]), np.array([]), np.array([]), np.array([])
         w_J, w_T = w_J[valid_s_T_idxs[valid_acc]], w_T[valid_s_T_idxs[valid_acc]]
         T_init, s_init = T_init[valid_s_T_idxs[valid_acc]], s_init[valid_s_T_idxs[valid_acc]]
 
@@ -427,9 +434,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
     @staticmethod
     def _specify_quartic(v_0: float, a_0: float, v_T: np.array, w_T: np.array, w_J: np.array) -> [np.array, np.array]:
-        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+        # T_s <- find minimal non-complex local optima within the ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(w_T=w_T, w_J=w_J, a_0=a_0, v_0=v_0, v_T=v_T)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, ACTION_T_LIMITS)
         T = np.fmin.reduce(roots_s, axis=-1)
         s = QuarticPoly1D.distance_profile_function(a_0=a_0, v_0=v_0, v_T=v_T, T=T)(T)
         s[np.isclose(T, 0)] = 0
@@ -438,7 +445,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     @staticmethod
     def _specify_quintic(v_0: float, a_0: float, v_T: float, ds: float, w_T: np.array, w_J: np.array) -> np.array:
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(w_T=w_T, w_J=w_J, a_0=a_0, v_0=v_0, v_T=v_T, dx=ds, T_m=0)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, ACTION_T_LIMITS)
         T = np.fmin.reduce(roots_s, axis=-1)
         s = QuinticPoly1D.distance_profile_function(a_0=a_0, v_0=v_0, v_T=v_T, T=T, dx=ds, T_m=0)(T)
         s[np.isclose(T, 0)] = 0
@@ -479,7 +486,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :return: two 1D arrays of v_T & T, where ego is safe at target_s relatively to all actors
         """
         # grid of possible planning times
-        t_grid = np.arange(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS,
+        t_grid = np.arange(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, ACTION_T_LIMITS[LIMIT_MAX] + EPS,
                            RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION)
         # grid of possible target ego velocities
         v_grid = np.arange(0, params.ego_max_velocity + EPS, RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)

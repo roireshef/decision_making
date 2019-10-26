@@ -184,7 +184,7 @@ class Math:
         # solve linear equations
         is_linear = cls._are_polynomials_of_degree(coef_matrix, degree=1)
         if is_linear.any():
-            roots[is_linear, 0] = -coef_matrix[is_linear, 1] / coef_matrix[is_linear, 0]
+            roots[is_linear, 0] = -coef_matrix[is_linear, -1] / coef_matrix[is_linear, -2]
 
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)

@@ -47,15 +47,17 @@ class NumpyUtils:
         return np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX])
 
     @staticmethod
-    def is_almost_in_limits(arr: np.array, limits: Limits):
+    def is_almost_in_limits(arr: np.array, limits: Limits, atol: float = 1e-3):
         """
         tests if values of arr are in the limit [lb, ub] or very close to the limits
         :param arr: any tensor shape
         :param limits: Limits object - 1D numpy array of [lower_bound, upper_bound]
+        :param atol: The absolute tolerance parameter
         :return: tensor of boolean values of the shape of <arr>
         """
         return np.logical_or(np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX]),
-                             np.logical_or(np.isclose(arr, limits[LIMIT_MIN]), np.isclose(arr, limits[LIMIT_MAX])))
+                             np.logical_or(np.isclose(arr, limits[LIMIT_MIN], atol=atol),
+                                           np.isclose(arr, limits[LIMIT_MAX], atol=atol)))
 
     @staticmethod
     def div(a: np.array, b: np.array):
