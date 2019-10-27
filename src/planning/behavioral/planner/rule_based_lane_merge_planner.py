@@ -627,7 +627,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     def _create_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
         return LaneMergeState.create_from_state(state, route_plan, self.logger)
 
-    def _create_actions(self, lane_merge_state: LaneMergeState) -> np.array:
+    def _create_action_specs(self, lane_merge_state: LaneMergeState) -> np.array:
         return self.actions
 
     def _filter_actions(self, lane_merge_state: LaneMergeState, actions: np.array) -> np.array:

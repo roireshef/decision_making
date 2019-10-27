@@ -48,7 +48,7 @@ class BasePlanner:
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
         behavioral_state = self._create_state(state, route_plan)
-        actions = self._create_actions(behavioral_state)
+        actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, filtered_actions)
         selected_action_recipe, selected_action_spec = self._choose_action(actions, costs)
@@ -61,12 +61,8 @@ class BasePlanner:
             timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
-        # self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
-        #                   action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)", selected_action_spec, timestamp_in_sec)
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_recipe, timestamp_in_sec)
-        self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
-                          % (timestamp_in_sec, selected_action_recipe, selected_action_spec.t))
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
@@ -79,7 +75,7 @@ class BasePlanner:
         pass
 
     @abstractmethod
-    def _create_actions(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
+    def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
         """
         Given a default action space (self.action_space.recipes), where filtered recipes are None,
         create action specifications for all actions.
@@ -95,7 +91,7 @@ class BasePlanner:
         DEFAULT_ACTION_SPEC_FILTERING and return array of specs, where filtered actions are None
         :param behavioral_state: behavioral state relevant for specific scenario
         :param actions: array of action specifications
-        :return: array of action specifications of the same size as input
+        :return: array of action specifications of the same size as input, where filtered actions are None
         """
         pass
 
