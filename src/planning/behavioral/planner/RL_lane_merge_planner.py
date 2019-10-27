@@ -3,6 +3,7 @@ from logging import Logger
 import numpy as np
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, AggressivenessLevel, ActionSpec, \
     ActionRecipe
@@ -13,6 +14,7 @@ from decision_making.src.planning.types import ActionSpecArray, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
+from decision_making.src.state.state import State
 from ray.rllib.evaluation import SampleBatch
 import torch
 from gym.spaces.tuple_space import Tuple as GymTuple
@@ -26,8 +28,8 @@ CHECKPOINT_PATH = str(Path.home()) + '/temp/checkpoint_31201/checkpoint-31201.to
 
 class RL_LaneMergePlanner(BasePlanner):
 
-    def __init__(self, lane_merge_state: LaneMergeState, logger: Logger):
-        super().__init__(lane_merge_state, logger)
+    def __init__(self, logger: Logger):
+        super().__init__(logger)
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
         # TODO: use global constant for the model path
@@ -47,17 +49,20 @@ class RL_LaneMergePlanner(BasePlanner):
         model.load_state_dict(model_state_dict)
         return model
 
-    def _create_actions(self) -> np.array:
+    def _create_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
+        return LaneMergeState.create_from_state(state, route_plan, self.logger)
+
+    def _create_actions(self, lane_merge_state: LaneMergeState) -> np.array:
         action_recipes = self.action_space.recipes
 
         # Recipe filtering
-        recipes_mask = self.action_space.filter_recipes(action_recipes, self.behavioral_state)
+        recipes_mask = self.action_space.filter_recipes(action_recipes, lane_merge_state)
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
 
         action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
-        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, self.behavioral_state)
+        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, lane_merge_state)
 
         # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
@@ -66,7 +71,7 @@ class RL_LaneMergePlanner(BasePlanner):
                           num_of_specified_actions, num_of_considered_static_actions)
         return action_specs
 
-    def _filter_actions(self, action_specs: np.array) -> ActionSpecArray:
+    def _filter_actions(self, lane_merge_state: LaneMergeState, action_specs: np.array) -> ActionSpecArray:
         """
         filter out actions that either are filtered by a regular action_spec filter (of the single_lane_planner)
         or don't enable to brake before the red line
@@ -74,16 +79,17 @@ class RL_LaneMergePlanner(BasePlanner):
         :return: array of ActionSpec of the original size, with None for filtered actions
         """
         # filter actions by the regular action_spec filters of the single_lane_planner
-        action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, self.behavioral_state)
+        action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state)
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         # filter out actions that don't enable to brake before the red line
         filtered_action_specs = self._red_line_filter(filtered_action_specs)
         return filtered_action_specs
 
-    def _red_line_filter(self, action_specs: ActionSpecArray) -> ActionSpecArray:
+    def _red_line_filter(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> ActionSpecArray:
         """
         filter out actions that don't enable to brake before the red line
+        :param lane_merge_state: lane merge state
         :param action_specs: array of ActionSpec (part of actions may be None)
         :return: array of ActionSpec of the original size, with None for filtered actions
         """
@@ -91,21 +97,22 @@ class RL_LaneMergePlanner(BasePlanner):
         spec_v, spec_s = np.array([[spec.v, spec.s] for spec in action_specs[valid_specs_idxs]]).T
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE]
         braking_distances = BrakingDistances.calc_actions_distances_for_given_weights(w_T, w_J, spec_v, np.zeros_like(spec_v))
-        action_specs[valid_specs_idxs[spec_s + braking_distances > self.lane_merge_state.red_line_s]] = None
+        action_specs[valid_specs_idxs[spec_s + braking_distances > lane_merge_state.red_line_s]] = None
         return action_specs
 
-    def _evaluate_actions(self, action_specs: ActionSpecArray) -> np.ndarray:
+    def _evaluate_actions(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> np.ndarray:
         """
         Given RL policy, current state and actions mask, return the actions cost by operating policy on the state.
         Filtered actions get the maximal cost 1.
+        :param lane_merge_state: lane merge state
         :param action_specs: np.array of action specs
         :return: array of actions costs: the lower the better
         """
         if not action_specs.astype(bool).any():
             raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
-                                          self.behavioral_state.ego_state.timestamp_in_sec)
+                                          lane_merge_state.ego_state.timestamp_in_sec)
 
-        encoded_state: GymTuple = self.lane_merge_state.encode_state_for_RL()
+        encoded_state: GymTuple = lane_merge_state.encode_state_for_RL()
 
         logits = self.model._forward({SampleBatch.CUR_OBS: encoded_state}, [])[0]
         logits[~action_specs.astype(bool)] = -np.inf
@@ -115,10 +122,11 @@ class RL_LaneMergePlanner(BasePlanner):
         costs[chosen_action_idx] = 0
         return costs
 
-    def _choose_action(self, action_specs: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
+    def _choose_action(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray, costs: np.array) -> \
+            [ActionRecipe, ActionSpec]:
         # choose action with the minimal cost
         selected_action_index = int(np.argmin(costs))
         best_action_spec = action_specs[selected_action_index]
         # convert spec.s from LaneMergeState to GFF
-        best_action_spec.s += self.lane_merge_state.ego_state.map_state.lane_fstate[FS_SX]
+        best_action_spec.s += lane_merge_state.ego_state.map_state.lane_fstate[FS_SX]
         return self.action_space.recipes[selected_action_index], best_action_spec

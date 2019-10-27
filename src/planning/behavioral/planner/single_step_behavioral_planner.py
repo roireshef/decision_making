@@ -17,6 +17,7 @@ from typing import List
 
 from decision_making.src.planning.types import ActionSpecArray
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.state.state import State
 
 
 class SingleStepBehavioralPlanner(BasePlanner):
@@ -29,28 +30,30 @@ class SingleStepBehavioralPlanner(BasePlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, behavioral_state: BehavioralGridState, route_plan: RoutePlan, logger: Logger):
-        super().__init__(behavioral_state, logger)
-        self.route_plan = route_plan
+    def __init__(self, logger: Logger):
+        super().__init__(logger)
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
-    def _create_actions(self) -> ActionSpecArray:
+    def _create_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
+        return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
+
+    def _create_actions(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
         """
         see base class
         """
         action_recipes = self.action_space.recipes
 
         # Recipe filtering
-        recipes_mask = self.action_space.filter_recipes(action_recipes, self.behavioral_state)
+        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
 
         action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
-        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, self.behavioral_state)
+        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
 
         # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
@@ -60,16 +63,16 @@ class SingleStepBehavioralPlanner(BasePlanner):
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
         return action_specs
 
-    def _filter_actions(self, action_specs: ActionSpecArray) -> ActionSpecArray:
+    def _filter_actions(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> ActionSpecArray:
         """
         see base class
         """
-        action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, self.behavioral_state)
+        action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, behavioral_state)
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         return filtered_action_specs
 
-    def _evaluate_actions(self, action_specs: ActionSpecArray) -> np.ndarray:
+    def _evaluate_actions(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
         * Only takes into account actions on RelativeLane.SAME_LANE
@@ -83,10 +86,11 @@ class SingleStepBehavioralPlanner(BasePlanner):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
         action_spec_evaluator = AugmentedLaneActionSpecEvaluator(self.logger)
-        return action_spec_evaluator.evaluate(self.behavioral_state, self.action_space.recipes, action_specs,
+        return action_spec_evaluator.evaluate(behavioral_state, self.action_space.recipes, action_specs,
                                               list(action_specs.astype(bool)), self.route_plan)
 
-    def _choose_action(self, action_specs: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
+    def _choose_action(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray, costs: np.array) -> \
+            [ActionRecipe, ActionSpec]:
         """
         see base class
         """

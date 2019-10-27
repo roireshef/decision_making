@@ -55,18 +55,16 @@ class DefaultScenario(Scenario):
         """
         see base class
         """
-        # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=logger)
-
-        return SingleStepBehavioralPlanner(behavioral_state, route_plan, logger)
+        return SingleStepBehavioralPlanner(logger)
 
 
 class LaneMergeScenario(Scenario):
     @staticmethod
     def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
 
-        simple_lane_merge_state = SimpleLaneMergeState.create_from_state(state=state, route_plan=route_plan, logger=logger)
+        simple_lane_merge_state = SimpleLaneMergeState.create_from_state(state, route_plan, logger)
 
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        success, _ = RuleBasedLaneMergePlanner.get_optimal_action_trajectory(simple_lane_merge_state, ScenarioParams())
-        return RuleBasedLaneMergePlanner if success else RL_LaneMergePlanner
+        actions = RuleBasedLaneMergePlanner.create_max_vel_quartic_actions(simple_lane_merge_state, ScenarioParams())
+
+        return RuleBasedLaneMergePlanner(actions, logger) if len(actions) > 0 else RL_LaneMergePlanner(logger)

@@ -1,6 +1,8 @@
 import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
+
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
@@ -23,22 +25,20 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, ActionSpecArray
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import ObjectSize
+from decision_making.src.state.state import ObjectSize, State
 from decision_making.src.utils.map_utils import MapUtils
 
 
 @six.add_metaclass(ABCMeta)
 class BasePlanner:
-    def __init__(self, behavioral_state: BehavioralGridState, logger: Logger):
+    def __init__(self, logger: Logger):
         """
-        :param behavioral_state: behavioral grid state
         :param logger:
         """
-        self.behavioral_state = behavioral_state
         self.logger = logger
 
     @prof.ProfileFunction()
-    def plan(self):
+    def plan(self, state: State, route_plan: RoutePlan):
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
@@ -47,18 +47,19 @@ class BasePlanner:
         cost params and strategy.
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
-        actions = self._create_actions()
-        filtered_actions = self._filter_actions(actions)
-        costs = self._evaluate_actions(filtered_actions)
+        behavioral_state = self._create_state(state, route_plan)
+        actions = self._create_actions(behavioral_state)
+        filtered_actions = self._filter_actions(behavioral_state, actions)
+        costs = self._evaluate_actions(behavioral_state, filtered_actions)
         selected_action_recipe, selected_action_spec = self._choose_action(actions, costs)
 
         trajectory_parameters = self._generate_trajectory_params(action_spec=selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
-        timestamp_in_sec = self.behavioral_state.ego_state.timestamp_in_sec
+        timestamp_in_sec = behavioral_state.ego_state.timestamp_in_sec
         baseline_trajectory = BasePlanner.generate_baseline_trajectory(
             timestamp_in_sec, selected_action_spec, trajectory_parameters,
-            self.behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
+            behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         # self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
         #                   action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
@@ -70,38 +71,51 @@ class BasePlanner:
         return trajectory_parameters, baseline_trajectory, visualization_message
 
     @abstractmethod
-    def _create_actions(self) -> ActionSpecArray:
+    def _create_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
         """
-        Given a default action space (self.action_space.recipes), where filtered recipes are None,
-        create action specifications for all actions.
+        Create behavioral state relevant for specific scenario
         :return: array of action specifications of the same size as the action space
         """
         pass
 
     @abstractmethod
-    def _filter_actions(self, actions: ActionSpecArray) -> ActionSpecArray:
+    def _create_actions(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
+        """
+        Given a default action space (self.action_space.recipes), where filtered recipes are None,
+        create action specifications for all actions.
+        :param behavioral_state: behavioral state relevant for specific scenario
+        :return: array of action specifications of the same size as the action space
+        """
+        pass
+
+    @abstractmethod
+    def _filter_actions(self, behavioral_state: BehavioralGridState, actions: ActionSpecArray) -> ActionSpecArray:
         """
         Given array of all action specifications (some specs are None), filter them according to
         DEFAULT_ACTION_SPEC_FILTERING and return array of specs, where filtered actions are None
+        :param behavioral_state: behavioral state relevant for specific scenario
         :param actions: array of action specifications
         :return: array of action specifications of the same size as input
         """
         pass
 
     @abstractmethod
-    def _evaluate_actions(self, actions: ActionSpecArray) -> np.ndarray:
+    def _evaluate_actions(self, behavioral_state: BehavioralGridState, actions: ActionSpecArray) -> np.ndarray:
         """
         Evaluates Action-Specifications based on a certain logic (depends on implementation)
+        :param behavioral_state: behavioral state relevant for specific scenario
         :param actions: array of action specifications
         :return: numpy array of costs of the actions: lower costs for better actions
         """
         pass
 
     @abstractmethod
-    def _choose_action(self, actions: ActionSpecArray, costs: np.array) -> [ActionRecipe, ActionSpec]:
+    def _choose_action(self, behavioral_state: BehavioralGridState, actions: ActionSpecArray, costs: np.array) -> \
+            [ActionRecipe, ActionSpec]:
         """
         Given action specifications and their costs, choose the best action (usually non-filtered action with the
         lowest cost)
+        :param behavioral_state: behavioral state relevant for specific scenario
         :param actions: array of action specifications
         :param costs: array of actions costs
         :return: tuple: the chosen action recipe and its specification
@@ -109,18 +123,20 @@ class BasePlanner:
         pass
 
     @prof.ProfileFunction()
-    def _generate_trajectory_params(self, action_spec: ActionSpec) -> TrajectoryParams:
+    def _generate_trajectory_params(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
          Given the target longitude and latitude, we create a reference route in global coordinates, where:
          latitude is constant and equal to the target latitude;
          longitude starts from ego current longitude, and end in the target longitude.
+        :param behavioral_state: behavioral grid state
+        :param action_spec: the chosen action spec
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
-        ego = self.behavioral_state.ego_state
+        ego = behavioral_state.ego_state
         # get action's unified frame (GFF)
-        action_frame = self.behavioral_state.extended_lane_frames[action_spec.relative_lane]
+        action_frame = behavioral_state.extended_lane_frames[action_spec.relative_lane]
 
         # goal Frenet state w.r.t. spec_lane_id
         projected_goal_fstate = action_spec.as_fstate()

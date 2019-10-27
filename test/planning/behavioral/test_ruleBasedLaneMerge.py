@@ -64,7 +64,7 @@ def test_canSolveByRuleBased_fasterBackCar():
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) == 0
 
 
@@ -78,7 +78,7 @@ def test_canSolveByRuleBased_fastEgo():
     actors = np.vstack((actor1, actor2, actor3, actor4))
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) > 0
 
 
@@ -89,7 +89,7 @@ def test_canSolveByRuleBased_slowEgoSafe():
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) > 0
 
 
@@ -100,7 +100,7 @@ def test_canSolveByRuleBased_slowEgoUnsafe():
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) == 0
 
 
@@ -111,7 +111,7 @@ def test_canSolveByRuleBased_safe():
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) == 0
 
 
@@ -122,7 +122,7 @@ def test_canSolveByRuleBased_unsafe():
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) == 0
 
 
@@ -133,7 +133,7 @@ def test_canSolveByRuleBased_safe1():
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    safe, acc = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    safe, acc = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert safe
 
 
@@ -144,7 +144,7 @@ def test_canSolveByRuleBased_unsafe1():
     actors = np.array([actor1])
     red_line_s = 240
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    safe, acc = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    safe, acc = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert safe
 
 
@@ -156,7 +156,7 @@ def test_canSolveByRuleBased_fasterBackCarIsFar_failure():
     actors = np.vstack((actor1, actor2))
     red_line_s = 120
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) == 0
 
 
@@ -168,7 +168,7 @@ def test_canSolveByRuleBased_fasterBackCarIsNotFarEnough_success():
     actors = np.vstack((actor1, actor2))
     red_line_s = 120
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) > 0
 
 
@@ -180,7 +180,7 @@ def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_failure():
     actors = np.vstack((actor1, actor2))
     red_line_s = 90
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
     assert len(ret) == 0
 
 
@@ -192,7 +192,7 @@ def test_canSolveByRuleBased_closeFrontCarRequiresBrake_success():
     actors = np.vstack((actor1, actor2))
     red_line_s = 90
     state = SimpleLaneMergeState(ego_len, ego_fstate, actors, red_line_s)
-    assert RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state)
+    assert RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
 
 
 def test_optimalPolicy():
@@ -255,7 +255,7 @@ def test_statistics():
             actors = np.c_[actors_s - ego_s, np.ones(actors_num) * actors_vel, np.ones(actors_num) * length]
 
             state = SimpleLaneMergeState(length, ego_fstate, actors, red_line_s)
-            ret = RuleBasedLaneMergePlanner.acceleration_to_max_vel_is_safe(state, params)
+            ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state, params)
             results_per_ego_s[i] += (ret.shape[0] > 0)
             actors_sum += actors_num
 
