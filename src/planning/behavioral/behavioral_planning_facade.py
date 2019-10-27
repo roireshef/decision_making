@@ -125,7 +125,7 @@ class BehavioralPlanningFacade(DmModule):
             planner = scenario.choose_planner(updated_state, route_plan, self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
-                trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan()
+                trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan(updated_state, route_plan)
 
             self._last_trajectory = samplable_trajectory
 

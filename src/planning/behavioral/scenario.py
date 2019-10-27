@@ -2,8 +2,6 @@ from abc import abstractmethod
 from logging import Logger
 
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.state.state import State
 
@@ -25,7 +23,7 @@ class Scenario:
 
     @staticmethod
     @abstractmethod
-    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger) -> BasePlanner:
+    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
         """
         Choose the appropriate planner for the specific scenario, given the current state. Each scenario has its own
         list of planners.
@@ -39,11 +37,8 @@ class Scenario:
 
 class DefaultScenario(Scenario):
     @staticmethod
-    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger) -> BasePlanner:
+    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
         """
         see base class
         """
-        # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=logger)
-
-        return SingleStepBehavioralPlanner(behavioral_state, route_plan, logger)
+        return SingleStepBehavioralPlanner
