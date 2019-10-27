@@ -48,7 +48,7 @@ class BasePlanner:
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
         behavioral_state = self._create_state(state, route_plan)
-        actions = self._create_actions(behavioral_state)
+        actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, filtered_actions)
         selected_action_recipe, selected_action_spec = self._choose_action(actions, costs)
@@ -75,7 +75,7 @@ class BasePlanner:
         pass
 
     @abstractmethod
-    def _create_actions(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
+    def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
         """
         Given a default action space (self.action_space.recipes), where filtered recipes are None,
         create action specifications for all actions.

@@ -40,7 +40,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
     def _create_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
         return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
-    def _create_actions(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
+    def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
         """
         see base class
         """
