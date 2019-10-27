@@ -236,10 +236,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             [bool, np.array]:
         actions = RuleBasedLaneMergePlanner._create_safe_actions(state, params)
         success = len(actions) > 0
-        if not success:  # no actions performing safe merge, then stop on red line
+        if not success:  # no actions performing safe merge, then stop 25 meters before the red line
             w_J = BP_JERK_S_JERK_D_TIME_WEIGHTS[0:1, 0]
             w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[0:1, 2]
-            ds = state.red_line_s - state.ego_fstate[FS_SX]
+            ds = state.red_line_s - 25 - state.ego_fstate[FS_SX]
             T = RuleBasedLaneMergePlanner._specify_quintic(state.ego_fstate[FS_SV], state.ego_fstate[FS_SA], 0, ds, w_T, w_J)
             actions, _ = RuleBasedLaneMergePlanner._create_quintic_actions(state.ego_fstate, v_T=np.array([0]), T=T,
                                                                            ds=ds, v_max=params.ego_max_velocity)
