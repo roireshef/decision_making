@@ -8,7 +8,8 @@ from decision_making.src.planning.behavioral.planner.base_planner import BasePla
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
-from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, ScenarioParams
+from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
+    ScenarioParams, SimpleLaneMergeState
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.state.state import State
@@ -64,8 +65,8 @@ class LaneMergeScenario(Scenario):
     @staticmethod
     def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
 
-        lane_merge_state = LaneMergeState.create_from_state(state=state, route_plan=route_plan, logger=logger)
+        simple_lane_merge_state = SimpleLaneMergeState.create_from_state(state=state, route_plan=route_plan, logger=logger)
 
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        success, _ = RuleBasedLaneMergePlanner.get_optimal_action_trajectory(lane_merge_state, ScenarioParams())
+        success, _ = RuleBasedLaneMergePlanner.get_optimal_action_trajectory(simple_lane_merge_state, ScenarioParams())
         return RuleBasedLaneMergePlanner if success else RL_LaneMergePlanner

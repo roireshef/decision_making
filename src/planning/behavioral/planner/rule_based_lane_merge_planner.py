@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LON_ACC_LIMITS, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, EPS, TRAJECTORY_TIME_RESOLUTION
+from decision_making.src.messages.route_plan_message import RoutePlan
 
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, ActionRecipe, \
     RelativeLane, RelativeLongitudinalPosition
@@ -13,6 +14,7 @@ from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState1
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
+from decision_making.src.state.state import State
 
 WORST_CASE_FRONT_CAR_DECEL = 1.  # [m/sec^2]
 WORST_CASE_BACK_CAR_ACCEL = 1.  # [m/sec^2]
@@ -94,13 +96,19 @@ class SimpleLaneMergeState:
     @classmethod
     def create_from_lane_merge_state(cls, lane_merge_state: LaneMergeState):
         # extract main road actors
-        actors_data = []
+        actors_data = np.empty((0, 3))
         for lon_pos in RelativeLongitudinalPosition:
             for obj in lane_merge_state.road_occupancy_grid[(lane_merge_state.target_relative_lane, lon_pos)]:
-                actors_data.append([obj.longitudinal_distance, obj.dynamic_object.velocity, obj.dynamic_object.size.length])
+                actors_data = np.concatenate((actors_data, [[obj.longitudinal_distance, obj.dynamic_object.velocity,
+                                                             obj.dynamic_object.size.length]]), axis=0)
 
         ego_fstate = lane_merge_state.projected_ego_fstates[RelativeLane.SAME_LANE][:FS_1D_LEN]
-        return cls(lane_merge_state.ego_state.size.length, ego_fstate, np.array(actors_data), lane_merge_state.red_line_s)
+        return cls(lane_merge_state.ego_state.size.length, ego_fstate, actors_data, lane_merge_state.red_line_s)
+
+    @classmethod
+    def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
+        lane_merge_state = LaneMergeState.create_from_state(state=state, route_plan=route_plan, logger=logger)
+        return cls.create_from_lane_merge_state(lane_merge_state)
 
 
 class RuleBasedLaneMergePlanner(BasePlanner):
@@ -490,6 +498,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
                            RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION)
         # grid of possible target ego velocities
         v_grid = np.arange(0, params.ego_max_velocity + EPS, RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)
+
+        if len(actors_data) == 0:
+            meshgrid_v, meshgrid_t = np.meshgrid(v_grid, t_grid)
+            return meshgrid_v.flatten(), meshgrid_t.flatten()
 
         actors_s = actors_data[:, 0, np.newaxis, np.newaxis]
         actors_v = actors_data[:, 1, np.newaxis, np.newaxis]

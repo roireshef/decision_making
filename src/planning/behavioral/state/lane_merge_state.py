@@ -40,7 +40,7 @@ class LaneMergeState(BehavioralGridState):
         merge_lane_id, maneuver_type, common_lane_id = MapUtils.get_closest_lane_merge(
             ego_lane_id, ego_lane_fstate[FS_SX], MERGE_LOOKAHEAD, route_plan)
 
-        target_relative_lane = RelativeLane.RIGHT_LANE if maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION else RelativeLane.LEFT_LANE
+        target_relative_lane = RelativeLane.LEFT_LANE if maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION else RelativeLane.RIGHT_LANE
 
         try:
             # create GFF for the host's lane
