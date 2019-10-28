@@ -83,7 +83,7 @@ class RL_LaneMergePlanner(BasePlanner):
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         # filter out actions that don't enable to brake before the red line
-        filtered_action_specs = self._red_line_filter(filtered_action_specs)
+        filtered_action_specs = self._red_line_filter(lane_merge_state, filtered_action_specs)
         return filtered_action_specs
 
     def _red_line_filter(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> ActionSpecArray:

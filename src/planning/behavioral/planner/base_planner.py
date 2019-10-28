@@ -51,9 +51,9 @@ class BasePlanner:
         actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, filtered_actions)
-        selected_action_recipe, selected_action_spec = self._choose_action(actions, costs)
+        selected_action_recipe, selected_action_spec = self._choose_action(behavioral_state, filtered_actions, costs)
 
-        trajectory_parameters = self._generate_trajectory_params(action_spec=selected_action_spec)
+        trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
         timestamp_in_sec = behavioral_state.ego_state.timestamp_in_sec
