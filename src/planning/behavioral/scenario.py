@@ -4,14 +4,11 @@ from logging import Logger
 from decision_making.src.exceptions import LaneMergeNotFound
 from decision_making.src.global_constants import MERGE_LOOKAHEAD
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams, SimpleLaneMergeState
 from decision_making.src.planning.types import FS_SX
-from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 
@@ -37,7 +34,7 @@ class Scenario:
 
     @staticmethod
     @abstractmethod
-    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger) -> BasePlanner:
+    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
         """
         Choose the appropriate planner for the specific scenario, given the current state. Each scenario has its own
         list of planners.
@@ -51,7 +48,7 @@ class Scenario:
 
 class DefaultScenario(Scenario):
     @staticmethod
-    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger) -> BasePlanner:
+    def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
         """
         see base class
         """

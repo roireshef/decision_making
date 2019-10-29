@@ -257,9 +257,7 @@ class QuarticPoly1D(Poly1D):
         """
         a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
         a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
-        return 36 * (a3 ** 2) * T + \
-               144 * a3 * a4 * T ** 2 + \
-               192 * a4 ** 2 * T ** 3
+        return 12 * T * (3 * a3 ** 2 + 12 * a3 * a4 * T + 16 * a4 ** 2 * T ** 2)
 
     @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
@@ -305,8 +303,9 @@ class QuarticPoly1D(Poly1D):
         zeros = np.zeros(w_T.shape[0])
         return np.c_[w_T,
                      zeros,
-                     - 4 * a_0 ** 2 * w_J, + 24 * (a_0 * v_T * w_J - a_0 * v_0 * w_J),
-                     - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J]
+                     - 4 * a_0 ** 2 * w_J,
+                     + 24 * a_0 * w_J * (v_T - v_0),
+                     - 36 * w_J * (v_0 - v_T) ** 2]
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -319,8 +318,9 @@ class QuarticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: t * (6 * T ** 3 * (a_0 * t + 2 * v_0) - 4 * T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T) +
-                              3 * t ** 3 * (T * a_0 + 2 * v_0 - 2 * v_T)) / (12 * T ** 3)
+        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + \
+            (-4 * t ** 3 * T * (2 * T * a_0 + 3 * (v_0 - v_T)) + 3 * t ** 4 * (T * a_0 + 2 * (v_0 - v_T))) / \
+            (12 * T ** 3)
 
     @staticmethod
     def velocity_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -332,9 +332,8 @@ class QuarticPoly1D(Poly1D):
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (T ** 3 * (a_0 * t + v_0)
-                          - T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T)
-                          + t ** 3 * (T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+        return lambda t: v_0 + a_0 * t + \
+            (t ** 2 * T * (- 2 * a_0 * T - 3 * (v_0 - v_T)) + t ** 3 * (a_0 * T + (v_0 - v_T) * 2)) / (T ** 3)
 
     @staticmethod
     def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, T: float):
@@ -467,11 +466,8 @@ class QuinticPoly1D(Poly1D):
         """
         a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
         a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
-        return 36 * a3 ** 2 * T + \
-               144 * a3 * a4 * T ** 2 + \
-               (240 * a3 * a5 + 192 * a4 ** 2) * T ** 3 + \
-               720 * a4 * a5 * T ** 4 + \
-               720 * a5 ** 2 * T ** 5
+        return 12 * T * (3 * a3 ** 2 + 12 * a3 * a4 * T + (20 * a3 * a5 + 16 * a4 ** 2) * T ** 2 +
+                        60 * a4 * a5 * T ** 3 + 60 * a5 ** 2 * T ** 4)
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
@@ -512,9 +508,9 @@ class QuinticPoly1D(Poly1D):
         """
         zeros = np.zeros_like(T)
         return np.c_[
-            -a_0 / (2 * T ** 3) - 3 * v_0 / T ** 4 - 3 * v_T / T ** 4 + 6 * dx / T ** 5,
-            3 * a_0 / (2 * T ** 2) + 8 * v_0 / T ** 3 + 7 * v_T / T ** 3 - 15 * dx / T ** 4,
-            -3 * a_0 / (2 * T) - 6 * v_0 / T ** 2 - 4 * v_T / T ** 2 + 10 * dx / T ** 3,
+            (-a_0 * T ** 2 / 2 - 3 * v_0 * T - 3 * v_T * T + 6 * dx) / T ** 5,
+            (3 * a_0 * T ** 2 / 2 + 8 * v_0 * T + 7 * v_T * T - 15 * dx) / T ** 4,
+            (-3 * a_0 * T ** 2 / 2 - 6 * v_0 * T - 4 * v_T * T + 10 * dx) / T ** 3,
             0.5 * a_0 + zeros,
             v_0 + zeros,
             zeros]
@@ -532,12 +528,12 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: t * (T ** 5 * (a_0 * t + 2 * v_0) + T ** 2 * t ** 2 * (
-                -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx + 20 * v_T * (T - T_m)) + T * t ** 3 * (
-                                      3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (
-                                      T - T_m)) + t ** 4 * (
-                                      -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (
-                                     2 * T ** 5)
+        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + \
+            t ** 3 * (
+                T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
+                T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+                t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m)))) / \
+            (2 * T ** 5)
 
     @staticmethod
     def distance_from_target(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -551,12 +547,12 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (dx + t * v_T) + T ** 2 * t ** 3 * (
-            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T)
-            - 20 * dx - 20 * v_T * (T - T_m)) - T * t ** 4 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
-                          + t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx - 12 * v_T * (T - T_m))) / (
-                                     2 * T ** 5)
+        return lambda t: dx + t * (v_T - v_0) - 0.5 * a_0 * t ** 2 + \
+            t ** 3 * (
+                T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * (dx + v_T * (T - T_m))) -
+                T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+                t ** 2 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * (dx + v_T * (T - T_m)))) / \
+            (2 * T ** 5)
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
