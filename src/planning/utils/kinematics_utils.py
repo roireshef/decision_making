@@ -238,7 +238,7 @@ class BrakingDistances:
 
     @staticmethod
     def calc_actions_distances_for_given_weights(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
-                                                 a_0: np.array = None, poly: Poly1D = QuarticPoly1D) -> np.array:
+                                                 a_0: np.array = None) -> np.array:
         """
         Calculate the distances for the given actions' weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -246,8 +246,6 @@ class BrakingDistances:
         :param v_0: array of initial velocities [m/s]
         :param v_T: array of desired final velocities [m/s]
         :param a_0: array of initial accelerations [m/s^2]
-        :param poly: The Poly1D (Quintic or Quartic) to use when checking the acceleration limits.
-         Currently supporting only QuarticPoly1D
         :return: actions' distances; actions not meeting acceleration limits have infinite distance
         """
         # calculate actions' planning time
@@ -256,21 +254,15 @@ class BrakingDistances:
         T = BrakingDistances.calc_T_s(w_T, w_J, v_0, a_0, v_T)
 
         # check acceleration limits
-        if poly is not QuarticPoly1D:
-            raise NotImplementedError('Currently function expects only QuarticPoly1D')
-        # TODO: Once Quintic might be used, pull `s_profile_coefficients` method up
-        s_profile_coefs = poly.position_profile_coefficients(a_0, v_0, v_T, T)
-        in_limits = poly.are_accelerations_in_limits(s_profile_coefs, T, LON_ACC_LIMITS)
+        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T, T)
+        in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs, T, LON_ACC_LIMITS)
 
         # Distances for accelerations which are not in limits are defined as infinity. This implied that braking on
         # invalid accelerations would take infinite distance, which in turn filters out these (invalid) action specs.
         distances = Math.zip_polyval2d(s_profile_coefs, T[:, np.newaxis])[:, 0]
 
-        # TODO: remove the following two lines (for DEBUG)
-        old_distances = T * (v_0 + v_T) / 2  # for a_0 = 0
-        assert np.isclose(distances, old_distances).all()
-
         distances[np.logical_not(in_limits)] = np.inf
+        distances[np.isclose(v_0, 0)] = 0
         return distances
 
     @staticmethod

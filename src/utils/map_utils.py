@@ -562,9 +562,15 @@ class MapUtils:
                 break
             last_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
             downstream_connectivity = last_lane_segment.as_downstream_lanes
+
             if len(downstream_connectivity) == 1 and \
                 (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
                  downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION):
+
+                # if we already crossed the red line, the lane merge is not relevant
+                if initial_lane_id == segment.e_i_SegmentID:
+                    raise LaneMergeNotFound('We crossed the red line: lane_id=%d, s=%f' % (initial_lane_id, initial_s))
+
                 return segment.e_i_SegmentID, downstream_connectivity[0].e_e_maneuver_type, downstream_connectivity[0].e_i_lane_segment_id
 
         # no merge connection was found

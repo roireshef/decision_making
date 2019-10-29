@@ -11,8 +11,45 @@ from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN, FS_SV, F
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from gym.spaces.tuple_space import Tuple as GymTuple
-#from planning_research.src.flow_rl.common_constants import DEFAULT_ADDITIONAL_ENV_PARAMS  # TODO: move from planning research
 import torch
+
+DEFAULT_ADDITIONAL_ENV_PARAMS = {
+    "RED_LINE_STOPPING_SPEED": 0.01,  # what is considered  "stopping" at the redline
+    "MAX_VELOCITY": 25.0,  # maximum allowed velocity [m/sec]
+    "RED_LINE": 240,  # location of the red line (meters)
+    "GOAL_LOCATION": 320,  # location of the goal (where host should arrive without collision)
+    "MERGE_SAFETY": 0.5,  # safety margin between vehicles, expressed with seconds of headway
+    "VEHICLES_PER_HOUR": 1200,  # number of vehicles to generate on target lane
+    "D_HORIZON_BACKWARD": 800,  # perception horizon going backward [m]
+    "D_HORIZON_FORWARD": 800,  # perception horizon going forward [m]
+    "CONSIDERED_NUM_ACTORS": 1,  # desired number of other actors to be represented in state
+    "ACTION_MAX_TIME_HORIZON": 40.0,  # longest allowed action
+    "FAR_AWAY_DISTANCE": 300.0,  # location defined for dummy vehicles
+    "HOST_INITIAL_LOCATION": 0,  # Initial location of host
+    'HOST_INITIAL_SPEED': 0,  # Initial velocity of host
+    'HOST_LOCATION_PERTURBATION': 0,  # Initial location of host (note this is fixed for initial state)
+    'VEHICLES_DEPART_SPEED': 25,  # The initial speed for other vehicles
+    'VEHICLES_INFLOW_PROBABILITY': 0.25,
+    'OCCUPANCY_GRID_RESOLUTION': 4.5,
+    'OCCUPANCY_GRID_ONESIDED_LENGTH': 120,
+    'LON_ACC_LIMIT_FACTOR': 1,
+    # Relaxation of the longitudinal acceleration filter (test LON_ACC_LIMITS * LON_ACC_LIMIT_FACTOR)
+    'MAX_SIMULATION_STEPS': 1000,
+    'REWARD_PER_STEP': -1,
+    'REWARD_FOR_SUCCESS': 1000,
+    'REWARD_FOR_FAILURE': 0,
+    "REWARD_CONSTANT_SUBTRACTOR": 0,
+    "REWARD_CONSTANT_MULTIPLIER": 1,
+    "RED_LINE_PROXIMITY": 15,
+    'WARMUP_STEPS': 0,
+    'STORE_REPLAY': False,
+    'JERK_REWARD_COEFFICIENT': 0.1,
+    'ACTION_SPACE': {
+        'MIN_VELOCITY': 0.0,
+        'MAX_VELOCITY': 25.0,
+        'VELOCITY_RESOLUTION': 5
+    }
+}
 
 
 class LaneMergeState(BehavioralGridState):
@@ -60,7 +97,7 @@ class LaneMergeState(BehavioralGridState):
             # create target GFF for the merge, such that its backward & forward horizons are equal to MERGE_LOOKAHEAD
             # relative to ego
             target_gff = BehavioralGridState._get_generalized_frenet_frames(
-                common_lane_id, station=0, route_plan=route_plan, forward_horizon=MERGE_LOOKAHEAD - merge_point_from_ego,
+                lane_id=common_lane_id, station=0, route_plan=route_plan, forward_horizon=MERGE_LOOKAHEAD - merge_point_from_ego,
                 backward_horizon=MERGE_LOOKAHEAD + merge_point_from_ego)[RelativeLane.SAME_LANE]
 
             all_gffs = {RelativeLane.SAME_LANE: ego_gff, target_relative_lane: target_gff}
@@ -76,11 +113,9 @@ class LaneMergeState(BehavioralGridState):
             actors_with_road_semantics = \
                 sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, all_gffs, projected_ego),
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
-            multi_object_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state)
+            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state)
 
-            return cls(road_occupancy_grid=multi_object_grid, ego_state=ego_state,
-                       extended_lane_frames=all_gffs, projected_ego_fstates=projected_ego,
-                       target_relative_lane=target_relative_lane, red_line_s=red_line_s)
+            return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego, target_relative_lane, red_line_s)
 
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE or target lane GFF, stop processing this BP frame

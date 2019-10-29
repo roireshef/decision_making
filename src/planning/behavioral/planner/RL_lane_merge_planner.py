@@ -53,6 +53,9 @@ class RL_LaneMergePlanner(BasePlanner):
         return LaneMergeState.create_from_state(state, route_plan, self.logger)
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> np.array:
+        """
+        see base class
+        """
         action_recipes = self.action_space.recipes
 
         # Recipe filtering
@@ -94,13 +97,16 @@ class RL_LaneMergePlanner(BasePlanner):
         :return: array of ActionSpec of the original size, with None for filtered actions
         """
         valid_specs_idxs = np.where(action_specs.astype(bool))[0]
-        spec_v, spec_s = np.array([[spec.v, spec.s] for spec in action_specs[valid_specs_idxs]]).T
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE]
-        braking_distances = BrakingDistances.calc_actions_distances_for_given_weights(w_T, w_J, spec_v, np.zeros_like(spec_v))
-        action_specs[valid_specs_idxs[spec_s + braking_distances > lane_merge_state.red_line_s]] = None
+        if valid_specs_idxs.any():
+            specs_vs = np.array([[spec.v, spec.s] for spec in action_specs[valid_specs_idxs]])
+            spec_v, spec_s = specs_vs.T
+            w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+            braking_distances = BrakingDistances.calc_actions_distances_for_given_weights(w_T, w_J, spec_v, np.zeros_like(spec_v))
+            action_specs[valid_specs_idxs[spec_s + braking_distances > lane_merge_state.red_line_s]] = None
         return action_specs
 
-    def _evaluate_actions(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> np.ndarray:
+    def _evaluate_actions(self, lane_merge_state: LaneMergeState, route_plan: RoutePlan,
+                          action_specs: ActionSpecArray) -> np.ndarray:
         """
         Given RL policy, current state and actions mask, return the actions cost by operating policy on the state.
         Filtered actions get the maximal cost 1.
@@ -114,9 +120,18 @@ class RL_LaneMergePlanner(BasePlanner):
 
         encoded_state: GymTuple = lane_merge_state.encode_state_for_RL()
 
-        logits = self.model._forward({SampleBatch.CUR_OBS: encoded_state}, [])[0]
-        logits[~action_specs.astype(bool)] = -np.inf
+        # TODO: take real action_mask when RL will use UC action space
+        action_mask = np.ones(6).astype(bool)
+        input_dict = {'state': encoded_state, 'action_mask': torch.from_numpy(action_mask).float()}
+
+        logits = self.model._forward({SampleBatch.CUR_OBS: input_dict}, [])[0][0].detach()
+        logits.numpy()[~action_mask] = -np.inf
         chosen_action_idx = np.argmax(logits)
+
+        # TODO: remove it when RL will use UC action space
+        max_v = [spec.v for spec in action_specs if spec is not None and spec.v <= 25][-1]
+        chosen_action_idx = [i for i, spec in enumerate(action_specs) if spec is not None and spec.v == max_v][0]
+        print('RL: chosen_action_idx=', chosen_action_idx, 'chosen_spec=', action_specs[chosen_action_idx])
 
         costs = np.full(len(action_specs), 1)
         costs[chosen_action_idx] = 0
@@ -124,9 +139,8 @@ class RL_LaneMergePlanner(BasePlanner):
 
     def _choose_action(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray, costs: np.array) -> \
             [ActionRecipe, ActionSpec]:
-        # choose action with the minimal cost
+        """
+        see base class
+        """
         selected_action_index = int(np.argmin(costs))
-        best_action_spec = action_specs[selected_action_index]
-        # convert spec.s from LaneMergeState to GFF
-        best_action_spec.s += lane_merge_state.ego_state.map_state.lane_fstate[FS_SX]
-        return self.action_space.recipes[selected_action_index], best_action_spec
+        return self.action_space.recipes[selected_action_index], action_specs[selected_action_index]

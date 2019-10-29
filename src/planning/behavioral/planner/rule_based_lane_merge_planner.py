@@ -501,15 +501,13 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         # validate acceleration limits of the initial quartic action
         poly_s = np.zeros((T.shape[0], QuarticPoly1D.num_coefs()))
-        validT = ~np.isnan(T)
-        poly_s[validT] = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T if np.isscalar(v_T) else v_T[validT], T[validT])
-        # acc_poly = Math.polyder2d(poly_s[validT], m=2)
-        # jerk_poly = Math.polyder2d(acc_poly, m=1)
-        # roots = (-jerk_poly[:, 1] / jerk_poly[:, 0])[:, np.newaxis]
-        # max_accelerations = Math.zip_polyval2d(acc_poly, roots)[:, 0]
-        valid_acc = np.zeros_like(T).astype(bool)
-        # valid_acc[validT] = NumpyUtils.is_in_limits(max_accelerations, LON_ACC_LIMITS)
-        valid_acc[validT] = QuarticPoly1D.are_accelerations_in_limits(poly_s[validT], T[validT], LON_ACC_LIMITS)
+        nonnan = ~np.isnan(T)
+        positiveT = np.copy(nonnan)
+        valid_acc = np.copy(nonnan)
+        positiveT[nonnan] = np.greater(T[nonnan], 0)
+        valid_acc[nonnan] = np.equal(T[nonnan], 0)
+        poly_s[positiveT] = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T if np.isscalar(v_T) else v_T[positiveT], T[positiveT])
+        valid_acc[positiveT] = QuarticPoly1D.are_accelerations_in_limits(poly_s[positiveT], T[positiveT], LON_ACC_LIMITS)
         return valid_acc, poly_s
 
     @staticmethod
@@ -674,7 +672,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         action_costs[actions == None] = np.inf
         return action_costs
 
-    def _evaluate_actions(self, lane_merge_state: LaneMergeState, actions: np.array) -> np.array:
+    def _evaluate_actions(self, lane_merge_state: LaneMergeState, route_plan: RoutePlan, actions: np.array) -> np.array:
         """
         Calculate time-jerk costs for the given actions
         :param actions: list of LaneMergeActions, where each LaneMergeAction is a sequence of action specs

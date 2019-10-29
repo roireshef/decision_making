@@ -50,7 +50,7 @@ class BasePlanner:
         behavioral_state = self._create_state(state, route_plan)
         actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
-        costs = self._evaluate_actions(behavioral_state, filtered_actions)
+        costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
         selected_action_recipe, selected_action_spec = self._choose_action(behavioral_state, filtered_actions, costs)
 
         trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec)
@@ -96,7 +96,8 @@ class BasePlanner:
         pass
 
     @abstractmethod
-    def _evaluate_actions(self, behavioral_state: BehavioralGridState, actions: ActionSpecArray) -> np.ndarray:
+    def _evaluate_actions(self, behavioral_state: BehavioralGridState, route_plan: RoutePlan,
+                          actions: ActionSpecArray) -> np.ndarray:
         """
         Evaluates Action-Specifications based on a certain logic (depends on implementation)
         :param behavioral_state: behavioral state relevant for specific scenario
