@@ -49,7 +49,7 @@ class RL_LaneMergePlanner(BasePlanner):
         model.load_state_dict(model_state_dict)
         return model
 
-    def _create_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
         return LaneMergeState.create_from_state(state, route_plan, self.logger)
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> np.array:

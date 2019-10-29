@@ -45,9 +45,11 @@ class BasePlanner:
         and evaluating actions. Its output will be further handled and used to create a trajectory in Trajectory Planner
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
         cost params and strategy.
+        :param state: the current world state
+        :param route_plan: a route plan message
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
-        behavioral_state = self._create_state(state, route_plan)
+        behavioral_state = self._create_behavioral_state(state, route_plan)
         actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
@@ -67,7 +69,7 @@ class BasePlanner:
         return trajectory_parameters, baseline_trajectory, visualization_message
 
     @abstractmethod
-    def _create_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
         """
         Create behavioral state relevant for specific scenario
         :return: array of action specifications of the same size as the action space

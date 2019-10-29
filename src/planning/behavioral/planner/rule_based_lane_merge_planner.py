@@ -622,7 +622,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         is_safe = np.logical_or(front_side_safe, back_side_safe)
         return is_safe.all(axis=0)
 
-    def _create_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
         return LaneMergeState.create_from_state(state, route_plan, self.logger)
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> np.array:
