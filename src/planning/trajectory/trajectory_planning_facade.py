@@ -14,7 +14,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, \
-    LOG_MSG_SCENE_DYNAMIC_RECEIVED
+    LOG_MSG_SCENE_DYNAMIC_RECEIVED, NEGLIGIBLE_DISPOSITION_FROM_STRAIGHT_LINE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
@@ -26,7 +26,7 @@ from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, FP_SX, C_Y, FS_DX, \
-    FS_SX
+    FS_SX, C_X
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -111,6 +111,9 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state
 
+            self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
+                              "according to previous plan.  %s", updated_state.ego_state)
+
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
@@ -166,6 +169,24 @@ class TrajectoryPlanningFacade(DmModule):
                         stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                         num=TRAJECTORY_NUM_POINTS) + timestamp)
         self._last_trajectory = samplable_trajectory
+
+        # look for cases where the trajectory is very close to a straight line, and in these cases replace it by
+        # a straight line, in order to reduce the jerk that can be caused mainly in low speeds, such as when we come
+        # to a stop or take off.
+        points = np.c_[trajectory_points[:, C_X], trajectory_points[:, C_Y]]
+        v0 = points[-1] - points[0]
+        v1 = points[1:-1] - points[0]
+        norm_v1 = np.linalg.norm(v1, axis=1)
+        norm_v0 = np.linalg.norm(v0)
+        cos_beta = (v1[:, 0] * v0[0] + v1[:, 1] * v0[1]) / norm_v1 / norm_v0
+        sin_beta = np.sqrt(1 - cos_beta ** 2)
+        # dist_to_line is the distance between the points and the straight line connecting the first and last point
+        dist_to_line = norm_v1 * sin_beta
+        if np.nanmax(dist_to_line) < NEGLIGIBLE_DISPOSITION_FROM_STRAIGHT_LINE:
+            progress = norm_v1 * cos_beta / norm_v0
+            progress = np.clip(progress, 0, 1) # also make sure we don't pass the end point and go back
+            v2 = points[0] + progress[:, np.newaxis] * v0
+            trajectory_points[1:-1, C_X:C_Y+1] = v2
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
