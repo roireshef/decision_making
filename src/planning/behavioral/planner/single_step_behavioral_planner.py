@@ -36,7 +36,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
-    def _create_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
         return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
     def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
@@ -86,8 +86,9 @@ class SingleStepBehavioralPlanner(BasePlanner):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
         action_spec_evaluator = AugmentedLaneActionSpecEvaluator(self.logger)
+        action_specs_exist = action_specs.astype(bool)
         return action_spec_evaluator.evaluate(behavioral_state, self.action_space.recipes, action_specs,
-                                              list(action_specs.astype(bool)), route_plan)
+                                              list(action_specs_exist), route_plan)
 
     def _choose_action(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray, costs: np.array) -> \
             [ActionRecipe, ActionSpec]:
