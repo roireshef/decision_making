@@ -35,6 +35,18 @@ def plot_filters_map(log_file_path: str):
             filters_list = text.split('List: [\'')[1].split('\']')[0].split('\', \'')
             break
 
+    # if no filters are found, use the default
+    if len(filters_list) == 0:
+        # use the default
+        filters_list = ['FilterIfNone', 'FilterForSLimit', 'FilterForKinematics', 'FilterForLaneSpeedLimits',
+                        'FilterForSafetyTowardsTargetVehicle',
+                        # 'StaticTrafficFlowControlFilter', 'BeyondSpecStaticTrafficFlowControlFilter',
+                        'BeyondSpecSpeedLimitFilter', 'BeyondSpecCurvatureFilter',
+                        'BeyondSpecPartialGffFilter', 'FilterStopActionIfTooSoonByTime']
+        # reopen the file
+        file.close()
+        file = open(log_file_path, 'r')
+
     patches = []
     for idx, filter in enumerate(filters_list + ['Passed']):
         patches.append(mpatches.Patch(color=color_names[idx], label=filter.__str__()))
