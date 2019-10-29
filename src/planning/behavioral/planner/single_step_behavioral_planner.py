@@ -13,7 +13,6 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_STATI
     DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from logging import Logger
-from typing import List
 
 from decision_making.src.planning.types import ActionSpecArray
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
@@ -72,7 +71,8 @@ class SingleStepBehavioralPlanner(BasePlanner):
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         return filtered_action_specs
 
-    def _evaluate_actions(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> np.ndarray:
+    def _evaluate_actions(self, behavioral_state: BehavioralGridState, route_plan: RoutePlan,
+                          action_specs: ActionSpecArray) -> np.ndarray:
         """
         Evaluates Action-Specifications based on the following logic:
         * Only takes into account actions on RelativeLane.SAME_LANE
@@ -87,7 +87,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
         """
         action_spec_evaluator = AugmentedLaneActionSpecEvaluator(self.logger)
         return action_spec_evaluator.evaluate(behavioral_state, self.action_space.recipes, action_specs,
-                                              list(action_specs.astype(bool)), self.route_plan)
+                                              list(action_specs.astype(bool)), route_plan)
 
     def _choose_action(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray, costs: np.array) -> \
             [ActionRecipe, ActionSpec]:
