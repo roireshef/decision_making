@@ -26,7 +26,7 @@ from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, FP_SX, C_Y, FS_DX, \
-    FS_SX, C_X
+    FS_SX, C_X, CartesianExtendedTrajectory
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -170,23 +170,7 @@ class TrajectoryPlanningFacade(DmModule):
                         num=TRAJECTORY_NUM_POINTS) + timestamp)
         self._last_trajectory = samplable_trajectory
 
-        # look for cases where the trajectory is very close to a straight line, and in these cases replace it by
-        # a straight line, in order to reduce the jerk that can be caused mainly in low speeds, such as when we come
-        # to a stop or take off.
-        points = np.c_[trajectory_points[:, C_X], trajectory_points[:, C_Y]]
-        v0 = points[-1] - points[0]
-        v1 = points[1:-1] - points[0]
-        norm_v1 = np.linalg.norm(v1, axis=1)
-        norm_v0 = np.linalg.norm(v0)
-        cos_beta = (v1[:, 0] * v0[0] + v1[:, 1] * v0[1]) / norm_v1 / norm_v0
-        sin_beta = np.sqrt(1 - cos_beta ** 2)
-        # dist_to_line is the distance between the points and the straight line connecting the first and last point
-        dist_to_line = norm_v1 * sin_beta
-        if np.nanmax(dist_to_line) < NEGLIGIBLE_DISPOSITION_FROM_STRAIGHT_LINE:
-            progress = norm_v1 * cos_beta / norm_v0
-            progress = np.clip(progress, 0, 1) # also make sure we don't pass the end point and go back
-            v2 = points[0] + progress[:, np.newaxis] * v0
-            trajectory_points[1:-1, C_X:C_Y+1] = v2
+        self._reduce_jerk_if_trajectory_is_flat(trajectory_points)
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
@@ -212,6 +196,33 @@ class TrajectoryPlanningFacade(DmModule):
                                                                    e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
 
         return trajectory_plan
+
+    def _reduce_jerk_if_trajectory_is_flat(self, trajectory_points: CartesianExtendedTrajectory):
+        """
+        Look for cases where the trajectory is very close to a straight line, and in these cases replace it by
+        a straight line, in order to reduce the jerk that can be caused mainly in low speeds, such as when we come
+        to a stop or take off.
+        :param trajectory_points: Waypoints of the trajectory
+        :return: The input trajectory_points may be modified inplace
+        """
+        points = np.c_[trajectory_points[:, C_X], trajectory_points[:, C_Y]]
+        startpoint = points[0]
+        endpoint = points[-1]
+        endpoint_to_startpoint_vector = endpoint - startpoint
+        waypoints_to_startpoint_vector = points[1:-1] - startpoint
+        norm_waypoints_to_startpoint = np.linalg.norm(waypoints_to_startpoint_vector, axis=1)
+        norm_endpoint_to_startpoint = np.linalg.norm(endpoint_to_startpoint_vector)
+        cos_angle_between_vectors = (waypoints_to_startpoint_vector[:, 0] * endpoint_to_startpoint_vector[0] +
+                                     waypoints_to_startpoint_vector[:, 1] * endpoint_to_startpoint_vector[1]) \
+                                    / norm_waypoints_to_startpoint / norm_endpoint_to_startpoint
+        sin_angle_between_vectors = np.sqrt(1 - cos_angle_between_vectors ** 2)
+        # dist_to_line is the distance between the points and the straight line connecting the first and last point
+        dist_to_line = norm_waypoints_to_startpoint * sin_angle_between_vectors
+        if np.nanmax(dist_to_line) < NEGLIGIBLE_DISPOSITION_FROM_STRAIGHT_LINE:
+            progress = norm_waypoints_to_startpoint * cos_angle_between_vectors / norm_endpoint_to_startpoint
+            progress = np.clip(progress, 0, 1)  # also make sure we don't pass the end point and go back
+            projected_waypoints = startpoint + progress[:, np.newaxis] * endpoint_to_startpoint_vector
+            trajectory_points[1:-1, C_X:C_Y + 1] = projected_waypoints
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
