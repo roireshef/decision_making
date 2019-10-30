@@ -238,7 +238,14 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
         elif len(standard_idx) > 0 and min_headways[standard_idx[0]] > REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION:
             chosen_level = standard_idx[0]
         else:
-            chosen_level = -1  # the most aggressive
+            if len(aggr_idx) > 0 and dynamic_specs[aggr_idx[0]].v < behavioral_state.ego_state.velocity:
+                chosen_level = -1  # if braking, choose the most aggressive action
+            else:  # if not braking, don't choose an aggressive action unless it is the only option
+                # aggressive action doesn't exist or it is the only valid option
+                if len(aggr_idx) == 0 or (len(standard_idx) == 0 and len(calm_idx) == 0):
+                    chosen_level = -1
+                else:
+                    chosen_level = -2
         self.logger.debug("Headway min %1.2f, %1.2f ,%1.2f,  %d, %f",
                           -1 if len(calm_idx) == 0 else min_headways[calm_idx[0]],
                           -1 if len(standard_idx) == 0 else min_headways[standard_idx[0]],

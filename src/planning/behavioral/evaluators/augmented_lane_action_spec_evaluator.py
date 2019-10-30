@@ -5,8 +5,8 @@ from typing import List
 import numpy as np
 
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
-    StaticActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, RelativeLane, \
+     AggressivenessLevel
 from decision_making.src.planning.behavioral.evaluators.lane_based_action_spec_evaluator import LaneBasedActionSpecEvaluator
 from decision_making.src.messages.route_plan_message import RoutePlan
 
@@ -50,7 +50,10 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
             selected_follow_vehicle_idx = self._get_follow_vehicle_valid_action_idx(behavioral_state, action_recipes,
                                                                                     action_specs, action_specs_mask,
                                                                                     target_lane)
-            if selected_follow_vehicle_idx >= 0:
+            # at this stage aggressive action is picked only if it is meant for braking. Not for speeding.
+            if (selected_follow_vehicle_idx >= 0) and \
+                    (action_specs[selected_follow_vehicle_idx].v < behavioral_state.ego_state.velocity or
+                     action_recipes[selected_follow_vehicle_idx].aggressiveness != AggressivenessLevel.AGGRESSIVE):
                 costs[selected_follow_vehicle_idx] = 0  # choose the found dynamic action, which is least aggressive
                 return costs
 
@@ -64,25 +67,37 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
                                                                               target_lane)
 
             # finally decide between the road sign and the static action
+            selected_action_idx = -1
             if selected_road_sign_idx < 0 and selected_follow_lane_idx < 0:
                 # if no action of either type was found, skip checking for actions on the lane
-                continue
+                pass
             elif selected_road_sign_idx < 0:
                 # if no road sign action is found, select the static action
-                costs[selected_follow_lane_idx] = 0
-                return costs
+                selected_action_idx = selected_follow_lane_idx
             elif selected_follow_lane_idx < 0:
                 # if no static action is found, select the road sign action
-                costs[selected_road_sign_idx] = 0
-                return costs
+                selected_action_idx = selected_road_sign_idx
             else:
                 # if both road sign and static actions are valid - choose
                 if self._is_static_action_preferred(action_recipes, selected_road_sign_idx, selected_follow_lane_idx):
-                    costs[selected_follow_lane_idx] = 0
-                    return costs
+                    selected_action_idx = selected_follow_lane_idx
                 else:
-                    costs[selected_road_sign_idx] = 0
-                    return costs
+                    selected_action_idx = selected_road_sign_idx
+
+            # compare the static/road sign action to the dynamic action
+            if selected_action_idx == -1:  # no static or road_sign action
+                selected_action_idx = selected_follow_vehicle_idx  # select the dynamic if it exists, or nothing
+            else:  # there is a static or road sign action
+                if action_recipes[selected_action_idx].aggressiveness == AggressivenessLevel.AGGRESSIVE and \
+                        selected_follow_vehicle_idx >= 0:
+                    selected_action_idx = selected_follow_vehicle_idx  # if both actions are aggressive, follow vehicle
+                else:
+                    pass  # prefer the non-aggressive action
+
+            if selected_action_idx != -1:
+                costs[selected_action_idx] = 0
+                return costs
+            # otherwise continue in loop
 
         # if the for loop is exited without having returned anything, no valid actions were found in both
         # minimum_cost_lane as well as the SAME_LANE
