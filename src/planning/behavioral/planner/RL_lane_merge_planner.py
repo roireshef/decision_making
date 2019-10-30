@@ -102,7 +102,7 @@ class RL_LaneMergePlanner(BasePlanner):
             spec_v, spec_s = specs_vs.T
             w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
             braking_distances = BrakingDistances.calc_actions_distances_for_given_weights(w_T, w_J, spec_v, np.zeros_like(spec_v))
-            action_specs[valid_specs_idxs[spec_s + braking_distances > lane_merge_state.red_line_s]] = None
+            action_specs[valid_specs_idxs[spec_s + braking_distances > lane_merge_state.red_line_s_on_ego_gff]] = None
         return action_specs
 
     def _evaluate_actions(self, lane_merge_state: LaneMergeState, route_plan: RoutePlan,

@@ -7,7 +7,8 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
-    ScenarioParams, SimpleLaneMergeState
+    ScenarioParams
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
@@ -59,9 +60,9 @@ class LaneMergeScenario(Scenario):
     @staticmethod
     def choose_planner(state: State, route_plan: RoutePlan, logger: Logger):
 
-        simple_lane_merge_state = SimpleLaneMergeState.create_from_state(state, route_plan, logger)
+        lane_merge_state = LaneMergeState.create_from_state(state, route_plan, logger)
 
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        actions = RuleBasedLaneMergePlanner.create_max_vel_quartic_actions(simple_lane_merge_state, ScenarioParams())
+        actions = RuleBasedLaneMergePlanner.create_max_vel_quartic_actions(lane_merge_state, ScenarioParams())
 
         return RuleBasedLaneMergePlanner(actions, logger) if len(actions) > 0 else RL_LaneMergePlanner(logger)
