@@ -142,6 +142,7 @@ class BehavioralPlanningFacade(DmModule):
             self.logger.debug("Speed limits at time %f: %s" % (state.ego_state.timestamp_in_sec, speed_limits))
 
             self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
+            print('BP time: ', time.time() - start_time)
 
             MetricLogger.get_logger().report()
 

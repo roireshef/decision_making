@@ -51,7 +51,7 @@ def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behav
 
     filter = StaticTrafficFlowControlFilter()
     t, v, s, d = 10, 20, ego_location + 40.0, 0
-    action_specs = [ActionSpec(t, v, s, d,
+    action_specs = [ActionSpec(t, v, s, d, 0, 0,
                                ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
     expected = [False]
@@ -77,7 +77,7 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
 
     filter = BeyondSpecStaticTrafficFlowControlFilter()
     t, v, s, d = 10, 20, gff_stop_sign_location - 2.0, 0
-    action_specs = [ActionSpec(t, v, s, d,
+    action_specs = [ActionSpec(t, v, s, d, 0, 0,
                                ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
     expected = [False]
@@ -101,7 +101,7 @@ def test_BeyondSpecSpeedLimitFilter_SlowLaneAhead(behavioral_grid_state_with_tra
     filter = BeyondSpecSpeedLimitFilter()
     t, v, s, d = 10, 25, ego_location + 5, 0
     action_specs = [
-        ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
+        ActionSpec(t, v, s, d, 0, 0, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
     expected = [False]
     assert actual == expected
@@ -120,7 +120,7 @@ def test_BeyondSpecSpeedLimitFilter_NoSpeedLimitChange(behavioral_grid_state_wit
     filter = BeyondSpecSpeedLimitFilter()
     t, v, s, d = 10, 34/3.6, ego_location + 80, 0
     action_specs = [
-        ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
+        ActionSpec(t, v, s, d, 0, 0, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
     expected = [True]
     assert actual == expected
@@ -400,8 +400,8 @@ def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_st
     filter = BeyondSpecPartialGffFilter()
     t, v, s, d = 10, 30, partial_gff_end_s - 10, 0
     action_specs = [
-        ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM)),
-        ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.LEFT_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
+        ActionSpec(t, v, s, d, 0, 0, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM)),
+        ActionSpec(t, v, s, d, 0, 0, ActionRecipe(RelativeLane.LEFT_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
     actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_left_lane_ending)
     expected = [True, False]
     assert np.all(actual == expected)

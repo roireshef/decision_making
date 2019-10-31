@@ -132,6 +132,16 @@ class Poly1D:
         """
         return cls.time_constraints_tensor(np.array([T]))[0]
 
+    @classmethod
+    def inverse_time_constraints_matrix(cls, T: float) -> np.ndarray:
+        """
+        Given the polynomial setting, this function returns A as a tensor with the first dimension iterating
+        over different values of T (time-horizon) provided in <terminal_times>
+        :param T: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), cls.num_coefs(), cls.num_coefs()]
+        """
+        return cls.inverse_time_constraints_tensor(np.array([T]))[0]
+
     @staticmethod
     def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
         """
@@ -223,8 +233,7 @@ class Poly1D:
         """
         assert constraints.shape[-1] == cls.num_coefs(), "%s should get constraints of size %s (got %s)" % \
                                                          (cls.__name__, cls.num_coefs(), constraints.shape[-1])
-        A = cls.time_constraints_matrix(T)
-        A_inv = np.linalg.inv(A)
+        A_inv = cls.inverse_time_constraints_matrix(T)
         poly_coefs = cls.solve(A_inv, constraints)
         return poly_coefs
 

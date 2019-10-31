@@ -63,6 +63,7 @@ class LaneMergeScenario(Scenario):
         lane_merge_state = LaneMergeState.create_from_state(state, route_plan, logger)
 
         # try to find a rule-based lane merge that guarantees a safe merge even in the worst case scenario
-        actions = RuleBasedLaneMergePlanner.create_max_vel_quartic_actions(lane_merge_state, ScenarioParams())
+        actions = RuleBasedLaneMergePlanner.create_safe_actions(
+            lane_merge_state, ScenarioParams(worst_case_front_actor_decel=0, worst_case_back_actor_accel=0))
 
         return RuleBasedLaneMergePlanner(actions, logger) if len(actions) > 0 else RL_LaneMergePlanner(logger)

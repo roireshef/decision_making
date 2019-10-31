@@ -154,6 +154,8 @@ class LaneMergeState(BehavioralGridState):
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
             road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state)
 
+            print('ego_lane=', ego_lane_id, 'dist_to_red_line=', red_line_s - ego_on_same_gff[FS_SX], 'vel=', ego_state.velocity)
+
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego, red_line_s, target_rel_lane)
 
         except MappingException as e:

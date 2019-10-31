@@ -380,12 +380,7 @@ class BehavioralGridState:
             # the backward distance to the beginning of the lane (i.e. the station).
             starting_station = 0.0
             lookahead_distance = forward_horizon + station
-            try:
-                upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, backward_horizon)
-            except UpstreamLaneNotFound:
-                starting_station = 0
-                lookahead_distance = forward_horizon + station
-                upstream_lane_subsegments = []
+            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, backward_horizon)
         else:
             # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
             # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
@@ -436,10 +431,16 @@ class BehavioralGridState:
         while upstream_distance < backward_distance:
             # First, choose an upstream lane
             upstream_lane_ids = MapUtils.get_upstream_lane_ids(lane_id)
+
+            # TODO: remove it when the map will be fixed
+            if lane_id == 23268355:
+                upstream_lane_ids = [1575171]
+
             num_upstream_lanes = len(upstream_lane_ids)
 
             if num_upstream_lanes == 0:
-                raise UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id))
+                return upstream_lane_subsegments
+                # raise UpstreamLaneNotFound("Upstream lane not found for lane_id=%d" % (lane_id))
             elif num_upstream_lanes == 1:
                 chosen_upstream_lane_id = upstream_lane_ids[0]
             elif num_upstream_lanes > 1:
