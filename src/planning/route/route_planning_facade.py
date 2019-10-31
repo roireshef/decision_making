@@ -74,7 +74,7 @@ class RoutePlanningFacade(DmModule):
             self.logger.debug(str(e))
 
         except RoutePlanningException as e:
-            self.logger.warning(e)
+            self.logger.critical(str(e))
 
         except Exception as e:
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
