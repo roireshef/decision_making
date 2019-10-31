@@ -115,6 +115,9 @@ LaneSegmentID = int
 # boolean array
 BoolArray = np.ndarray
 
+# array of ActionSpec
+ActionSpecArray = np.array
+
 
 class RoadSignInfo(NamedTuple):
     # Info on road signs

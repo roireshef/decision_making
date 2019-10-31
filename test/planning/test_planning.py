@@ -88,23 +88,11 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     predictor_logger = MagicMock()
 
     behavioral_publish_mock = MagicMock()
-    predictor = RoadFollowingPredictor(predictor_logger)
-    action_space = ActionSpaceContainer(bp_logger,
-                                        [StaticActionSpace(bp_logger, filtering=DEFAULT_STATIC_RECIPE_FILTERING),
-                                         DynamicActionSpace(bp_logger, predictor,
-                                                            filtering=DEFAULT_DYNAMIC_RECIPE_FILTERING)])
-    planner = SingleStepBehavioralPlanner(action_space=action_space,
-                                          recipe_evaluator=None,
-                                          action_spec_evaluator=SingleLaneActionSpecEvaluator(bp_logger),
-                                          action_spec_validator=ActionSpecFiltering(filters=[FilterIfNone()],
-                                                                                    logger=bp_logger),
-                                          value_approximator=ZeroValueApproximator(bp_logger),
-                                          predictor=predictor, logger=bp_logger)
 
     pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic.serialize())
     route_planner_facade.periodic_action()
 
-    behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
+    behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger)
 
     pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS, behavioral_publish_mock)
 

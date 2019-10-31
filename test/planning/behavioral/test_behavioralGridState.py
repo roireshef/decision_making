@@ -352,7 +352,7 @@ def test_filterIrrelevantDynamicObjects_fiveLanesOnOvalTrackWithObjects_Irreleva
     Validate that irrelevant objects are filtered correctly
     """
     extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(
-        state_with_five_objects_on_oval_track, route_plan_for_oval_track_file, None)
+        state_with_five_objects_on_oval_track.ego_state, route_plan_for_oval_track_file, None)
 
     relevant_objects, relevant_objects_relative_lanes = BehavioralGridState._filter_irrelevant_dynamic_objects(
         state_with_five_objects_on_oval_track.dynamic_objects, extended_lane_frames)

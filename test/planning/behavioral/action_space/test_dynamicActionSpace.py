@@ -2,8 +2,7 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import SPECIFICATION_HEADWAY, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+from decision_making.src.global_constants import SPECIFICATION_HEADWAY, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, RelativeLane
