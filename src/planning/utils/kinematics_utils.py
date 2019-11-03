@@ -97,6 +97,43 @@ class KinematicUtils:
         return conforms_velocity_limits
 
     @staticmethod
+    def filter_by_minimal_velocity_limit(ctrajectories: CartesianExtendedTrajectories, velocity_limits: np.ndarray,
+                                 T: np.array) -> np.array:
+        """
+        validates the following behavior for each trajectory:
+        (1) applies negative jerk to reduce initial positive acceleration, if necessary
+            (initial jerk is calculated by subtracting the first two acceleration samples)
+        (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
+        (3) keeps the velocity under the desired velocity limit.
+        :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
+        :param velocity_limits: array of minimal velocities to validate against
+        :param T: array of target times for ctrajectories
+        :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
+        """
+        lon_acceleration = ctrajectories[:, :, C_A]
+        lon_velocity = ctrajectories[:, :, C_V]
+        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(T)
+        last_pad_idxs = np.minimum(last_pad_idxs, ctrajectories.shape[1] - 1)
+        # for each trajectory use the appropriate last time index (possibly after padding)
+        end_velocities = ctrajectories[np.arange(ctrajectories.shape[0]), last_pad_idxs, C_V]
+        end_velocity_limits = velocity_limits
+
+        # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
+        num_points = lon_velocity.shape[1]
+        num_trajectories = velocity_limits.shape[0]
+        conforms_velocity_limits = np.logical_and(
+            end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
+            np.logical_or(
+                # either speed is below limit, or vehicle is slowing down when it doesn't
+                np.all(np.logical_or(lon_acceleration <= 0,
+                                     lon_velocity <= np.repeat(velocity_limits, num_points).reshape(
+                                         num_trajectories, num_points) + EPS), axis=1),
+                # negative initial jerk
+                lon_acceleration[:, 0] > lon_acceleration[:, 1]))
+
+        return conforms_velocity_limits
+
+    @staticmethod
     def convert_padded_spec_time_to_index(T: np.array):
         return (np.maximum(T, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(int)
 

@@ -72,15 +72,14 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
 
         specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
 
-        num_points = ftrajectories.shape[1]
-        nominal_speeds = np.empty((len(action_specs), num_points), dtype=np.float)
+        minimal_speeds = np.empty((len(action_specs)), dtype=np.float)
         for relative_lane, lane_frame in behavioral_state.extended_lane_frames.items():
             if len(indices_by_rel_lane[relative_lane]) > 0:
-                nominal_speeds[indices_by_rel_lane[relative_lane]] = self._pointwise_nominal_speed(
+                minimal_speeds[indices_by_rel_lane[relative_lane]] = self._get_minimal_trajectory_speed(
                     ftrajectories[indices_by_rel_lane[relative_lane]], lane_frame)
 
         T = np.array([spec.t for spec in action_specs])
-        return KinematicUtils.filter_by_velocity_limit(ctrajectories, nominal_speeds, T)
+        return KinematicUtils.filter_by_minimal_velocity_limit(ctrajectories, minimal_speeds, T)
 
     @staticmethod
     def _pointwise_nominal_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
@@ -96,6 +95,24 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         # creates an ndarray with the same shape as of `lane_ids_list`,
         # where each element is replaced by the maximal speed limit (according to lane)
         return np.vectorize(lane_to_nominal_speed.get)(lane_ids_matrix)
+
+    @staticmethod
+    def _get_minimal_trajectory_speed(ftrajectories: np.ndarray, frenet: GeneralizedFrenetSerretFrame) -> np.ndarray:
+        """
+        :param ftrajectories: The frenet trajectories to which to calculate the nominal speeds
+        :param frenet: The GFF of the host
+        :return: A array (Trajectories) of lane-based minimal speeds over all lanes in the trajectory.
+        """
+
+        # get the lane ids
+        lane_ids_matrix = frenet.convert_to_segment_states(ftrajectories)[0]
+        lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
+                                 for lane_id in np.unique(lane_ids_matrix)}
+        minimal_lane_speed_over_trajectory = np.empty(ftrajectories.shape[0], dtype=np.float)
+        for traj_id in range(ftrajectories.shape[0]):
+            minimal_lane_speed_over_trajectory[traj_id] = np.min([lane_to_nominal_speed[lane_id] for
+                                                                  lane_id in np.unique(lane_ids_matrix[traj_id, :])])
+        return minimal_lane_speed_over_trajectory
 
 
 class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
