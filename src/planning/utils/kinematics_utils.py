@@ -232,13 +232,12 @@ class BrakingDistances:
         # calculate distances for braking actions
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggresiveness_level]
         distances = np.zeros_like(v0)
-        distances[v0 > vT] = BrakingDistances.calc_actions_distances_for_given_weights(w_T, w_J, v0[v0 > vT],
-                                                                                       vT[v0 > vT])
+        distances[v0 > vT], _ = BrakingDistances.calc_valid_quartic_actions(w_T, w_J, v0[v0 > vT], vT[v0 > vT])
         return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
 
     @staticmethod
-    def calc_actions_distances_for_given_weights(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
-                                                 a_0: np.array = None) -> np.array:
+    def calc_valid_quartic_actions(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
+                                   a_0: np.array = None) -> [np.array, np.array]:
         """
         Calculate the distances for the given actions' weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -262,8 +261,10 @@ class BrakingDistances:
         distances = Math.zip_polyval2d(s_profile_coefs, T[:, np.newaxis])[:, 0]
 
         distances[np.logical_not(in_limits)] = np.inf
-        distances[np.isclose(v_0, 0)] = 0
-        return distances
+        distances[np.isclose(v_0, v_T)] = 0
+        T[np.logical_not(in_limits)] = np.inf
+        T[np.isclose(v_0, v_T)] = 0
+        return distances, T
 
     @staticmethod
     def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, poly: Poly1D = QuarticPoly1D):

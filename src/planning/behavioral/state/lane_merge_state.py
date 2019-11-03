@@ -33,7 +33,7 @@ DEFAULT_ADDITIONAL_ENV_PARAMS = {
     'VEHICLES_DEPART_SPEED': 25,  # The initial speed for other vehicles
     'VEHICLES_INFLOW_PROBABILITY': 0.25,
     'OCCUPANCY_GRID_RESOLUTION': 4.5,
-    'OCCUPANCY_GRID_ONESIDED_LENGTH': 120,
+    'OCCUPANCY_GRID_ONESIDED_LENGTH': 150,
     'LON_ACC_LIMIT_FACTOR': 1,
     # Relaxation of the longitudinal acceleration filter (test LON_ACC_LIMITS * LON_ACC_LIMIT_FACTOR)
     'MAX_SIMULATION_STEPS': 1000,
@@ -203,15 +203,15 @@ class LaneMergeState(BehavioralGridState):
         num_of_grid_cells = 2 * num_of_onesided_grid_cells
 
         # init for empty grid cells
-        actors_exist_default = np.zeros(shape=(num_of_grid_cells, 1))
-        actors_vel_default = -params["MAX_VELOCITY"] * np.ones(shape=(num_of_grid_cells, 1))
-        actors_state = np.hstack((actors_exist_default, actors_vel_default))
+        actors_exist_default = np.zeros(shape=(1, num_of_grid_cells))
+        actors_vel_default = -params["MAX_VELOCITY"] * np.ones(shape=(1, num_of_grid_cells))
+        actors_state = np.vstack((actors_exist_default, actors_vel_default))
 
         for actor in self.actors_states:
             actor_exists = 1
             actor_grid_cell = np.floor(actor.s_relative_to_ego / grid_res).astype(int) + num_of_onesided_grid_cells
             if 0 <= actor_grid_cell <= num_of_grid_cells - 1:
-                actors_state[actor_grid_cell] = np.array([actor_exists, actor.velocity])
+                actors_state[:, actor_grid_cell] = np.array([actor_exists, actor.velocity])
 
         return torch.from_numpy(host_state[np.newaxis, np.newaxis, :]).float(), \
                torch.from_numpy(actors_state[np.newaxis, :]).float()

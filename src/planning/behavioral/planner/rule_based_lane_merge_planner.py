@@ -1,6 +1,7 @@
 from logging import Logger
 from typing import List
 import numpy as np
+from scipy.stats import norm
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LON_ACC_LIMITS, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, EPS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -11,6 +12,7 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTIO
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState1D, LIMIT_MIN, LIMIT_MAX, BoolArray, \
     FS_DX, FS_DV, FS_DA, FS_1D_LEN
+from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, LaneMergeActorState
@@ -20,7 +22,7 @@ WORST_CASE_FRONT_CAR_DECEL = 1.  # [m/sec^2]
 WORST_CASE_BACK_CAR_ACCEL = 1.  # [m/sec^2]
 MAX_VELOCITY = 25.
 OUTPUT_TRAJECTORY_LENGTH = 10
-ACTION_T_LIMITS = np.array([0, 30])
+ACTION_T_LIMITS = np.array([0, 20])
 
 
 class ScenarioParams:
@@ -500,40 +502,73 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         a_min, a_max = LON_ACC_LIMITS
         T_max = ACTION_T_LIMITS[LIMIT_MAX] + EPS
         T_min = max(EPS, (-v_0 + np.sqrt(v_0*v_0 + 2*a_max*target_s)) / a_max)
-        brake_dist = -v_0*v_0 / (2*a_min)
+
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+        braking_distances, braking_times = BrakingDistances.calc_valid_quartic_actions(
+            w_T, w_J, np.array([v_0]), np.array([0.]), np.array([a_0]))
+        brake_dist, brake_time = braking_distances[0], braking_times[0]
         if brake_dist > target_s:
-            T_max = min(T_max, -v_0/a_min - np.sqrt(-2 * (brake_dist - target_s) / a_min))
-        T_res = min(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, (T_max - T_min) / 100.)
-
+            T_max = min(T_max, brake_time - np.sqrt(-2 * (brake_dist - target_s) / a_min))
         v_min = max(v_0 + a_min * T_max, 0)
-        v_max = min(v_0 + a_max * T_max, params.ego_max_velocity + EPS)
-        v_res = min(RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION, (v_max - v_min) / 50.)
+        v_max = min(2 * target_s / T_min - v_0, params.ego_max_velocity + EPS)
+        dilute = 1
 
-        print('v_0=', v_0, 'target_s=', target_s, 'T bounds=', [T_min, T_max, T_res], 'v_bounds=', [v_min, v_max, v_res])
+        # T_avg = target_s / max(EPS, v_0)
+        #
+        # sh_v_min = (v_min - v_0) / 3  # braking is 3 times stronger than acceleration
+        # sh_v_max = v_max - v_0
+        # sh_v = lambda v: np.sinh(2. * v / T_avg)
+        # v_res = RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION
+        #
+        # sh_grid_pos = np.linspace(0, sh_v_max, int((v_max-v_0)//v_res))
+        # v_grid_pos = v_0 + sh_v(sh_grid_pos) * (v_max - v_0) / sh_v(sh_v_max)
+        # sh_grid_neg = np.linspace(sh_v_min, 0, int((v_0-v_min)//v_res) + 1)[:-1]
+        # v_grid_neg = v_0 + sh_v(sh_grid_neg) * (v_min - v_0) / sh_v(sh_v_min)
+        # v_grid = np.concatenate((v_grid_neg, v_grid_pos))
+        #
+        # sh_t = lambda T_inv: np.sinh(16. * (1 / T_avg - T_inv))
+        #
+        # T_inv_pos = np.arange(1./T_avg, 1./T_max, -0.02)
+        # T_grid_pos = T_avg + sh_t(T_inv_pos) * (T_max - T_avg) / sh_t(1./T_max)
+        # T_inv_neg = np.flip(np.arange(1./T_avg, 1./T_min, 0.02)[1:])
+        # T_grid_neg = T_avg + sh_t(T_inv_neg) * (T_min - T_avg) / sh_t(1./T_min)
+        # T_grid = np.concatenate((T_grid_neg, T_grid_pos))
 
-        # grid of possible planning times
-        t_grid = np.arange(T_min, T_max, T_res)
-        # grid of possible target ego velocities
-        v_grid = np.arange(v_min, v_max, v_res)
+        while dilute >= 1:
 
-        if len(actors_states) == 0:
-            meshgrid_v, meshgrid_t = np.meshgrid(v_grid, t_grid)
-            return meshgrid_v.flatten(), meshgrid_t.flatten()
+            T_res = min(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, (T_max - T_min) / 100.) * dilute
+            v_res = min(RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION, (v_max - v_min) / 50.) * dilute
 
-        actors_data = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in actors_states])
-        actors_s = actors_data[:, 0, np.newaxis, np.newaxis]
-        actors_v = actors_data[:, 1, np.newaxis, np.newaxis]
-        margins = 0.5 * (actors_data[:, 2, np.newaxis, np.newaxis] + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
-        ego_v = v_grid[:, np.newaxis]  # target ego velocity should be in different dimension than planning time
+            print('v_0=', v_0, 'target_s=', target_s, 'T bounds=', [T_min, T_max, T_res],
+                  'v_bounds=', [v_min, v_max, v_res], 'dilute=', dilute)
 
-        safety_dist = RuleBasedLaneMergePlanner._create_RSS_matrix(
-            actors_s, actors_v, margins, ego_v, t_grid, target_s,
-            params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
-            params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel,
-            params.actors_max_velocity)
+            # grid of possible planning times
+            t_grid = np.arange(T_min, T_max, T_res)
+            # grid of possible target ego velocities
+            v_grid = np.arange(v_min, v_max, v_res)
 
-        vi, ti = np.where(safety_dist > 0)
-        return v_grid[vi], t_grid[ti]
+            if len(actors_states) == 0:
+                meshgrid_v, meshgrid_t = np.meshgrid(v_grid, t_grid)
+                return meshgrid_v.flatten(), meshgrid_t.flatten()
+
+            actors_data = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in actors_states])
+            actors_s = actors_data[:, 0, np.newaxis, np.newaxis]
+            actors_v = actors_data[:, 1, np.newaxis, np.newaxis]
+            margins = 0.5 * (actors_data[:, 2, np.newaxis, np.newaxis] + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            ego_v = v_grid[:, np.newaxis]  # target ego velocity should be in different dimension than planning time
+
+            safety_dist = RuleBasedLaneMergePlanner._create_RSS_matrix(
+                actors_s, actors_v, margins, ego_v, t_grid, target_s,
+                params.worst_case_front_actor_decel, params.worst_case_back_actor_accel,
+                params.ego_reaction_time, params.back_actor_reaction_time, params.front_rss_decel, params.back_rss_decel,
+                params.actors_max_velocity)
+
+            dilute = np.sqrt(np.sum(safety_dist > 0) / 2000)
+            if dilute < 1.2:
+                vi, ti = np.where(safety_dist > 0)
+                return v_grid[vi], t_grid[ti]
+
+        return None, None
 
     @staticmethod
     def _create_RSS_matrix(actors_s: np.array, actors_v: np.array, margins: np.array,
@@ -612,26 +647,34 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # calculate full actions' jerks and times
         actions_jerks = np.zeros(len(actions))
         actions_times = np.zeros(len(actions))
+        calm_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
         for poly1d in [QuinticPoly1D, QuarticPoly1D]:
             specs_list = [[idx, spec.t, spec.v_0, spec.a_0, spec.v_T, spec.ds]
                           for idx, action in enumerate(actions) if action is not None
                           for spec in action.action_specs if spec.poly_coefs_num == poly1d.num_coefs() and spec.t > 0]
             if len(specs_list) == 0:
                 continue
+
+            # calculate jerks for the specs
             specs_matrix = np.array(list(filter(None, specs_list)))
             action_idxs, T, v_0, a_0, v_T, ds = specs_matrix.T
             poly_coefs = QuinticPoly1D.position_profile_coefficients(a_0, v_0, v_T, ds, T) \
                 if poly1d is QuinticPoly1D else QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T, T)
             spec_jerks = poly1d.cumulative_jerk(poly_coefs, T)
 
+            # calculate acceleration times from v_T to MAX_VELOCITY
+            _, accel_to_max_vel_T = BrakingDistances.calc_valid_quartic_actions(
+                calm_weights[2], calm_weights[0], v_T, np.full(v_T.shape, MAX_VELOCITY))
+
             # TODO: can be optimized ?
-            for action_idx, spec_jerk, spec_t, spec_v in zip(action_idxs.astype(int), spec_jerks, T, v_T):
+            for action_idx, spec_jerk, spec_t, spec_v, acc_t in \
+                    zip(action_idxs.astype(int), spec_jerks, T, v_T, accel_to_max_vel_T):
                 actions_jerks[action_idx] += spec_jerk
-                actions_times[action_idx] += spec_t + abs(spec_v - MAX_VELOCITY) / 1.  # acc=1 from spec_v to max vel
+                actions_times[action_idx] += spec_t + acc_t  # add acceleration time from v_T to MAX_VELOCITY
 
         # calculate actions' costs according to the CALM jerk-time weights
-        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
-        action_costs = weights[0] * actions_jerks + weights[2] * actions_times
+        standard_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
+        action_costs = standard_weights[0] * actions_jerks + standard_weights[2] * actions_times
         action_costs[actions == None] = np.inf
         return action_costs
 
