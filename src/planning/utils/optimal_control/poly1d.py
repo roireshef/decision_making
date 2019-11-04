@@ -245,7 +245,7 @@ class QuarticPoly1D(Poly1D):
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0), np.isclose(a_0, 0.0, atol=1e-3, rtol=0))
+        return np.logical_and(np.isclose(v_0, v_T, atol=1e-1, rtol=0), np.isclose(a_0, 0.0, atol=1e-1, rtol=0))
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
@@ -423,8 +423,8 @@ class QuinticPoly1D(Poly1D):
         :return: a vector of boolean values indicating if ego is in tracking mode, meaning it actually wants to stay at
         its current velocity (usually when it stabilizes on the desired velocity in a following action)
         """
-        return np.logical_and(np.isclose(v_0, v_T, atol=1e-3, rtol=0),
-                              np.isclose(s_0, T_m*v_0, atol=1e-3, rtol=0)) if np.isclose(a_0, 0.0, atol=1e-3, rtol=0) else np.full(v_T.shape, False)
+        return np.logical_and(np.isclose(v_0, v_T, atol=1e-1, rtol=0),
+                              np.isclose(s_0, T_m*v_0, atol=1e-1, rtol=0)) if np.isclose(a_0, 0.0, atol=1e-1, rtol=0) else np.full(v_T.shape, False)
 
     @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
