@@ -25,6 +25,9 @@ MAX_FORWARD_HORIZON = 600.0
 # [m] Maximum backward horizon for building Generalized Frenet Frames
 MAX_BACKWARD_HORIZON = 100.0
 
+# [m] Maximum forward horizon from a lane merge on the ego road for engaging the lane-merge policy
+MERGE_LOOKAHEAD = 300
+
 # [m] distance to the end of a partial GFF at which the vehicle must not be in
 PARTIAL_GFF_END_PADDING = 5.0
 

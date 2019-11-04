@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
-    UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
+    UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce, LaneMergeNotFound
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
@@ -539,3 +539,40 @@ class MapUtils:
                                  zip(road_sign_types, road_sign_s_on_gff)]
         road_sign_info_on_gff.sort(key=lambda x: x.s)  # sort by distance after the conversion to real distance
         return road_sign_info_on_gff
+
+    @staticmethod
+    def get_closest_lane_merge(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
+            -> [int, ManeuverType, int]:
+        """
+        Given GFF for the current lane, find the closest merge connection into main road.
+        :param initial_lane_id: current lane id of ego
+        :param initial_s: s of ego on initial_lane_id
+        :param lookahead_distance: maximal lookahead for the lane merge from ego location
+        :param route_plan:
+        :return: merged lane_id, maneuver type, common lane id (after the merge)
+        """
+
+        lane_subsegments, _ = MapUtils._advance_on_plan(initial_lane_id, initial_s, lookahead_distance, route_plan)
+
+        # Find the merge point ahead
+        cumulative_length = 0
+        for segment in lane_subsegments:
+            cumulative_length += segment.e_i_SEnd - segment.e_i_SStart
+            if cumulative_length > lookahead_distance:
+                break
+            last_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
+            downstream_connectivity = last_lane_segment.as_downstream_lanes
+
+            if len(downstream_connectivity) == 1 and \
+                (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
+                 downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION):
+
+                # if we already crossed the red line, the lane merge is not relevant
+                if initial_lane_id == segment.e_i_SegmentID:
+                    raise LaneMergeNotFound('We crossed the red line: lane_id=%d, s=%f' % (initial_lane_id, initial_s))
+
+                return segment.e_i_SegmentID, downstream_connectivity[0].e_e_maneuver_type, downstream_connectivity[0].e_i_lane_segment_id
+
+        # no merge connection was found
+        raise LaneMergeNotFound('Lane merge connectivity not found from lane_id=%d, s=%f, forward horizon=%f' %
+                                (initial_lane_id, initial_s, lookahead_distance))
