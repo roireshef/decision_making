@@ -182,7 +182,7 @@ class LaneMergeState(BehavioralGridState):
                                    DynamicObject.create_from_cartesian_state(
                                        i+1, 0, np.array([0, 0, 0, actor.velocity, 0, 0]),
                                        ObjectSize(actor.length, 0, 0), 1, False),
-                                   longitudinal_distance=actor.s_relative_to_ego)
+                                   longitudinal_distance=actor.s_relative_to_ego, relative_lanes=[target_rel_lane])
                                 for i, actor in enumerate(actors)]}
 
         ego_fstate2D = np.concatenate((ego_fstate, np.zeros(FS_1D_LEN)))

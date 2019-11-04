@@ -57,142 +57,28 @@ def test_calculateSafeTargetPoints_plotSafePoints():
     plt.show(f)
 
 
-def test_canSolveByRuleBased_fasterBackCar():
-    ego_fstate = np.array([224.49009284,  19.52321304,   1.08213813])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-31.79009284, 25, ego_len)
-    actors = [actor1]
-    red_line_s = 240
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) == 0
-
-
-def test_canSolveByRuleBased_fastEgo():
-    ego_fstate = np.array([189.49494949,  25,   1.08213813])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-189.49494949, 25., 5)
-    actor2 = LaneMergeActorState(90.70505051, 25., 5)
-    actor3 = LaneMergeActorState(43.20505051, 25., 5)
-    actor4 = LaneMergeActorState(-134.29494949, 25., 5)
-    actors = [actor1, actor2, actor3, actor4]
-    red_line_s = 240
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) > 0
-
-
-def test_canSolveByRuleBased_slowEgoSafe():
-    ego_fstate = np.array([228.72611638,  0.30320583,   0.59706981])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-186.02611638, 25., 5)
-    actors = [actor1]
-    red_line_s = 240
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) > 0
-
-
-def test_canSolveByRuleBased_slowEgoUnsafe():
-    ego_fstate = np.array([229.45172369,  1.156745,   1.11542085])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-161.75172369, 25., 5)
-    actors = [actor1]
-    red_line_s = 240
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) == 0
-
-
-def test_canSolveByRuleBased_safe():
-    ego_fstate = np.array([2.25006479e+02, 1.83408332e-03, 0.00000000e+00])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-74.80647901,   25., 5)
-    actors = [actor1]
-    red_line_s = 240
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) == 0
-
-
-def test_canSolveByRuleBased_unsafe():
-    ego_fstate = np.array([225.11986475,   0.30318166,   0.59706987])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-1.97419865e+02,    25., 5)
-    actors = [actor1]
-    red_line_s = 240
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) == 0
-
-
-def test_canSolveByRuleBased_safe1():
-    ego_fstate = np.array([2.24774265e+02, 1.49699233e-03, 0.00000000e+00])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-202.0742649,    25., 5)
-    actors = [actor1]
-    red_line_s = 240
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    safe, acc = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert safe
-
-
-def test_canSolveByRuleBased_unsafe1():
-    ego_fstate = np.array([224.88956723698357,   0.3388668403495103,    0.6279345])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-177.20570722,    25., 5)
-    actors = [actor1]
-    red_line_s = 240
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    safe, acc = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert safe
-
-
-def test_canSolveByRuleBased_fasterBackCarIsFar_failure():
-    ego_fstate = np.array([60, 15, 0])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-80, 20, ego_len)
-    actor2 = LaneMergeActorState(60, 20, ego_len)
-    actors = [actor1, actor2]
-    red_line_s = 120
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) == 0
-
-
 def test_canSolveByRuleBased_fasterBackCarIsNotFarEnough_success():
     ego_fstate = np.array([60, 23, 0])
     ego_len = 5
-    actor1 = LaneMergeActorState(-60, 25, ego_len)
-    actor2 = LaneMergeActorState(60, 25, ego_len)
+    actor1 = LaneMergeActorState(-30, 25, ego_len)
+    actor2 = LaneMergeActorState(40, 25, ego_len)
     actors = [actor1, actor2]
     red_line_s = 120
     state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) > 0
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)[0]
+    assert ret
 
 
 def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_failure():
     ego_fstate = np.array([60, 20, 0])
     ego_len = 5
-    actor1 = LaneMergeActorState(-86, 25, ego_len)
+    actor1 = LaneMergeActorState(-50, 25, ego_len)
     actor2 = LaneMergeActorState(30, 25, ego_len)
     actors = [actor1, actor2]
     red_line_s = 90
     state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
-    assert len(ret) == 0
-
-
-def test_canSolveByRuleBased_closeFrontCarRequiresBrake_success():
-    ego_fstate = np.array([60, 20, 0])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-87, 25, ego_len)
-    actor2 = LaneMergeActorState(30, 25, ego_len)
-    actors = [actor1, actor2]
-    red_line_s = 90
-    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    assert RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)[0]
+    assert not ret
 
 
 def test_optimalPolicy():
