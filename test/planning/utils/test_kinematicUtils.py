@@ -144,7 +144,7 @@ def test_filterByVelocityLimit_velocityDecreasesTowardLimit_valid():
     """
     v0 = 20
     vT = 10
-    velocity_limits = np.full(shape=[1, int(BP_ACTION_T_LIMITS[1] / TRAJECTORY_TIME_RESOLUTION)], fill_value=vT)
+    velocity_limits = np.full(shape=[1, 1], fill_value=vT)
 
     constraints_s = np.array([0, v0, 1, vT, 0])  # initial acceleration is positive
     T = np.array([10])
@@ -159,7 +159,7 @@ def test_filterByVelocityLimit_velocityDecreasesTowardLimit_valid():
     zeros = np.zeros((ftrajectories_s.shape[0], ftrajectories_s.shape[1], 1))
     ctrajectories = np.c_[ftrajectories_s[..., 0:1], zeros, zeros, ftrajectories_s[..., 1:2], ftrajectories_s[..., 2:3], zeros]
 
-    conforms = KinematicUtils.filter_by_velocity_limit(ctrajectories, velocity_limits, T)
+    conforms = KinematicUtils.filter_by_minimal_velocity_limit(ctrajectories, velocity_limits, T)
     assert conforms[0]
 
 
@@ -169,7 +169,7 @@ def test_filterByVelocityLimit_violatesLimitAndPositiveInitialJerk_invalid():
     """
     v0 = 10
     vT = 10
-    velocity_limits = np.full(shape=[1, int(BP_ACTION_T_LIMITS[1] / TRAJECTORY_TIME_RESOLUTION)], fill_value=13)
+    velocity_limits = np.full(shape=[1, 1], fill_value=13)
 
     T = np.array([10])
     constraints_s = np.array([0, v0, 0, v0 * T[0] + 20, vT, 0])  # initial acceleration is positive
@@ -184,7 +184,7 @@ def test_filterByVelocityLimit_violatesLimitAndPositiveInitialJerk_invalid():
     zeros = np.zeros((ftrajectories_s.shape[0], ftrajectories_s.shape[1], 1))
     ctrajectories = np.c_[ftrajectories_s[..., 0:1], zeros, zeros, ftrajectories_s[..., 1:2], ftrajectories_s[..., 2:3], zeros]
 
-    conforms = KinematicUtils.filter_by_velocity_limit(ctrajectories, velocity_limits, T)
+    conforms = KinematicUtils.filter_by_minimal_velocity_limit(ctrajectories, velocity_limits, T)
     assert not conforms[0]
 
 
@@ -195,7 +195,7 @@ def test_filterByVelocityLimit_velocityDecreasesAboveLimit_invalid():
     """
     v0 = 20
     vT = 11
-    velocity_limits = np.full(shape=[1, int(BP_ACTION_T_LIMITS[1] / TRAJECTORY_TIME_RESOLUTION)], fill_value=10)
+    velocity_limits = np.full(shape=[1, 1], fill_value=10)
 
     constraints_s = np.array([0, v0, 1, vT, 0])
     T = np.array([10])
@@ -210,5 +210,5 @@ def test_filterByVelocityLimit_velocityDecreasesAboveLimit_invalid():
     zeros = np.zeros((ftrajectories_s.shape[0], ftrajectories_s.shape[1], 1))
     ctrajectories = np.c_[ftrajectories_s[..., 0:1], zeros, zeros, ftrajectories_s[..., 1:2], ftrajectories_s[..., 2:3], zeros]
 
-    conforms = KinematicUtils.filter_by_velocity_limit(ctrajectories, velocity_limits, T)
+    conforms = KinematicUtils.filter_by_minimal_velocity_limit(ctrajectories, velocity_limits, T)
     assert not conforms[0]
