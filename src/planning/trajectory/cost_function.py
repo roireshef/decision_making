@@ -156,7 +156,7 @@ class TrajectoryPlannerCosts:
             try:
                 objects_relative_fstates.append(reference_route.cstate_to_fstate(obj.cartesian_state))
                 objects_sizes.append([obj.size.length, obj.size.width])
-            except (OutOfSegmentBack, OutOfSegmentFront) as e:
+            except:  # may be triggered by assert in Frenet Taylor
                 continue
         return np.array(objects_relative_fstates), np.array(objects_sizes)
 
