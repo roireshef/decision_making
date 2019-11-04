@@ -154,7 +154,8 @@ class LaneMergeState(BehavioralGridState):
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
             road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state)
 
-            print('ego_lane=', ego_lane_id, 'dist_to_red_line=', red_line_s - ego_on_same_gff[FS_SX], 'vel=', ego_state.velocity)
+            print('Time: ', ego_state.timestamp_in_sec, 'dist_to_red_line=', red_line_s - ego_on_same_gff[FS_SX],
+                  'vel_acc=', ego_state.cartesian_state[3:5], 'actors: ', [actor.longitudinal_distance for actor in actors_with_road_semantics])
 
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego, red_line_s, target_rel_lane)
 
@@ -212,6 +213,8 @@ class LaneMergeState(BehavioralGridState):
             actor_grid_cell = np.floor(actor.s_relative_to_ego / grid_res).astype(int) + num_of_onesided_grid_cells
             if 0 <= actor_grid_cell <= num_of_grid_cells - 1:
                 actors_state[:, actor_grid_cell] = np.array([actor_exists, actor.velocity])
+
+        # print('Encoded host state: ', host_state, '\nEncoded actors state: ', actors_state)
 
         return torch.from_numpy(host_state[np.newaxis, np.newaxis, :]).float(), \
                torch.from_numpy(actors_state[np.newaxis, :]).float()

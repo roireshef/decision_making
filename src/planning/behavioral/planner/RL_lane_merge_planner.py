@@ -2,7 +2,7 @@ from logging import Logger
 
 import numpy as np
 from decision_making.src.exceptions import NoActionsLeftForBPError
-from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS
+from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, AggressivenessLevel, ActionSpec, \
@@ -13,15 +13,14 @@ from decision_making.src.planning.behavioral.planner.base_planner import BasePla
 from decision_making.src.planning.types import ActionSpecArray, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, DEFAULT_ADDITIONAL_ENV_PARAMS
 from decision_making.src.state.state import State
-from planning_research.src.flow_rl.models.dual_input_conv_model import DualInputConvModel
 from ray.rllib.evaluation import SampleBatch
 import torch
 from gym.spaces.tuple_space import Tuple as GymTuple
 from gym.spaces.box import Box
 
-from planning_research.src.flow_rl.models.dual_input_model import DualInputModel  #TODO: remove dependence on planning_research
+from planning_research.src.flow_rl.models.dual_input_conv_model import DualInputConvModel  #TODO: remove dependence on planning_research
 
 from pathlib import Path
 CHECKPOINT_PATH = str(Path.home()) + '/temp/checkpoint_6881/checkpoint-6881.torch'
@@ -57,7 +56,9 @@ class RL_LaneMergePlanner(BasePlanner):
         """
         see base class
         """
-        velocities = np.arange(0., 25.001, 5.)
+        actions_params = DEFAULT_ADDITIONAL_ENV_PARAMS['ACTION_SPACE']
+        velocities = np.arange(actions_params['MIN_VELOCITY'], actions_params['MAX_VELOCITY'] + EPS,
+                               actions_params['VELOCITY_RESOLUTION'])
         action_recipes = [StaticActionRecipe(RelativeLane.SAME_LANE, vel, AggressivenessLevel.STANDARD) for vel in velocities]
         # TODO: use UC action space
         # action_recipes = self.action_space.recipes
@@ -85,7 +86,7 @@ class RL_LaneMergePlanner(BasePlanner):
         :param action_specs: array of ActionSpec (part of actions may be None)
         :return: array of ActionSpec of the original size, with None for filtered actions
         """
-        return action_specs
+        return action_specs  # TODO: restore the filters
         # filter actions by the regular action_spec filters of the single_lane_planner
         action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state)
         filtered_action_specs = np.full(len(action_specs), None)
