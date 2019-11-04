@@ -206,15 +206,19 @@ class LaneMergeState(BehavioralGridState):
         # init for empty grid cells
         actors_exist_default = np.zeros(shape=(1, num_of_grid_cells))
         actors_vel_default = -params["MAX_VELOCITY"] * np.ones(shape=(1, num_of_grid_cells))
-        actors_state = np.vstack((actors_exist_default, actors_vel_default))
+        actors_states = np.vstack((actors_exist_default, actors_vel_default))
 
         for actor in self.actors_states:
             actor_exists = 1
             actor_grid_cell = np.floor(actor.s_relative_to_ego / grid_res).astype(int) + num_of_onesided_grid_cells
             if 0 <= actor_grid_cell <= num_of_grid_cells - 1:
-                actors_state[:, actor_grid_cell] = np.array([actor_exists, actor.velocity])
+                actors_states[:, actor_grid_cell] = np.array([actor_exists, actor.velocity])
 
-        # print('Encoded host state: ', host_state, '\nEncoded actors state: ', actors_state)
+        # normalize host & actors states
+        host_state /= np.array([params["FAR_AWAY_DISTANCE"], params["MAX_VELOCITY"], 1])
+        actors_states /= np.array([1, params["MAX_VELOCITY"]])[..., np.newaxis]
+
+        # print('Encoded host state: ', host_state, '\nEncoded actors state: ', actors_states)
 
         return torch.from_numpy(host_state[np.newaxis, np.newaxis, :]).float(), \
-               torch.from_numpy(actors_state[np.newaxis, :]).float()
+               torch.from_numpy(actors_states[np.newaxis, :]).float()

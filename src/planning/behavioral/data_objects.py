@@ -109,7 +109,7 @@ class ActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
-    def __init__(self, t: float, v: float, s: float, dx: float, dv: float, da: float, recipe: ActionRecipe):
+    def __init__(self, t: float, v: float, s: float, d: float, recipe: ActionRecipe):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
@@ -121,9 +121,7 @@ class ActionSpec:
         self.t = t
         self.v = v
         self.s = s
-        self.dx = dx
-        self.dv = dv
-        self.da = da
+        self.d = d
         self.recipe = recipe
 
     @property

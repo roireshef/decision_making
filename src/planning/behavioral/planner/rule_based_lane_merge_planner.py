@@ -711,7 +711,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             poly_coefs_d = QuinticPoly1D.solve_1d_bvp(np.concatenate((ego_fstate[FS_DX:], np.zeros(FS_1D_LEN)))[np.newaxis], T_d)
             dx, dv, da = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, np.array([best_lane_merge_spec.t]))[0][0]
 
-        chosen_spec = ActionSpec(best_lane_merge_spec.t, best_lane_merge_spec.v_T, best_lane_merge_spec.ds + ego_s,
-                                 dx, dv, da, recipe)
+        chosen_spec = ActionSpec(best_lane_merge_spec.t, best_lane_merge_spec.v_T, best_lane_merge_spec.ds + ego_s, 0, recipe)
+#                                 dx, dv, da, recipe)
         print('chosen_spec=', best_lane_merge_spec.__str__())
         return [recipe, chosen_spec]

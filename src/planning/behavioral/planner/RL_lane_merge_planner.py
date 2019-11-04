@@ -130,7 +130,11 @@ class RL_LaneMergePlanner(BasePlanner):
         # action_mask = np.ones(6).astype(bool)
         # input_dict = {'state': encoded_state, 'action_mask': torch.from_numpy(action_mask).float()}
 
-        logits, _, _, _ = self.model._forward({SampleBatch.CUR_OBS: encoded_state}, [])  # [0][0].detach()
+        logits, _, values, _ = self.model._forward({SampleBatch.CUR_OBS: encoded_state}, [])  # [0][0].detach()
+
+        probabilities = torch.nn.functional.softmax(logits, dim=1)
+        print('probabilities: ', probabilities, 'value: ', values)
+
         # logits.numpy()[~action_mask] = -np.inf
         chosen_action_idx = np.argmax(logits.detach().numpy())
 
