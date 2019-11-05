@@ -4,6 +4,7 @@ import numpy as np
 
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
+from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, NEGLIGIBLE_VELOCITY
@@ -369,9 +370,10 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
-            "Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max)
-
+        if (s < 0).any():
+            raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
+        if (s > self.s_max).any():
+            raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
 
         O_idx, delta_s = self.get_closest_index_on_frame(s)
         O = self.O[O_idx]
