@@ -8,7 +8,6 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, ActionRecipe, \
     RelativeLane, ActionType
-from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetState1D, LIMIT_MIN, LIMIT_MAX, BoolArray, \
     FS_DX, FS_DV, FS_DA, FS_1D_LEN
@@ -22,7 +21,7 @@ WORST_CASE_FRONT_CAR_DECEL = 1.  # [m/sec^2]
 WORST_CASE_BACK_CAR_ACCEL = 1.  # [m/sec^2]
 MAX_VELOCITY = 25.
 OUTPUT_TRAJECTORY_LENGTH = 10
-ACTION_T_LIMITS = np.array([0, 20])
+ACTION_T_LIMITS = np.array([0, 30])
 
 
 class ScenarioParams:

@@ -81,6 +81,18 @@ def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_failure():
     assert not ret
 
 
+def test_canSolveByRuleBased_failure():
+    ego_fstate = np.array([224.6, 0, 0])
+    ego_len = 5
+    actor1 = LaneMergeActorState(-221, 25, ego_len)
+    actor2 = LaneMergeActorState(-65, 25, ego_len)
+    actors = [actor1, actor2]
+    red_line_s = 240
+    state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
+    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)[0]
+    assert ret
+
+
 def test_optimalPolicy():
     ego_fstate = np.array([60, 20, 0])
     ego_len = 5

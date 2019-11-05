@@ -15,43 +15,8 @@ from gym.spaces.tuple_space import Tuple as GymTuple
 import torch
 from typing import List, Dict
 
-DEFAULT_ADDITIONAL_ENV_PARAMS = {
-    "RED_LINE_STOPPING_SPEED": 0.01,  # what is considered  "stopping" at the redline
-    "MAX_VELOCITY": 25.0,  # maximum allowed velocity [m/sec]
-    "RED_LINE": 240,  # location of the red line (meters)
-    "GOAL_LOCATION": 320,  # location of the goal (where host should arrive without collision)
-    "MERGE_SAFETY": 0.5,  # safety margin between vehicles, expressed with seconds of headway
-    "VEHICLES_PER_HOUR": 1200,  # number of vehicles to generate on target lane
-    "D_HORIZON_BACKWARD": 800,  # perception horizon going backward [m]
-    "D_HORIZON_FORWARD": 800,  # perception horizon going forward [m]
-    "CONSIDERED_NUM_ACTORS": 1,  # desired number of other actors to be represented in state
-    "ACTION_MAX_TIME_HORIZON": 40.0,  # longest allowed action
-    "FAR_AWAY_DISTANCE": 300.0,  # location defined for dummy vehicles
-    "HOST_INITIAL_LOCATION": 0,  # Initial location of host
-    'HOST_INITIAL_SPEED': 0,  # Initial velocity of host
-    'HOST_LOCATION_PERTURBATION': 0,  # Initial location of host (note this is fixed for initial state)
-    'VEHICLES_DEPART_SPEED': 25,  # The initial speed for other vehicles
-    'VEHICLES_INFLOW_PROBABILITY': 0.25,
-    'OCCUPANCY_GRID_RESOLUTION': 4.5,
-    'OCCUPANCY_GRID_ONESIDED_LENGTH': 150,
-    'LON_ACC_LIMIT_FACTOR': 1,
-    # Relaxation of the longitudinal acceleration filter (test LON_ACC_LIMITS * LON_ACC_LIMIT_FACTOR)
-    'MAX_SIMULATION_STEPS': 1000,
-    'REWARD_PER_STEP': -1,
-    'REWARD_FOR_SUCCESS': 1000,
-    'REWARD_FOR_FAILURE': 0,
-    "REWARD_CONSTANT_SUBTRACTOR": 0,
-    "REWARD_CONSTANT_MULTIPLIER": 1,
-    "RED_LINE_PROXIMITY": 15,
-    'WARMUP_STEPS': 0,
-    'STORE_REPLAY': False,
-    'JERK_REWARD_COEFFICIENT': 0.1,
-    'ACTION_SPACE': {
-        'MIN_VELOCITY': 0.0,
-        'MAX_VELOCITY': 25.0,
-        'VELOCITY_RESOLUTION': 5
-    }
-}
+# TODO: remove the dependency on planning_research
+from planning_research.src.flow_rl.environments.simple_scenario import DEFAULT_ADDITIONAL_ENV_PARAMS
 
 
 class LaneMergeActorState:
