@@ -2,8 +2,8 @@ from typing import Tuple
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
+from interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
+from decision_making.src.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
