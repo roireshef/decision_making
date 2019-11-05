@@ -371,7 +371,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         k'(s) is the derivative of the curvature (by distance d(s))
         """
         if (s < 0).any():
-            raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
+            raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
         if (s > self.s_max).any():
             raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
 
