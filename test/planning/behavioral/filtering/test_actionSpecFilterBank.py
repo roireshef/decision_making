@@ -131,6 +131,7 @@ def test_BeyondSpecSpeedLimitFilter_NoSpeedLimitChange(behavioral_grid_state_wit
 @patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LON_ACC_LIMITS=np.array([-5.5, 3.0]))
 @patch.multiple('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank',LAT_ACC_LIMITS=np.array([-4.0, 4.0]))
 @patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.FilterForLaneSpeedLimits._pointwise_nominal_speed', lambda *args : 40 / 3.6)
+@patch('decision_making.src.planning.behavioral.filtering.action_spec_filter_bank.FilterForLaneSpeedLimits._get_minimal_trajectory_speed', lambda *args : 40 / 3.6)
 @patch('decision_making.src.planning.behavioral.action_space.dynamic_action_space.LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT', 5.0)
 @patch('decision_making.src.planning.behavioral.action_space.target_action_space.SPECIFICATION_HEADWAY', 1.5)
 @patch.multiple('decision_making.src.planning.behavioral.action_space.target_action_space',BP_ACTION_T_LIMITS=np.array([0, 15]))
