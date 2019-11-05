@@ -15,37 +15,39 @@ from gym.spaces.tuple_space import Tuple as GymTuple
 import torch
 from typing import List, Dict
 
+
 DEFAULT_ADDITIONAL_ENV_PARAMS = {
     "RED_LINE_STOPPING_SPEED": 0.01,  # what is considered  "stopping" at the redline
     "MAX_VELOCITY": 25.0,  # maximum allowed velocity [m/sec]
     "RED_LINE": 240,  # location of the red line (meters)
     "GOAL_LOCATION": 320,  # location of the goal (where host should arrive without collision)
-    "MERGE_SAFETY": 0.5,  # safety margin between vehicles, expressed with seconds of headway
+    "MERGE_SAFETY": 0.7,  # safety margin between vehicles, expressed with seconds of headway
     "VEHICLES_PER_HOUR": 1200,  # number of vehicles to generate on target lane
     "D_HORIZON_BACKWARD": 800,  # perception horizon going backward [m]
     "D_HORIZON_FORWARD": 800,  # perception horizon going forward [m]
     "CONSIDERED_NUM_ACTORS": 1,  # desired number of other actors to be represented in state
-    "ACTION_MAX_TIME_HORIZON": 40.0,  # longest allowed action
+    "ACTION_MAX_TIME_HORIZON": 100.0,  # longest allowed action
     "FAR_AWAY_DISTANCE": 300.0,  # location defined for dummy vehicles
     "HOST_INITIAL_LOCATION": 0,  # Initial location of host
     'HOST_INITIAL_SPEED': 0,  # Initial velocity of host
     'HOST_LOCATION_PERTURBATION': 0,  # Initial location of host (note this is fixed for initial state)
     'VEHICLES_DEPART_SPEED': 25,  # The initial speed for other vehicles
-    'VEHICLES_INFLOW_PROBABILITY': 0.25,
+    'VEHICLES_INFLOW_PROBABILITY': 0.35,
     'OCCUPANCY_GRID_RESOLUTION': 4.5,
     'OCCUPANCY_GRID_ONESIDED_LENGTH': 150,
     'LON_ACC_LIMIT_FACTOR': 1,
     # Relaxation of the longitudinal acceleration filter (test LON_ACC_LIMITS * LON_ACC_LIMIT_FACTOR)
+    'SIMS_PER_STEP': 10,
     'MAX_SIMULATION_STEPS': 1000,
-    'REWARD_PER_STEP': -1,
-    'REWARD_FOR_SUCCESS': 1000,
+    'REWARD_PER_STEP': 0,
+    'REWARD_FOR_SUCCESS': 100,
     'REWARD_FOR_FAILURE': 0,
     "REWARD_CONSTANT_SUBTRACTOR": 0,
     "REWARD_CONSTANT_MULTIPLIER": 1,
+    'JERK_REWARD_COEFFICIENT': 0.015,
     "RED_LINE_PROXIMITY": 15,
     'WARMUP_STEPS': 0,
     'STORE_REPLAY': False,
-    'JERK_REWARD_COEFFICIENT': 0.1,
     'ACTION_SPACE': {
         'MIN_VELOCITY': 0.0,
         'MAX_VELOCITY': 25.0,
@@ -182,7 +184,7 @@ class LaneMergeState(BehavioralGridState):
                                    DynamicObject.create_from_cartesian_state(
                                        i+1, 0, np.array([0, 0, 0, actor.velocity, 0, 0]),
                                        ObjectSize(actor.length, 0, 0), 1, False),
-                                   longitudinal_distance=actor.s_relative_to_ego)
+                                   longitudinal_distance=actor.s_relative_to_ego, relative_lanes=[target_rel_lane])
                                 for i, actor in enumerate(actors)]}
 
         ego_fstate2D = np.concatenate((ego_fstate, np.zeros(FS_1D_LEN)))
@@ -206,15 +208,19 @@ class LaneMergeState(BehavioralGridState):
         # init for empty grid cells
         actors_exist_default = np.zeros(shape=(1, num_of_grid_cells))
         actors_vel_default = -params["MAX_VELOCITY"] * np.ones(shape=(1, num_of_grid_cells))
-        actors_state = np.vstack((actors_exist_default, actors_vel_default))
+        actors_states = np.vstack((actors_exist_default, actors_vel_default))
 
         for actor in self.actors_states:
             actor_exists = 1
             actor_grid_cell = np.floor(actor.s_relative_to_ego / grid_res).astype(int) + num_of_onesided_grid_cells
             if 0 <= actor_grid_cell <= num_of_grid_cells - 1:
-                actors_state[:, actor_grid_cell] = np.array([actor_exists, actor.velocity])
+                actors_states[:, actor_grid_cell] = np.array([actor_exists, actor.velocity])
 
-        # print('Encoded host state: ', host_state, '\nEncoded actors state: ', actors_state)
+        # normalize host & actors states
+        host_state /= np.array([params["FAR_AWAY_DISTANCE"], params["MAX_VELOCITY"], 1])
+        actors_states /= np.array([1, params["MAX_VELOCITY"]])[..., np.newaxis]
+
+        # print('Encoded host state: ', host_state, '\nEncoded actors state: ', actors_states)
 
         return torch.from_numpy(host_state[np.newaxis, np.newaxis, :]).float(), \
-               torch.from_numpy(actors_state[np.newaxis, :]).float()
+               torch.from_numpy(actors_states[np.newaxis, :]).float()
