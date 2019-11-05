@@ -1,11 +1,8 @@
 import numpy as np
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, VELOCITY_LIMITS, EGO_LENGTH
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeActorState, LaneMergeState
-
 from decision_making.src.planning.types import LIMIT_MAX
 import matplotlib.pyplot as plt
 from logging import Logger

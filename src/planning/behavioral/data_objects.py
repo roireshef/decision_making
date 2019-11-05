@@ -137,4 +137,4 @@ class ActionSpec:
         return str({k: str(v) for (k, v) in self.__dict__.items()})
 
     def as_fstate(self) -> FrenetState2D:
-        return np.array([self.s, self.v, 0, self.dx, self.dv, self.da])
+        return np.array([self.s, self.v, 0, self.d, 0, 0])
