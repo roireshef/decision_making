@@ -59,7 +59,7 @@ def test_findRealRootsInLimits_leadingZeroCoefs_rootsShouldBeTheSame():
         roots2 = Math.find_real_roots_in_limits(poly_sq, limits)
         real_roots2_in_limits = roots2[np.logical_not(np.isnan(roots2))]
 
-        assert np.isclose(real_roots1_in_limits, real_roots2_in_limits).all()
+        assert np.isclose(np.sort(real_roots1_in_limits), np.sort(real_roots2_in_limits)).all()
 
 
 def test_solveQuadratic_compareFindRealRootsInLimits_rootsShouldBeTheSame():

@@ -161,30 +161,23 @@ class Math:
     def find_real_roots_in_limits(cls, polynomials: np.ndarray, value_limits: Limits):
         """
         Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
-        NOTE THAT IN ORDER FOR THIS TO WORK, K has to be >=2 and to have no zeros in its first column (degenerate polynomial)
         :param polynomials: 2D array [NxK] full with coefficients of N polynomials of degree (K-1) or 1D array [K]
         :param value_limits: Boundaries for desired roots to look for.
         :return: 2D numpy array [Nx(K-1)] or 1D array [K-1]
         """
         coef_matrix = polynomials if polynomials.ndim > 1 else polynomials[np.newaxis]
-        roots = np.full((coef_matrix.shape[0], coef_matrix.shape[1] - 1), np.nan, dtype=np.complex64)
+        roots = np.full((coef_matrix.shape[0], coef_matrix.shape[1] - 1), np.nan, dtype=np.complex256)
 
-        # find roots for polynomials of third degree and higher
-        for degree in range(coef_matrix.shape[1] - 1, 2, -1):
+        for degree in range(coef_matrix.shape[1] - 1, 0, -1):
             is_of_degree = cls._are_polynomials_of_degree(coef_matrix, degree)
             if is_of_degree.any():
-                roots[is_of_degree, :degree] = np.roots(polynomials[-degree-1:]) \
-                    if polynomials.ndim == 1 else Math.roots(coef_matrix[is_of_degree, -degree-1:])
-
-        # solve quadratic equations
-        is_quadratic = cls._are_polynomials_of_degree(coef_matrix, degree=2)
-        if is_quadratic.any():
-            roots[is_quadratic, :2] = Math.solve_quadratic(coef_matrix[is_quadratic, -3:])
-
-        # solve linear equations
-        is_linear = cls._are_polynomials_of_degree(coef_matrix, degree=1)
-        if is_linear.any():
-            roots[is_linear, 0] = -coef_matrix[is_linear, -1] / coef_matrix[is_linear, -2]
+                if degree == 1:  # solve linear equations
+                    roots[is_of_degree, 0] = -coef_matrix[is_of_degree, -1] / coef_matrix[is_of_degree, -2]
+                elif degree == 2:  # solve quadratic equations
+                    roots[is_of_degree, :2] = Math.solve_quadratic(coef_matrix[is_of_degree, -3:])
+                else:  # find roots for polynomials of third degree and higher
+                    roots[is_of_degree, :degree] = np.roots(polynomials[-degree - 1:]) if polynomials.ndim == 1 else \
+                        Math.roots(coef_matrix[is_of_degree, -degree - 1:])
 
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
