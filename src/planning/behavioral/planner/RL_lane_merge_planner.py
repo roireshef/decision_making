@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.planner.base_planner import BasePla
 from decision_making.src.planning.types import ActionSpecArray, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, DEFAULT_ADDITIONAL_ENV_PARAMS
 from decision_making.src.state.state import State
 from ray.rllib.evaluation import SampleBatch
 import torch
@@ -22,7 +22,6 @@ from gym.spaces.box import Box
 
 # TODO: remove the dependency on planning_research
 #from planning_research.src.flow_rl.models.dual_input_conv_model import DualInputConvModel
-from planning_research.src.flow_rl.environments.simple_scenario import DEFAULT_ADDITIONAL_ENV_PARAMS
 
 from pathlib import Path
 CHECKPOINT_PATH = str(Path.home()) + '/temp/checkpoint_6881/checkpoint-6881.torch'
