@@ -40,6 +40,28 @@ def test_findRealRootsInLimits_compareFoundRootsWithNumpyRoots_rootsShouldBeTheS
         assert np.isclose(real_roots1_in_limits, real_roots2_in_limits).all()
 
 
+def test_findRealRootsInLimits_leadingZeroCoefs_rootsShouldBeTheSame():
+    limits = np.array([-1000, 1000])
+    poly_sq = np.random.rand(1000, 6)
+
+    for first_zero_coef in range(1, 5):
+
+        # set zero the first coefficients
+        poly_sq[:, :first_zero_coef] = 0
+        # calculate real roots in limits using np.roots
+        roots1 = np.apply_along_axis(np.roots, 1, poly_sq.astype(complex))
+        real_roots1 = np.real(roots1)
+        is_real = np.isclose(np.imag(roots1), 0.0)
+        is_in_limits = NumpyUtils.is_in_limits(real_roots1, limits)
+        real_roots1_in_limits = real_roots1[np.logical_and(is_real, is_in_limits)]
+
+        # calculate real roots in limits using Math.find_real_roots_in_limits
+        roots2 = Math.find_real_roots_in_limits(poly_sq, limits)
+        real_roots2_in_limits = roots2[np.logical_not(np.isnan(roots2))]
+
+        assert np.isclose(real_roots1_in_limits, real_roots2_in_limits).all()
+
+
 def test_solveQuadratic_compareFindRealRootsInLimits_rootsShouldBeTheSame():
     limits = np.array([-1000, 1000])
     poly_sq = np.random.rand(10000, 3)
