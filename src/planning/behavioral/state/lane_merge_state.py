@@ -21,12 +21,12 @@ DEFAULT_ADDITIONAL_ENV_PARAMS = {
     "MAX_VELOCITY": 25.0,  # maximum allowed velocity [m/sec]
     "RED_LINE": 240,  # location of the red line (meters)
     "GOAL_LOCATION": 320,  # location of the goal (where host should arrive without collision)
-    "MERGE_SAFETY": 0.5,  # safety margin between vehicles, expressed with seconds of headway
+    "MERGE_SAFETY": 0.7,  # safety margin between vehicles, expressed with seconds of headway
     "VEHICLES_PER_HOUR": 1200,  # number of vehicles to generate on target lane
     "D_HORIZON_BACKWARD": 800,  # perception horizon going backward [m]
     "D_HORIZON_FORWARD": 800,  # perception horizon going forward [m]
     "CONSIDERED_NUM_ACTORS": 1,  # desired number of other actors to be represented in state
-    "ACTION_MAX_TIME_HORIZON": 40.0,  # longest allowed action
+    "ACTION_MAX_TIME_HORIZON": 100.0,  # longest allowed action
     "FAR_AWAY_DISTANCE": 300.0,  # location defined for dummy vehicles
     "HOST_INITIAL_LOCATION": 0,  # Initial location of host
     'HOST_INITIAL_SPEED': 0,  # Initial velocity of host
@@ -37,9 +37,10 @@ DEFAULT_ADDITIONAL_ENV_PARAMS = {
     'OCCUPANCY_GRID_ONESIDED_LENGTH': 150,
     'LON_ACC_LIMIT_FACTOR': 1,
     # Relaxation of the longitudinal acceleration filter (test LON_ACC_LIMITS * LON_ACC_LIMIT_FACTOR)
+    'SIMS_PER_STEP': 10,
     'MAX_SIMULATION_STEPS': 1000,
-    'REWARD_PER_STEP': -1,
-    'REWARD_FOR_SUCCESS': 1000,
+    'REWARD_PER_STEP': 0,
+    'REWARD_FOR_SUCCESS': 100,
     'REWARD_FOR_FAILURE': 0,
     "REWARD_CONSTANT_SUBTRACTOR": 0,
     "REWARD_CONSTANT_MULTIPLIER": 1,
