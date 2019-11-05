@@ -21,7 +21,7 @@ from gym.spaces.tuple_space import Tuple as GymTuple
 from gym.spaces.box import Box
 
 # TODO: remove the dependency on planning_research
-#from planning_research.src.flow_rl.models.dual_input_conv_model import DualInputConvModel
+from planning_research.src.flow_rl.models.dual_input_conv_model import DualInputConvModel
 
 from pathlib import Path
 CHECKPOINT_PATH = str(Path.home()) + '/temp/checkpoint_6881/checkpoint-6881.torch'
@@ -34,12 +34,12 @@ class RL_LaneMergePlanner(BasePlanner):
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
         # TODO: use global constant for the model path
-        self.model = RL_LaneMergePlanner.load_model()
+        self.model = RL_LaneMergePlanner.load_model(CHECKPOINT_PATH)
 
     @staticmethod
-    def load_model():
+    def load_model(model_path: str):
         # TODO: use global constant for the model path
-        model_state_dict = torch.load(CHECKPOINT_PATH)
+        model_state_dict = torch.load(model_path)
 
         # TODO: create global constants for observation space initialization
         ego_box = Box(low=-np.inf, high=np.inf, shape=(1, 3), dtype=np.float32)

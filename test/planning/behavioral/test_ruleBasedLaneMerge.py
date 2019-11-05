@@ -4,6 +4,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeActorState, LaneMergeState
 
 from decision_making.src.planning.types import LIMIT_MAX
 import matplotlib.pyplot as plt
@@ -159,21 +160,3 @@ def test_statistics():
     print('%s' % list(results_per_ego_s/states_num))
     plt.plot(ego_range, results_per_ego_s/states_num)
     plt.show()
-
-
-from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
-from gym.spaces.tuple_space import Tuple as GymTuple
-from ray.rllib.evaluation import SampleBatch
-from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, LaneMergeActorState
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_objects_before_merge, route_plan_1_2
-
-
-def test_load_model(state_with_objects_before_merge, route_plan_1_2):
-
-    model = RL_LaneMergePlanner.load_model()
-
-    logger = Logger("")
-    lane_merge_state = LaneMergeState.create_from_state(state_with_objects_before_merge, route_plan_1_2, logger)
-    encoded_state: GymTuple = lane_merge_state.encode_state_for_RL()
-    logits = model._forward({SampleBatch.CUR_OBS: encoded_state}, [])[0]
-    ret = logits

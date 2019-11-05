@@ -76,6 +76,21 @@ def short_testable_scene_static_mock():
                                                             points_of_roads=road_coordinates)
 
 
+def testable_scene_static_3_road_segments_mock():
+    """
+    This map was created for SceneModel that is limited by length of 1000 m
+    """
+    road_coordinates = list()
+    road_coordinates.append(np.array([[x, 0] for x in np.linspace(0.0, 2.0, 50)]) * MAP_INFLATION_FACTOR)
+    road_coordinates.append(np.array([[x, 0] for x in np.linspace(2.0, 3.0, 25)]) * MAP_INFLATION_FACTOR)
+    road_coordinates.append(np.array([[x, 0] for x in np.linspace(3.0, 5.0, 50)]) * MAP_INFLATION_FACTOR)
+
+    return SceneStaticUtils.create_scene_static_from_points(road_segment_ids=[1, 2, 3],
+                                                            num_lanes=NUM_LANES,
+                                                            lane_width=LANE_WIDTH,
+                                                            points_of_roads=road_coordinates)
+
+
 @pytest.fixture()
 def right_lane_split_scene_static():
     scene = short_testable_scene_static_mock()
@@ -565,17 +580,17 @@ def scene_static_merge_right():
 
 @pytest.fixture()
 def scene_static_merge_left():
-    scene = short_testable_scene_static_mock()
-    # disconnect 10 from 20, add connection to 21
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_downstream_lanes = [LaneSegmentConnectivity(21, ManeuverType.RIGHT_MERGE_CONNECTION)]
-    # add upstream connection from 21 to 10
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].as_upstream_lanes.append(LaneSegmentConnectivity(10, ManeuverType.RIGHT_MERGE_CONNECTION))
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].e_Cnt_upstream_lane_count += 1
-    # remove adjacent lanes from 21
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].as_right_adjacent_lanes = []
-    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[4].e_Cnt_right_adjacent_lane_count = 0
-    # delete lane 20
-    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3]
+    scene = testable_scene_static_3_road_segments_mock()
+    # disconnect 20 from 30, add connection to 31
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[3].as_downstream_lanes = [LaneSegmentConnectivity(31, ManeuverType.RIGHT_MERGE_CONNECTION)]
+    # add upstream connection from 31 to 20
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[7].as_upstream_lanes.append(LaneSegmentConnectivity(20, ManeuverType.RIGHT_MERGE_CONNECTION))
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[7].e_Cnt_upstream_lane_count += 1
+    # remove adjacent lanes from 31
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[7].as_right_adjacent_lanes = []
+    scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[7].e_Cnt_right_adjacent_lane_count = 0
+    # delete lane 30
+    del scene.s_Data.s_SceneStaticBase.as_scene_lane_segments[6]
     scene.s_Data.s_SceneStaticGeometry.e_Cnt_num_lane_segments -= 1
     return scene
 

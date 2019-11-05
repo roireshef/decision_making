@@ -31,7 +31,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
     scene_static_merge_right, scene_static_merge_left_right_to_center, scene_static_oval_with_splits, \
     scene_static_merge_left
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
-from decision_making.test.planning.custom_fixtures import route_plan_1_2
+from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3
 
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
@@ -296,16 +296,16 @@ def state_with_object_after_merge(route_plan_1_2: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_before_merge(route_plan_1_2: RoutePlan):
+def state_with_objects_before_merge(route_plan_1_2_3: RoutePlan):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_merge_left())
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
 
-    car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+    car_size = ObjectSize(length=4.5, width=1.5, height=1.0)
 
     # Ego state
-    ego_s = 800.
+    ego_s = 500.
     ego_vel = 10
     ego_lane_id = 10
 
