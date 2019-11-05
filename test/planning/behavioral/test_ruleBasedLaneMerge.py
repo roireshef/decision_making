@@ -82,9 +82,9 @@ def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_failure():
 
 
 def test_canSolveByRuleBased_failure():
-    ego_fstate = np.array([220.6, 0, 0])
+    ego_fstate = np.array([224.6, 0, 0])
     ego_len = 5
-    actor1 = LaneMergeActorState(-217, 25, ego_len)
+    actor1 = LaneMergeActorState(-221, 25, ego_len)
     actor2 = LaneMergeActorState(-65, 25, ego_len)
     actors = [actor1, actor2]
     red_line_s = 240
