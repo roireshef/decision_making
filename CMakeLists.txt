@@ -1,8 +1,10 @@
-cmake_minimum_required(VERSION 2.8.12)
-project (decision_making)
+#/*
+# * Copyright (C) General Motors Company. All rights reserved.
+# * This information is confidential and proprietary to GM Company and may not be used, modified, copied or distributed.
+# */
+cmake_minimum_required( VERSION 3.11.0 )
+project(decision_making VERSION 0.1.0 LANGUAGES C CXX)
 
-set( REPOSITORY_HOME "." )
-include( ${REPOSITORY_HOME}/buildDefaults.cmake )
 
 pack_python(src decision_making)
 pack_python(test decision_making)

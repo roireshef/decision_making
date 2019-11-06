@@ -398,12 +398,13 @@ class QuarticPoly1D(Poly1D):
         :param T: [sec] array of action times
         :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
         """
+        zeros = np.zeros_like(T)
         return np.c_[
             (0.25 * T * a_0 + 0.5 * v_0 - 0.5 * v_T) / T ** 3,
             (-0.666666666666667 * T * a_0 - 1.0 * v_0 + 1.0 * v_T) / T ** 2,
-            0.5 * a_0,
-            v_0,
-            np.zeros_like(v_0)]
+            0.5 * a_0 + zeros,
+            v_0 + zeros,
+            zeros]
 
 
 class QuinticPoly1D(Poly1D):

@@ -1,4 +1,4 @@
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_MapState import TsSYSMapState
+from interface.Rte_Types.python.sub_structures.TsSYS_MapState import TsSYSMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, ROAD_SHOULDERS_WIDTH
 from decision_making.src.planning.types import FrenetState2D, FS_SX, FS_DX
