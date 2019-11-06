@@ -1,6 +1,6 @@
 from traceback import format_exc
 from logging import Logger
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_static_message import SceneStatic
