@@ -11,7 +11,7 @@ from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN, FrenetSt
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
-from gym.spaces.tuple_space import Tuple as GymTuple
+from gym.spaces.tuple import Tuple as GymTuple
 import torch
 from typing import List, Dict
 
@@ -106,7 +106,7 @@ class LaneMergeState(BehavioralGridState):
         Create LaneMergeState from a given State.
         The output state has two GFFs: for same lane and for the target lane.
         Actors's longitudinal distances from ego are aligned to the merge point that is common to both GFFs.
-        :param state: current state
+        :param state: current state from scene_dynamic
         :param route_plan: route plan
         :param logger:
         :return: LaneMergeState
@@ -156,9 +156,6 @@ class LaneMergeState(BehavioralGridState):
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
             road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state)
 
-            print('Time: ', ego_state.timestamp_in_sec, 'dist_to_red_line=', red_line_s - ego_on_same_gff[FS_SX],
-                  'vel_acc=', ego_state.cartesian_state[3:5], 'actors: ', [actor.longitudinal_distance for actor in actors_with_road_semantics])
-
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego, red_line_s, target_rel_lane)
 
         except MappingException as e:
@@ -169,10 +166,10 @@ class LaneMergeState(BehavioralGridState):
     def create_thin_state(cls, ego_len: float, ego_fstate: FrenetState1D, actors: List[LaneMergeActorState], red_line_s: float):
         """
         Create LaneMergeState without GFFs and without Cartesian & Frenet coordinates of ego & actors
-        :param ego_len:
-        :param ego_fstate:
-        :param actors:
-        :param red_line_s:
+        :param ego_len: [m] ego length
+        :param ego_fstate: 1D ego Frenet state (only s dimension)
+        :param actors: list of actors states, each of type LaneMergeActorState
+        :param red_line_s: [m] absolute s of the red line
         :return: LaneMergeState
         """
         ego_state = EgoState.create_from_cartesian_state(
@@ -191,7 +188,10 @@ class LaneMergeState(BehavioralGridState):
         return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D}, red_line_s, target_rel_lane)
 
     def encode_state_for_RL(self) -> GymTuple:
-
+        """
+        Encode and normalize the LaneMergeState for RL model usage.
+        :return: tuple of host state and actors state (of type torch.tensor)
+        """
         # encode host
         host_state = np.copy(self.ego_fstate)
         # replace the host station coordinate with its distance to red line
@@ -219,8 +219,6 @@ class LaneMergeState(BehavioralGridState):
         # normalize host & actors states
         host_state /= np.array([params["FAR_AWAY_DISTANCE"], params["MAX_VELOCITY"], 1])
         actors_states /= np.array([1, params["MAX_VELOCITY"]])[..., np.newaxis]
-
-        # print('Encoded host state: ', host_state, '\nEncoded actors state: ', actors_states)
 
         return torch.from_numpy(host_state[np.newaxis, np.newaxis, :]).float(), \
                torch.from_numpy(actors_states[np.newaxis, :]).float()
