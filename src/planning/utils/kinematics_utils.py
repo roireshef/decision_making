@@ -1,6 +1,7 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
     FS_DX
@@ -87,13 +88,37 @@ class KinematicUtils:
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_velocity_limits = np.logical_and(
             end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
-            np.logical_or(
-                # either speed is below limit, or vehicle is slowing down when it doesn't
-                np.all(np.logical_or(lon_acceleration <= 0, lon_velocity <= velocity_limits + EPS), axis=1),
-                # negative initial jerk
-                lon_acceleration[:, 0] > lon_acceleration[:, 1]))
+            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits, T),
+                   axis=1))
 
         return conforms_velocity_limits
+
+    @staticmethod
+    def _speeding_within_allowed_limits(lon_velocity: np.array, lon_acceleration: np.array,
+                                        velocity_limits: np.ndarray, T: np.array) -> np.array:
+        """
+        speeding is within allowed limits if it does not violate the speed limit for more than VIOLATION_TIME_TH.
+        Furthermore it does so by no more than VIOLATION_SPEED_TH, unless starting velocity is above this value.
+        :param lon_velocity: trajectories velocities
+        :param lon_acceleration: trajectories accelerations
+        :param T: array of target times for ctrajectories
+        :return:
+        """
+        # anywhere speed is below limit
+        speeding_is_within_limits = lon_velocity <= velocity_limits + EPS
+        # or violation is limited to first SPEEDING_VIOLATION_TIME_TH seconds,last_allowed_idx
+        last_allowed_idx = int(min(SPEEDING_VIOLATION_TIME_TH, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) /
+                           TRAJECTORY_TIME_RESOLUTION)
+        # and vehicle is slowing down when it doesn't,
+        speeding_is_within_limits[:, 0:last_allowed_idx] |= lon_acceleration[:, 0:last_allowed_idx] <= 0
+        # or speed limit is exceeded by no more than SPEEDING_SPEED_TH
+        speeding_is_within_limits[:, 0:last_allowed_idx] |= \
+            lon_velocity[:, 0:last_allowed_idx] <= velocity_limits[:, 0:last_allowed_idx] + SPEEDING_SPEED_TH
+        # or we were above this value to start with, and jerk is negative
+        speeding_is_within_limits[:, 0:last_allowed_idx] |= \
+            np.logical_and(lon_velocity[:, 0] > velocity_limits[:, 0] + SPEEDING_SPEED_TH,
+                           lon_acceleration[:, 0] > lon_acceleration[:, 1])[:, np.newaxis]
+        return speeding_is_within_limits
 
     @staticmethod
     def convert_padded_spec_time_to_index(T: np.array):
