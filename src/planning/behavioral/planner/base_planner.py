@@ -58,7 +58,7 @@ class BasePlanner:
         costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
         selected_action_recipe, selected_action_spec = self._choose_action(behavioral_state, filtered_actions, costs)
 
-        trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec)
+        trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec, selected_action_recipe)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
         timestamp_in_sec = state.ego_state.timestamp_in_sec
@@ -125,7 +125,8 @@ class BasePlanner:
         pass
 
     @prof.ProfileFunction()
-    def _generate_trajectory_params(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> TrajectoryParams:
+    def _generate_trajectory_params(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec,
+                                    action_recipe: ActionRecipe) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
@@ -134,6 +135,7 @@ class BasePlanner:
          longitude starts from ego current longitude, and end in the target longitude.
         :param behavioral_state: behavioral grid state
         :param action_spec: the chosen action spec
+        :param action_recipe: the chosen action recipe
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
         ego = behavioral_state.ego_state
@@ -160,7 +162,9 @@ class BasePlanner:
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                                  trajectory_end_time=trajectory_end_time,
-                                                 bp_time=ego.timestamp)
+                                                 bp_time=ego.timestamp,
+                                                 target_lane=action_recipe.relative_lane,
+                                                 action_type=action_recipe.action_type)
         return trajectory_parameters
 
     @staticmethod
