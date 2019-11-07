@@ -46,7 +46,7 @@ class LaneMergeState(BehavioralGridState):
         self.target_rel_lane = target_rel_lane
 
     @property
-    def ego_fstate(self) -> FrenetState1D:
+    def ego_fstate_s(self) -> FrenetState1D:
         return self.projected_ego_fstates[RelativeLane.SAME_LANE][:FS_DX]
 
     @property
@@ -59,8 +59,8 @@ class LaneMergeState(BehavioralGridState):
     def ego_length(self) -> float:
         return self.ego_state.size.length
 
-    def to_string(self) -> str:
-        return f'EGO: {self.ego_fstate} + \r\nACTORS:{self.actors_states}'
+    def __str__(self) -> str:
+        return f'EGO: {self.ego_fstate_s} + \r\nACTORS:{[[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in self.actors_states]}'
 
     @classmethod
     def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
@@ -155,7 +155,7 @@ class LaneMergeState(BehavioralGridState):
         :return: tuple of host state and actors state (of type torch.tensor)
         """
         # encode host
-        host_state = np.copy(self.ego_fstate)
+        host_state = np.copy(self.ego_fstate_s)
         # replace the host station coordinate with its distance to red line
         host_state[FS_SX] = self.red_line_s_on_ego_gff - host_state[FS_SX]
 
