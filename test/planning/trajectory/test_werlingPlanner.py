@@ -14,7 +14,7 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
     LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
+from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
@@ -182,7 +182,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                                            v0, vT, start_ego_lat, goal_latitude)
         goal_map_state = MapState(frenet.cstate_to_fstate(goal), MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0])
 
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(map_state=goal_map_state, ego_size=state.ego_state.size)
+        cost_params = BasePlanner._generate_cost_params(map_state=goal_map_state, ego_size=state.ego_state.size)
 
         # run Werling planner
         planner = WerlingPlanner(logger, predictor)

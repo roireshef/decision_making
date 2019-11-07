@@ -8,16 +8,7 @@ from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
-from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
-from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
-from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.action_space.road_sign_action_space import RoadSignActionSpace
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
-from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
-    DEFAULT_STATIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_spec_evaluator import AugmentedLaneActionSpecEvaluator
-from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
-from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.route.backpropagating_route_planner import BackpropagatingRoutePlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -54,25 +45,7 @@ class DmInitialization:
 
         pubsub = PubSub()
 
-        predictor = RoadFollowingPredictor(logger)
-
-        action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
-                                                     DynamicActionSpace(logger, predictor,
-                                                                        DEFAULT_DYNAMIC_RECIPE_FILTERING),
-                                                     RoadSignActionSpace(logger, predictor,
-                                                                         DEFAULT_ROAD_SIGN_RECIPE_FILTERING)],
-                                            )
-
-        recipe_evaluator = None
-        action_spec_evaluator = AugmentedLaneActionSpecEvaluator(logger)
-        value_approximator = ZeroValueApproximator(logger)
-
-        action_spec_filtering = DEFAULT_ACTION_SPEC_FILTERING
-        planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
-                                              action_spec_filtering, value_approximator, predictor, logger)
-
-        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
-                                                     behavioral_planner=planner, last_trajectory=None)
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None)
         return behavioral_module
 
     @staticmethod

@@ -2,8 +2,9 @@ from typing import Tuple
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
+from interface.Rte_Types.python.sub_structures.TsSYS_FrenetSerret2DFrame import TsSYSFrenetSerret2DFrame
+from decision_making.src.utils.serialization_utils import SerializationUtils
+from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, NEGLIGIBLE_VELOCITY
@@ -117,9 +118,9 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     ## FRENET => CARTESIAN
 
-    def fpoint_to_cpoint(self, fpoints: FrenetPoint) -> CartesianPoint2D:
+    def fpoint_to_cpoint(self, fpoint: FrenetPoint) -> CartesianPoint2D:
         """Transforms a frenet-frame point to a cartesian-frame point (see self.fpoints_to_cpoints for more details)"""
-        return self.fpoints_to_cpoints(fpoints[np.newaxis, :])[0]
+        return self.fpoints_to_cpoints(fpoint[np.newaxis, :])[0]
 
     def fpoints_to_cpoints(self, fpoints: FrenetTrajectory2D) -> CartesianPath2D:
         """
@@ -209,9 +210,9 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     ## CARTESIAN => FRENET
 
-    def cpoint_to_fpoint(self, cpoints: CartesianPoint2D) -> FrenetPoint:
+    def cpoint_to_fpoint(self, cpoint: CartesianPoint2D) -> FrenetPoint:
         """Transforms a cartesian-frame point to a frenet-frame point (see self.fpoints_to_cpoints for more details)"""
-        return self.cpoints_to_fpoints(cpoints[np.newaxis, :])[0]
+        return self.cpoints_to_fpoints(cpoint[np.newaxis, :])[0]
 
     def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory2D:
         """
@@ -369,30 +370,44 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
-            "Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max)
+        if (s < 0).any():
+            raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
+        if (s > self.s_max).any():
+            raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
 
         O_idx, delta_s = self.get_closest_index_on_frame(s)
+        O = self.O[O_idx]
+        T = self.T[O_idx]
+        k = self.k[O_idx]
+        N = self.N[O_idx]
+        k_s_tag = self.k_tag[O_idx]
 
-        a_s = self.O[O_idx] + \
-              delta_s * self.T[O_idx] + \
-              delta_s ** 2 / 2 * self.k[O_idx] * self.N[O_idx] - \
-              delta_s ** 3 / 6 * self.k[O_idx] ** 2 * self.T[O_idx]
+        delta_s_sqr = delta_s * delta_s
+        delta_s_cube = delta_s_sqr * delta_s
 
-        T_s = self.T[O_idx] + \
-              delta_s * self.k[O_idx] * self.N[O_idx] - \
-              delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.T[O_idx]
+        k_sqr = k * k
+
+        delta_s_mul_k = delta_s * k
+
+        half_delta_s_sqr_mul_k_sqr = delta_s_sqr / 2 * k_sqr
+
+        a_s = O + \
+              delta_s * T + \
+              delta_s_sqr / 2 * k * N - \
+              delta_s_cube / 6 * k_sqr * T
+
+        T_s = T + \
+              delta_s_mul_k * N - \
+              half_delta_s_sqr_mul_k_sqr * T
         T_s /= np.linalg.norm(T_s, axis=-1, keepdims=True)
 
-        N_s = self.N[O_idx] - \
-              delta_s * self.k[O_idx] * self.T[O_idx] - \
-              delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
+        N_s = N - \
+              delta_s_mul_k * T - \
+              half_delta_s_sqr_mul_k_sqr * N
         N_s /= np.linalg.norm(N_s, axis=-1, keepdims=True)
 
-        k_s = self.k[O_idx] + \
-              delta_s * self.k_tag[O_idx]
-
-        k_s_tag = self.k_tag[O_idx]
+        k_s = k + \
+              delta_s * k_s_tag
 
         return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
 

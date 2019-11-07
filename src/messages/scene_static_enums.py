@@ -112,6 +112,7 @@ class RoadObjectType(Enum):
     LightPost = 22
     Dashed_LaneMarker_MidStart = 23
     Dashed_LaneMarker_MidEnd = 24
+    Bike_Pedestrian = 25
 
 
 class TrafficSignalState(Enum):

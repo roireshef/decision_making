@@ -2,9 +2,9 @@ import timeit
 from typing import List
 
 import numpy as np
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneLaneSegmentGeometry import \
+from interface.Rte_Types.python.sub_structures.TsSYS_SceneLaneSegmentGeometry import \
     TsSYSSceneLaneSegmentGeometry
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneStaticGeometry import TsSYSSceneStaticGeometry
+from interface.Rte_Types.python.sub_structures.TsSYS_SceneStaticGeometry import TsSYSSceneStaticGeometry
 from decision_making.src.messages.scene_static_message import SceneStaticGeometry
 
 MAX_NOMINAL_PATH_POINTS = 2000

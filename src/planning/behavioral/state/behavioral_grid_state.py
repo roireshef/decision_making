@@ -21,7 +21,6 @@ from decision_making.src.messages.scene_static_enums import LaneOverlapType
 from decision_making.src.messages.scene_static_enums import ManeuverType
 
 
-
 class DynamicObjectWithRoadSemantics:
     """
     This data object holds together the dynamic_object coupled with the distance from ego, his lane center latitude and
@@ -80,7 +79,7 @@ class BehavioralGridState:
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, route_plan, logger)
+        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state.ego_state, route_plan, logger)
 
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
@@ -235,7 +234,7 @@ class BehavioralGridState:
 
     @staticmethod
     def _calculate_longitudinal_differences(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                                            ego_unified_fstates: Dict[RelativeLane, FrenetState2D],
+                                            ego_gff_fstates: Dict[RelativeLane, FrenetState2D],
                                             target_map_states: List[MapState]) -> np.array:
         """
         Given unified frames, ego projected on the unified frames, target segment ids and segment fstates, calculate
@@ -243,7 +242,7 @@ class BehavioralGridState:
         projected on the target lanes, using the relevant unified frames (GFF).
         :param extended_lane_frames: mapping between 3 lanes relative to the host vehicle (left adjacent, same,
                                                                         right adjacent) to their curve representation
-        :param ego_unified_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
+        :param ego_gff_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
                 corresponding extended_lane_frame
         :param target_map_states: list of original map states of the targets
         :return: array of longitudinal differences between the targets and projected ego
@@ -255,33 +254,33 @@ class BehavioralGridState:
         longitudinal_differences = np.full(len(target_segment_ids), np.inf)
 
         # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
-        for rel_lane, extended_lane_frame in extended_lane_frames.items():  # loop over at most 3 unified frames
+        for rel_lane, extended_lane_frame in extended_lane_frames.items():  # loop over at most 3 GFFs
             # find all targets belonging to the current unified frame
             relevant_idxs = extended_lane_frame.has_segment_ids(target_segment_ids)
             if relevant_idxs.any():
-                # convert relevant dynamic objects to fstate w.r.t. the current unified frame
-                target_unified_fstates = extended_lane_frame.convert_from_segment_states(
+                # convert relevant dynamic objects to fstate w.r.t. the current GFF
+                target_gff_fstates = extended_lane_frame.convert_from_segment_states(
                     target_segment_fstates[relevant_idxs], target_segment_ids[relevant_idxs])
                 # calculate longitudinal distances between the targets from this extended frame and ego projected on it
                 longitudinal_differences[relevant_idxs] = \
-                    target_unified_fstates[:, FS_SX] - ego_unified_fstates[rel_lane][FS_SX]
+                    target_gff_fstates[:, FS_SX] - ego_gff_fstates[rel_lane][FS_SX]
 
         return longitudinal_differences
 
     @staticmethod
     @prof.ProfileFunction()
-    def _create_generalized_frenet_frames(state: State, route_plan: RoutePlan, logger: Logger) -> \
+    def _create_generalized_frenet_frames(ego_state: EgoState, route_plan: RoutePlan, logger: Logger) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
         contain multiple original lane segments. Augmented frenet frames may be created if there are lane splits ahead.
-        :param state: the current world state
+        :param ego_state: ego state from scene_dynamic
         :param route_plan: the route plan which contains lane costs
         :param logger: Logger object to log warning messages
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
-        ego_lane_id = state.ego_state.map_state.lane_id
+        ego_lane_id = ego_state.map_state.lane_id
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
 
         # Augmented GFFS can be created only if the lanes don't currently exist
@@ -293,7 +292,7 @@ class BehavioralGridState:
         # Create generalized Frenet frame for the host's lane
         try:
             lane_gff_dict = BehavioralGridState._get_generalized_frenet_frames(
-                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=state.ego_state.map_state.lane_fstate[FS_SX],
+                lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=ego_state.map_state.lane_fstate[FS_SX],
                 route_plan=route_plan, can_augment=can_augment)
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
@@ -302,8 +301,8 @@ class BehavioralGridState:
         # set the SAME_LANE first since it cannot be augmented
         extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
 
-        host_cartesian_point = np.array([state.ego_state.cartesian_state[C_X],
-                                         state.ego_state.cartesian_state[C_Y]])
+        host_cartesian_point = np.array([ego_state.cartesian_state[C_X],
+                                         ego_state.cartesian_state[C_Y]])
 
         # If an adjacent lane exists, create a generalized Frenet frame for it
         for relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]:
