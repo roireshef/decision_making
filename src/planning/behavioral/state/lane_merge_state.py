@@ -1,6 +1,8 @@
 from logging import Logger
 from decision_making.src.exceptions import MappingException
-from decision_making.src.global_constants import MERGE_LOOKAHEAD
+from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, \
+    LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
+    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState, \
@@ -14,46 +16,6 @@ from decision_making.src.utils.map_utils import MapUtils
 from gym.spaces.tuple import Tuple as GymTuple
 import torch
 from typing import List, Dict
-
-
-DEFAULT_ADDITIONAL_ENV_PARAMS = {
-    "RED_LINE_STOPPING_SPEED": 0.01,  # what is considered  "stopping" at the redline
-    "MAX_VELOCITY": 25.0,  # maximum allowed velocity [m/sec]
-    "RED_LINE": 240,  # location of the red line (meters)
-    "GOAL_LOCATION": 320,  # location of the goal (where host should arrive without collision)
-    "MERGE_SAFETY": 0.7,  # safety margin between vehicles, expressed with seconds of headway
-    "VEHICLES_PER_HOUR": 1200,  # number of vehicles to generate on target lane
-    "D_HORIZON_BACKWARD": 800,  # perception horizon going backward [m]
-    "D_HORIZON_FORWARD": 800,  # perception horizon going forward [m]
-    "CONSIDERED_NUM_ACTORS": 1,  # desired number of other actors to be represented in state
-    "ACTION_MAX_TIME_HORIZON": 100.0,  # longest allowed action
-    "FAR_AWAY_DISTANCE": 300.0,  # location defined for dummy vehicles
-    "HOST_INITIAL_LOCATION": 0,  # Initial location of host
-    'HOST_INITIAL_SPEED': 0,  # Initial velocity of host
-    'HOST_LOCATION_PERTURBATION': 0,  # Initial location of host (note this is fixed for initial state)
-    'VEHICLES_DEPART_SPEED': 25,  # The initial speed for other vehicles
-    'VEHICLES_INFLOW_PROBABILITY': 0.35,
-    'OCCUPANCY_GRID_RESOLUTION': 4.5,
-    'OCCUPANCY_GRID_ONESIDED_LENGTH': 150,
-    'LON_ACC_LIMIT_FACTOR': 1,
-    # Relaxation of the longitudinal acceleration filter (test LON_ACC_LIMITS * LON_ACC_LIMIT_FACTOR)
-    'SIMS_PER_STEP': 10,
-    'MAX_SIMULATION_STEPS': 1000,
-    'REWARD_PER_STEP': 0,
-    'REWARD_FOR_SUCCESS': 100,
-    'REWARD_FOR_FAILURE': 0,
-    "REWARD_CONSTANT_SUBTRACTOR": 0,
-    "REWARD_CONSTANT_MULTIPLIER": 1,
-    'JERK_REWARD_COEFFICIENT': 0.015,
-    "RED_LINE_PROXIMITY": 15,
-    'WARMUP_STEPS': 0,
-    'STORE_REPLAY': False,
-    'ACTION_SPACE': {
-        'MIN_VELOCITY': 0.0,
-        'MAX_VELOCITY': 25.0,
-        'VELOCITY_RESOLUTION': 5
-    }
-}
 
 
 class LaneMergeActorState:
@@ -116,7 +78,7 @@ class LaneMergeState(BehavioralGridState):
 
         # find merge lane_id of ego_gff, merge side and the first common lane_id
         merge_lane_id, maneuver_type, common_lane_id = MapUtils.get_closest_lane_merge(
-            ego_lane_id, ego_lane_fstate[FS_SX], MERGE_LOOKAHEAD, route_plan)
+            ego_lane_id, ego_lane_fstate[FS_SX], LANE_MERGE_STATE_FAR_AWAY_DISTANCE, route_plan)
 
         target_rel_lane = RelativeLane.LEFT_LANE if maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION else RelativeLane.RIGHT_LANE
 
@@ -138,8 +100,8 @@ class LaneMergeState(BehavioralGridState):
             # create target GFF for the merge, such that its backward & forward horizons are equal to MERGE_LOOKAHEAD
             # relative to ego
             target_gff = BehavioralGridState._get_generalized_frenet_frames(
-                lane_id=common_lane_id, station=0, route_plan=route_plan, forward_horizon=MERGE_LOOKAHEAD - merge_point_from_ego,
-                backward_horizon=MERGE_LOOKAHEAD + merge_point_from_ego)[RelativeLane.SAME_LANE]
+                lane_id=common_lane_id, station=0, route_plan=route_plan, forward_horizon=LANE_MERGE_STATE_FAR_AWAY_DISTANCE - merge_point_from_ego,
+                backward_horizon=LANE_MERGE_STATE_FAR_AWAY_DISTANCE + merge_point_from_ego)[RelativeLane.SAME_LANE]
 
             all_gffs = {RelativeLane.SAME_LANE: ego_gff, target_rel_lane: target_gff}
 
@@ -197,28 +159,26 @@ class LaneMergeState(BehavioralGridState):
         # replace the host station coordinate with its distance to red line
         host_state[FS_SX] = self.red_line_s_on_ego_gff - host_state[FS_SX]
 
-        params = DEFAULT_ADDITIONAL_ENV_PARAMS
-        grid_res = params["OCCUPANCY_GRID_RESOLUTION"]
-        grid_onesided_length = params["OCCUPANCY_GRID_ONESIDED_LENGTH"]
-
         # actors state is an occupancy grid containing the different vehicles' distance from merge and velocity
-        num_of_onesided_grid_cells = np.ceil(grid_onesided_length / grid_res).astype(int)
+        num_of_onesided_grid_cells = np.ceil(LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH /
+                                             LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION).astype(int)
         num_of_grid_cells = 2 * num_of_onesided_grid_cells
 
         # init for empty grid cells
         actors_exist_default = np.zeros(shape=(1, num_of_grid_cells))
-        actors_vel_default = -params["MAX_VELOCITY"] * np.ones(shape=(1, num_of_grid_cells))
+        actors_vel_default = -LANE_MERGE_ACTION_SPACE_MAX_VELOCITY * np.ones(shape=(1, num_of_grid_cells))
         actors_states = np.vstack((actors_exist_default, actors_vel_default))
 
         for actor in self.actors_states:
             actor_exists = 1
-            actor_grid_cell = np.floor(actor.s_relative_to_ego / grid_res).astype(int) + num_of_onesided_grid_cells
+            actor_grid_cell = np.floor(actor.s_relative_to_ego / LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION).\
+                                  astype(int) + num_of_onesided_grid_cells
             if 0 <= actor_grid_cell <= num_of_grid_cells - 1:
                 actors_states[:, actor_grid_cell] = np.array([actor_exists, actor.velocity])
 
         # normalize host & actors states
-        host_state /= np.array([params["FAR_AWAY_DISTANCE"], params["MAX_VELOCITY"], 1])
-        actors_states /= np.array([1, params["MAX_VELOCITY"]])[..., np.newaxis]
+        host_state /= np.array([LANE_MERGE_STATE_FAR_AWAY_DISTANCE, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, 1])
+        actors_states /= np.array([1, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY])[..., np.newaxis]
 
         return torch.from_numpy(host_state[np.newaxis, np.newaxis, :]).float(), \
                torch.from_numpy(actors_states[np.newaxis, :]).float()

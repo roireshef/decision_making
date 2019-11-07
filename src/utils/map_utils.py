@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
-    UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce, LaneMergeNotFound
+    UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
@@ -563,16 +563,11 @@ class MapUtils:
             last_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
             downstream_connectivity = last_lane_segment.as_downstream_lanes
 
-            if len(downstream_connectivity) == 1 and \
+            # if initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line
+            if initial_lane_id != segment.e_i_SegmentID and len(downstream_connectivity) == 1 and \
                 (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
                  downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION):
-
-                # if we already crossed the red line, the lane merge is not relevant
-                if initial_lane_id == segment.e_i_SegmentID:
-                    raise LaneMergeNotFound('We crossed the red line: lane_id=%d, s=%f' % (initial_lane_id, initial_s))
-
                 return segment.e_i_SegmentID, downstream_connectivity[0].e_e_maneuver_type, downstream_connectivity[0].e_i_lane_segment_id
 
         # no merge connection was found
-        raise LaneMergeNotFound('Lane merge connectivity not found from lane_id=%d, s=%f, forward horizon=%f' %
-                                (initial_lane_id, initial_s, lookahead_distance))
+        return None
