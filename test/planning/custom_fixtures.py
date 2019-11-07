@@ -12,6 +12,7 @@ from decision_making.src.messages.scene_dynamic_message import SceneDynamic, Dat
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, ActionType
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
@@ -375,7 +376,7 @@ def trajectory_params():
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, target_time=16, trajectory_end_time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY,
-                           bp_time=0)
+                           bp_time=0, target_lane=RelativeLane.SAME_LANE, action_type=ActionType.FOLLOW_LANE)
 
 
 ### VIZ MESSAGES ###
