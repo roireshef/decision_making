@@ -3,6 +3,7 @@ import traceback
 from logging import Logger
 
 import numpy as np
+from decision_making.src.messages.driver_initiated_motion_message import DriverInitiatedMotionState
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -14,7 +15,8 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
     RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
-    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED
+    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, \
+    DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -49,6 +51,7 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
+        self._driver_initiated_motion_state = DriverInitiatedMotionState()
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
 
@@ -79,6 +82,7 @@ class BehavioralPlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
+                self._remove_deactivated_flow_control(scene_static)
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
@@ -89,6 +93,9 @@ class BehavioralPlanningFacade(DmModule):
                                                               logger=self.logger)
 
                 state.handle_negative_velocities(self.logger)
+
+            self._get_driver_initiated_motion_message(
+                state.ego_state.map_state.lane_id, state.ego_state.map_state.lane_fstate[FS_SX], route_plan)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -182,7 +189,7 @@ class BehavioralPlanningFacade(DmModule):
         return route_plan
 
     @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
-    def _set_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState) -> Takeover:
+    def _set_takeover_message(self, route_plan_data: DataRoutePlan, ego_state: EgoState) -> Takeover:
         """
         Calculate the takeover message based on the static route plan
         The takeover flag will be set to True if all lane end costs for a downstream road segment
@@ -248,6 +255,31 @@ class BehavioralPlanningFacade(DmModule):
                                     s_Data=DataTakeover(takeover_flag))
 
         return takeover_message
+
+    def _get_driver_initiated_motion_message(self, current_lane_id: int, current_lane_station: float, route_plan: RoutePlan):
+        is_success, dim_message = self.pubsub.get_latest_sample(topic=UC_SYSTEM_DRIVER_INITIATED_MOTION_MESSAGE)
+        if is_success:
+            stop_sign_lane_id, stop_sign_lane_s = MapUtils.get_next_stop_sign_location(
+                current_lane_id, current_lane_station, DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD, route_plan)
+            self._driver_initiated_motion_state.update(dim_message.timestamp_in_sec, dim_message.pedal_rate,
+                                                       stop_sign_lane_id, stop_sign_lane_s)
+
+    def _remove_deactivated_flow_control(self, scene_static):
+        if not self._driver_initiated_motion_state.is_active():
+            return
+
+        # remove the deactivated static flow control from scene_static
+        lanes = [lane for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments if
+                 lane.e_i_lane_segment_id == self._driver_initiated_motion_state.stop_bar_lane_id]
+        if len(lanes) == 0:
+            return
+
+        # remove the deactivated static flow control from scene_static
+        flow_control_list = lanes[0].as_static_traffic_flow_control
+        for idx, control in enumerate(flow_control_list):
+            if control.e_l_station == self._driver_initiated_motion_state.stop_bar_lane_station:
+                del flow_control_list[idx]
+                return
 
     def _get_current_scene_static(self) -> SceneStatic:
         with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):

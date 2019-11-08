@@ -484,6 +484,26 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
+    def get_next_stop_sign_location(initial_lane_id: int, initial_lane_s: float, lookahead: float,
+                                    route_plan: RoutePlan) -> [int, float]:
+        """
+        Look for the next stop bar/sign starting from the given mapping location within given lookahead
+        :param initial_lane_id: start the search from lane_id
+        :param initial_lane_s: [m] start the search from station of the given lane_id
+        :param lookahead: [m] how far to look for the stop sign
+        :param route_plan: the route plan
+        :return: [lane_id, lane_station] or [None, None] if the stop bar/sign was not found
+        """
+        lane_subsegments, _ = MapUtils._advance_on_plan(initial_lane_id, initial_lane_s, lookahead, route_plan)
+        frenet_frames = [MapUtils.get_lane_frenet_frame(lane.e_i_SegmentID) for lane in lane_subsegments]
+        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, lane_subsegments)
+        road_sign_info_on_gff = MapUtils.get_stop_bar_and_stop_sign(gff)
+        if len(road_sign_info_on_gff) > 0:
+            lane_id, lane_fstate = gff.convert_to_segment_state(np.array([road_sign_info_on_gff[0].s, 0, 0, 0, 0, 0]))
+            return lane_id, lane_fstate[FS_SX]
+        return None, None
+
+    @staticmethod
     def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame) -> List[RoadSignInfo]:
         """
         Returns a list of the locations (s coordinates) of stop signs and stop bars on the GFF, with their type
@@ -526,12 +546,13 @@ class MapUtils:
         # s coordinates
         road_signs_s_on_lane_segments = []
         road_sign_types = []
-        for lane_id in lane_frenet.segment_ids:
-            lane_segment = MapUtils.get_lane(lane_id)
+        for lane_subseg in lane_frenet.segments:
+            lane_segment = MapUtils.get_lane(lane_subseg.e_i_SegmentID)
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
-                lane_ids.append(lane_id)
-                road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
-                road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
+                if lane_subseg.e_i_SStart <= static_traffic_flow_control.e_l_station <= lane_subseg.e_i_SEnd:
+                    lane_ids.append(lane_subseg.e_i_SegmentID)
+                    road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
+                    road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
         frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
         frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
         road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
