@@ -2,7 +2,7 @@ from logging import Logger
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, \
     LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
-    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
+    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, MAX_FORWARD_HORIZON, MAX_BACKWARD_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState, \
@@ -39,6 +39,9 @@ class LaneMergeState(BehavioralGridState):
         """
         lane merge state
         :param red_line_s_on_ego_gff: s of the red line on SAME_LANE GFF
+        Red line is s coordinate, from which host starts to interference laterally with the main road actors.
+        We assume that there is a host's road segment starting from the red line and ending at the merge point.
+        If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
         :param target_rel_lane: RelativeLane of the merge target lane
         """
         super().__init__(road_occupancy_grid, ego_state, extended_lane_frames, projected_ego_fstates)
@@ -46,7 +49,10 @@ class LaneMergeState(BehavioralGridState):
         self.target_rel_lane = target_rel_lane
 
     @property
-    def ego_fstate_s(self) -> FrenetState1D:
+    def ego_fstate_1d(self) -> FrenetState1D:
+        """
+        :return: longitudinal (1D) part of ego Frenet state projected on GFF
+        """
         return self.projected_ego_fstates[RelativeLane.SAME_LANE][:FS_DX]
 
     @property
@@ -60,7 +66,7 @@ class LaneMergeState(BehavioralGridState):
         return self.ego_state.size.length
 
     def __str__(self) -> str:
-        return f'EGO: {self.ego_fstate_s} + \r\nACTORS:{[[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in self.actors_states]}'
+        return f'EGO: {self.ego_fstate_1d} + \r\nACTORS:{[[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in self.actors_states]}'
 
     @classmethod
     def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
@@ -77,8 +83,10 @@ class LaneMergeState(BehavioralGridState):
         ego_lane_id, ego_lane_fstate = ego_state.map_state.lane_id, ego_state.map_state.lane_fstate
 
         # find merge lane_id of ego_gff, merge side and the first common lane_id
-        merge_lane_id, maneuver_type, common_lane_id = MapUtils.get_closest_lane_merge(
+        merge_lane_id = MapUtils.get_closest_lane_merge(
             ego_lane_id, ego_lane_fstate[FS_SX], LANE_MERGE_STATE_FAR_AWAY_DISTANCE, route_plan)
+        downstream_connectivity = MapUtils.get_lane(merge_lane_id).as_downstream_lanes[0]
+        maneuver_type, common_lane_id = downstream_connectivity.e_e_maneuver_type, downstream_connectivity.e_i_lane_segment_id
 
         target_rel_lane = RelativeLane.LEFT_LANE if maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION else RelativeLane.RIGHT_LANE
 
@@ -95,13 +103,13 @@ class LaneMergeState(BehavioralGridState):
 
             # calculate merge point s relative to ego
             merge_point_on_ego_gff = ego_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), common_lane_id)[FS_SX]
-            merge_point_from_ego = merge_point_on_ego_gff - ego_on_same_gff[FS_SX]
+            merge_dist = merge_point_on_ego_gff - ego_on_same_gff[FS_SX]
 
             # create target GFF for the merge, such that its backward & forward horizons are equal to MERGE_LOOKAHEAD
             # relative to ego
             target_gff = BehavioralGridState._get_generalized_frenet_frames(
-                lane_id=common_lane_id, station=0, route_plan=route_plan, forward_horizon=LANE_MERGE_STATE_FAR_AWAY_DISTANCE - merge_point_from_ego,
-                backward_horizon=LANE_MERGE_STATE_FAR_AWAY_DISTANCE + merge_point_from_ego)[RelativeLane.SAME_LANE]
+                lane_id=common_lane_id, station=0, route_plan=route_plan, forward_horizon=MAX_FORWARD_HORIZON - merge_dist,
+                backward_horizon=MAX_BACKWARD_HORIZON + merge_dist)[RelativeLane.SAME_LANE]
 
             all_gffs = {RelativeLane.SAME_LANE: ego_gff, target_rel_lane: target_gff}
 
@@ -125,37 +133,41 @@ class LaneMergeState(BehavioralGridState):
             raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
 
     @classmethod
-    def create_thin_state(cls, ego_len: float, ego_fstate: FrenetState1D, actors: List[LaneMergeActorState], red_line_s: float):
+    def create_thin_state(cls, ego_length: float, ego_fstate: FrenetState1D,
+                          actors_lane_merge_state: List[LaneMergeActorState], red_line_s: float):
         """
-        Create LaneMergeState without GFFs and without Cartesian & Frenet coordinates of ego & actors
-        :param ego_len: [m] ego length
-        :param ego_fstate: 1D ego Frenet state (only s dimension)
-        :param actors: list of actors states, each of type LaneMergeActorState
-        :param red_line_s: [m] absolute s of the red line
+        This function may be used by RL training procedure, where ego & actors are created in a fast simple simulator,
+        like SUMO, where scene_static (with Frenet frames) does not exist.
+        Create LaneMergeState without GFFs and without Cartesian & Frenet coordinates of ego & actors.
+        In using s coordinates, we assume some virtual GFF along the host's lane.
+        :param ego_length: [m] ego length
+        :param ego_fstate: 1D ego Frenet state (only s dimension, s is relative to the virtual GFF's origin)
+        :param actors_lane_merge_state: list of actors states, each of type LaneMergeActorState
+        :param red_line_s: [m] s of the red line (relative to the virtual GFF's origin)
         :return: LaneMergeState
         """
         ego_state = EgoState.create_from_cartesian_state(
-            0, 0, np.array([0, 0, 0, ego_fstate[FS_SV], 0, 0]), ObjectSize(ego_len, 0, 0), 1, False)
+            0, 0, np.array([0, 0, 0, ego_fstate[FS_SV], 0, 0]), ObjectSize(ego_length, 0, 0), 1, False)
 
-        target_rel_lane = RelativeLane.LEFT_LANE
+        target_rel_lane = RelativeLane.LEFT_LANE  # does not matter
         road_occupancy_grid = {(target_rel_lane, RelativeLongitudinalPosition.PARALLEL):
                                [DynamicObjectWithRoadSemantics(
                                    DynamicObject.create_from_cartesian_state(
-                                       i+1, 0, np.array([0, 0, 0, actor.velocity, 0, 0]),
-                                       ObjectSize(actor.length, 0, 0), 1, False),
+                                       obj_id=i+1, timestamp=0, cartesian_state=np.array([0, 0, 0, actor.velocity, 0, 0]),
+                                       size=ObjectSize(actor.length, 0, 0), confidence=1, off_map=False),
                                    longitudinal_distance=actor.s_relative_to_ego, relative_lanes=[target_rel_lane])
-                                for i, actor in enumerate(actors)]}
+                                for i, actor in enumerate(actors_lane_merge_state)]}
 
         ego_fstate2D = np.concatenate((ego_fstate, np.zeros(FS_1D_LEN)))
         return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D}, red_line_s, target_rel_lane)
 
-    def encode_state_for_RL(self) -> GymTuple:
+    def encode_state(self) -> GymTuple:
         """
         Encode and normalize the LaneMergeState for RL model usage.
         :return: tuple of host state and actors state (of type torch.tensor)
         """
         # encode host
-        host_state = np.copy(self.ego_fstate_s)
+        host_state = np.copy(self.ego_fstate_1d)
         # replace the host station coordinate with its distance to red line
         host_state[FS_SX] = self.red_line_s_on_ego_gff - host_state[FS_SX]
 
