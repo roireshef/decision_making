@@ -101,7 +101,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
         :return: accelerations array or None if there is no safe action
         """
-        s_0, v_0, a_0 = state.ego_fstate
+        s_0, v_0, a_0 = state.ego_fstate_1d
         rel_red_line_s = state.red_line_s_on_ego_gff - s_0
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
         specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, params.ego_max_velocity, w_T, w_J)
@@ -151,41 +151,41 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
     @staticmethod
     def create_max_vel_quartic_actions(state: LaneMergeState, params: ScenarioParams = ScenarioParams()) -> List[LaneMergeSequence]:
-        v_0, a_0 = state.ego_fstate[FS_SV], state.ego_fstate[FS_SA]
-        ds = state.red_line_s_on_ego_gff - state.ego_fstate[FS_SX]
+        v_0, a_0 = state.ego_fstate_1d[FS_SV], state.ego_fstate_1d[FS_SA]
+        ds = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
         poly_coefs_s, specs_t, specs_v, safety_dist = RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(state, params)
         actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, v_T, ds, QuarticPoly1D.num_coefs())])
                    for t, v_T, coefs_s in zip(specs_t[safety_dist > 0], specs_v[safety_dist > 0], poly_coefs_s[safety_dist > 0])]
         return actions
 
-    @staticmethod
-    def choose_max_vel_quartic_trajectory(state: LaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
-            [bool, np.array]:
-        """
-        Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
-        main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
-        If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
-        :param state: lane merge state, containing data about host and the main road vehicles
-        :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
-        :return: accelerations array or None if there is no safe action
-        """
-        import time
-        st = time.time()
-
-        poly_s, specs_t, _, safety_dist = RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(state, params)
-
-        if (safety_dist > 0).any():  # if there are safe actions
-            action_idx = np.argmax(safety_dist > 0)  # the most calm safe action
-        else:  # no safe actions
-            action_idx = np.argmax(safety_dist)  # the most close to safe action
-
-        poly_acc = np.polyder(poly_s[action_idx], m=2)
-        times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
-        accelerations = np.zeros(OUTPUT_TRAJECTORY_LENGTH)
-        accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
-
-        #print('\ntime=', time.time() - st)
-        return safety_dist[action_idx] > 0, accelerations
+    # @staticmethod
+    # def choose_max_vel_quartic_trajectory(state: LaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
+    #         [bool, np.array]:
+    #     """
+    #     Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
+    #     main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
+    #     If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
+    #     :param state: lane merge state, containing data about host and the main road vehicles
+    #     :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
+    #     :return: accelerations array or None if there is no safe action
+    #     """
+    #     import time
+    #     st = time.time()
+    #
+    #     poly_s, specs_t, _, safety_dist = RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(state, params)
+    #
+    #     if (safety_dist > 0).any():  # if there are safe actions
+    #         action_idx = np.argmax(safety_dist > 0)  # the most calm safe action
+    #     else:  # no safe actions
+    #         action_idx = np.argmax(safety_dist)  # the most close to safe action
+    #
+    #     poly_acc = np.polyder(poly_s[action_idx], m=2)
+    #     times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
+    #     accelerations = np.zeros(OUTPUT_TRAJECTORY_LENGTH)
+    #     accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
+    #
+    #     #print('\ntime=', time.time() - st)
+    #     return safety_dist[action_idx] > 0, accelerations
 
     @staticmethod
     def can_solve_by_two_constant_accelerations(state: LaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
@@ -197,7 +197,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         import time
         st = time.time()
-        s_0, v_0, a_0 = state.ego_fstate
+        s_0, v_0, a_0 = state.ego_fstate_1d
         # calculate the actions' distance (the same for all actions)
         ds = state.red_line_s_on_ego_gff - s_0
 
@@ -234,7 +234,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # # for the found safe point check if there is a quitic action with valid accelerations and velocities
         # best_v_T, best_T = v_T[best_safe_point_idx], T[best_safe_point_idx]
         # qintic_actions, _ = RuleBasedLaneMergePlanner._create_single_actions(
-        #       state.ego_fstate, best_v_T[np.newaxis], best_T[np.newaxis], ds)
+        #       state.ego_fstate_1d, best_v_T[np.newaxis], best_T[np.newaxis], ds)
         #return len(qintic_actions) > 0
 
         print('time=', time.time() - st)
@@ -248,9 +248,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         if not success:  # no actions performing safe merge, then stop 25 meters before the red line
             w_J = BP_JERK_S_JERK_D_TIME_WEIGHTS[0:1, 0]
             w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[0:1, 2]
-            ds = state.red_line_s_on_ego_gff - 25 - state.ego_fstate[FS_SX]
-            T = RuleBasedLaneMergePlanner._specify_quintic(state.ego_fstate[FS_SV], state.ego_fstate[FS_SA], 0, ds, w_T, w_J)
-            actions, _ = RuleBasedLaneMergePlanner._create_quintic_actions(state.ego_fstate, v_T=np.array([0]), T=T,
+            ds = state.red_line_s_on_ego_gff - 25 - state.ego_fstate_1d[FS_SX]
+            T = RuleBasedLaneMergePlanner._specify_quintic(state.ego_fstate_1d[FS_SV], state.ego_fstate_1d[FS_SA], 0, ds, w_T, w_J)
+            actions, _ = RuleBasedLaneMergePlanner._create_quintic_actions(state.ego_fstate_1d, v_T=np.array([0]), T=T,
                                                                            ds=ds, v_max=params.ego_max_velocity)
             if len(actions) == 0:
                 return False, np.array([])
@@ -289,7 +289,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         st_tot = time.time()
 
         st = time.time()
-        ego_fstate = state.ego_fstate
+        ego_fstate = state.ego_fstate_1d
         # calculate the actions' distance (the same for all actions)
         ds = state.red_line_s_on_ego_gff - ego_fstate[FS_SX]
 
@@ -493,7 +493,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :return: two 1D arrays of v_T & T, where ego is safe at target_s relatively to all actors
         """
         ego_length = state.ego_length
-        ego_fstate = state.ego_fstate
+        ego_fstate = state.ego_fstate_1d
         actors_states = state.actors_states
 
         # calculate planning time bounds given target_s
@@ -503,7 +503,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         T_min = max(EPS, (-v_0 + np.sqrt(v_0*v_0 + 2*a_max*target_s)) / a_max)
 
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
-        braking_distances, braking_times = BrakingDistances.calc_valid_quartic_actions(
+        braking_distances, braking_times = BrakingDistances.calc_quartic_action_distances(
             w_T, w_J, np.array([v_0]), np.array([0.]), np.array([a_0]))
         brake_dist, brake_time = braking_distances[0], braking_times[0]
         if brake_dist > target_s:
@@ -623,7 +623,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # import time
         # st = time.time()
 
-        # s_0 = lane_merge_state.ego_fstate[FS_SX]
+        # s_0 = lane_merge_state.ego_fstate_1d[FS_SX]
         # recipe = ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM)
         # first_action_specs = [ActionSpec(t=action.action_specs[0].t, v=action.action_specs[0].v_T,
         #                                  s=action.action_specs[0].ds + s_0, d=0, recipe=recipe)
@@ -662,7 +662,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             spec_jerks = poly1d.cumulative_jerk(poly_coefs, T)
 
             # calculate acceleration times from v_T to MAX_VELOCITY
-            _, accel_to_max_vel_T = BrakingDistances.calc_valid_quartic_actions(
+            _, accel_to_max_vel_T = BrakingDistances.calc_quartic_action_distances(
                 calm_weights[2], calm_weights[0], v_T, np.full(v_T.shape, MAX_VELOCITY))
 
             # TODO: can be optimized ?
