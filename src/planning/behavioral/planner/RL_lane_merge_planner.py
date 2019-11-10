@@ -13,11 +13,11 @@ from decision_making.src.planning.behavioral.planner.base_planner import BasePla
 from decision_making.src.planning.types import ActionSpecArray, FS_SX
 from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, DEFAULT_ADDITIONAL_ENV_PARAMS
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.state.state import State
 from ray.rllib.evaluation import SampleBatch
 import torch
-from gym.spaces.tuple_space import Tuple as GymTuple
+from gym.spaces.tuple import Tuple as GymTuple
 from gym.spaces.box import Box
 
 # TODO: remove the dependency on planning_research
@@ -126,8 +126,8 @@ class RL_LaneMergePlanner(BasePlanner):
                                           lane_merge_state.ego_state.timestamp_in_sec)
 
         host_state, actors_state = lane_merge_state.encode_state()
-        encoded_state: GymTuple = torch.from_numpy(host_state[np.newaxis, :]).float(), \
-                                  torch.from_numpy(actors_state[np.newaxis, :]).float()
+        encoded_state: GymTuple = (torch.from_numpy(host_state[np.newaxis, :]).float(),
+                                   torch.from_numpy(actors_state[np.newaxis, :]).float())
 
         # TODO: take real action_mask when RL will use UC action space
         # action_mask = np.ones(6).astype(bool)
