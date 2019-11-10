@@ -166,11 +166,30 @@ class LaneMergeState(BehavioralGridState):
         Encode and normalize the LaneMergeState for RL model usage.
         :return: tuple of host state and actors state (of type torch.tensor)
         """
+        # normalize host & actors states
+        host_state = self._encode_host_state() / np.array([LANE_MERGE_STATE_FAR_AWAY_DISTANCE, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, 1])
+        actors_state = self._encode_actors_state() / np.array([1, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY])[..., np.newaxis]
+        return host_state, actors_state
+
+    def _encode_host_state(self) -> np.array:
+        """
+        Encode host state of the LaneMergeState for RL model usage.
+        :return: numpy array with encoded host state
+        """
         # encode host
         host_state = np.copy(self.ego_fstate_1d)
         # replace the host station coordinate with its distance to red line
         host_state[FS_SX] = self.red_line_s_on_ego_gff - host_state[FS_SX]
+        return host_state[np.newaxis, :]
 
+    def _encode_actors_state(self) -> np.array:
+        """
+        Encode actors state of the LaneMergeState for RL model usage.
+        In the current implementation the road is divided into a grid with resolution
+        LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, and each cell is set 1 iff an actor appears in the cell.
+        In addition, the actor's velocity is appended to the appropriated cell.
+        :return: numpy array with encoded actors state
+        """
         # actors state is an occupancy grid containing the different vehicles' distance from merge and velocity
         num_of_onesided_grid_cells = np.ceil(LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH /
                                              LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION).astype(int)
@@ -188,9 +207,4 @@ class LaneMergeState(BehavioralGridState):
             if 0 <= actor_grid_cell <= num_of_grid_cells - 1:
                 actors_states[:, actor_grid_cell] = np.array([actor_exists, actor.velocity])
 
-        # normalize host & actors states
-        host_state /= np.array([LANE_MERGE_STATE_FAR_AWAY_DISTANCE, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, 1])
-        actors_states /= np.array([1, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY])[..., np.newaxis]
-
-        return torch.from_numpy(host_state[np.newaxis, np.newaxis, :]).float(), \
-               torch.from_numpy(actors_states[np.newaxis, :]).float()
+        return actors_states
