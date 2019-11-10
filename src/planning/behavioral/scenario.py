@@ -1,8 +1,7 @@
 from abc import abstractmethod
 from logging import Logger
 
-from decision_making.src.exceptions import LaneMergeNotFound
-from decision_making.src.global_constants import MERGE_LOOKAHEAD
+from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.planner.RL_lane_merge_planner import RL_LaneMergePlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
@@ -24,14 +23,12 @@ class Scenario:
         :param route_plan: route plan
         :return: the chosen scenario class
         """
-        try:
-            # Try to find a lane merge connectivity with forward horizon MERGE_LOOKAHEAD from ego location
-            ego_map_state = state.ego_state.map_state
-            MapUtils.get_closest_lane_merge(ego_map_state.lane_id, ego_map_state.lane_fstate[FS_SX], MERGE_LOOKAHEAD, route_plan)
-            return LaneMergeScenario
+        # Try to find a lane merge connectivity with forward horizon MERGE_LOOKAHEAD from ego location
+        ego_map_state = state.ego_state.map_state
 
-        except LaneMergeNotFound:
-            return DefaultScenario
+        return LaneMergeScenario if MapUtils.get_closest_lane_merge(
+                ego_map_state.lane_id, ego_map_state.lane_fstate[FS_SX], LANE_MERGE_STATE_FAR_AWAY_DISTANCE, route_plan) \
+            else DefaultScenario
 
     @staticmethod
     @abstractmethod

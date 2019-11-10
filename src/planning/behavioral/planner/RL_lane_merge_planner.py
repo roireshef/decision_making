@@ -125,7 +125,9 @@ class RL_LaneMergePlanner(BasePlanner):
             raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
                                           lane_merge_state.ego_state.timestamp_in_sec)
 
-        encoded_state: GymTuple = lane_merge_state.encode_state_for_RL()
+        host_state, actors_state = lane_merge_state.encode_state()
+        encoded_state: GymTuple = torch.from_numpy(host_state[np.newaxis, :]).float(), \
+                                  torch.from_numpy(actors_state[np.newaxis, :]).float()
 
         # TODO: take real action_mask when RL will use UC action space
         # action_mask = np.ones(6).astype(bool)

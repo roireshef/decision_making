@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 import numpy as np
 from logging import Logger
-from typing import Optional, List
+from typing import Optional, List, Type
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
@@ -152,7 +152,7 @@ class TargetActionSpace(ActionSpace):
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, vt, st, d=0, recipe=recipe)
+        action_specs = [ActionSpec(t, vt, st, 0, recipe)
                         if ~np.isnan(t) else None
                         for recipe, t, vt, st in zip(action_recipes, T, v_T_mod, target_s)]
 

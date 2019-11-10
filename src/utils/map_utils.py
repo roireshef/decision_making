@@ -1,10 +1,10 @@
 from logging import Logger
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
-    UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce, LaneMergeNotFound
+    UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
@@ -542,14 +542,17 @@ class MapUtils:
 
     @staticmethod
     def get_closest_lane_merge(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
-            -> [int, ManeuverType, int]:
+            -> Optional[int]:
         """
         Given GFF for the current lane, find the closest merge connection into main road.
+        Red line is s coordinate, from which host starts to interference laterally with the main road actors.
+        We assume that there is a host's road segment starting from the red line and ending at the merge point.
+        If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
         :param initial_lane_id: current lane id of ego
         :param initial_s: s of ego on initial_lane_id
         :param lookahead_distance: maximal lookahead for the lane merge from ego location
-        :param route_plan:
-        :return: merged lane_id, maneuver type, common lane id (after the merge)
+        :param route_plan: the relevant navigation plan to iterate over its road IDs
+        :return: lane_id of the segment between the red line and the merge point itself
         """
 
         lane_subsegments, _ = MapUtils._advance_on_plan(initial_lane_id, initial_s, lookahead_distance, route_plan)
@@ -560,19 +563,17 @@ class MapUtils:
             cumulative_length += segment.e_i_SEnd - segment.e_i_SStart
             if cumulative_length > lookahead_distance:
                 break
-            last_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
-            downstream_connectivity = last_lane_segment.as_downstream_lanes
+            current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
+            downstream_connectivity = current_lane_segment.as_downstream_lanes
 
+            # Red line is s coordinate, from which host starts to interference laterally with the main road actors.
+            # We assume that there is a host's road segment starting from the red line and ending at the merge point.
+            # If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
             if len(downstream_connectivity) == 1 and \
                 (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
                  downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION):
-
-                # if we already crossed the red line, the lane merge is not relevant
-                if initial_lane_id == segment.e_i_SegmentID:
-                    raise LaneMergeNotFound('We crossed the red line: lane_id=%d, s=%f' % (initial_lane_id, initial_s))
-
-                return segment.e_i_SegmentID, downstream_connectivity[0].e_e_maneuver_type, downstream_connectivity[0].e_i_lane_segment_id
+                return segment.e_i_SegmentID if segment.e_i_SegmentID != initial_lane_id \
+                    else None  # host already passed the red line, so the merge completed
 
         # no merge connection was found
-        raise LaneMergeNotFound('Lane merge connectivity not found from lane_id=%d, s=%f, forward horizon=%f' %
-                                (initial_lane_id, initial_s, lookahead_distance))
+        return None
