@@ -17,7 +17,7 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPol
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, LaneMergeActorState
 from decision_making.src.state.state import State
 
-WORST_CASE_FRONT_CAR_DECEL = 1.  # [m/sec^2]
+WORST_CASE_FRONT_CAR_DECEL = 3.  # [m/sec^2]
 WORST_CASE_BACK_CAR_ACCEL = 1.  # [m/sec^2]
 MAX_VELOCITY = 25.
 OUTPUT_TRAJECTORY_LENGTH = 10

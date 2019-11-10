@@ -1,11 +1,15 @@
 import numpy as np
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, VELOCITY_LIMITS, EGO_LENGTH
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, VELOCITY_LIMITS, EGO_LENGTH, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner, \
     ScenarioParams
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeActorState, LaneMergeState
 from decision_making.src.planning.types import LIMIT_MAX
 import matplotlib.pyplot as plt
 from logging import Logger
+
+from decision_making.src.planning.utils.kinematics_utils import BrakingDistances
 
 
 def test_quinticApproximator_plotVelocityProfiles():
@@ -79,16 +83,18 @@ def test_canSolveByRuleBased_closeFrontCarRequiresStrongBrake_success():
     assert ret
 
 
-def test_canSolveByRuleBased_failure():
-    ego_fstate = np.array([224.6, 0, 0])
-    ego_len = 5
-    actor1 = LaneMergeActorState(-221, 25, ego_len)
-    actor2 = LaneMergeActorState(-65, 25, ego_len)
-    actors = [actor1, actor2]
+def test_canSolveByRuleBased_success():
+    w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+    braking_dist, _ = BrakingDistances.calc_quartic_action_distances(w_T, w_J, np.array([25.]), np.array([0.]))
     red_line_s = 240
+    ego_fstate = np.array([red_line_s - braking_dist[0], 25, 0])
+    ego_len = 5
+    actor1 = LaneMergeActorState(-26, 25, ego_len)
+    actor2 = LaneMergeActorState(88, 25, ego_len)
+    actors = [actor1, actor2]
     state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
-    ret = RuleBasedLaneMergePlanner.choose_max_vel_quartic_trajectory(state)[0]
-    assert ret
+    actions = RuleBasedLaneMergePlanner.create_max_vel_quartic_actions(state)
+    assert len(actions) > 0
 
 
 def test_optimalPolicy():
