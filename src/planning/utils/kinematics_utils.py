@@ -239,13 +239,14 @@ class BrakingDistances:
     def calc_quartic_action_distances(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
                                       a_0: np.array = None) -> [np.array, np.array]:
         """
-        Calculate the distances for the given actions' weights and scenario params
+        Calculate the distances and times for the given actions' weights and scenario params.
+        Actions not meeting the acceleration limits have infinite distance and time.
         :param w_T: weight of Time component in time-jerk cost function
         :param w_J: weight of longitudinal jerk component in time-jerk cost function
         :param v_0: array of initial velocities [m/s]
         :param v_T: array of desired final velocities [m/s]
         :param a_0: array of initial accelerations [m/s^2]
-        :return: actions' distances; actions not meeting acceleration limits have infinite distance
+        :return: two arrays: actions' distances and times; actions not meeting acceleration limits have infinite distance
         """
         # calculate actions' planning time
         if a_0 is None:
