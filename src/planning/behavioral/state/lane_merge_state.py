@@ -105,8 +105,10 @@ class LaneMergeState(BehavioralGridState):
             merge_point_on_ego_gff = ego_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), common_lane_id)[FS_SX]
             merge_dist = merge_point_on_ego_gff - ego_on_same_gff[FS_SX]
 
-            # create target GFF for the merge, such that its backward & forward horizons are equal to MERGE_LOOKAHEAD
-            # relative to ego
+            # Create target GFF for the merge with the backward & forward horizons.
+            # Since both horizons are relative to ego while common_lane_id starts at the merge-point,
+            # then merge_dist (merge-point relative to ego) is added to MAX_BACKWARD_HORIZON and subtracted
+            # from MAX_FORWARD_HORIZON.
             target_gff = BehavioralGridState._get_generalized_frenet_frames(
                 lane_id=common_lane_id, station=0, route_plan=route_plan, forward_horizon=MAX_FORWARD_HORIZON - merge_dist,
                 backward_horizon=MAX_BACKWARD_HORIZON + merge_dist)[RelativeLane.SAME_LANE]
