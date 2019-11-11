@@ -5,7 +5,8 @@ from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS, EPS, TRAJECTORY_TIME_RESOLUTION, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionType
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionType, ActionSpec, \
+    StaticActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_spec_evaluator import \
     AugmentedLaneActionSpecEvaluator
@@ -194,11 +195,12 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return LaneMergeState.create_from_state(state, route_plan, self.logger)
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> ActionSpecArray:
-        v_0, a_0 = state.ego_fstate_1d[FS_SV], state.ego_fstate_1d[FS_SA]
-        ds = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
-        poly_coefs_s, specs_t, specs_v, safety_dist = RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(state, params)
-        action_specs = [ActionSpec(t, v_0, a_0, v_T, ds)
-                        for t, v_T, coefs_s in zip(specs_t[safety_dist > 0], specs_v[safety_dist > 0], poly_coefs_s[safety_dist > 0]]
+        v_0, a_0 = lane_merge_state.ego_fstate_1d[FS_SV], lane_merge_state.ego_fstate_1d[FS_SA]
+        ds = lane_merge_state.red_line_s_on_ego_gff - lane_merge_state.ego_fstate_1d[FS_SX]
+        poly_coefs_s, specs_t, specs_v, safety_dist = \
+            RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(lane_merge_state)
+        action_specs = [ActionSpec(t, v_T, ds, d=0, recipe=StaticActionRecipe(relative_lane=, v_T,))
+                        for t, v_T, coefs_s in zip(specs_t[safety_dist > 0], specs_v[safety_dist > 0], poly_coefs_s[safety_dist > 0])]
         return action_specs
 
     def _filter_actions(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> ActionSpecArray:
