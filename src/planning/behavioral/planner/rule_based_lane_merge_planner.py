@@ -6,7 +6,7 @@ from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS,
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionType, ActionSpec, \
-    StaticActionRecipe
+    StaticActionRecipe, RelativeLane, ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_spec_evaluator import \
     AugmentedLaneActionSpecEvaluator
@@ -60,7 +60,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
     @staticmethod
     def _create_safe_distances_for_max_vel_quartic_actions(state: LaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
-            [np.array, np.array]:
+            [np.array, np.array, np.array, np.array, List[AggressivenessLevel]]:
         """
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
         main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
@@ -79,6 +79,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         poly_s = poly_s[valid_acc]
         specs_s = specs_s[valid_acc]
         specs_t = specs_t[valid_acc]
+        aggressiveness_levels = [level for valid, level in zip(valid_acc, AggressivenessLevel) if valid]
 
         # initialize target points for the actions that end before the red line (specs_s < rel_red_line_s)
         target_t = specs_t + (rel_red_line_s - specs_s) / params.ego_max_velocity
@@ -115,7 +116,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         else:
             safety_dist = np.ones(len(specs_t))
 
-        return poly_s, target_t, target_v, safety_dist
+        return poly_s, target_t, target_v, safety_dist, aggressiveness_levels
 
     @staticmethod
     def _specify_quartic(v_0: float, a_0: float, v_T: np.array, w_T: np.array, w_J: np.array) -> [np.array, np.array]:
@@ -195,13 +196,29 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return LaneMergeState.create_from_state(state, route_plan, self.logger)
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> ActionSpecArray:
-        v_0, a_0 = lane_merge_state.ego_fstate_1d[FS_SV], lane_merge_state.ego_fstate_1d[FS_SA]
-        ds = lane_merge_state.red_line_s_on_ego_gff - lane_merge_state.ego_fstate_1d[FS_SX]
-        poly_coefs_s, specs_t, specs_v, safety_dist = \
+        """
+        The action space consists of 3 quartic actions accelerating to the maximal velocity with 3 aggressiveness
+        levels. Specify these actions, validate their longitudinal acceleration and check their longitudinal RSS safety.
+        :param lane_merge_state:
+        :return: array of valid action specs, including unsafe actions
+        """
+        # specify and check safety for 3 quartic actions to maximal velocity
+        poly_coefs_s, specs_t, specs_v, safety_dist, aggressiveness_levels = \
             RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(lane_merge_state)
-        action_specs = [ActionSpec(t, v_T, ds, d=0, recipe=StaticActionRecipe(relative_lane=, v_T,))
-                        for t, v_T, coefs_s in zip(specs_t[safety_dist > 0], specs_v[safety_dist > 0], poly_coefs_s[safety_dist > 0])]
-        return action_specs
+
+        safe_specs_t = specs_t[safety_dist > 0]
+        safe_specs_v = specs_v[safety_dist > 0]
+        safe_coefs_s = poly_coefs_s[safety_dist > 0]
+        safe_aggr_levels = aggressiveness_levels[safety_dist > 0]
+
+        if len(safe_specs_t) == 0:
+            raise NoActionsLeftForBPError("RB create_action_specs: no safe actions. timestamp_in_sec: %f" %
+                                          lane_merge_state.ego_state.timestamp_in_sec)
+
+        # create action specs based on the above output
+        return [ActionSpec(t=t, v=v_T, s=lane_merge_state.red_line_s_on_ego_gff, d=0,
+                           recipe=StaticActionRecipe(RelativeLane.SAME_LANE, v_T, aggr_level))
+                for t, v_T, coefs_s, aggr_level in zip(safe_specs_t, safe_specs_v, safe_coefs_s, safe_aggr_levels)]
 
     def _filter_actions(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> ActionSpecArray:
         action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state)
@@ -221,39 +238,21 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         action_specs_exist = action_specs.astype(bool)
         if not action_specs_exist.any():
-            raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
+            raise NoActionsLeftForBPError("RB evaluate_actions: All actions were filtered in BP. timestamp_in_sec: %f" %
                                           lane_merge_state.ego_state.timestamp_in_sec)
         action_costs = np.full(len(action_specs), 1.)
         most_calm_action_idx = np.argmax(action_specs_exist)
         action_costs[most_calm_action_idx] = 0
         return action_costs
 
-    def _choose_action(self, lane_merge_state: LaneMergeState, actions: np.array, costs: np.array) -> \
+    def _choose_action(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray, costs: np.array) -> \
             [ActionRecipe, ActionSpec]:
         """
         pick the first action_spec from the best LaneMergeSequence having the minimal cost
-        :param actions: array of LaneMergeSequence
+        :param lane_merge_state: lane merge state
+        :param action_specs: array of ActionSpecs
         :param costs: array of actions' costs
         :return: [ActionSpec] the first action_spec in the best LaneMergeSequence
         """
-        # choose the first spec of the best action having the minimal cost
-        best_lane_merge_spec: LaneMergeSpec = actions[np.argmin(costs)].action_specs[0]
-        # convert spec.s from LaneMergeState to be relative to GFF
-        recipe = ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM)
-        ego_s = lane_merge_state.projected_ego_fstates[RelativeLane.SAME_LANE][FS_SX]
-
-        # the first spec of the chosen action may be too short to complete the full lateral movement,
-        # therefore we choose non-zero lateral state for the target spec
-        ego_fstate = lane_merge_state.ego_state.map_state.lane_fstate
-        w_J = BP_JERK_S_JERK_D_TIME_WEIGHTS[0:1, 1]  # lateral jerk weight
-        w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[0:1, 2]
-        T_d = RuleBasedLaneMergePlanner._specify_quintic(ego_fstate[FS_DV], ego_fstate[FS_DA], 0, -ego_fstate[FS_DX], w_T, w_J)[0]
-        dx = dv = da = 0
-        if T_d > best_lane_merge_spec.t:
-            poly_coefs_d = QuinticPoly1D.solve_1d_bvp(np.concatenate((ego_fstate[FS_DX:], np.zeros(FS_1D_LEN)))[np.newaxis], T_d)
-            dx, dv, da = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, np.array([best_lane_merge_spec.t]))[0][0]
-
-        chosen_spec = ActionSpec(best_lane_merge_spec.t, best_lane_merge_spec.v_T, best_lane_merge_spec.ds + ego_s, 0, recipe)
-#                                 dx, dv, da, recipe)
-        print('chosen_spec=', best_lane_merge_spec.__str__())
-        return [recipe, chosen_spec]
+        selected_action_index = int(np.argmin(costs))
+        return action_specs[selected_action_index].recipe, action_specs[selected_action_index]
