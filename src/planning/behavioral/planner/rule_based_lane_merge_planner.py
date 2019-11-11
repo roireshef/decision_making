@@ -99,7 +99,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
         :param state: lane merge state, containing data about host and the main road vehicles
         :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
-        :return: accelerations array or None if there is no safe action
+        :return:
         """
         s_0, v_0, a_0 = state.ego_fstate_1d
         rel_red_line_s = state.red_line_s_on_ego_gff - s_0
@@ -158,34 +158,34 @@ class RuleBasedLaneMergePlanner(BasePlanner):
                    for t, v_T, coefs_s in zip(specs_t[safety_dist > 0], specs_v[safety_dist > 0], poly_coefs_s[safety_dist > 0])]
         return actions
 
-    # @staticmethod
-    # def choose_max_vel_quartic_trajectory(state: LaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
-    #         [bool, np.array]:
-    #     """
-    #     Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
-    #     main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
-    #     If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
-    #     :param state: lane merge state, containing data about host and the main road vehicles
-    #     :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
-    #     :return: accelerations array or None if there is no safe action
-    #     """
-    #     import time
-    #     st = time.time()
-    #
-    #     poly_s, specs_t, _, safety_dist = RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(state, params)
-    #
-    #     if (safety_dist > 0).any():  # if there are safe actions
-    #         action_idx = np.argmax(safety_dist > 0)  # the most calm safe action
-    #     else:  # no safe actions
-    #         action_idx = np.argmax(safety_dist)  # the most close to safe action
-    #
-    #     poly_acc = np.polyder(poly_s[action_idx], m=2)
-    #     times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
-    #     accelerations = np.zeros(OUTPUT_TRAJECTORY_LENGTH)
-    #     accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
-    #
-    #     #print('\ntime=', time.time() - st)
-    #     return safety_dist[action_idx] > 0, accelerations
+    @staticmethod
+    def choose_max_vel_quartic_trajectory(state: LaneMergeState, params: ScenarioParams = ScenarioParams()) -> \
+            [bool, np.array]:
+        """
+        Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
+        main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
+        If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
+        :param state: lane merge state, containing data about host and the main road vehicles
+        :param params: scenario parameters, describing the worst case actors' behavior and RSS safety parameters
+        :return: accelerations array or None if there is no safe action
+        """
+        import time
+        st = time.time()
+
+        poly_s, specs_t, _, safety_dist = RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(state, params)
+
+        if (safety_dist > 0).any():  # if there are safe actions
+            action_idx = np.argmax(safety_dist > 0)  # the most calm safe action
+        else:  # no safe actions
+            action_idx = np.argmax(safety_dist)  # the most close to safe action
+
+        poly_acc = np.polyder(poly_s[action_idx], m=2)
+        times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
+        accelerations = np.zeros(OUTPUT_TRAJECTORY_LENGTH)
+        accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
+
+        #print('\ntime=', time.time() - st)
+        return safety_dist[action_idx] > 0, accelerations
 
     @staticmethod
     def can_solve_by_two_constant_accelerations(state: LaneMergeState, params: ScenarioParams = ScenarioParams()) -> bool:
