@@ -3,7 +3,7 @@ from decision_making.src.exceptions import raises, DownstreamLaneDataNotFound
 from decision_making.src.global_constants import MAX_COST
 from decision_making.src.messages.route_plan_message import RoutePlanRoadSegment
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
-from decision_making.src.planning.route.cost_based_route_planner import CostBasedRoutePlanner
+from decision_making.src.planning.route.binary_cost_based_route_planner import CostBasedRoutePlanner
 
 
 class BinaryRoutePlanner(CostBasedRoutePlanner):

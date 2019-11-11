@@ -4,7 +4,7 @@ from unittest.mock import patch
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.route.backpropagating_route_planner import BackpropagatingRoutePlanner
-from decision_making.src.planning.route.cost_based_route_planner import RoutePlannerInputData
+from decision_making.src.planning.route.binary_cost_based_route_planner import RoutePlannerInputData
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 
 from decision_making.test.planning.route.scene_fixtures import RoutePlanTestData, \
