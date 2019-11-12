@@ -3,8 +3,9 @@ import traceback
 from logging import Logger
 
 import numpy as np
-from build.interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
+from decision_making.src.messages.driver_initiated_motion_message import PedalPosition
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
+from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -261,19 +262,20 @@ class BehavioralPlanningFacade(DmModule):
 
     def _get_current_pedal_position(self, current_lane_id: int, current_lane_station: float, route_plan: RoutePlan,
                                     scene_static: SceneStatic):
-        is_success, serialized_dim_message = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
+        is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
         if not is_success:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_PEDAL_POSITION)
-
-        dim_message = RoutePlan.deserialize(serialized_dim_message)
+        pedal_position = PedalPosition.deserialize(serialized_pedal_position)
+        self.logger.debug("%s at time %f: %f" % ("Pedal position received", pedal_position.s_Data.s_RecvTimestamp,
+                                                 pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
 
         # find the next stop sign that may be neutralized
         stop_sign_lane_id, stop_sign_lane_s = MapUtils.get_next_stop_sign_location(
             current_lane_id, current_lane_station, DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD, route_plan)
 
-        self._driver_initiated_motion_state.update(dim_message.s_RecvTimestamp,
-                                                   dim_message.e_Pct_AcceleratorPedalPosition,
+        self._driver_initiated_motion_state.update(pedal_position.s_RecvTimestamp,
+                                                   pedal_position.e_Pct_AcceleratorPedalPosition,
                                                    stop_sign_lane_id, stop_sign_lane_s)
 
     #def _remove_deactivated_flow_control(self, scene_static):
