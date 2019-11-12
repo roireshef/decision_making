@@ -663,10 +663,9 @@ class BehavioralGridState:
         for point in bbox:
             try:
                 fbbox.append(lane_frame.cpoint_to_fpoint(point))
-            except OutOfSegmentBack as e:
-                logger.debug("Bbox point is OutOfSegmentBack and will be skipped: %s" % str(e))
-            except OutOfSegmentFront as e:
-                logger.debug("Bbox point is OutOfSegmentFront and will be skipped: %s" % str(e))
+            except (OutOfSegmentBack, OutOfSegmentFront) as e:
+                # TODO: is it worth it to add a logger? (need to propagate to 3 methods)
+                pass
         fbbox = np.array(fbbox)
 
         # get border widths at the longitudes of the bbox points
