@@ -628,7 +628,7 @@ class BehavioralGridState:
                      (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
 
     @staticmethod
-    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int, logger: Logger) -> bool:
+    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int) -> bool:
         """
         Checks if any part of an object is inside another lane.
         Takes the point of the object's bounding box or center of mass that is closest to the lane.
