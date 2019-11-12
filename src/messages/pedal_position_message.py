@@ -2,16 +2,16 @@
 from build.interface.Rte_Types.python.sub_structures.TsSYS_DataPedalPosition import TsSYSDataPedalPosition
 from build.interface.Rte_Types.python.sub_structures.TsSYS_PedalPosition import TsSYSPedalPosition
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_common_messages import Header
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
 
 
 class DataPedalPosition(PUBSUB_MSG_IMPL):
     e_Pct_BrakePedalPosition = float
     e_Pct_AcceleratorPedalPosition = float
-    s_RecvTimestamp = float
+    s_RecvTimestamp = Timestamp
     e_b_Valid = bool
 
-    def __init__(self, s_RecvTimestamp: float, e_Pct_BrakePedalPosition: float, e_Pct_AcceleratorPedalPosition: float,
+    def __init__(self, e_Pct_BrakePedalPosition: float, e_Pct_AcceleratorPedalPosition: float, s_RecvTimestamp: float,
                  e_b_Valid: bool):
         """
         Initialize message containing brake and acceleration pedals position
@@ -45,7 +45,7 @@ class PedalPosition(PUBSUB_MSG_IMPL):
 
     def __init__(self, s_Header: Header, s_Data: DataPedalPosition):
         """
-        Class that represents the ROUTE_PLAN topic
+        Class that represents the UC_SYSTEM_PEDAL_POSITION topic
         :param s_Header: General Information
         :param s_Data: Message Data
         """
