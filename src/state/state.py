@@ -126,38 +126,16 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
         [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]
         """
-        # create matrix of homogeneous points, assuming zero heading. Each coordinate is a column vector
-        bbox = np.array([[self.x - self.size.length/2.0, self.y + self.size.width/2.0, 1],
-                         [self.x + self.size.length/2.0, self.y + self.size.width/2.0, 1],
-                         [self.x + self.size.length/2.0, self.y - self.size.width/2.0, 1],
-                         [self.x - self.size.length/2.0, self.y - self.size.width/2.0, 1]]).transpose()
-        # shift so that the center will be at [0,0]
-        translate_mat = np.array([[1, 0, -self.x],
-                                  [0, 1, -self.y],
-                                  [0, 0,  1]])
+        width = self.size.width / 2.0
+        length = self.size.length / 2.0
+        cos, sin = np.cos(self.yaw), np.sin(self.yaw)
 
-        # rotate about the origin using the heading
-        heading = self.yaw
-        rotation_mat = np.array([[np.cos(heading), -np.sin(heading), 0],
-                                 [np.sin(heading), np.cos(heading),  0],
-                                 [0,               0,                1]])
-
-        # translate back to original point
-        untranslate_mat = np.array([[1, 0, self.x],
-                                    [0, 1, self.y],
-                                    [0, 0, 1]])
-
-        # apply transformations to points
-        bbox = untranslate_mat.dot(rotation_mat).dot(translate_mat).dot(bbox)
-
-        # transpose matrix to get an array of coordinates
-        bbox = bbox.transpose()
-
-        # normalize and remove homogenous 3rd coordinate
-        for i in range(len(bbox)):
-            bbox[i] = bbox[i] / bbox[i,2]
-        return bbox[:,0:2]
-
+        return np.array([self.x, self.y]) + np.dot(np.array([
+            [[-cos, -sin], [-sin, cos]],
+            [[cos, -sin], [sin, cos]],
+            [[cos, sin], [sin, -cos]],
+            [[-cos, sin], [-sin, -cos]]]),
+            np.array([length, width]))
 
     @property
     def map_state(self):
