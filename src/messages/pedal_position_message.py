@@ -1,6 +1,6 @@
 
-from build.interface.Rte_Types.python.sub_structures.TsSYS_DataPedalPosition import TsSYSDataPedalPosition
-from build.interface.Rte_Types.python.sub_structures.TsSYS_PedalPosition import TsSYSPedalPosition
+from interface.Rte_Types.python.sub_structures.TsSYS_DataPedalPosition import TsSYSDataPedalPosition
+from interface.Rte_Types.python.sub_structures.TsSYS_PedalPosition import TsSYSPedalPosition
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 

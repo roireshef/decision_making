@@ -258,8 +258,7 @@ class BehavioralPlanningFacade(DmModule):
     def _get_current_pedal_position(self):
         is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
         if not is_success:
-            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_PEDAL_POSITION)
+            return None
         pedal_position = PedalPosition.deserialize(serialized_pedal_position)
         self.logger.debug("%s at time %f: %f" % ("Pedal position received", pedal_position.s_Data.s_RecvTimestamp,
                                                  pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
