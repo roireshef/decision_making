@@ -121,6 +121,12 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return np.min(safety_dist, axis=0)  # AND on actors
 
     def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
+        """
+        Create LaneMergeState (which inherits from BehavioralGridState) from the given state
+        :param state: state from scene dynamic
+        :param route_plan: the route plan
+        :return: LaneMergeState
+        """
         return LaneMergeState.create_from_state(state, route_plan, self.logger)
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> ActionSpecArray:
