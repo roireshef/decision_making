@@ -174,6 +174,10 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
             if len(stop_bar_locations) > 0 else False
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
+        # if driver initiated driving by pressing on acceleration pedal, ignore the stop bars
+        if behavioral_state.ego_state.driver_initiated_motion:
+            return np.ones(len(action_specs)).astype(bool)
+
         return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
                          for action_spec in action_specs])
 
@@ -290,10 +294,14 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
         """
         Checks if there are stop signs. Returns the `s` of the first (closest) stop-sign
-        :param behavioral_state:
-        :param action_spec:
-        :return: The index of the end point
+        :param behavioral_state: behavioral grid state
+        :param action_spec: action specification
+        :return: s of the next stop bar, target velocity (zero)
         """
+        # if driver initiated driving by pressing on acceleration pedal, ignore the stop bars
+        if behavioral_state.ego_state.driver_initiated_motion:
+            return np.array([np.inf]), np.array([0])
+
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
         stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
         if stop_bar_s is None:  # no stop bars

@@ -194,9 +194,6 @@ ROAD_SHOULDERS_WIDTH = 1.5
 # max. standard deviation is 1 [cm] so the max. squared standard deviation is 10e-4.
 SPLINE_POINT_DEVIATION = 0.0001
 
-# [sec] how much time driver-initiated motion message is valid
-DRIVER_INITIATED_MOTION_MESSAGE_TIMEOUT = 30
-
 # [m] how far driver-initiated motion message is valid
 DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD = 3
 

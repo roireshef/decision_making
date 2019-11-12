@@ -89,17 +89,17 @@ class BehavioralPlanningFacade(DmModule):
                 self._remove_deactivated_flow_control(scene_static)
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
+            self._get_current_pedal_position()
+
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
-                                                              logger=self.logger)
+                                                              logger=self.logger,
+                                                              driver_initiated_motion=self._driver_initiated_motion_state.is_active())
 
                 state.handle_negative_velocities(self.logger)
-
-            self._get_current_pedal_position(
-                state.ego_state.map_state.lane_id, state.ego_state.map_state.lane_fstate[FS_SX], route_plan)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -260,43 +260,24 @@ class BehavioralPlanningFacade(DmModule):
 
         return takeover_message
 
-    def _get_current_pedal_position(self, current_lane_id: int, current_lane_station: float, route_plan: RoutePlan,
-                                    scene_static: SceneStatic) -> PedalPosition:
+    def _get_current_pedal_position(self) -> bool:
         """
-        Read last message of brake & acceleration pedals position
-        :return: PedalPosition
+        Read last message of acceleration pedal position and update self._driver_initiated_motion_state
+        :return: True if succeeded to read the message
         """
         is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
-        if not is_success:
-            return None
-        pedal_position = PedalPosition.deserialize(serialized_pedal_position)
-        self.logger.debug("%s at time %f: %f" % ("Pedal position received", pedal_position.s_Data.s_RecvTimestamp,
-                                                 pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
+        if is_success:
+            pedal_position = PedalPosition.deserialize(serialized_pedal_position)
+            timestamp = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
+            accelerator_pedal_position = pedal_position.s_Data.e_Pct_AcceleratorPedalPosition
+            self.logger.debug("%s at time %f: %f" % ("Pedal position received", pedal_position.s_Data.s_RecvTimestamp,
+                                                     pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
+        else:
+            timestamp = accelerator_pedal_position = 0
+            self.logger.debug("Pedal position was not received; set DIM inactive")
 
-        # find the next stop sign that may be neutralized
-        stop_sign_lane_id, stop_sign_lane_s = MapUtils.get_next_stop_sign_location(
-            current_lane_id, current_lane_station, DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD, route_plan)
-
-        self._driver_initiated_motion_state.update(pedal_position.s_RecvTimestamp,
-                                                   pedal_position.e_Pct_AcceleratorPedalPosition,
-                                                   stop_sign_lane_id, stop_sign_lane_s)
-
-    # def _remove_deactivated_flow_control(self, scene_static):
-        if not self._driver_initiated_motion_state.is_active():
-            return
-
-        # remove the deactivated static flow control from scene_static
-        lanes = [lane for lane in scene_static.s_Data.s_SceneStaticBase.as_scene_lane_segments if
-                 lane.e_i_lane_segment_id == self._driver_initiated_motion_state.stop_bar_lane_id]
-        if len(lanes) == 0:
-            return
-
-        # remove the deactivated static flow control from scene_static
-        flow_control_list = lanes[0].as_static_traffic_flow_control
-        for idx, control in enumerate(flow_control_list):
-            if control.e_l_station == self._driver_initiated_motion_state.stop_bar_lane_station:
-                del flow_control_list[idx]
-                return
+        self._driver_initiated_motion_state.update(timestamp, accelerator_pedal_position)
+        return is_success
 
     def _get_current_scene_static(self) -> SceneStatic:
         with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):

@@ -199,8 +199,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, bool) -> EgoState
+    def __init__(self, obj_id: int, timestamp: int, cartesian_state: CartesianExtendedState, map_state: MapState,
+                 size: ObjectSize, confidence: float, off_map: bool,
+                 driver_initiated_motion: bool = False):
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -212,9 +213,12 @@ class EgoState(DynamicObject):
         :param size: class ObjectSize
         :param confidence: of object's existence
         :param off_map: indicates if the object is off map
+        :param driver_initiated_motion: True if the driver presses acceleration pedal long and strong enough to
+               initialize motion after stopping on stop bar
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map)
+        self.driver_initiated_motion = driver_initiated_motion
 
 
 T = TypeVar('T', bound='State')
@@ -309,7 +313,8 @@ class State(PUBSUB_MSG_IMPL):
     def create_state_from_scene_dynamic(cls, scene_dynamic: SceneDynamic,
                                         selected_gff_segment_ids: np.ndarray,
                                         logger: Logger,
-                                        route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None):
+                                        route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None,
+                                        driver_initiated_motion: bool = False):
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic: scene dynamic data
@@ -320,6 +325,8 @@ class State(PUBSUB_MSG_IMPL):
         :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value.
                Note that it is an optional argument and is used only when the method is called from inside BP and the
                previous BP action is not available, e.g., at the beginning of the planning time.
+        :param driver_initiated_motion: True if the driver presses acceleration pedal long and strong enough to
+               initialize motion after stopping on stop bar
         :return: valid State class
         """
 
@@ -338,7 +345,7 @@ class State(PUBSUB_MSG_IMPL):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0, off_map=False)
+                             confidence=1.0, off_map=False, driver_initiated_motion=driver_initiated_motion)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,
