@@ -14,7 +14,7 @@ import pytest
 
 from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe

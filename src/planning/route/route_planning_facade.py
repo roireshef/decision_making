@@ -3,8 +3,8 @@ from logging import Logger
 import time
 import traceback
 import rte.python.profiler as prof
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from decision_making.src.exceptions import MsgDeserializationError, RoutePlanningException
 from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, \
     LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED

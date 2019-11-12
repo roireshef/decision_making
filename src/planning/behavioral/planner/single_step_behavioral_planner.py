@@ -1,24 +1,25 @@
 import numpy as np
-import rte.python.profiler as prof
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
-    ActionSpec
-from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
-    ActionSpecEvaluator
-from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
-from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
-    CostBasedBehavioralPlanner
-from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.state.state import State
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.road_sign_action_space import RoadSignActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_spec_evaluator import \
+    AugmentedLaneActionSpecEvaluator
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
+    ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
+    DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from logging import Logger
-from typing import Optional, List
+
+from decision_making.src.planning.types import ActionSpecArray
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.state.state import State
 
 
-class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
+class SingleStepBehavioralPlanner(BasePlanner):
     """
     For each received current-state:
      1.A behavioral, semantic state is created and its value is approximated.
@@ -28,33 +29,30 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
-        super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
-                         predictor, logger)
-        self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in action_spec_validator._filters])
+    def __init__(self, logger: Logger):
+        super().__init__(logger)
+        self.predictor = RoadFollowingPredictor(logger)
+        self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+                                                          DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
+                                                          RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
-    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool], route_plan: RoutePlan) -> (int, ActionSpec):
-        """
-        upon receiving an input state, return an action specification and its respective index in the given list of
-        action recipes.
-        :param recipes_mask: A list of boolean values, which are True if respective action recipe in
-        input argument action_recipes is valid, else False.
-        :param state: the current world state
-        :param behavioral_state: processed behavioral state
-        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
-        :param route_plan:
-        :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
-        """
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
+        return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
-        # Action specification
-        # TODO: replace numpy array with fast sparse-list implementation
+    def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
+        """
+        see base class
+        """
+        action_recipes = self.action_space.recipes
+
+        # Recipe filtering
+        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+        self.logger.debug('Number of actions originally: %d, valid: %d',
+                          self.action_space.action_space_size, np.sum(recipes_mask))
+
         action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
         action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
-        action_specs = list(action_specs)
 
         # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
@@ -62,68 +60,40 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         num_of_specified_actions = sum(x is not None for x in action_specs)
         self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
+        return action_specs
 
-        # ActionSpec filtering
-        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+    def _filter_actions(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> ActionSpecArray:
+        """
+        see base class
+        """
+        action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, behavioral_state)
+        filtered_action_specs = np.full(len(action_specs), None)
+        filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
+        return filtered_action_specs
 
-        # State-Action Evaluation
-        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask, route_plan)
+    def _evaluate_actions(self, behavioral_state: BehavioralGridState, route_plan: RoutePlan,
+                          action_specs: ActionSpecArray) -> np.ndarray:
+        """
+        Evaluates Action-Specifications based on the following logic:
+        * Only takes into account actions on RelativeLane.SAME_LANE
+        * If there's a leading vehicle, try following it (ActionType.FOLLOW_VEHICLE, lowest aggressiveness possible)
+        * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_ROAD_SIGN action with lowest
+        * aggressiveness, and save it.
+        * Find the ActionType.FOLLOW_LANE action with maximal allowed velocity and lowest aggressiveness possible,
+        * and save it.
+        * Compare the saved FOLLOW_ROAD_SIGN and FOLLOW_LANE actions, and choose between them.
+        :param action_specs: specifications of action_recipes.
+        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
+        """
+        action_spec_evaluator = AugmentedLaneActionSpecEvaluator(self.logger)
+        action_specs_exist = action_specs.astype(bool)
+        return action_spec_evaluator.evaluate(behavioral_state, self.action_space.recipes, action_specs,
+                                              list(action_specs_exist), route_plan)
 
-        # approximate cost-to-go per terminal state
-        terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
-                                                                    action_specs_mask, route_plan)
-        # TODO: NavigationPlan is now None and should be meaningful when we have one
-        terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask[i] else np.nan
-                                           for i, state in enumerate(terminal_behavioral_states)])
-
-        self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))
-
-        # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
-        action_q_cost = action_costs + terminal_states_values
-
-        valid_idxs = np.where(action_specs_mask)[0]
-        selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
-        selected_action_spec = action_specs[selected_action_index]
-
-        return selected_action_index, selected_action_spec
-
-    @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan):
-
-        action_recipes = self.action_space.recipes
-
-        # create road semantic grid from the raw State object
-        # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
-
-        # Recipe filtering
-        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
-
-        self.logger.debug('Number of actions originally: %d, valid: %d',
-                          self.action_space.action_space_size, np.sum(recipes_mask))
-        selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
-                                                                         recipes_mask, route_plan)
-        trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
-            behavioral_state=behavioral_state, action_spec=selected_action_spec)
-        visualization_message = BehavioralVisualizationMsg(
-            reference_route_points=trajectory_parameters.reference_route.points)
-
-        # keeping selected actions for next iteration use
-        self._last_action = action_recipes[selected_action_index]
-        self._last_action_spec = selected_action_spec
-
-        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
-            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters,
-            behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
-
-        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
-                          action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
-        self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
-                          selected_action_spec, state.ego_state.timestamp_in_sec)
-
-        self.logger.debug('In timestamp %f, selected action is %s with horizon: %f'
-                          % (behavioral_state.ego_state.timestamp_in_sec,
-                             action_recipes[selected_action_index],
-                             selected_action_spec.t))
-
-        return trajectory_parameters, baseline_trajectory, visualization_message
+    def _choose_action(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray, costs: np.array) -> \
+            [ActionRecipe, ActionSpec]:
+        """
+        see base class
+        """
+        selected_action_index = int(np.argmin(costs))
+        return self.action_space.recipes[selected_action_index], action_specs[selected_action_index]

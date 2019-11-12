@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from decision_making.paths import Paths
-from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, EPS
+from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON
 from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y, FS_DX
@@ -101,12 +101,13 @@ def plot_dynamics(log_file_path: str):
             obj_dist = float(behavioral_grid_str.split('dist_from_front_object ')[1].split(',')[0])
             obj_str = behavioral_grid_str.split('front_object: ')[1]
             obj_dict = ast.literal_eval(obj_str)
-            obj_id = obj_dict['obj_id'] if obj_dict is not None else 0
-            obj_vel = obj_dict['_cached_cartesian_state']['array'][C_V] if obj_dict is not None else 0
-            other_times.append(time)
-            other_ids.append(obj_id)
-            other_vels.append(obj_vel)
-            other_dists.append(obj_dist)
+            if obj_dict is not None:
+                obj_id = obj_dict['obj_id']
+                obj_vel = obj_dict['_cached_cartesian_state']['array'][C_V]
+                other_times.append(time)
+                other_ids.append(obj_id)
+                other_vels.append(obj_vel)
+                other_dists.append(obj_dist)
 
         if 'Scene Dynamic host localization published' in text:
             ego_hypothesis_num.append(int(text.split('Number of Hypotheses: ')[1].split(', Hypotheses')[0]))
@@ -195,14 +196,15 @@ def plot_dynamics(log_file_path: str):
         if 'Speed limits at time' in text:
             if ego_lane_id is not None:
                 speed_limit_per_lane = ast.literal_eval(text.split('Speed limits at time')[1].split(': ', maxsplit=1)[1])
-                vel_limit.append(speed_limit_per_lane[ego_lane_id])
-                vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
+                if ego_lane_id in list(speed_limit_per_lane):
+                    vel_limit.append(speed_limit_per_lane[ego_lane_id])
+                    vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
 
     f = plt.figure(1)
 
     ax1 = plt.subplot(5, 2, 1)
     ego_sx_plot,  = plt.plot(timestamp_in_sec, ego_sx)
-    longitudinal_dist_plot, = plt.plot(other_times, other_dists)
+    longitudinal_dist_plot, = plt.plot(other_times, other_dists, '.-')
     stop_dist_plt, = plt.plot(stop_dist_timestamp, stop_dist)
     multiple_ego_hypotheses = plt.scatter(multiple_ego_hypotheses_timestamp, [100] * len(multiple_ego_hypotheses_timestamp), s=5, c='k')
     plt.xlabel('time[s]')
