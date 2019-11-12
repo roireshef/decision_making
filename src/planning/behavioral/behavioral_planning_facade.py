@@ -255,7 +255,11 @@ class BehavioralPlanningFacade(DmModule):
 
         return takeover_message
 
-    def _get_current_pedal_position(self):
+    def _get_current_pedal_position(self) -> PedalPosition:
+        """
+        Read last message of brake & acceleration pedals position
+        :return: PedalPosition
+        """
         is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
         if not is_success:
             return None
