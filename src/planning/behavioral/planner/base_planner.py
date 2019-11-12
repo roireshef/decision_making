@@ -181,7 +181,7 @@ class BasePlanner:
             poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
         else:
             # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-            A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
+            A_inv = QuinticPoly1D.inverse_time_constraints_matrix(action_spec.t)
 
             constraints_s = np.concatenate((ego_fstate[FS_SX:(FS_SA + 1)], goal_fstate[FS_SX:(FS_SA + 1)]))
             constraints_d = np.concatenate((ego_fstate[FS_DX:(FS_DA + 1)], goal_fstate[FS_DX:(FS_DA + 1)]))
