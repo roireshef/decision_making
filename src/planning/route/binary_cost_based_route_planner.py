@@ -126,17 +126,77 @@ class CostBasedRoutePlanner(RoutePlanner):
         return MIN_COST
 
     @abstractmethod
+    def _calculate_end_cost_from_downstream_lane(self, downstream_lane_segment: RoutePlanLaneSegment) -> float:
+        """
+        Calculates lane end cost based on downstream lane segment
+        :param downstream_lane_segment: Downstream lane segment information from RP
+        :return: Lane end cost related to provided downstream lane segment
+        """
+        pass
+
     @raises(DownstreamLaneDataNotFound)
     def _lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (float, bool):
         """
         Calculates lane end cost for a single lane segment
+
+        If a downstream lane with an occupancy cost less then MAX_COST doesn't exist, then the end cost will also be
+        set to MAX_COST; otherwise, the end cost will be equal to the minimum end cost that is calculated based on
+        each downstream lane.
+
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
         :return:
             (float): lane_end_cost, cost to the AV if it reaches the lane end
             (bool):  lane connectivity diagnostics info, whether at least one downstream lane segment
                      (as described in the map) is in the downstream route road segment
         """
-        pass
+        min_downstream_lane_segment_occupancy_cost = MAX_COST
+        min_lane_segment_end_cost = MAX_COST
+
+        # Search iteratively for the next lane segments that are downstream to the current lane and in the route.
+        downstream_lane_found_in_route = False
+
+        downstream_route_lane_segments: RoutePlanRoadSegment = self._route_plan_lane_segments_reversed[-1]
+
+        downstream_route_lane_segment_ids = np.array([route_lane_segment.e_i_lane_segment_id
+                                                      for route_lane_segment in downstream_route_lane_segments])
+
+        for downstream_base_lane_segment in lane_segment_base_data.as_downstream_lanes:
+
+            downstream_lane_segment_id = downstream_base_lane_segment.e_i_lane_segment_id
+
+            # Verify that the downstream lane is in the route (it may not be ex: fork/exit)
+            if downstream_lane_segment_id in downstream_route_lane_segment_ids:
+
+                downstream_lane_found_in_route = True
+
+                # find the index corresponding to the lane seg ID in the road segment
+                downstream_route_lane_segment_idx = np.where(downstream_route_lane_segment_ids == downstream_lane_segment_id)[0][0]
+
+                if downstream_route_lane_segment_idx < len(downstream_route_lane_segments):
+                    downstream_route_lane_segment = downstream_route_lane_segments[downstream_route_lane_segment_idx]
+                else:
+                    raise DownstreamLaneDataNotFound('Backpropagating Route Planner: downstream lane segment ID {0} for lane segment ID {1} '
+                                                     'not present in route_plan_lane_segment structure for downstream road segment'
+                                                     .format(downstream_lane_segment_id, lane_segment_base_data.e_i_lane_segment_id))
+
+                # Keep track of minimum downstream lane occupancy cost
+                min_downstream_lane_segment_occupancy_cost = min(min_downstream_lane_segment_occupancy_cost,
+                                                                 downstream_route_lane_segment.e_cst_lane_occupancy_cost)
+
+                # Determine the lane end cost relating to the downstream lane and keep track of the minimum
+                lane_segment_end_cost = self._calculate_end_cost_from_downstream_lane(downstream_route_lane_segment)
+
+                min_lane_segment_end_cost = min(min_lane_segment_end_cost, lane_segment_end_cost)
+            else:
+                # Downstream lane segment not in route. Do nothing.
+                continue
+
+        if min_downstream_lane_segment_occupancy_cost == MAX_COST:
+            lane_end_cost = MAX_COST
+        else:
+            lane_end_cost = min_lane_segment_end_cost
+
+        return lane_end_cost, downstream_lane_found_in_route
 
     def _lane_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (RoutePlanLaneSegment, bool):
         """
