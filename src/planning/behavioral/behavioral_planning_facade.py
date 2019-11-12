@@ -3,7 +3,8 @@ import traceback
 from logging import Logger
 
 import numpy as np
-from decision_making.src.messages.driver_initiated_motion_message import DriverInitiatedMotionState
+from build.interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -59,11 +60,13 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_PEDAL_POSITION)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.unsubscribe(UC_SYSTEM_PEDAL_POSITION)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -94,7 +97,7 @@ class BehavioralPlanningFacade(DmModule):
 
                 state.handle_negative_velocities(self.logger)
 
-            self._get_driver_initiated_motion_message(
+            self._get_current_pedal_position(
                 state.ego_state.map_state.lane_id, state.ego_state.map_state.lane_fstate[FS_SX], route_plan)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
@@ -256,15 +259,24 @@ class BehavioralPlanningFacade(DmModule):
 
         return takeover_message
 
-    def _get_driver_initiated_motion_message(self, current_lane_id: int, current_lane_station: float, route_plan: RoutePlan):
-        is_success, dim_message = self.pubsub.get_latest_sample(topic=UC_SYSTEM_DRIVER_INITIATED_MOTION_MESSAGE)
-        if is_success:
-            stop_sign_lane_id, stop_sign_lane_s = MapUtils.get_next_stop_sign_location(
-                current_lane_id, current_lane_station, DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD, route_plan)
-            self._driver_initiated_motion_state.update(dim_message.timestamp_in_sec, dim_message.pedal_rate,
-                                                       stop_sign_lane_id, stop_sign_lane_s)
+    def _get_current_pedal_position(self, current_lane_id: int, current_lane_station: float, route_plan: RoutePlan,
+                                    scene_static: SceneStatic):
+        is_success, serialized_dim_message = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
+        if not is_success:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_PEDAL_POSITION)
 
-    def _remove_deactivated_flow_control(self, scene_static):
+        dim_message = RoutePlan.deserialize(serialized_dim_message)
+
+        # find the next stop sign that may be neutralized
+        stop_sign_lane_id, stop_sign_lane_s = MapUtils.get_next_stop_sign_location(
+            current_lane_id, current_lane_station, DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD, route_plan)
+
+        self._driver_initiated_motion_state.update(dim_message.s_RecvTimestamp,
+                                                   dim_message.e_Pct_AcceleratorPedalPosition,
+                                                   stop_sign_lane_id, stop_sign_lane_s)
+
+    #def _remove_deactivated_flow_control(self, scene_static):
         if not self._driver_initiated_motion_state.is_active():
             return
 

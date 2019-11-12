@@ -200,8 +200,8 @@ DRIVER_INITIATED_MOTION_MESSAGE_TIMEOUT = 30
 # [m] how far driver-initiated motion message is valid
 DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD = 3
 
-# [%] throttle pedal strength
-DRIVER_INITIATED_MOTION_PEDAL_THRESH = 5
+# acceleration pedal strength in [0..1]
+DRIVER_INITIATED_MOTION_PEDAL_THRESH = 0.05
 
 # [sec] time period of sufficient throttle pedal
 DRIVER_INITIATED_MOTION_PEDAL_TIME = 0.5

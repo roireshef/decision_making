@@ -1,52 +1,56 @@
 
-import numpy as np
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, DRIVER_INITIATED_MOTION_PEDAL_THRESH, \
-    DRIVER_INITIATED_MOTION_PEDAL_TIME, DRIVER_INITIATED_MOTION_MESSAGE_TIMEOUT
+from build.interface.Rte_Types.python.sub_structures.TsSYS_DataPedalPosition import TsSYSDataPedalPosition
+from build.interface.Rte_Types.python.sub_structures.TsSYS_PedalPosition import TsSYSPedalPosition
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.scene_common_messages import Header
 
 
-class DriverInitiatedMotionState:
-    pedal_from_time = float
-    active_from_time = float
-    stop_bar_lane_id = int
-    stop_bar_lane_station = float
+class DataPedalPosition(PUBSUB_MSG_IMPL):
+    e_Pct_BrakePedalPosition = float
+    e_Pct_AcceleratorPedalPosition = float
+    s_RecvTimestamp = float
+    e_b_Valid = bool
 
-    def __init__(self):
-        self.pedal_from_time = np.inf
-        self.active_from_time = np.inf
-        self.stop_bar_lane_id = None
-        self.stop_bar_lane_station = None
+    def __init__(self, s_RecvTimestamp: float, e_Pct_BrakePedalPosition: float, e_Pct_AcceleratorPedalPosition: float,
+                 e_b_Valid: bool):
+        self.e_Pct_BrakePedalPosition = e_Pct_BrakePedalPosition
+        self.e_Pct_AcceleratorPedalPosition = e_Pct_AcceleratorPedalPosition
+        self.s_RecvTimestamp = s_RecvTimestamp
+        self.e_b_Valid = e_b_Valid
 
-    def update(self, timestamp_in_sec: float, pedal_rate: float, stop_bar_lane_id: int, stop_bar_lane_station: float):
-        if pedal_rate >= DRIVER_INITIATED_MOTION_PEDAL_THRESH:
-            self.pedal_from_time = min(self.pedal_from_time, timestamp_in_sec)  # update pedal_from_time
-            # if the pedal was pressed for enough time, update the state
-            if timestamp_in_sec - self.pedal_from_time >= DRIVER_INITIATED_MOTION_PEDAL_TIME:
-                self.active_from_time = timestamp_in_sec
-                self.stop_bar_lane_id = stop_bar_lane_id
-                self.stop_bar_lane_station = stop_bar_lane_station
-        else:  # no pedal, check for timeout
-            self.pedal_from_time = np.inf
-            if timestamp_in_sec - self.active_from_time > DRIVER_INITIATED_MOTION_MESSAGE_TIMEOUT:
-                self.active_from_time = np.inf
-
-    def is_active(self):
-        return not np.isinf(self.active_from_time)
-
-
-class DriverInitiatedMotionMessage(PUBSUB_MSG_IMPL):
-    timestamp_in_sec = float
-    pedal_rate = float
-
-    def __init__(self, timestamp_in_sec: float, pedal_rate: float):
-        self.timestamp_in_sec = timestamp_in_sec
-        self.pedal_rate = pedal_rate
-
-    def serialize(self) -> TsSYSDriverInitiatedMotionMessage:
-        pubsub_msg = TsSYSDriverInitiatedMotionMessage()
-        pubsub_msg.timestamp_in_sec = self.timestamp_in_sec
-        pubsub_msg.pedal_rate = self.pedal_rate
+    def serialize(self) -> TsSYSDataPedalPosition:
+        pubsub_msg = TsSYSDataPedalPosition()
+        pubsub_msg.e_Pct_BrakePedalPosition = self.e_Pct_BrakePedalPosition
+        pubsub_msg.e_Pct_AcceleratorPedalPosition = self.e_Pct_AcceleratorPedalPosition
+        pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp
+        pubsub_msg.e_b_Valid = self.e_b_Valid
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSDriverInitiatedMotionMessage):
-        return cls(pubsubMsg.timestamp_in_sec, pubsubMsg.pedal_rate)
+    def deserialize(cls, pubsubMsg: TsSYSDataPedalPosition):
+        return cls(pubsubMsg.e_Pct_BrakePedalPosition, pubsubMsg.e_Pct_AcceleratorPedalPosition,
+                   pubsubMsg.s_RecvTimestamp, pubsubMsg.e_b_Valid)
+
+
+class PedalPosition(PUBSUB_MSG_IMPL):
+    s_Header = Header
+    s_Data = DataPedalPosition
+
+    def __init__(self, s_Header: Header, s_Data: DataPedalPosition):
+        """
+        Class that represents the ROUTE_PLAN topic
+        :param s_Header: General Information
+        :param s_Data: Message Data
+        """
+        self.s_Header = s_Header
+        self.s_Data = s_Data
+
+    def serialize(self) -> TsSYSPedalPosition:
+        pubsub_msg = TsSYSPedalPosition()
+        pubsub_msg.s_Header = self.s_Header.serialize()
+        pubsub_msg.s_Data = self.s_Data.serialize()
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg: TsSYSPedalPosition):
+        return cls(pubsubMsg.s_Header, pubsubMsg.s_Data)
