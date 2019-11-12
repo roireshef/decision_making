@@ -3,7 +3,7 @@ import traceback
 from logging import Logger
 
 import numpy as np
-from decision_making.src.messages.driver_initiated_motion_message import PedalPosition
+from decision_making.src.messages.pedal_position_message import PedalPosition
 from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
