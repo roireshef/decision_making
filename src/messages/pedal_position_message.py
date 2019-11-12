@@ -11,8 +11,8 @@ class DataPedalPosition(PUBSUB_MSG_IMPL):
     s_RecvTimestamp = Timestamp
     e_b_Valid = bool
 
-    def __init__(self, e_Pct_BrakePedalPosition: float, e_Pct_AcceleratorPedalPosition: float, s_RecvTimestamp: float,
-                 e_b_Valid: bool):
+    def __init__(self, e_Pct_BrakePedalPosition: float, e_Pct_AcceleratorPedalPosition: float,
+                 s_RecvTimestamp: Timestamp, e_b_Valid: bool):
         """
         Initialize message containing brake and acceleration pedals position
         :param s_RecvTimestamp: NTP timestamp of when CAN message containing gear information reaches gateway sending this message
