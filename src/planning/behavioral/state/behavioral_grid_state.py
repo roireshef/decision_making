@@ -10,7 +10,7 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_L
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
+from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y, FP_DX
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
     FrenetSubSegment
 from decision_making.src.state.map_state import MapState
@@ -628,7 +628,7 @@ class BehavioralGridState:
                      (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
 
     @staticmethod
-    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int) -> bool:
+    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int, logger: Logger) -> bool:
         """
         Checks if any part of an object is inside another lane.
         Takes the point of the object's bounding box or center of mass that is closest to the lane.
@@ -656,29 +656,22 @@ class BehavioralGridState:
         bbox = dynamic_object.bounding_box()
         # add center of vehicle to the list of points being considered
         bbox = np.vstack((bbox, [dynamic_object.x, dynamic_object.y]))
+        # convert bbox points to be in the frenet space of the target lane
+        fbbox = []
 
-        nominal_path_coords = np.array([np.array([nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value],
-                                         nominal[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value]])
-                               for nominal in MapUtils.get_lane_geometry(lane_id).a_nominal_path_points])
-        # find closest point to the lane's nominal path
-        closest_nominal_points = [Math.find_closest_point_in_array(point, nominal_path_coords)
-                             for point in bbox]
-        distances_to_lane = [np.linalg.norm(bbox[i] - closest_nominal_points[i]) for i in range(len(bbox))]
+        # project points onto other lane if possible. If not possible, skip checking the point
+        for point in bbox:
+            try:
+                fbbox.append(lane_frame.cpoint_to_fpoint(point))
+            except OutOfSegmentBack as e:
+                logger.debug("Bbox point is OutOfSegmentBack and will be skipped: %s" % str(e))
+            except OutOfSegmentFront as e:
+                logger.debug("Bbox point is OutOfSegmentFront and will be skipped: %s" % str(e))
+        fbbox = np.array(fbbox)
 
-        # min_distance = np.min(distances_to_lane)
-        # # cast to int since np.argmin returns an 0-dimensional array
-        # closest_bbox_index = int(np.argmin(distances_to_lane))
-        # closest_s_on_lane_single = lane_frame.cpoint_to_fpoint(closest_nominal_points[closest_bbox_index])[FP_SX]
+        # get border widths at the longitudes of the bbox points
+        borders_right, borders_left = MapUtils.get_dists_to_lane_borders(lane_id, fbbox[:, FP_SX])
+        border_widths = borders_right if in_right else borders_left
+        # test if any bbox point intrudes in the target lane
+        return np.any((np.abs(fbbox[:, FP_DX]) < border_widths))
 
-        closest_ss_on_lane = lane_frame.cpoints_to_fpoints(np.array(closest_nominal_points))[:,FP_SX]
-
-        borders_right, borders_left = MapUtils.get_dists_to_lane_borders(lane_id, closest_ss_on_lane)
-
-        # check boundary points if lane is an adjacent lane
-        # otherwise, if the closest distance to the nominal path is less than the lane's width, the vehicle must be in the lane.
-        if in_left:
-            return any([distances_to_lane[i] < borders_left[i] for i in range(len(bbox))])
-        elif in_right:
-            return any([distances_to_lane[i] < borders_right[i] for i in range(len(bbox))])
-        else:
-            return False
