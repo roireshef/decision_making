@@ -224,13 +224,13 @@ class MapUtils:
         """
         nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 
-        closest_s_idxs = [np.argmin(np.abs(nominal_points[:,
-                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s)) for s in ss]
+        closest_s_idxs = np.array([np.argmin(np.abs(nominal_points[:,
+                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s)) for s in ss])
 
-        return [nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value]
-                    for closest_s_idx in closest_s_idxs], \
-               [- nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value]
-                    for closest_s_idx in closest_s_idxs]
+        return (nominal_points[closest_s_idxs, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
+               - nominal_points[closest_s_idxs, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
+
+
 
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:
