@@ -3,8 +3,8 @@ import traceback
 from logging import Logger
 
 import numpy as np
-from decision_making.src.messages.driver_initiated_motion_message import PedalPosition
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
+from decision_making.src.messages.pedal_position_message import PedalPosition
 from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
@@ -261,11 +261,14 @@ class BehavioralPlanningFacade(DmModule):
         return takeover_message
 
     def _get_current_pedal_position(self, current_lane_id: int, current_lane_station: float, route_plan: RoutePlan,
-                                    scene_static: SceneStatic):
+                                    scene_static: SceneStatic) -> PedalPosition:
+        """
+        Read last message of brake & acceleration pedals position
+        :return: PedalPosition
+        """
         is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
         if not is_success:
-            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          UC_SYSTEM_PEDAL_POSITION)
+            return None
         pedal_position = PedalPosition.deserialize(serialized_pedal_position)
         self.logger.debug("%s at time %f: %f" % ("Pedal position received", pedal_position.s_Data.s_RecvTimestamp,
                                                  pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
@@ -278,7 +281,7 @@ class BehavioralPlanningFacade(DmModule):
                                                    pedal_position.e_Pct_AcceleratorPedalPosition,
                                                    stop_sign_lane_id, stop_sign_lane_s)
 
-    #def _remove_deactivated_flow_control(self, scene_static):
+    # def _remove_deactivated_flow_control(self, scene_static):
         if not self._driver_initiated_motion_state.is_active():
             return
 
