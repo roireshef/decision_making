@@ -9,6 +9,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     TD_STEPS, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
     CLOSE_TO_ZERO_NEGATIVE_VELOCITY, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_LIMITS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -225,13 +226,15 @@ class WerlingPlanner(TrajectoryPlanner):
     def _get_lat_horizon(self, fconstraints_t0: FrenetConstraints, T_s: float) -> float:
         """
         Calculates the "optimal" lateral time horizon based on the given constraints and time-jerk weights.
+        In the current implementation (no TP grid) choose standard aggressiveness level.
         :param fconstraints_t0: a set of constraints over the initial state
         :param T_s: longitudinal action time horizon
         :return: Lateral time horizon. Higher bound is T_s.
         """
-        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[0:1]
+        aggr_level_idx = AggressivenessLevel.STANDARD.value
+        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr_level_idx:aggr_level_idx+1]
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1], dx=-fconstraints_t0._dx, a_0=fconstraints_t0._da,
+            w_T=weights[:, 2], w_J=weights[:, 0], dx=-fconstraints_t0._dx, a_0=fconstraints_t0._da,
             v_0=fconstraints_t0._dv, v_T=0, T_m=0)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
         comfort_T_d = np.fmin.reduce(roots_d, axis=-1)[0]
