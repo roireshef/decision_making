@@ -108,6 +108,9 @@ class FilterForLaneSpeedLimits(ActionSpecFilter):
         lane_ids_matrix = frenet.convert_to_segment_states(ftrajectories)[0]
         lane_to_nominal_speed = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed
                                  for lane_id in np.unique(lane_ids_matrix)}
+        # TODO the for loop below may not be good for run time. Current profiling shows runtime of about 0.5ms which is ok.
+        #   trying parallel methods as in https://stackoverflow.com/questions/55949809/efficiently-replace-elements-in-array-based-on-dictionary-numpy-python
+        #   it only made things worse. May want to revisit decision if this turns out to be a problem in the future.
         minimal_lane_speed_over_trajectory = np.empty(ftrajectories.shape[0], dtype=np.float)
         for traj_id in range(ftrajectories.shape[0]):
             minimal_lane_speed_over_trajectory[traj_id] = np.min([lane_to_nominal_speed[lane_id] for
