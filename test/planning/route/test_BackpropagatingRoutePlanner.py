@@ -1,5 +1,4 @@
 import numpy as np
-from unittest.mock import patch
 
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_message import SceneStatic
@@ -46,7 +45,6 @@ def test_plan_normalScene_accurateRoutePlanOutput(scene_static_pg_split: SceneSt
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == exp_route_plan_lane_segments[i][j].e_i_lane_segment_id
 
 
-@patch('decision_making.src.planning.route.backpropagating_route_planner.BACKPROP_DISCOUNT_FACTOR', 0.5)
 def test_plan_constructionScenes_backpropagatedCostsCorrectRelativeToOtherLanes(construction_scene_and_expected_output: RoutePlanTestData):
     """
     In these scenes, the left and middle lanes are blocked on different road segments. Regardless, due to backpropgation,
@@ -84,7 +82,6 @@ def test_plan_constructionScenes_backpropagatedCostsCorrectRelativeToOtherLanes(
     assert route_plan_output.as_route_plan_lane_segments[0][0].e_cst_lane_end_cost < \
            route_plan_output.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost
 
-@patch('decision_making.src.planning.route.backpropagating_route_planner.BACKPROP_DISCOUNT_FACTOR', 0.5)
 def test_plan_mapScenes_backpropagatedCostsCorrectRelativeToOtherLanes(map_scene_and_expected_output: RoutePlanTestData):
     """
     These scenes are described in the if and elif statement blocks below. Due to backpropgation,
@@ -128,7 +125,6 @@ def test_plan_mapScenes_backpropagatedCostsCorrectRelativeToOtherLanes(map_scene
         assert abs(route_plan_output.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost
                    - route_plan_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost) < 0.002
 
-@patch('decision_making.src.planning.route.backpropagating_route_planner.BACKPROP_DISCOUNT_FACTOR', 0.5)
 def test_plan_gmfaScenes_backpropagatedCostsCorrectRelativeToOtherLanes(gmfa_scene_and_expected_output: RoutePlanTestData):
     """
     In these scenes, the left lane is blocked on different road segments with various GMFA reasons.
@@ -166,7 +162,6 @@ def test_plan_gmfaScenes_backpropagatedCostsCorrectRelativeToOtherLanes(gmfa_sce
            route_plan_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost
 
 
-@patch('decision_making.src.planning.route.backpropagating_route_planner.BACKPROP_DISCOUNT_FACTOR', 0.5)
 def test_plan_laneDirectionScenes_backpropagatedCostsCorrectRelativeToOtherLanes(lane_direction_scene_and_expected_output: RoutePlanTestData):
     """
     In this scene, the left lane is blocked on the second road segment. Due to backpropgation,
@@ -204,7 +199,6 @@ def test_plan_laneDirectionScenes_backpropagatedCostsCorrectRelativeToOtherLanes
            route_plan_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost
 
 
-@patch('decision_making.src.planning.route.backpropagating_route_planner.BACKPROP_DISCOUNT_FACTOR', 0.5)
 def test_plan_combinedScenes_backpropagatedCostsCorrectRelativeToOtherLanes(combined_scene_and_expected_output: RoutePlanTestData):
     """
     These scenes are described in the if and elif statement blocks below. Due to backpropgation,

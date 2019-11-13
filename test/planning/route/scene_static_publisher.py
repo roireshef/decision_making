@@ -143,7 +143,7 @@ class SceneStaticPublisher:
                                                               as_downstream_lanes=downstream_lanes,
                                                               e_Cnt_upstream_lane_count=0,
                                                               as_upstream_lanes=self._generate_lane_segment_connectivity(),
-                                                              e_v_nominal_speed=0,
+                                                              e_v_nominal_speed=20,
                                                               e_l_length=100,
                                                               e_Cnt_num_active_lane_attributes=num_active_lane_attributes,
                                                               a_i_active_lane_attribute_indices=active_lane_attribute_indices,

@@ -126,10 +126,11 @@ class CostBasedRoutePlanner(RoutePlanner):
         return MIN_COST
 
     @abstractmethod
-    def _calculate_end_cost_from_downstream_lane(self, downstream_lane_segment: RoutePlanLaneSegment) -> float:
+    def _calculate_end_cost_from_downstream_lane(self, lane_segment_id: int, downstream_lane_costs: RoutePlanLaneSegment) -> float:
         """
         Calculates lane end cost based on downstream lane segment
-        :param downstream_lane_segment: Downstream lane segment information from RP
+        :param lane_segment_id: Lane ID
+        :param downstream_lane_costs: Downstream lane segment cost information from RP
         :return: Lane end cost related to provided downstream lane segment
         """
         pass
@@ -184,7 +185,8 @@ class CostBasedRoutePlanner(RoutePlanner):
                                                                  downstream_route_lane_segment.e_cst_lane_occupancy_cost)
 
                 # Determine the lane end cost relating to the downstream lane and keep track of the minimum
-                lane_segment_end_cost = self._calculate_end_cost_from_downstream_lane(downstream_route_lane_segment)
+                lane_segment_end_cost = self._calculate_end_cost_from_downstream_lane(lane_segment_base_data.e_i_lane_segment_id,
+                                                                                      downstream_route_lane_segment)
 
                 min_lane_segment_end_cost = min(min_lane_segment_end_cost, lane_segment_end_cost)
             else:
