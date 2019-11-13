@@ -14,12 +14,9 @@ from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X,
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
     FrenetSubSegment
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import DynamicObject, EgoState
-from decision_making.src.state.state import State
+from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.scene_static_enums import LaneOverlapType, NominalPathPoint
-from decision_making.src.messages.scene_static_enums import ManeuverType
-from decision_making.src.planning.utils.math_utils import Math
+from decision_making.src.messages.scene_static_enums import LaneOverlapType, ManeuverType
 
 class DynamicObjectWithRoadSemantics:
     """
@@ -49,8 +46,7 @@ RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSem
 
 class BehavioralGridState:
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
-                 extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                 projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
+                 extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame], projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
         """
         constructor of BehavioralGridState
         :param road_occupancy_grid: dictionary from grid cell to list of dynamic objects with semantics
@@ -628,49 +624,95 @@ class BehavioralGridState:
                      (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
 
     @staticmethod
-    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int) -> bool:
+    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int, logger: Logger = None) -> bool:
         """
         Checks if any part of an object is inside another lane.
         Takes the point of the object's bounding box or center of mass that is closest to the lane.
         Checks if the distance from that point to the nominal path point of the lane is less than
         the nominal point's left/right offset.
-        :param dynamic_object:
-        :param lane_id:
-        :return:
+        :param dynamic_object: object to be checked
+        :param lane_id: lane of interest
+        :param logger:
+        :return: Bool representing if any bounding box corner or center of mass point is in the lane of interest
         """
         # skip checks if checking object's assigned lane
         if dynamic_object.map_state.lane_id == lane_id:
             return True
 
-        lane_frame = MapUtils.get_lane_frenet_frame(lane_id)
         obj_lane = MapUtils.get_lane(dynamic_object.map_state.lane_id)
 
         # determine if the lane is to the left or right of the object
         in_left = lane_id in [lane.e_i_lane_segment_id for lane in obj_lane.as_left_adjacent_lanes]
         in_right = lane_id in [lane.e_i_lane_segment_id for lane in obj_lane.as_right_adjacent_lanes]
+        offset_side = RelativeLane.RIGHT_LANE if in_right else RelativeLane.LEFT_LANE
 
-        # object can only overlap with adjacent lanes
-        if not in_left and not in_right:
+        # object can only overlap with adjacent lanes, and can't be in both left and right
+        if not (in_left ^ in_right):
             return False
 
         bbox = dynamic_object.bounding_box()
         # add center of vehicle to the list of points being considered
         bbox = np.vstack((bbox, [dynamic_object.x, dynamic_object.y]))
-        # convert bbox points to be in the frenet space of the target lane
-        fbbox = []
+
+        point_results = []
 
         # project points onto other lane if possible. If not possible, skip checking the point
         for point in bbox:
+            # flag to determine if an OutOfSegment error was found
+            out_of_segment = False
+            # upstream/downstream connections to cache when an exception is thrown
+            connection_maneuver_types = None
             try:
-                fbbox.append(lane_frame.cpoint_to_fpoint(point))
-            except (OutOfSegmentBack, OutOfSegmentFront) as e:
-                # TODO: is it worth it to add a logger? (need to propagate to 3 methods)
-                pass
-        fbbox = np.array(fbbox)
-
-        # get border widths at the longitudes of the bbox points
-        borders_right, borders_left = MapUtils.get_dists_to_lane_borders(lane_id, fbbox[:, FP_SX])
-        border_widths = borders_right if in_right else borders_left
+                point_results.append(BehavioralGridState._is_point_in_lane(point, lane_id, offset_side))
+            except OutOfSegmentFront:
+                # TODO: is the route plan necessary here?
+                out_of_segment = True
+                # if any point is ahead of the lane of interest, find its downstream straight_connection and check there
+                connection_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(lane_id)
+            except OutOfSegmentBack:
+                # TODO: is the route plan necessary here?
+                out_of_segment = True
+                # if any point is behind of the lane of interest, find its upstream straight_connection and check there
+                connection_maneuver_types = MapUtils.get_upstream_lane_maneuver_types(lane_id)
+            finally:
+                # handle cases where a point is behind/ahead of a lane's nominal path.
+                # check upstream/downstream lanes when it makes sense to
+                if out_of_segment:
+                    # if there is no straight downstream/upstream, assume that the ego's path will not be blocked
+                    if ManeuverType.STRAIGHT_CONNECTION not in connection_maneuver_types.keys():
+                        point_results.append(False)
+                    else:
+                        # find straight_connection upstream/downstream lane_id
+                        straight_connection_lane_id = list(connection_maneuver_types.keys()) \
+                            [list(connection_maneuver_types.values()).index(ManeuverType.STRAIGHT_CONNECTION)]
+                        try:
+                            point_results.append(BehavioralGridState._is_point_in_lane(point, straight_connection_lane_id,
+                                                                                       offset_side))
+                        # If point is still out of segment for the straight_connection lane, skip it
+                        except (OutOfSegmentBack, OutOfSegmentFront) as e:
+                            pass
         # test if any bbox point intrudes in the target lane
-        return np.any((np.abs(fbbox[:, FP_DX]) < border_widths))
+        return np.any(point_results)
 
+    @staticmethod
+    def _is_point_in_lane(point: np.ndarray, lane_id: int, offset_side: RelativeLane):
+        """
+        May throw an OutOfSegmentFront/OutOfSegmentBack exception
+        Checks if a point is in the lane
+        Checks if the distance from that point to the nominal path point of the lane is less than
+        the nominal point's left/right offset.
+        :param points: points to be checked (must be array of [x,y] points)
+        :param lane_id: lane of interest
+        :param offset_side: position of the points relative to the lane of interest,
+                            used to check either left or right offset
+        :param logger:
+        :return:
+        """
+        lane_frame = MapUtils.get_lane_frenet_frame(lane_id)
+        # May throw OutOfSegmentFront/OutOfSegmentBack that needs to be caught
+        fpoint = (lane_frame.cpoint_to_fpoint(point))
+        # get border widths at the longitudes of the bbox points
+        borders_right, borders_left = MapUtils.get_dist_to_lane_borders(lane_id, fpoint[FP_SX])
+        border_widths = borders_right if offset_side==RelativeLane.RIGHT_LANE else borders_left
+        # test if any bbox point intrudes in the target lane
+        return (np.abs(fpoint[FP_DX]) < border_widths)
