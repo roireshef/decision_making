@@ -166,7 +166,7 @@ class Math:
         :return: 2D numpy array [Nx(K-1)] or 1D array [K-1]
         """
         coef_matrix = polynomials if polynomials.ndim > 1 else polynomials[np.newaxis]
-        roots = np.full((coef_matrix.shape[0], coef_matrix.shape[1] - 1), np.nan, dtype=np.complex256)
+        roots = np.full((coef_matrix.shape[0], coef_matrix.shape[1] - 1), np.nan, dtype=np.complex128)
 
         for degree in range(coef_matrix.shape[1] - 1, 0, -1):
             is_of_degree = cls._are_polynomials_of_degree(coef_matrix, degree)

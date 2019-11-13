@@ -197,7 +197,7 @@ class BeyondSpecBrakingFilter(ConstraintSpecFilter):
     """
     def __init__(self, aggresiveness_level: AggressivenessLevel = AggressivenessLevel.CALM):
         super(BeyondSpecBrakingFilter, self).__init__()
-        self.braking_distances = BrakingDistances.create_braking_distances(aggresiveness_level=aggresiveness_level.value)
+        self.braking_distances = BrakingDistances.create_braking_distances(aggressiveness_level=aggresiveness_level.value)
 
     @abstractmethod
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:

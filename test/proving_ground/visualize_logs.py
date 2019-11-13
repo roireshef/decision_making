@@ -196,8 +196,9 @@ def plot_dynamics(log_file_path: str):
         if 'Speed limits at time' in text:
             if ego_lane_id is not None:
                 speed_limit_per_lane = ast.literal_eval(text.split('Speed limits at time')[1].split(': ', maxsplit=1)[1])
-                vel_limit.append(speed_limit_per_lane[ego_lane_id])
-                vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
+                if ego_lane_id in list(speed_limit_per_lane):
+                    vel_limit.append(speed_limit_per_lane[ego_lane_id])
+                    vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
 
     f = plt.figure(1)
 
