@@ -1,8 +1,6 @@
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
-from collections import OrderedDict
-
 import numpy as np
 
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
@@ -41,13 +39,10 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
 
         # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
         # on the straight lane if no actions are available on the augmented lane
+        lanes_to_try = [minimum_cost_lane, RelativeLane.SAME_LANE] if minimum_cost_lane != RelativeLane.SAME_LANE \
+            else [RelativeLane.SAME_LANE]
 
-        # A set is used to prevent duplicates when minimum_cost_lane==RelativeLane.SAME_LANE
-        # Since no ordered set is available, use an OrderedDict to achieve such functionality
-        lanes_to_try = OrderedDict.fromkeys([minimum_cost_lane, RelativeLane.SAME_LANE])
-
-
-        for target_lane in lanes_to_try.keys():
+        for target_lane in lanes_to_try:
             # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE
             selected_follow_vehicle_idx = self._get_follow_vehicle_valid_action_idx(behavioral_state, action_recipes,
                                                                                     action_specs, action_specs_mask,
