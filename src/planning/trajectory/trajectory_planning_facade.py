@@ -161,9 +161,8 @@ class TrajectoryPlanningFacade(DmModule):
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
         :return: a TrajectoryPlan message ready to send to the controller
         """
-        trajectory_num_points = min(MAX_TRAJECTORY_WAYPOINTS,
-                                    max(TRAJECTORY_NUM_POINTS,
-                                        int(np.floor(samplable_trajectory.T / TRAJECTORY_TIME_RESOLUTION))))
+        trajectory_num_points = int(np.clip(np.floor(samplable_trajectory.T / TRAJECTORY_TIME_RESOLUTION),
+                                            TRAJECTORY_NUM_POINTS, MAX_TRAJECTORY_WAYPOINTS))
         trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
                         stop=(trajectory_num_points - 1) * TRAJECTORY_TIME_RESOLUTION,
