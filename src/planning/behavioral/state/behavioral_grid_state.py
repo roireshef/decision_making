@@ -86,7 +86,7 @@ class BehavioralGridState:
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates, logger),
                    key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
@@ -97,7 +97,7 @@ class BehavioralGridState:
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
-    def _create_projected_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
+    def _create_projected_objects(dynamic_objects: List[DynamicObject], logger: Logger) -> List[DynamicObject]:
         """
         Creates projected, "ghost" objects related to actual dynamic objects
 
@@ -115,6 +115,7 @@ class BehavioralGridState:
             is_ghost: True
 
         :param dynamic_objects: list of dynamic objects
+        :param logger:
         :return: list of projected dynamic objects
         """
         projected_dynamic_objects = []
@@ -135,7 +136,7 @@ class BehavioralGridState:
                                                and (lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
                                                                                            LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
-                        if BehavioralGridState.is_object_in_lane(dynamic_object, lane_id):
+                        if BehavioralGridState.is_object_in_lane(dynamic_object, lane_id, logger):
                             # TODO: what to do if lane_fstate can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
                             lane_fstate = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
 
@@ -153,7 +154,7 @@ class BehavioralGridState:
     @prof.ProfileFunction()
     def _add_road_semantics(dynamic_objects: List[DynamicObject],
                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                            projected_ego_fstates: Dict[RelativeLane, FrenetState2D]) -> \
+                            projected_ego_fstates: Dict[RelativeLane, FrenetState2D], logger: Logger) -> \
             List[DynamicObjectWithRoadSemantics]:
         """
         Wraps DynamicObjects with "on-road" information (relative progress on road wrt ego, road-localization and more).
@@ -163,13 +164,14 @@ class BehavioralGridState:
         :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
         :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
                 corresponding extended_lane_frame
+        :param logger:
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
         # filter out off map dynamic objects
         on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
 
         # Create projected objects as needed
-        projected_dynamic_objects = BehavioralGridState._create_projected_objects(on_map_dynamic_objects)
+        projected_dynamic_objects = BehavioralGridState._create_projected_objects(on_map_dynamic_objects, logger)
 
         # Filter irrelevant objects
         relevant_objects, relevant_objects_relative_lanes = BehavioralGridState._filter_irrelevant_dynamic_objects(
@@ -624,7 +626,7 @@ class BehavioralGridState:
                      (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
 
     @staticmethod
-    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int, logger: Logger = None) -> bool:
+    def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int, logger: Logger) -> bool:
         """
         Checks if any part of an object is inside another lane.
         Takes the point of the object's bounding box or center of mass that is closest to the lane.
@@ -664,16 +666,21 @@ class BehavioralGridState:
             connection_maneuver_types = None
             try:
                 point_results.append(BehavioralGridState._is_point_in_lane(point, lane_id, offset_side))
+                logger.debug(f"Object {dynamic_object.obj_id} will be projected to lane {lane_id}.")
             except OutOfSegmentFront:
                 # TODO: is the route plan necessary here?
                 out_of_segment = True
                 # if any point is ahead of the lane of interest, find its downstream straight_connection and check there
                 connection_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(lane_id)
+                logger.debug(f"OutOfSegmentFront for lane {lane_id} and object {dynamic_object.obj_id} when checking occupancy "
+                             f"at point {str(point)}.")
             except OutOfSegmentBack:
                 # TODO: is the route plan necessary here?
                 out_of_segment = True
                 # if any point is behind of the lane of interest, find its upstream straight_connection and check there
                 connection_maneuver_types = MapUtils.get_upstream_lane_maneuver_types(lane_id)
+                logger.debug(f"OutOfSegmentBack for lane {lane_id} and object {dynamic_object.obj_id} when checking occupancy "
+                             f"at point {str(point)}.")
             finally:
                 # handle cases where a point is behind/ahead of a lane's nominal path.
                 # check upstream/downstream lanes when it makes sense to
@@ -688,8 +695,12 @@ class BehavioralGridState:
                         try:
                             point_results.append(BehavioralGridState._is_point_in_lane(point, straight_connection_lane_id,
                                                                                        offset_side))
+                            logger.debug(f"Point {str(point)} is detected to be in lane {straight_connection_lane_id}."
+                                         f"Object {dynamic_object.obj_id} will be projected to lane {lane_id}")
                         # If point is still out of segment for the straight_connection lane, skip it
                         except (OutOfSegmentBack, OutOfSegmentFront) as e:
+                            logger.debug(f"OutOfSegment Exception also found for downstream/upstream connection. Point {str(point)} "
+                                         f"will be skipped.")
                             pass
         # test if any bbox point intrudes in the target lane
         return np.any(point_results)
