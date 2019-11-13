@@ -4,7 +4,7 @@ from logging import Logger
 import six
 
 import rte.python.profiler as prof
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from typing import Any
 
 

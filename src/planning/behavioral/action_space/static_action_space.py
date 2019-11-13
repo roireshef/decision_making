@@ -5,7 +5,7 @@ from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_J
     EPS
 from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, StaticActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering

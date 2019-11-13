@@ -1,6 +1,6 @@
 from logging import Logger
 
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade

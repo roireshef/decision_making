@@ -127,10 +127,20 @@ class Poly1D:
         """
         Given the polynomial setting, this function returns A as a tensor with the first dimension iterating
         over different values of T (time-horizon) provided in <terminal_times>
-        :param terminal_times: 1D numpy array of different values for T
+        :param T: 1D numpy array of different values for T
         :return: 3D numpy array of shape [len(terminal_times), cls.num_coefs(), cls.num_coefs()]
         """
         return cls.time_constraints_tensor(np.array([T]))[0]
+
+    @classmethod
+    def inverse_time_constraints_matrix(cls, T: float) -> np.ndarray:
+        """
+        Given the polynomial setting, this function returns A as a tensor with the first dimension iterating
+        over different values of T (time-horizon) provided in <terminal_times>
+        :param T: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), cls.num_coefs(), cls.num_coefs()]
+        """
+        return cls.inverse_time_constraints_tensor(np.array([T]))[0]
 
     @staticmethod
     def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
@@ -223,8 +233,7 @@ class Poly1D:
         """
         assert constraints.shape[-1] == cls.num_coefs(), "%s should get constraints of size %s (got %s)" % \
                                                          (cls.__name__, cls.num_coefs(), constraints.shape[-1])
-        A = cls.time_constraints_matrix(T)
-        A_inv = np.linalg.inv(A)
+        A_inv = cls.inverse_time_constraints_matrix(T)
         poly_coefs = cls.solve(A_inv, constraints)
         return poly_coefs
 
@@ -257,9 +266,7 @@ class QuarticPoly1D(Poly1D):
         """
         a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
         a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
-        return 36 * (a3 ** 2) * T + \
-               144 * a3 * a4 * T ** 2 + \
-               192 * a4 ** 2 * T ** 3
+        return 12 * T * (3 * a3 ** 2 + 12 * a3 * a4 * T + 16 * a4 ** 2 * T ** 2)
 
     @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
@@ -305,8 +312,9 @@ class QuarticPoly1D(Poly1D):
         zeros = np.zeros(w_T.shape[0])
         return np.c_[w_T,
                      zeros,
-                     - 4 * a_0 ** 2 * w_J, + 24 * (a_0 * v_T * w_J - a_0 * v_0 * w_J),
-                     - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J]
+                     - 4 * a_0 ** 2 * w_J,
+                     + 24 * a_0 * w_J * (v_T - v_0),
+                     - 36 * w_J * (v_0 - v_T) ** 2]
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -319,8 +327,9 @@ class QuarticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: t * (6 * T ** 3 * (a_0 * t + 2 * v_0) - 4 * T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T) +
-                              3 * t ** 3 * (T * a_0 + 2 * v_0 - 2 * v_T)) / (12 * T ** 3)
+        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + \
+            (-4 * t ** 3 * T * (2 * T * a_0 + 3 * (v_0 - v_T)) + 3 * t ** 4 * (T * a_0 + 2 * (v_0 - v_T))) / \
+            (12 * T ** 3)
 
     @staticmethod
     def velocity_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -332,9 +341,8 @@ class QuarticPoly1D(Poly1D):
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (T ** 3 * (a_0 * t + v_0)
-                          - T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T)
-                          + t ** 3 * (T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+        return lambda t: v_0 + a_0 * t + \
+            (t ** 2 * T * (- 2 * a_0 * T - 3 * (v_0 - v_T)) + t ** 3 * (a_0 * T + (v_0 - v_T) * 2)) / (T ** 3)
 
     @staticmethod
     def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, T: float):
@@ -380,7 +388,7 @@ class QuarticPoly1D(Poly1D):
         return coefs
 
     @staticmethod
-    def s_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
+    def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, T: np.array):
         """
         Given a set of quartic actions, i.e. arrays of v_0, v_T, a_0 and T (all arrays of the same size), calculate
         coefficients for longitudinal polynomial profile for each action.
@@ -390,12 +398,13 @@ class QuarticPoly1D(Poly1D):
         :param T: [sec] array of action times
         :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
         """
+        zeros = np.zeros_like(T)
         return np.c_[
             (0.25 * T * a_0 + 0.5 * v_0 - 0.5 * v_T) / T ** 3,
             (-0.666666666666667 * T * a_0 - 1.0 * v_0 + 1.0 * v_T) / T ** 2,
-            0.5 * a_0,
-            v_0,
-            np.zeros_like(v_0)]
+            0.5 * a_0 + zeros,
+            v_0 + zeros,
+            zeros]
 
 
 class QuinticPoly1D(Poly1D):
@@ -466,11 +475,8 @@ class QuinticPoly1D(Poly1D):
         """
         a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
         a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
-        return 36 * a3 ** 2 * T + \
-               144 * a3 * a4 * T ** 2 + \
-               (240 * a3 * a5 + 192 * a4 ** 2) * T ** 3 + \
-               720 * a4 * a5 * T ** 4 + \
-               720 * a5 ** 2 * T ** 5
+        return 12 * T * (3 * a3 ** 2 + 12 * a3 * a4 * T + (20 * a3 * a5 + 16 * a4 ** 2) * T ** 2 +
+                        60 * a4 * a5 * T ** 3 + 60 * a5 ** 2 * T ** 4)
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
@@ -492,10 +498,31 @@ class QuinticPoly1D(Poly1D):
         return np.c_[w_T,
                      zeros,
                      -9 * a_0 ** 2 * w_J,
-                     -144 * a_0 * v_0 * w_J + 144 * a_0 * v_T * w_J,
-                     -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * dx * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
-                     -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * dx * v_0 * w_J - 2880 * dx * v_T * w_J,
-                     - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * dx * v_T * w_J - 3600 * dx ** 2 * w_J]
+                     144 * w_J * a_0 * (v_T - v_0),
+                     -72 * w_J * (5 * a_0 * (T_m * v_T - dx) + 8 * (v_T - v_0) ** 2),
+                     2880 * w_J * (T_m * v_T - dx) * (v_T - v_0),
+                     -3600 * w_J * (T_m * v_T - dx) ** 2]
+
+    @staticmethod
+    def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array):
+        """
+        Given a set of quintic actions, i.e. arrays of v_0, v_T, a_0, dx and T (all arrays of the same size), calculate
+        coefficients for longitudinal polynomial profile for each action.
+        :param a_0: array of initial accelerations
+        :param v_0: array of initial velocities
+        :param v_T: array of target velocities
+        :param dx: [m] array of distances to travel between time 0 and time T
+        :param T: [sec] array of action times
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        zeros = np.zeros_like(T)
+        return np.c_[
+            (-a_0 * T ** 2 / 2 - 3 * v_0 * T - 3 * v_T * T + 6 * dx) / T ** 5,
+            (3 * a_0 * T ** 2 / 2 + 8 * v_0 * T + 7 * v_T * T - 15 * dx) / T ** 4,
+            (-3 * a_0 * T ** 2 / 2 - 6 * v_0 * T - 4 * v_T * T + 10 * dx) / T ** 3,
+            0.5 * a_0 + zeros,
+            v_0 + zeros,
+            zeros]
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -510,12 +537,12 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: t * (T ** 5 * (a_0 * t + 2 * v_0) + T ** 2 * t ** 2 * (
-                -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx + 20 * v_T * (T - T_m)) + T * t ** 3 * (
-                                      3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (
-                                      T - T_m)) + t ** 4 * (
-                                      -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (
-                                     2 * T ** 5)
+        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + \
+            t ** 3 * (
+                T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
+                T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+                t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m)))) / \
+            (2 * T ** 5)
 
     @staticmethod
     def distance_from_target(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -529,12 +556,12 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (dx + t * v_T) + T ** 2 * t ** 3 * (
-            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T)
-            - 20 * dx - 20 * v_T * (T - T_m)) - T * t ** 4 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
-                          + t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx - 12 * v_T * (T - T_m))) / (
-                                     2 * T ** 5)
+        return lambda t: dx + t * (v_T - v_0) - 0.5 * a_0 * t ** 2 + \
+            t ** 3 * (
+                T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * (dx + v_T * (T - T_m))) -
+                T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+                t ** 2 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * (dx + v_T * (T - T_m)))) / \
+            (2 * T ** 5)
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -568,12 +595,11 @@ class QuinticPoly1D(Poly1D):
         :param T_m: [sec] T_m * v_T is added to dx
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
-                -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx +
-                20 * v_T * (T - T_m)) + 4 * T * t ** 3 * (
-                                  3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
-                          + 5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (
-                                 2 * T ** 5)
+        return lambda t: v_0 + a_0 * t + t ** 2 * \
+            (3 * T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
+             4 * T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+             5 * t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m)))) / \
+            (2 * T ** 5)
 
     @staticmethod
     def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -587,10 +613,9 @@ class QuinticPoly1D(Poly1D):
         :param T_m: [sec] T_m * v_T is added to dx
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        coefs = np.array([10 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m)),
-                          + 6 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
-                          - 3 * T ** 2 * (
-                              3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m)),
+        coefs = np.array([10 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m))),
+                          6 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))),
+                          -3 * T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * (dx + v_T * (T - T_m))),
                           T ** 5 * a_0]) / T ** 5
         return coefs
 
@@ -621,7 +646,8 @@ class QuinticPoly1D(Poly1D):
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        coefs = np.array([30 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m)),
-                          + 12 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
-                          - 3 * T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m))]) / T ** 5
+        coefs = np.array([30 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m))),
+                          + 12 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))),
+                          - 3 * T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * (dx + v_T * (T - T_m)))
+                          ]) / T ** 5
         return coefs

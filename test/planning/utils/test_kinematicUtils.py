@@ -1,5 +1,7 @@
 import numpy as np
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, SAFETY_HEADWAY
+from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
+    SingleLaneActionSpecEvaluator
 
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
@@ -25,6 +27,7 @@ def test_isMaintainingDistance_safeSettings_returnsTrue():
     poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
 
     assert KinematicUtils.is_maintaining_distance(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T]))
+    assert SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T])) > SAFETY_HEADWAY
 
 
 def test_isMaintainingDistance_unsafeSettings_returnsFalse():
@@ -47,6 +50,91 @@ def test_isMaintainingDistance_unsafeSettings_returnsFalse():
     poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
 
     assert not KinematicUtils.is_maintaining_distance(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T]))
+    assert SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T])) < SAFETY_HEADWAY + 0.1
+
+
+def test_calcMinimalHeadwayOverTrajectory_constantSpeedRvFaster_returnsHeadwayAtStart():
+    vT = 10
+    v1 = vT - 1
+    delta_s_init = 35
+    safe_margin = 3
+    T = 10
+
+    poly_host_s = np.array([0, 0, 0, 0, v1, 0])
+    poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
+
+    minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
+    expected_headway = (delta_s_init - safe_margin) / v1
+    assert abs(minimal_headway - expected_headway) < 0.01
+
+
+def test_calcMinimalHeadwayOverTrajectory_constantSpeedRvSlower_returnsHeadwayAtEnd():
+    vT = 10
+    v1 = vT + 1
+    delta_s_init = 35
+    safe_margin = 3
+    T = 10
+
+    poly_host_s = np.array([0, 0, 0, 0, v1, 0])
+    poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
+
+    minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
+    expected_headway = (delta_s_init - safe_margin - T * (v1 - vT)) / v1
+    assert abs(minimal_headway - expected_headway) < 0.01
+
+
+def test_calcMinimalHeadwayOverTrajectory_constantAcceleration_returnsHeadwayAtEnd():
+    vT = 10
+    v1 = vT
+    a1 = 2
+    delta_s_init = 150
+    safe_margin = 3
+    T = 10
+
+    poly_host_s = np.array([0, 0, 0, a1 / 2, v1, 0])
+    poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
+
+    minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
+    expected_headway = (delta_s_init - safe_margin - a1 * T * T / 2) / (v1 + a1 * T)
+    assert abs(minimal_headway - expected_headway) < 0.01
+
+
+def test_calcMinimalHeadwayOverTrajectory_RvDeceleratesHvAccelerates_returnsHeadwayAtEnd():
+    vT = 10
+    v1 = vT
+    a1 = 2
+    aT = -2
+    delta_s_init = 300
+    safe_margin = 3
+    T = 10
+
+    poly_host_s = np.array([0, 0, 0, a1 / 2, v1, 0])
+    poly_target_s = np.array([0, 0, 0, aT / 2, vT, delta_s_init])
+
+    minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
+    expected_headway = (delta_s_init - safe_margin - a1 * T * T / 2 + aT * T * T / 2) / (v1 + a1 *T)
+    assert abs(minimal_headway - expected_headway) < 0.01
+
+
+def test_calcMinimalHeadwayOverTrajectory_varyingAcceleration_returnsHeadwayAtMiddle():
+    vT = 10
+    v1 = vT
+    a1 = 2
+    j1 = -1
+    delta_s_init = 150
+    safe_margin = 3
+    T = 6  # need a smaller value fot T, as otherwise the velocity becomes negative, which we do not support
+
+    poly_host_s = np.array([0, 0, j1 / 6, a1 / 2, v1, 0])
+    poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
+
+    minimal_headway = SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T]))
+    headway_on_the_way = np.array([((delta_s_init - safe_margin -(v1 - vT) * t - a1 * t * t / 2 - j1 * t ** 3 / 6) / (v1 + a1 * t + j1 * t * t / 2))
+                                   for t in np.arange(0, T, 0.1)])
+    min_headway = np.min(headway_on_the_way)
+    assert abs(minimal_headway - min_headway) < 0.1 and \
+           minimal_headway < headway_on_the_way[0] - 0.1 and \
+           minimal_headway < headway_on_the_way[-1] - 0.1
 
 
 def test_filterByVelocityLimit_velocityDecreasesTowardLimit_valid():
