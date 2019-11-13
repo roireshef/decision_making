@@ -230,7 +230,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :return: Array of lateral time horizons of size TD_STEPS. Higher bound is T_s.
         """
         # Choose a range of size TD_STEPS of aggressiveness levels according to the time-jerk weights.
-        standard_weight = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value, 0]
+        standard_weight = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value, 1]
 
         # Choose the exponential step such that two steps match to a ratio between original calm and
         # aggressive levels. Use sqrt since there are two steps between calm and aggressive.
