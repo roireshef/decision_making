@@ -6,14 +6,15 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as RecipeFilterIfNone, \
     FilterActionsTowardsNonOccupiedCells, FilterActionsTowardBackAndParallelCells, FilterOvertakeActions, \
     FilterIfNoLane, FilterLaneChangingIfNotAugmented, FilterSpeedingOverDesiredVelocityDynamic, \
-    FilterSpeedingOverDesiredVelocityStatic, FilterActionsTowardsCellsWithoutStopSignsOrStopBars, FilterRoadSignActions
+    FilterSpeedingOverDesiredVelocityStatic, FilterActionsTowardsCellsWithoutStopSignsOrStopBars, FilterRoadSignActions, \
+    FilterLaneChangingIfNotAugmentedOrLaneChangeDesired
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from rte.python.logger.AV_logger import AV_Logger
 
 # TODO: remove FilterIfAggressive() once we introduce lateral and longitudinal acceleration checks in Cartesian frame
 DEFAULT_STATIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                            FilterIfNoLane(),
-                                                           FilterLaneChangingIfNotAugmented(),
+                                                           FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(),
                                                            FilterSpeedingOverDesiredVelocityStatic()
                                                            ], logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),

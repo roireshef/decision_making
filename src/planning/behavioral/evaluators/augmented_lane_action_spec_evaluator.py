@@ -8,6 +8,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.lane_based_action_spec_evaluator import LaneBasedActionSpecEvaluator
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.turn_signal_message import TurnSignalState
 
 
 class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
@@ -38,11 +39,17 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
 
         costs = np.full(len(action_recipes), 1)
 
-        # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
-        # on the straight lane if no actions are available on the augmented lane
-
-        # A set is used to prevent duplicates when minimum_cost_lane==RelativeLane.SAME_LANE
-        lanes_to_try = {minimum_cost_lane, RelativeLane.SAME_LANE}
+        # if an augmented lane is chosen to be the minimum_cost_lane or a lane change is desired, also allow the possibility of choosing an
+        # action on the straight lane if no actions are available on the augmented lane or the desired lane for a lane change. Prioritize
+        # the lane change lane over the minimum_cost_lane.
+        if behavioral_state.turn_signal == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
+            lanes_to_try = [RelativeLane.LEFT_LANE, minimum_cost_lane, RelativeLane.SAME_LANE]
+        elif behavioral_state.turn_signal == TurnSignalState.CeSYS_e_RightTurnSignalOn:
+            lanes_to_try = [RelativeLane.RIGHT_LANE, minimum_cost_lane, RelativeLane.SAME_LANE]
+        elif minimum_cost_lane != RelativeLane.SAME_LANE:
+            lanes_to_try = [minimum_cost_lane, RelativeLane.SAME_LANE]
+        else:
+            lanes_to_try = [RelativeLane.SAME_LANE]
 
         for target_lane in lanes_to_try:
             # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE

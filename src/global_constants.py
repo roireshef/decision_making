@@ -143,6 +143,9 @@ MAX_IMMEDIATE_DECEL = - LON_ACC_LIMITS[0] - 1
 REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION = 1.4
 REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2
 
+# [sec], Time that has to pass after the turn signal is turned on before considering a lane change
+LANE_CHANGE_DELAY = 1.0
+
 # Trajectory Planner #
 
 # [m] Resolution for the interpolation of the reference route

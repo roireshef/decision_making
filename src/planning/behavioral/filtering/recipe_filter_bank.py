@@ -1,6 +1,7 @@
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, LANE_CHANGE_DELAY
 from typing import List
 
+from decision_making.src.messages.turn_signal_message import TurnSignalState
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe, \
@@ -91,6 +92,23 @@ class FilterLaneChangingIfNotAugmented(RecipeFilter):
         # so a KeyError will not happen when accessing the extended_lane_frames dict
         return [(recipe.relative_lane == RelativeLane.SAME_LANE
                  or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial])
+                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
+                else False for recipe in recipes]
+
+
+class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        # the if statement in the ternary operator is executed first and will short circuit if False,
+        # so a KeyError will not happen when accessing the extended_lane_frames dict
+        time_since_turn_signal_changed = behavioral_state.ego_state.timestamp_in_sec - \
+                                         behavioral_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
+        turn_signal_state = behavioral_state.turn_signal.s_Data.e_e_turn_signal_state
+        return [(recipe.relative_lane == RelativeLane.SAME_LANE
+                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]
+                 or ((recipe.relative_lane == RelativeLane.LEFT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn)
+                     and (time_since_turn_signal_changed > LANE_CHANGE_DELAY))
+                 or ((recipe.relative_lane == RelativeLane.RIGHT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn)
+                     and (time_since_turn_signal_changed > LANE_CHANGE_DELAY)))
                 if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
                 else False for recipe in recipes]
 
