@@ -9,6 +9,7 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
@@ -22,6 +23,7 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
+from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
@@ -67,11 +69,13 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_TURN_SIGNAL)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.unsubscribe(UC_SYSTEM_TURN_SIGNAL)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -100,6 +104,9 @@ class BehavioralPlanningFacade(DmModule):
                                                               logger=self.logger)
 
                 state.handle_negative_velocities(self.logger)
+
+            with DMProfiler(self.__class__.__name__ + '._get_current_turn_signal'):
+                turn_signal = self._get_current_turn_signal()
 
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
@@ -286,6 +293,15 @@ class BehavioralPlanningFacade(DmModule):
             raise MsgDeserializationError("SceneDynamic was received without any host localization")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_dynamic
+
+    def _get_current_turn_signal(self) -> TurnSignal:
+        is_success, serialized_turn_signal = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TURN_SIGNAL)
+        if serialized_turn_signal is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_TURN_SIGNAL)
+        turn_signal = TurnSignal.deserialize(serialized_turn_signal)
+        self.logger.debug("Received turn signal: %s" % turn_signal)
+        return turn_signal
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
