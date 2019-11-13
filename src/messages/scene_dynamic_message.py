@@ -2,6 +2,7 @@ from enum import Enum
 from typing import List
 
 import numpy as np
+from decision_making.src.messages.scene_static_enums import TrafficSignalState
 
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from interface.Rte_Types.python.sub_structures.TsSYS_BoundingBoxSize import \
@@ -300,6 +301,51 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_obj_hypothesis_count, obj_hypotheses)
 
 
+class DynamicTrafficControlDeviceStatus(PUBSUB_MSG_IMPL):
+    e_i_dynamic_traffic_control_device_id = int
+    a_e_status = List[TrafficSignalState]
+    a_Pct_status_confidence = List[float]
+
+    def __init__(self, e_i_dynamic_traffic_control_device_id: int, a_e_status: List[TrafficSignalState],
+                 a_Pct_status_confidence: List[float]):
+        """
+        Distribution over a Dynamic traffic-flow-control device's possible statuses, eg. red(20%)-yellow(70%)-green(10%)
+        :param e_i_dynamic_traffic_control_device_id: ID of traffic control device
+        :param a_e_status: status of dynamic TCD
+        :param a_Pct_status_confidence: confidence distribution of status
+        """
+        self.e_i_dynamic_traffic_control_device_id = e_i_dynamic_traffic_control_device_id
+        self.a_e_status = a_e_status
+        self.a_Pct_status_confidence = a_Pct_status_confidence
+
+    def serialize(self):
+        # type: () -> TsSYSDynamicTrafficControlDeviceStatus
+        pubsub_msg = TsSYSDynamicTrafficControlDeviceStatus()
+
+        pubsub_msg.e_i_dynamic_traffic_control_device_id = self.e_i_dynamic_traffic_control_device_id
+        pubsub_msg.e_Cnt_status_count = len(self.a_e_status)
+        for i in range(pubsub_msg.e_Cnt_status_count):
+            pubsub_msg.a_e_status[i] = self.a_e_status[i].serialize()
+        for i in range(pubsub_msg.e_Cnt_status_count):
+            pubsub_msg.a_Pct_status_confidence[i] = self.a_Pct_status_confidence[i]
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSDynamicTrafficControlDeviceStatus)->DynamicTrafficControlDeviceStatus
+
+        a_e_status = list()
+        for i in range(pubsubMsg.e_Cnt_status_count):
+            a_e_status.append(TrafficSignalState.deserialize(pubsubMsg.a_e_status[i]))
+
+        a_Pct_status_confidence = list()
+        for i in range(pubsubMsg.e_Cnt_status_count):
+            a_e_status.append(pubsubMsg.a_Pct_status_confidence[i])
+
+        return cls(pubsubMsg.e_i_dynamic_traffic_control_device_id, a_e_status, a_Pct_status_confidence)
+
+
 class DataSceneDynamic(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
     s_RecvTimestamp = Timestamp
@@ -307,9 +353,11 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
     e_Cnt_num_objects = int
     as_object_localization = List[ObjectLocalization]
     s_host_localization = HostLocalization
+    as_dynamic_traffic_control_device_status = List[DynamicTrafficControlDeviceStatus]
 
-    def __init__(self, e_b_Valid, s_RecvTimestamp, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization, s_host_localization):
-        # type: (bool, Timestamp, Timestamp, int, List[ObjectLocalization], HostLocalization) -> None
+    def __init__(self, e_b_Valid, s_RecvTimestamp, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization,
+                 s_host_localization, as_dynamic_traffic_control_device_status):
+        # type: (bool, Timestamp, Timestamp, int, List[ObjectLocalization], HostLocalization, List[DynamicTrafficControlDeviceStatus]) -> None
         """
 
         :param e_b_Valid:
@@ -318,6 +366,7 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         :param e_Cnt_num_objects: Total number of actors
         :param as_object_localization:
         :param s_host_localization:
+        :param as_dynamic_traffic_control_device_status: The status distribution for each dynamic TCD in the scene
         """
         self.e_b_Valid = e_b_Valid
         self.s_RecvTimestamp = s_RecvTimestamp
@@ -325,6 +374,7 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         self.e_Cnt_num_objects = e_Cnt_num_objects
         self.as_object_localization = as_object_localization
         self.s_host_localization = s_host_localization
+        self.as_dynamic_traffic_control_device_status = as_dynamic_traffic_control_device_status
 
     def serialize(self):
         # type: () -> TsSYSDataSceneDynamic
@@ -339,6 +389,11 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
 
         pubsub_msg.s_host_localization = self.s_host_localization.serialize()
 
+        pubsub_msg.e_Cnt_dynamic_traffic_control_device_status_count = len(self.as_dynamic_traffic_control_device_status)
+        for i in range(len(self.as_dynamic_traffic_control_device_status)):
+            pubsub_msg.as_dynamic_traffic_control_device_status[i] = \
+                DynamicTrafficControlDeviceStatus.serialize(self.as_dynamic_traffic_control_device_status[i])
+
         return pubsub_msg
 
     @classmethod
@@ -349,8 +404,15 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_num_objects):
             obj_localizations.append(ObjectLocalization.deserialize(pubsubMsg.as_object_localization[i]))
 
-        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_RecvTimestamp), Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp), pubsubMsg.e_Cnt_num_objects,
-                   obj_localizations, HostLocalization.deserialize(pubsubMsg.s_host_localization))
+        as_dynamic_traffic_control_device_status = list()
+        for i in range(pubsubMsg.e_Cnt_dynamic_traffic_control_device_status_count):
+            as_dynamic_traffic_control_device_status.append(
+                DynamicTrafficControlDeviceStatus.deserialize(pubsubMsg.as_dynamic_traffic_control_device_status[i]))
+
+        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_RecvTimestamp),
+                   Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp), pubsubMsg.e_Cnt_num_objects,
+                   obj_localizations, HostLocalization.deserialize(pubsubMsg.s_host_localization),
+                   as_dynamic_traffic_control_device_status)
 
 
 class SceneDynamic(PUBSUB_MSG_IMPL):

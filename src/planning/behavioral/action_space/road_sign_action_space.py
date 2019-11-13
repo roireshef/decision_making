@@ -53,7 +53,8 @@ class RoadSignActionSpace(TargetActionSpace):
         assert not np.isnan(longitudinal_differences).any()
         return longitudinal_differences
 
-    def _get_closest_stop_bar_distance(self, action: RoadSignActionRecipe, behavioral_state: BehavioralGridState) -> float:
+    def _get_closest_stop_bar_distance(self, action: RoadSignActionRecipe, behavioral_state: BehavioralGridState) \
+            -> float:
         """
         Returns the s value of the closest Stop Bar or Stop sign.
         If both types exist, prefer stop bar, if close enough to stop sign.
@@ -63,23 +64,14 @@ class RoadSignActionSpace(TargetActionSpace):
         :return: distance to closest stop bar
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
-        stop_bar_and_stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
-        stop_signs = MapUtils.filter_flow_control_by_type(stop_bar_and_stop_signs, [RoadObjectType.StopSign])
-        stop_bars = MapUtils.filter_flow_control_by_type(stop_bar_and_stop_signs,
-                                                         [RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right])
-        # either stop BAR or SIGN are guaranteed to exist, but not necessarily both
-        if len(stop_bars) == 0:
-            # only stop SIGN exists
-            closest_sign = stop_signs[0]
-        elif len(stop_signs) == 0:
-            # only stop BAR exists
-            closest_sign = stop_bars[0]
-        # Both stop SIGN and BAR exist
-        elif stop_bars[0].s < stop_signs[0].s + CLOSE_ENOUGH:
-            # stop BAR close to SIGN or closer than stop SIGN, select it
-            closest_sign = stop_bars[0]
-        else:
-            # stop SIGN is closer
-            closest_sign = stop_signs[0]
+        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet)  # ensures the returned value is sorted by distance
+        static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
-        return closest_sign.s - behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
+        # check for active stop bar from the closest to the farthest
+        for stop_bar in stop_bars:
+            active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
+            road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
+            should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
+            if should_stop:
+                return stop_bar.s - behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
+        return float("inf")

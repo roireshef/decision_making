@@ -167,7 +167,7 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_locations = np.asarray([stop_sign.s for stop_sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
+        stop_bar_locations = np.asarray([stop_bar.s for stop_bar in MapUtils.get_traffic_control_bars_s(target_lane_frenet)])
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
 
         return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any() \
@@ -283,8 +283,8 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         :param action_spec_s:
         :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
         """
-        stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
-        distances = [stop_sign.s for stop_sign in stop_signs if stop_sign.s >= action_spec_s]
+        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet)
+        distances = [stop_bar.s for stop_bar in stop_bars if stop_bar.s >= action_spec_s]
         return distances[0] if len(distances) > 0 else None
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
