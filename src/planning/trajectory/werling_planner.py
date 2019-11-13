@@ -95,10 +95,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
             # Lateral planning horizon(Td)
-            comfort_T_d = self._get_lat_horizon(fconstraints_tT, T_target_horizon)
-
-            # create a grid on T_d (lateral movement time-grid)
-            T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_target_horizon, comfort_T_d)
+            T_d_grid = self._get_lat_horizon_by_time_jerk_weights(fconstraints_tT, T_target_horizon)
 
             # solve problem in frenet-frame
             ftrajectories_optimization, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
@@ -223,33 +220,33 @@ class WerlingPlanner(TrajectoryPlanner):
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
-    def _get_lat_horizon(self, fconstraints_t0: FrenetConstraints, T_s: float) -> float:
+    def _get_lat_horizon_by_time_jerk_weights(self, fconstraints_t0: FrenetConstraints, T_s: float) -> np.array:
         """
-        Calculates the "optimal" lateral time horizon based on the given constraints and time-jerk weights.
+        Calculates grid of the lateral time horizons based on the given constraints and time-jerk weights
+        with different aggressiveness levels.
         In the current implementation (no TP grid) choose standard aggressiveness level.
         :param fconstraints_t0: a set of constraints over the initial state
         :param T_s: longitudinal action time horizon
-        :return: Lateral time horizon. Higher bound is T_s.
+        :return: Array of lateral time horizons of size TD_STEPS. Higher bound is T_s.
         """
-        aggr_level_idx = AggressivenessLevel.STANDARD.value
-        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr_level_idx:aggr_level_idx+1]
+        # Choose a range of size TD_STEPS of aggressiveness levels according to the time-jerk weights.
+        standard_weight = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value, 0]
+
+        # Choose the exponential step such that two steps match to a ratio between original calm and
+        # aggressive levels. Use sqrt since there are two steps between calm and aggressive.
+        exponential_step = np.sqrt(BP_JERK_S_JERK_D_TIME_WEIGHTS[0, 0] / BP_JERK_S_JERK_D_TIME_WEIGHTS[-1, 0])
+        jerk_weight_factor = np.power(exponential_step, (TD_STEPS-1)/2.)
+        most_calm = standard_weight * jerk_weight_factor
+        most_aggressive = standard_weight / jerk_weight_factor
+        # The weights are uniformly distributed in logarithmic scale
+        weights = np.geomspace(most_calm, most_aggressive, TD_STEPS)
+
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=-fconstraints_t0._dx, a_0=fconstraints_t0._da,
             v_0=fconstraints_t0._dv, v_T=0, T_m=0)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
-        comfort_T_d = np.fmin.reduce(roots_d, axis=-1)[0]
-        return min(comfort_T_d, T_s)
-
-    @staticmethod
-    def _create_lat_horizon_grid(T_s: float, comfort_T_d: float) -> np.ndarray:
-        """
-        Receives a comfort lateral time horizon comfort_T_d and the longitudinal time horizon T_s
-        and returns a grid of possible lateral planning time values.
-        :param T_s: longitudinal trajectory duration (sec.), relative to ego.
-        :param comfort_T_d: comfort lateral trajectory duration (sec.), relative to ego. Higher bound is T_s.
-        :return: numpy array (1D) of the possible lateral planning horizons
-        """
-        return np.flip(np.linspace(comfort_T_d, T_s, TD_STEPS), axis=0)
+        T_d_grid = np.fmin.reduce(roots_d, axis=-1)
+        return np.minimum(T_d_grid, T_s)
 
     @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,

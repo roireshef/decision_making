@@ -215,9 +215,6 @@ SX_STEPS, SV_STEPS, DX_STEPS = 1, 1, 1
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 1
 
-# Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
-TD_MIN_DT = 1
-
 # negative close to zero trajectory velocity, which may be replaced by zero velocity
 CLOSE_TO_ZERO_NEGATIVE_VELOCITY = -0.1
 
