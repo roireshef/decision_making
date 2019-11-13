@@ -3,7 +3,7 @@ from typing import Union, TypeVar
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
-from decision_making.src.planning.types import Limits
+from decision_making.src.planning.types import Limits, BoolArray
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
 DIVISION_FLOATING_ACCURACY = 10 ** -10
@@ -58,8 +58,8 @@ class Math:
         and x holds in each row a vector of values to assign to the corresponding poly1d in p.
         this enjoys matrix-operations efficiency
         :param p: a 2d numpy array [MxL] having in each of the M rows the L polynomial coefficients vector
-        :param x: a 2d numpy array [N] of samples
-        :return: a 2d numpy array [MxN] of polynom values for each poly1d instance and sample
+        :param x: a 2d numpy array [MxN] of samples
+        :return: a 2d numpy array [MxN] of polynomial values for each poly1d instance and sample
         """
         assert p.shape[0] == x.shape[0], 'number of values and polynomials is not equal'
         m = p.shape[0]
@@ -145,28 +145,45 @@ class Math:
         return np.linalg.eigvals(A)
 
     @staticmethod
-    def find_real_roots_in_limits(coef_matrix: np.ndarray, value_limits: Limits):
+    def _are_polynomials_of_degree(coef_matrix: np.ndarray, degree: int) -> BoolArray:
+        """
+        Check if the polynomials have a given degree: non-zero leading coefficient for the given degree and
+        all previous coefficients are zeros.
+        :param coef_matrix: 2D array [NxK] full with coefficients of N polynomials of degree (K-1)
+        :param degree: given degree
+        :return: boolean array [N]: true for polynomials having the given degree
+        """
+        if degree >= coef_matrix.shape[1]:
+            return np.zeros(coef_matrix.shape[0]).astype(bool)
+        return np.isclose(coef_matrix[:, :-degree-1], 0).all(axis=1) & ~np.isclose(coef_matrix[:, -degree-1], 0)
+
+    @classmethod
+    def find_real_roots_in_limits(cls, polynomials: np.ndarray, value_limits: Limits):
         """
         Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
-        NOTE THAT IN ORDER FOR THIS TO WORK, K has to be >=2 and to have no zeros in its first column (degenerate polynomial)
-        :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
+        :param polynomials: 2D array [NxK] full with coefficients of N polynomials of degree (K-1) or 1D array [K]
         :param value_limits: Boundaries for desired roots to look for.
-        :return: 2D numpy array [Nx(K-1)]
+        :return: 2D numpy array [Nx(K-1)] or 1D array [K-1]
         """
-        if np.any(coef_matrix[..., 0] == 0):
-            raise NotImplementedError("find_real_roots_in_limits can not find roots for degenerated polynomials, "
-                                      "please clip the polynomial")
+        coef_matrix = polynomials if polynomials.ndim > 1 else polynomials[np.newaxis]
+        roots = np.full((coef_matrix.shape[0], coef_matrix.shape[1] - 1), np.nan, dtype=np.complex128)
 
-        # if polynomial is of degree 0 (f(x) = c), it has no roots
-        if coef_matrix.shape[-1] < 2:
-            return np.full(coef_matrix.shape, np.nan)
+        for degree in range(coef_matrix.shape[1] - 1, 0, -1):
+            is_of_degree = cls._are_polynomials_of_degree(coef_matrix, degree)
+            if is_of_degree.any():
+                if degree == 1:  # solve linear equations
+                    roots[is_of_degree, 0] = -coef_matrix[is_of_degree, -1] / coef_matrix[is_of_degree, -2]
+                elif degree == 2:  # solve quadratic equations
+                    roots[is_of_degree, :2] = Math.solve_quadratic(coef_matrix[is_of_degree, -3:])
+                else:  # find roots for polynomials of third degree and higher
+                    roots[is_of_degree, :degree] = np.roots(polynomials[-degree - 1:]) if polynomials.ndim == 1 else \
+                        Math.roots(coef_matrix[is_of_degree, -degree - 1:])
 
-        roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
         is_in_limits = NumpyUtils.is_in_limits(real_roots, value_limits)
         real_roots[~np.logical_and(is_real, is_in_limits)] = np.nan
-        return real_roots
+        return real_roots if polynomials.ndim > 1 else real_roots[0]
 
     @staticmethod
     def div(a,  b, precision=DIVISION_FLOATING_ACCURACY):

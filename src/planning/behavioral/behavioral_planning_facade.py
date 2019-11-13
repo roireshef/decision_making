@@ -3,12 +3,12 @@ import traceback
 from logging import Logger
 
 import numpy as np
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
@@ -24,7 +24,8 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
+from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
+from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV, C_X, C_Y
@@ -37,21 +38,30 @@ from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
 class BehavioralPlanningFacade(DmModule):
-    def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
-                 last_trajectory: SamplableTrajectory = None) -> None:
+    last_log_time = float
+    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
         :param logger:
-        :param behavioral_planner:
         :param last_trajectory: last trajectory returned from behavioral planner.
         """
         super().__init__(pubsub=pubsub, logger=logger)
-        self._planner = behavioral_planner
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
+        self.last_log_time = -1.0
+
+    def _write_filters_to_log_if_required(self, now: float):
+        """
+        Write list of applicable filters to log every 5 seconds.
+        :param now: time in seconds
+        """
+        if now - self.last_log_time > 5.0:
+            self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for
+                                                              filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.last_log_time = now
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
@@ -91,6 +101,7 @@ class BehavioralPlanningFacade(DmModule):
 
                 state.handle_negative_velocities(self.logger)
 
+            self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
             self.logger.debug("Scene Dynamic host localization published at timestamp: %f," +
@@ -121,9 +132,13 @@ class BehavioralPlanningFacade(DmModule):
 
             self._publish_takeover(takeover_message)
 
+            # choose scenario and planner
+            scenario = Scenario.identify_scenario(updated_state, route_plan)
+            planner_class = scenario.choose_planner(updated_state, route_plan, self.logger)
+            planner = planner_class(self.logger)
+
             with DMProfiler(self.__class__.__name__ + '.plan'):
-                trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state,
-                                                                                                           route_plan)
+                trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan(updated_state, route_plan)
 
             self._last_trajectory = samplable_trajectory
 
