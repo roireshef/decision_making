@@ -162,7 +162,8 @@ class TrajectoryPlanningFacade(DmModule):
         :return: a TrajectoryPlan message ready to send to the controller
         """
         trajectory_num_points = min(MAX_TRAJECTORY_WAYPOINTS,
-                                    int(np.floor(samplable_trajectory.T / TRAJECTORY_TIME_RESOLUTION)))
+                                    max(TRAJECTORY_NUM_POINTS,
+                                        int(np.floor(samplable_trajectory.T / TRAJECTORY_TIME_RESOLUTION))))
         trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
                         stop=(trajectory_num_points - 1) * TRAJECTORY_TIME_RESOLUTION,
