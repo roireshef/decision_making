@@ -17,13 +17,13 @@ class BackpropagatingRoutePlanner(CostBasedRoutePlanner):
 
         The end cost from the downstream lane is propagated backwards using the following equation:
 
-                                                   (l / alpha)
+                                                   (l / v_max)
             backpropagated end cost = cost * gamma^
 
             where cost = end cost for downstream lane
                  gamma = discount factor
                      l = length of downstream lane
-                 alpha = scaling factor for lane length
+                 v_max = speed limit of lane
 
         :param lane_segment_id: Lane ID
         :param downstream_lane_costs: Downstream lane segment cost information from RP
