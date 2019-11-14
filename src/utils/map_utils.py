@@ -541,7 +541,7 @@ class MapUtils:
         return road_sign_info_on_gff
 
     @staticmethod
-    def get_closest_lane_merge(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
+    def get_merge_lane_id(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
             -> Optional[int]:
         """
         Given GFF for the current lane, find the closest merge connection into main road.
@@ -561,7 +561,8 @@ class MapUtils:
         cumulative_length = 0
         for segment in lane_subsegments:
             cumulative_length += segment.e_i_SEnd - segment.e_i_SStart
-            if cumulative_length > lookahead_distance:
+            if cumulative_length > lookahead_distance or \
+                    segment.e_i_SegmentID == initial_lane_id:  # host already passed red line, so the merge completed
                 break
             current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
             downstream_connectivity = current_lane_segment.as_downstream_lanes
@@ -569,11 +570,11 @@ class MapUtils:
             # Red line is s coordinate, from which host starts to interference laterally with the main road actors.
             # We assume that there is a host's road segment starting from the red line and ending at the merge point.
             # If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
-            if len(downstream_connectivity) == 1 and \
-                (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
-                 downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION):
-                return segment.e_i_SegmentID if segment.e_i_SegmentID != initial_lane_id \
-                    else None  # host already passed the red line, so the merge completed
+            lane_merge_ahead = len(downstream_connectivity) == 1 and \
+                               (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
+                                downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION)
+            if lane_merge_ahead:
+                return segment.e_i_SegmentID
 
         # no merge connection was found
         return None
