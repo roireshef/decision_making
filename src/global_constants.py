@@ -186,7 +186,7 @@ TRAJECTORY_NUM_POINTS = 20
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
-MAX_TRAJECTORY_WAYPOINTS = 100
+MAX_TRAJECTORY_WAYPOINTS = 200
 
 # [sec] Minimum required time horizon for trajectory (including padding)
 # Additional second is required since TP time is up to a second after BP time
