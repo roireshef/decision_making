@@ -331,7 +331,10 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
         # get velocity limits for all points in the range
         curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[0]:beyond_spec_range[1], 0]), EPS)
+
+        # TODO: Change this line to get the LAT_ACC_LIMITS from table
         points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
+
         return points_s, points_velocity_limits
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
