@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import AggressivenessL
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, LaneMergeActorState
-from decision_making.src.planning.types import LIMIT_MIN, ActionSpecArray, BoolArray
+from decision_making.src.planning.types import ActionSpecArray, BoolArray
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D
 from decision_making.src.state.state import State
