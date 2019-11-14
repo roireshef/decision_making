@@ -11,7 +11,7 @@ import numpy as np
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import DynamicObject, MapState, ObjectSize, State
-from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, RoutePlan
 from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
@@ -25,7 +25,10 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     state_with_lane_split_on_left_and_right_right_first, state_with_object_after_merge, state_with_objects_around_3to1_merge, \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_on_left_and_right_left_first, \
-    route_plan_lane_splits_on_left_and_right_right_first, state_with_five_objects_on_oval_track, route_plan_for_oval_track_file
+    route_plan_lane_splits_on_left_and_right_right_first, state_with_five_objects_on_oval_track, route_plan_for_oval_track_file, \
+    behavioral_grid_state_with_scene_short_testable, state_with_scene_static_short_testable, state_with_ego_at_split_on_oval, \
+    behavioral_grid_state_with_split_on_oval, state_with_ego_at_merge_on_oval, behavioral_grid_state_with_merge_on_oval, \
+    route_plan_for_mound_north_file
 
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3, route_plan_left_lane_ends, route_plan_right_lane_ends, \
     route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
@@ -294,17 +297,16 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
 
 
-def test_createProjectedObjects_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
+def test_createProjectedObjects_laneSplit_carNotInOverlap(behavioral_grid_state_with_scene_short_testable):
     """
     Validate that no mirror object is created if there is no overlap
     """
     logger = AV_Logger.get_logger()
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
     # Create other car in lane 21 which does NOT overlap with any other lane
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1,1,0,0,0,0]), 21),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
-    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj], logger)
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj], behavioral_grid_state_with_scene_short_testable, logger)
 
     assert not projected_dynamic_objects
 
@@ -723,74 +725,83 @@ def test_getUpstreamLaneSubsegments_NoUpstreamLane_validateUpstreamLaneNotFound(
     except UpstreamLaneNotFound:
         assert True
 
-def test_isObjectInLane_carOnLaneLine(scene_static_short_testable: SceneStatic):
+def test_isObjectInLane_carOnLaneLine(behavioral_grid_state_with_scene_short_testable):
     """
     Tests the method is_object_in_lane. Places a car in lane 11, shifted 1.5 meters left from lane 11's nominal points.
     :param scene_static_short_testable:
     :return:
     """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
     logger = AV_Logger.get_logger()
+    bgs = behavioral_grid_state_with_scene_short_testable
 
-    # Create car in lane 11 which is offset 1.5 meters to the left
-    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1.0,1,0,1.5,0,0]), 11),
+    # Create car in lane 11 which is offset 1.5 meters to the right (s station is 120 since host is also at 120)
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,-1.5,0,0]), 11),
                                                   size=ObjectSize(4,1.5,1), confidence=1, off_map=False)
 
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 11, logger) == True
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 12, logger) == True
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 10, logger) == False
+    assert BehavioralGridState.is_object_in_gff(dyn_obj,
+                                                bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    assert BehavioralGridState.is_object_in_gff(dyn_obj,
+                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
 
-def test_isObjectInLane_carInSingleLane(scene_static_short_testable: SceneStatic):
+def test_isObjectInLane_carInSingleLane(behavioral_grid_state_with_scene_short_testable):
     """
     Car is in its own lane and not intruding on any other lane.
     """
     logger = AV_Logger.get_logger()
-    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+    bgs = behavioral_grid_state_with_scene_short_testable
 
     # Create car in lane 11
-    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1.0,0,0,0,0,0]), 11),
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,0,0,0]), 11),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
 
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 11, logger) == True
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 12, logger) == False
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 10, logger) == False
+    assert BehavioralGridState.is_object_in_gff(dyn_obj,
+                                                bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    assert BehavioralGridState.is_object_in_gff(dyn_obj,
+                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == False
 
-def test_isObjectInLane_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+def test_isObjectInLane_laneSplit_carInOverlap(behavioral_grid_state_with_split_on_oval: BehavioralGridState):
     """
     Validate that projected object is correctly placed in overlapping lane
     """
     logger = AV_Logger.get_logger()
-    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
+    bgs = behavioral_grid_state_with_split_on_oval
 
     # Create other car in lane 21, which overlaps with lane 22
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
-                                                  map_state=MapState(np.array([1,0,0,-2,0,0]), 19670532),
+                                                  map_state=MapState(np.array([1,0,0,2,0,0]), 19670532),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 19670532, logger) == True
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 19670533, logger) == True
+    assert BehavioralGridState.is_object_in_gff(dyn_obj,
+                                                bgs.extended_lane_frames[RelativeLane.RIGHT_LANE], logger) == True
+    assert BehavioralGridState.is_object_in_gff(dyn_obj,
+                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
 
-def test_isObjectInLane_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
+def test_isObjectInLane_laneMerge_carInOverlap(behavioral_grid_state_with_merge_on_oval: BehavioralGridState):
     """
     Validate that projected object is correctly placed in overlapping lane
     """
     logger = AV_Logger.get_logger()
-    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
+    bgs = behavioral_grid_state_with_merge_on_oval
 
-    # Create other car in lane 21, which overlaps with lane 22
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
                                                   map_state=MapState(np.array([1,0,0,-2,0,0]), 58375684),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    # generate the cartesian state
-    _ = dyn_obj.cartesian_state
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 58375684, logger) == True
-    assert BehavioralGridState.is_object_in_lane(dyn_obj, 58375685, logger) == True
 
-def test_isObjectInLane_moundRoadNorth_carIntrudingInLane(scene_static_mound_road_north, scene_dynamic_obj_intruding_in_lane_mound_road_north):
+    assert BehavioralGridState.is_object_in_gff(dyn_obj,
+                                                bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    assert BehavioralGridState.is_object_in_gff(dyn_obj,
+                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+
+def test_isObjectInLane_moundRoadNorth_carIntrudingInLane(scene_static_mound_road_north, scene_dynamic_obj_intruding_in_lane_mound_road_north,
+                                                          route_plan_for_mound_north_file):
     logger = AV_Logger.get_logger()
     SceneStaticModel.get_instance().set_scene_static(scene_static_mound_road_north)
     state = State.create_state_from_scene_dynamic(scene_dynamic_obj_intruding_in_lane_mound_road_north, [], None)
-    # check object's assigned lane (22166020)
-    assert BehavioralGridState.is_object_in_lane(state.dynamic_objects[0], state.dynamic_objects[0].map_state.lane_id, logger) == True
-    # check the lane the object is poking into
-    assert BehavioralGridState.is_object_in_lane(state.dynamic_objects[0], 22166019, logger) == True
+    bgs = BehavioralGridState.create_from_state(state, route_plan_for_mound_north_file, logger)
+
+    assert BehavioralGridState.is_object_in_gff(state.dynamic_objects[0],
+                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+    assert BehavioralGridState.is_object_in_gff(state.dynamic_objects[0],
+                                                bgs.extended_lane_frames[RelativeLane.RIGHT_LANE], logger) == True
+    assert BehavioralGridState.is_object_in_gff(state.dynamic_objects[0],
+                                                bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == False
 

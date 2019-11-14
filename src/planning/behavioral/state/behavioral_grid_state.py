@@ -10,7 +10,7 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_L
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y, FP_DX
+from decision_making.src.planning.types import FS_SX, FS_DX, FrenetState2D, FP_SX, C_X, C_Y, FP_DX
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
     FrenetSubSegment
 from decision_making.src.state.map_state import MapState
@@ -97,7 +97,8 @@ class BehavioralGridState:
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
-    def _create_projected_objects(dynamic_objects: List[DynamicObject], logger: Logger) -> List[DynamicObject]:
+    def _create_projected_objects(dynamic_objects: List[DynamicObject], extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+                                  logger: Logger) -> List[DynamicObject]:
         """
         Creates projected, "ghost" objects related to actual dynamic objects
 
@@ -136,7 +137,12 @@ class BehavioralGridState:
                                                and (lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
                                                                                            LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
-                        if BehavioralGridState.is_object_in_lane(dynamic_object, lane_id, logger):
+                        # use generator to find the desired GFF
+                        gff_with_overlapping_lane = next((extended_lane_frames[rel_lane] for rel_lane in list(extended_lane_frames.keys()) if extended_lane_frames[rel_lane].has_segment_id(lane_id)), None)
+                        if not gff_with_overlapping_lane:
+                            logger.debug(f"Lane {lane_id} not found within any GFF's while attempting to project object {dynamic_object.obj_id}.")
+
+                        if BehavioralGridState.is_object_in_gff(dynamic_object, gff_with_overlapping_lane, logger):
                             # TODO: what to do if lane_fstate can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
                             lane_fstate = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
 
@@ -171,7 +177,7 @@ class BehavioralGridState:
         on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
 
         # Create projected objects as needed
-        projected_dynamic_objects = BehavioralGridState._create_projected_objects(on_map_dynamic_objects, logger)
+        projected_dynamic_objects = BehavioralGridState._create_projected_objects(on_map_dynamic_objects, extended_lane_frames, logger)
 
         # Filter irrelevant objects
         relevant_objects, relevant_objects_relative_lanes = BehavioralGridState._filter_irrelevant_dynamic_objects(
@@ -624,6 +630,69 @@ class BehavioralGridState:
             front_obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
         logger.debug("%s: time %f, dist_from_front_object %f, front_object: %s" %
                      (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
+
+
+    @staticmethod
+    def is_object_in_gff(dynamic_object: DynamicObject, gff: GeneralizedFrenetSerretFrame, logger: Logger) -> bool:
+        """
+        Checks if any part of an object is inside another gff.
+        Takes the point of the object's bounding box or center of mass that is closest to the gff.
+        Checks if the distance from that point to the nominal path point of the lane is less than
+        the nominal point's left/right offset.
+        :param dynamic_object: object to be checked
+        :param gff: gff of interest
+        :param logger:
+        :return: Bool representing if any bounding box corner or center of mass point is in the lane of interest
+        """
+        # skip checks if object's assigned lane is in the gff
+        obj_lane_id = dynamic_object.map_state.lane_id
+        if gff.has_segment_id(obj_lane_id):
+            return True
+
+        # determine if object is to the right or left of GFF
+        # (if object's adjacent left lane id is in a gff, the object is to the right of the gff)
+        in_right = np.any(gff.has_segment_ids(np.array(MapUtils.get_adjacent_lane_ids(obj_lane_id, RelativeLane.LEFT_LANE))))
+        in_left = np.any(gff.has_segment_ids(np.array(MapUtils.get_adjacent_lane_ids(obj_lane_id, RelativeLane.RIGHT_LANE))))
+        offset_side = RelativeLane.RIGHT_LANE if in_right else RelativeLane.LEFT_LANE
+
+        # object can only overlap with adjacent lanes, and can't be in both left and right.
+        # todo: is this assumption true?
+        if not (in_left ^ in_right):
+            return False
+
+        bbox = dynamic_object.bounding_box()
+        # add center of vehicle to the list of points being considered
+        bbox = np.vstack((bbox, [dynamic_object.x, dynamic_object.y]))
+
+        point_results = []
+        # project points onto other lane if possible. If not possible, skip checking the point
+        for point in bbox:
+            try:
+                # this conversion may throw OutOfSegment exceptions
+                obj_gff_fpoint = (gff.cpoint_to_fpoint(point))
+                obj_gff_fstate = np.array([obj_gff_fpoint[FP_SX], 0, 0, obj_gff_fpoint[FP_DX], 0, 0])
+
+                # get lane_id and progress along that lane's frame for the projected point
+                gff_lane_id, gff_lane_fstate = gff.convert_to_segment_state(obj_gff_fstate)
+
+                # get border widths at the longitudes of the bbox points
+                borders_right, borders_left = MapUtils.get_dist_to_lane_borders(gff_lane_id, gff_lane_fstate[FS_SX])
+                border_width = borders_right if offset_side == RelativeLane.RIGHT_LANE else borders_left
+
+                point_results.append(np.abs(gff_lane_fstate[FS_DX]) < border_width)
+
+                logger.debug(f"Object {dynamic_object.obj_id} will be projected to lane {gff_lane_id}.")
+            except OutOfSegmentFront:
+                logger.debug(f"OutOfSegmentFront for object {dynamic_object.obj_id} when checking occupancy "
+                             f"at point {str(point)}. Point will be skipped")
+            except OutOfSegmentBack:
+                logger.debug(f"OutOfSegmentBack for object {dynamic_object.obj_id} when checking occupancy "
+                             f"at point {str(point)}. Point will be skipped")
+        # test if any bbox point intrudes in the target lane
+        return np.any(point_results)
+
+
+
 
     @staticmethod
     def is_object_in_lane(dynamic_object: DynamicObject, lane_id: int, logger: Logger) -> bool:
