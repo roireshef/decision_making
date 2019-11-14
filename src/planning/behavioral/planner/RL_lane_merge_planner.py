@@ -17,7 +17,7 @@ from decision_making.src.planning.behavioral.state.lane_merge_state import LaneM
 from decision_making.src.state.state import State
 from ray.rllib.evaluation import SampleBatch
 import torch
-from gym.spaces.tuple import Tuple as GymTuple
+from gym.spaces.tuple_space import Tuple as GymTuple
 from gym.spaces.box import Box
 
 # TODO: remove the dependency on planning_research
