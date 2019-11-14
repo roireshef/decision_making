@@ -52,7 +52,7 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
                            target.dynamic_object.map_state.lane_fstate[FS_SV] * actions[i].t -
                            actions[i].v * SPECIFICATION_HEADWAY -
                            LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT -
-                           behavioral_grid_state.ego_state.size.length / 2 - targets[i].dynamic_object.size.length / 2
+                           behavioral_grid_state.ego_length / 2 - targets[i].dynamic_object.size.length / 2
                            for i, target in enumerate(targets)]
 
     longitudes = [action.s for action in actions]  # also relative to the corresponding GFF

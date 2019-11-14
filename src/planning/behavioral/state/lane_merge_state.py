@@ -61,10 +61,6 @@ class LaneMergeState(BehavioralGridState):
                 for lon_pos in RelativeLongitudinalPosition if (self.target_rel_lane, lon_pos) in self.road_occupancy_grid
                 for obj in self.road_occupancy_grid[(self.target_rel_lane, lon_pos)]]
 
-    @property
-    def ego_length(self) -> float:
-        return self.ego_state.size.length
-
     def __str__(self) -> str:
         return f'EGO: {self.ego_fstate_1d} + \r\nACTORS:{[[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in self.actors_states]}'
 
@@ -83,7 +79,7 @@ class LaneMergeState(BehavioralGridState):
         ego_lane_id, ego_lane_fstate = ego_state.map_state.lane_id, ego_state.map_state.lane_fstate
 
         # find merge lane_id of ego_gff, merge side and the first common lane_id
-        merge_lane_id = MapUtils.get_closest_lane_merge(
+        merge_lane_id = MapUtils.get_merge_lane_id(
             ego_lane_id, ego_lane_fstate[FS_SX], LANE_MERGE_STATE_FAR_AWAY_DISTANCE, route_plan)
         downstream_connectivity = MapUtils.get_lane(merge_lane_id).as_downstream_lanes[0]
         maneuver_type, common_lane_id = downstream_connectivity.e_e_maneuver_type, downstream_connectivity.e_i_lane_segment_id
@@ -105,8 +101,10 @@ class LaneMergeState(BehavioralGridState):
             merge_point_on_ego_gff = ego_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), common_lane_id)[FS_SX]
             merge_dist = merge_point_on_ego_gff - ego_on_same_gff[FS_SX]
 
-            # create target GFF for the merge, such that its backward & forward horizons are equal to MERGE_LOOKAHEAD
-            # relative to ego
+            # Create target GFF for the merge with the backward & forward horizons.
+            # Since both horizons are relative to ego while common_lane_id starts at the merge-point,
+            # then merge_dist (merge-point relative to ego) is added to MAX_BACKWARD_HORIZON and subtracted
+            # from MAX_FORWARD_HORIZON.
             target_gff = BehavioralGridState._get_generalized_frenet_frames(
                 lane_id=common_lane_id, station=0, route_plan=route_plan, forward_horizon=MAX_FORWARD_HORIZON - merge_dist,
                 backward_horizon=MAX_BACKWARD_HORIZON + merge_dist)[RelativeLane.SAME_LANE]
@@ -147,9 +145,10 @@ class LaneMergeState(BehavioralGridState):
         :return: LaneMergeState
         """
         ego_state = EgoState.create_from_cartesian_state(
-            0, 0, np.array([0, 0, 0, ego_fstate[FS_SV], 0, 0]), ObjectSize(ego_length, 0, 0), 1, False)
+            obj_id=0, timestamp=0, cartesian_state=np.array([0, 0, 0, ego_fstate[FS_SV], 0, 0]),
+            size=ObjectSize(ego_length, 0, 0), confidence=1, off_map=False)
 
-        target_rel_lane = RelativeLane.LEFT_LANE  # does not matter
+        target_rel_lane = RelativeLane.LEFT_LANE  # does not matter LEFT or RIGHT, since the merge problem is symmetric
         road_occupancy_grid = {(target_rel_lane, RelativeLongitudinalPosition.PARALLEL):
                                [DynamicObjectWithRoadSemantics(
                                    DynamicObject.create_from_cartesian_state(

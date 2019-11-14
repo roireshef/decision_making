@@ -22,7 +22,7 @@ class Scenario:
         # Try to find a lane merge connectivity with forward horizon MERGE_LOOKAHEAD from ego location
         ego_map_state = state.ego_state.map_state
 
-        return LaneMergeScenario if MapUtils.get_closest_lane_merge(
+        return LaneMergeScenario if MapUtils.get_merge_lane_id(
                 ego_map_state.lane_id, ego_map_state.lane_fstate[FS_SX], LANE_MERGE_STATE_FAR_AWAY_DISTANCE, route_plan) \
             else DefaultScenario
 
