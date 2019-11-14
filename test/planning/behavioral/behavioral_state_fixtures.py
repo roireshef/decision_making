@@ -28,7 +28,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
     scene_static_lane_splits_on_left_and_right_left_first, scene_static_lane_splits_on_left_and_right_right_first, \
     scene_static_merge_right, scene_static_merge_left_right_to_center, scene_static_oval_with_splits
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
-from decision_making.test.planning.custom_fixtures import route_plan_1_2
+from decision_making.test.planning.custom_fixtures import route_plan_1_2, turn_signal
 
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
@@ -868,46 +868,46 @@ def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan)
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state(state_with_surrounding_objects: State, route_plan_20_30: RoutePlan):
+def behavioral_grid_state(state_with_surrounding_objects: State, route_plan_20_30: RoutePlan, turn_signal):
     yield BehavioralGridState.create_from_state(state_with_surrounding_objects,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, turn_signal, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_acceleration_towards_vehicle(
-        state_with_objects_for_acceleration_towards_vehicle, route_plan_for_oval_track_file: RoutePlan):
+        state_with_objects_for_acceleration_towards_vehicle, route_plan_for_oval_track_file: RoutePlan, turn_signal):
     yield BehavioralGridState.create_from_state(state_with_objects_for_acceleration_towards_vehicle,
-                                                route_plan_for_oval_track_file, None)
+                                                route_plan_for_oval_track_file, turn_signal, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
-        state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan):
+        state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan, turn_signal):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, turn_signal, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
-        state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan):
+        state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan, turn_signal):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_exact_tracking_mode,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, turn_signal, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_objects_for_filtering_negative_sT: State,
-                                                                 route_plan_20_30: RoutePlan):
+                                                                 route_plan_20_30: RoutePlan, turn_signal):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, turn_signal, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
-        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
+        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan, turn_signal):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, turn_signal, None)
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
+def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan, turn_signal):
 
     scene_static_with_traffic = scene_static_pg_split()
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
@@ -915,16 +915,16 @@ def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, turn_signal, None)
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_segments_limits(state_for_testing_lanes_speed_limits_violations, route_plan_20_30: RoutePlan):
+def behavioral_grid_state_with_segments_limits(state_for_testing_lanes_speed_limits_violations, route_plan_20_30: RoutePlan, turn_signal):
     yield BehavioralGridState.create_from_state(state_for_testing_lanes_speed_limits_violations,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, turn_signal, None)
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_left_lane_ending(state_with_left_lane_ending, route_plan_1_2):
-    yield BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_1_2, None)
+def behavioral_grid_state_with_left_lane_ending(state_with_left_lane_ending, route_plan_1_2, turn_signal):
+    yield BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_1_2, turn_signal, None)
 
 
 @pytest.fixture(scope='function')

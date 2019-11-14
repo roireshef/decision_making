@@ -33,6 +33,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
     behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_for_oval_track_file, \
     route_plan_1_2, behavioral_grid_state_with_left_lane_ending, state_with_left_lane_ending
+from decision_making.test.planning.custom_fixtures import turn_signal
 
 
 def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control,
