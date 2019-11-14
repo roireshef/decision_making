@@ -176,12 +176,9 @@ class TrajectoryPlanningFacade(DmModule):
                                                                                NEGLIGIBLE_DISPOSITION_LAT,  # right
                                                                                NEGLIGIBLE_DISPOSITION_LON,  # front
                                                                                NEGLIGIBLE_DISPOSITION_LON]  # rear
-        waypoints = np.vstack((np.hstack((trajectory_points, allowed_tracking_errors,
-                                          np.zeros(shape=[trajectory_num_points, TRAJECTORY_WAYPOINT_SIZE -
-                                                          trajectory_points.shape[1] - allowed_tracking_errors.shape[1]]
-                                                   ))),
-                               np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS - trajectory_num_points,
-                                               TRAJECTORY_WAYPOINT_SIZE])))
+        waypoints = np.hstack((trajectory_points, allowed_tracking_errors,
+                               np.zeros(shape=[trajectory_num_points, TRAJECTORY_WAYPOINT_SIZE -
+                                               trajectory_points.shape[1] - allowed_tracking_errors.shape[1]])))
 
         timestamp_object = Timestamp.from_seconds(timestamp)
         map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp_object)
