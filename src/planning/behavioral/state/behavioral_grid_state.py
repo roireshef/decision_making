@@ -9,7 +9,6 @@ from decision_making.src.exceptions import MappingException, OutOfSegmentBack, O
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
@@ -51,8 +50,7 @@ RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSem
 class BehavioralGridState:
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                 projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
-                 turn_signal: TurnSignal):
+                 projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
         """
         constructor of BehavioralGridState
         :param road_occupancy_grid: dictionary from grid cell to list of dynamic objects with semantics
@@ -65,12 +63,11 @@ class BehavioralGridState:
         self.ego_state = ego_state
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
-        self.turn_signal = turn_signal
 
 
     @classmethod
     @prof.ProfileFunction()
-    def create_from_state(cls, state: State, route_plan: RoutePlan, turn_signal: TurnSignal, logger: Logger):
+    def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -102,7 +99,7 @@ class BehavioralGridState:
 
         BehavioralGridState._log_grid_data(multi_object_grid, state.ego_state.timestamp_in_sec, logger)
 
-        return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates, turn_signal)
+        return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
     def _create_projected_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:

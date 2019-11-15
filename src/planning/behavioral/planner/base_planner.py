@@ -3,7 +3,6 @@ import six
 from abc import abstractmethod, ABCMeta
 
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
@@ -39,7 +38,7 @@ class BasePlanner:
         self.logger = logger
 
     @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan, turn_signal: TurnSignal):
+    def plan(self, state: State, route_plan: RoutePlan):
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
@@ -51,7 +50,7 @@ class BasePlanner:
         :param turn_signal: a turn signal message
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
-        behavioral_state = self._create_behavioral_state(state, route_plan, turn_signal)
+        behavioral_state = self._create_behavioral_state(state, route_plan)
         actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
@@ -71,7 +70,7 @@ class BasePlanner:
         return trajectory_parameters, baseline_trajectory, visualization_message
 
     @abstractmethod
-    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, turn_signal: TurnSignal) -> BehavioralGridState:
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
         """
         Create behavioral state relevant for specific scenario
         :return: array of action specifications of the same size as the action space

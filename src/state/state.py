@@ -11,6 +11,7 @@ from typing import List, Optional, Dict, Tuple, TypeVar
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 from decision_making.src.messages.scene_static_enums import ManeuverType
+from decision_making.src.messages.turn_signal_message import TurnSignal
 
 
 class DynamicObjectsData:
@@ -58,11 +59,12 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     _cached_map_state = MapState
     size = ObjectSize
     confidence = float
+    turn_signal = TurnSignal
     off_map = bool
     is_ghost = bool
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, is_ghost = False):
-        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool, bool) -> None
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, turn_signal=None, is_ghost = False):
+        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool, TurnSignal, bool) -> None
         """
         Data object that hold
         :param obj_id: object id
@@ -71,6 +73,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param map_state: localization in a map-object's frame (road,segment,lane)
         :param size: class ObjectSize
         :param confidence: of object's existence
+        :param turn_signal: blinker status
         :param off_map: indicates if the vehicle is off the map
         :param is_ghost: indicates whether the object is a projection of a real object in a different lane
         """
@@ -80,6 +83,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self._cached_map_state = map_state
         self.size = copy.copy(size)
         self.confidence = confidence
+        self.turn_signal = turn_signal
         self.off_map = off_map
         self.is_ghost = is_ghost
 
@@ -153,8 +157,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return DynamicObject.ticks_to_sec(self.timestamp)
 
     @classmethod
-    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map):
-        # type: (int, int, CartesianExtendedState, ObjectSize, float, bool) -> DynamicObject
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map, turn_signal=None):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float, bool, TurnSignal) -> DynamicObject
         """
         Constructor that gets only cartesian-state (without map-state)
         :param obj_id: object id
@@ -165,11 +169,11 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param off_map: indicates if the vehicle is off the map
 
         """
-        return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map)
+        return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map, turn_signal=turn_signal)
 
     @classmethod
-    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map):
-        # type: (int, int, MapState, ObjectSize, float, bool) -> DynamicObject
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map, turn_signal=None):
+        # type: (int, int, MapState, ObjectSize, float, bool, TurnSignal) -> DynamicObject
         """
         Constructor that gets only map-state (without cartesian-state)
         :param obj_id: object id
@@ -179,7 +183,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param confidence: of object's existence
         :param off_map: is the vehicle is off the map
         """
-        return cls(obj_id, timestamp, None, map_state, size, confidence, off_map)
+        return cls(obj_id, timestamp, None, map_state, size, confidence, off_map, turn_signal=turn_signal)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
@@ -187,7 +191,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self.__class__.create_from_cartesian_state(self.obj_id,
                                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
-                                                          self.size, self.confidence, self.off_map)
+                                                          self.size, self.confidence, self.off_map, turn_signal=self.turn_signal)
 
     def clone_from_map_state(self, map_state, timestamp_in_sec=None):
         # type: (MapState, Optional[float]) -> DynamicObject
@@ -195,12 +199,12 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self.create_from_map_state(self.obj_id,
                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
-                                          self.size, self.confidence, self.off_map)
+                                          self.size, self.confidence, self.off_map, turn_signal=self.turn_signal)
 
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, bool) -> EgoState
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, turn_signal, off_map):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, TurnSignal, bool) -> EgoState
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -214,7 +218,8 @@ class EgoState(DynamicObject):
         :param off_map: indicates if the object is off map
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
-                                             map_state=map_state, size=size, confidence=confidence, off_map=off_map)
+                                             map_state=map_state, size=size, confidence=confidence, turn_signal=turn_signal,
+                                             off_map=off_map)
 
 
 T = TypeVar('T', bound='State')
@@ -308,6 +313,7 @@ class State(PUBSUB_MSG_IMPL):
     @classmethod
     def create_state_from_scene_dynamic(cls, scene_dynamic: SceneDynamic,
                                         selected_gff_segment_ids: np.ndarray,
+                                        turn_signal: TurnSignal,
                                         logger: Logger,
                                         route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None):
         """
@@ -316,6 +322,7 @@ class State(PUBSUB_MSG_IMPL):
         :param selected_gff_segment_ids: list of GFF segment ids for last or current BP action. If this method is called
                from inside BP, the parameter refers to the last chosen BP action, while it refers to current BP action
                if called from inside TP
+        :param turn_signal: turn signal status
         :param logger: Logging module
         :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value.
                Note that it is an optional argument and is used only when the method is called from inside BP and the
@@ -338,7 +345,7 @@ class State(PUBSUB_MSG_IMPL):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0, off_map=False)
+                             confidence=1.0, turn_signal=turn_signal, off_map=False)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,

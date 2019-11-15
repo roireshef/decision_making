@@ -6,6 +6,7 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
 
 from decision_making.src.exceptions import MsgDeserializationError, CartesianLimitsViolated, StateHasNotArrivedYet
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
@@ -36,6 +37,7 @@ from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger
 from typing import Dict
 import rte.python.profiler as prof
+from src.messages.turn_signal_message import TurnSignal
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -81,10 +83,14 @@ class TrajectoryPlanningFacade(DmModule):
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
 
-                state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
-                                                              selected_gff_segment_ids=params.reference_route.segment_ids,
-                                                              logger=self.logger)
-                state.handle_negative_velocities(self.logger)
+            with DMProfiler(self.__class__.__name__ + '._get_current_turn_signal'):
+                turn_signal = self._get_current_turn_signal()
+
+            state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
+                                                          selected_gff_segment_ids=params.reference_route.segment_ids,
+                                                          turn_signal=turn_signal,
+                                                          logger=self.logger)
+            state.handle_negative_velocities(self.logger)
 
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -211,6 +217,15 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.debug(
             "%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_dynamic
+
+    def _get_current_turn_signal(self) -> TurnSignal:
+        is_success, serialized_turn_signal = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TURN_SIGNAL)
+        if serialized_turn_signal is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_TURN_SIGNAL)
+        turn_signal = TurnSignal.deserialize(serialized_turn_signal)
+        self.logger.debug("Received turn signal: %s" % turn_signal)
+        return turn_signal
 
     def _get_mission_params(self) -> TrajectoryParams:
         """

@@ -98,15 +98,17 @@ class BehavioralPlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
-                state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
-                                                              selected_gff_segment_ids=self._last_gff_segment_ids,
-                                                              route_plan_dict=route_plan_dict,
-                                                              logger=self.logger)
-
-                state.handle_negative_velocities(self.logger)
 
             with DMProfiler(self.__class__.__name__ + '._get_current_turn_signal'):
                 turn_signal = self._get_current_turn_signal()
+
+            state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
+                                                          selected_gff_segment_ids=self._last_gff_segment_ids,
+                                                          route_plan_dict=route_plan_dict,
+                                                          turn_signal=turn_signal,
+                                                          logger=self.logger)
+
+            state.handle_negative_velocities(self.logger)
 
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))

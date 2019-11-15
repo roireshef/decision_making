@@ -1,6 +1,5 @@
 import numpy as np
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.road_sign_action_space import RoadSignActionSpace
@@ -37,8 +36,8 @@ class SingleStepBehavioralPlanner(BasePlanner):
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
-    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, turn_signal: TurnSignal) -> BehavioralGridState:
-        return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, turn_signal=turn_signal, logger=self.logger)
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
+        return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
 
     def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
         """
