@@ -186,7 +186,7 @@ def create_route_plan_msg(road_segment_ids):
 
 
 @pytest.fixture(scope='function')
-def ego_state_for_takeover_message_simple_scene():
+def ego_state_for_takeover_message_simple_scene(turn_signal):
 
     ego_lane_id = 101
     ego_lane_lon = 0  # station along the lane
@@ -195,13 +195,13 @@ def ego_state_for_takeover_message_simple_scene():
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield ego_state
 
 
 @pytest.fixture(scope='function')
-def ego_state_for_takeover_message_default_scene():
+def ego_state_for_takeover_message_default_scene(turn_signal):
 
     ego_lane_id = 201
     ego_lane_lon = 100  # station along the lane
@@ -210,13 +210,13 @@ def ego_state_for_takeover_message_default_scene():
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield ego_state
 
 
 @pytest.fixture(scope='function')
-def state_with_surrounding_objects(route_plan_20_30: RoutePlan):
+def state_with_surrounding_objects(route_plan_20_30: RoutePlan, turn_signal):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -233,7 +233,8 @@ def state_with_surrounding_objects(route_plan_20_30: RoutePlan):
     ego_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
@@ -263,7 +264,7 @@ def state_with_surrounding_objects(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_object_after_merge(route_plan_1_2: RoutePlan):
+def state_with_object_after_merge(route_plan_1_2: RoutePlan, turn_signal):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_merge_right())
     # Stub of occupancy grid
@@ -277,7 +278,8 @@ def state_with_object_after_merge(route_plan_1_2: RoutePlan):
     ego_lane_id = 11
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
@@ -286,13 +288,13 @@ def state_with_object_after_merge(route_plan_1_2: RoutePlan):
     obj_vel = 10
     map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
     dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
-                                                    size=car_size, confidence=1., off_map=False)
+                                                    size=car_size, confidence=1., turn_signal=turn_signal, off_map=False)
     dynamic_objects.append(dynamic_object)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 @pytest.fixture(scope='function')
-def state_with_objects_around_3to1_merge(route_plan_1_2: RoutePlan):
+def state_with_objects_around_3to1_merge(route_plan_1_2: RoutePlan, turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_merge_left_right_to_center())
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
@@ -305,7 +307,8 @@ def state_with_objects_around_3to1_merge(route_plan_1_2: RoutePlan):
     ego_lane_id = 11
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     dynamic_objects: List[DynamicObject] = list()
 
@@ -333,7 +336,7 @@ def state_with_objects_around_3to1_merge(route_plan_1_2: RoutePlan):
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 @pytest.fixture(scope='function')
-def state_with_five_objects_on_oval_track():
+def state_with_five_objects_on_oval_track(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits())
 
     # Stub of occupancy grid
@@ -347,7 +350,8 @@ def state_with_five_objects_on_oval_track():
     ego_lane_id = 19670531   # host in middle lane
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     dynamic_objects: List[DynamicObject] = []
 
@@ -360,7 +364,7 @@ def state_with_five_objects_on_oval_track():
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
 
 @pytest.fixture(scope='function')
-def state_with_surrounding_objects_and_off_map_objects(route_plan_20_30: RoutePlan):
+def state_with_surrounding_objects_and_off_map_objects(route_plan_20_30: RoutePlan, turn_signal):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -377,7 +381,8 @@ def state_with_surrounding_objects_and_off_map_objects(route_plan_20_30: RoutePl
     ego_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
@@ -420,7 +425,7 @@ def state_with_objects_for_acceleration_towards_vehicle():
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: RoutePlan):
+def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: RoutePlan, turn_signal):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -437,7 +442,8 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     # Generate objects at the following locations:
     next_sub_segments, _, _, _ = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 20, route_plan_20_30)[RelativeLane.SAME_LANE]
@@ -458,7 +464,7 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_exact_tracking_mode():
+def state_with_objects_for_filtering_exact_tracking_mode(turn_signal):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -475,7 +481,8 @@ def state_with_objects_for_filtering_exact_tracking_mode():
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     # Generate objects at the following locations:
     obj_lane_lon = ego_lane_lon + car_size.length + LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT + ego_vel * SPECIFICATION_HEADWAY
@@ -495,7 +502,7 @@ def state_with_objects_for_filtering_exact_tracking_mode():
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
+def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan, turn_signal):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -515,7 +522,7 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
 
     # Generate objects at the following locations:
-    next_sub_segments, _, _ = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 3.8, route_plan_20_30)[RelativeLane.SAME_LANE]
+    next_sub_segments = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 3.8, route_plan_20_30)[RelativeLane.SAME_LANE][0]
     obj_lane_lon = next_sub_segments[-1].e_i_SEnd
     obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
@@ -533,7 +540,7 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_traffic_control(route_plan_20_30: RoutePlan):
+def state_with_traffic_control(route_plan_20_30: RoutePlan, turn_signal):
 
     scene_static_with_traffic = scene_static_pg_split()
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
@@ -555,7 +562,8 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     # Generate objects at the following locations:
     next_sub_segments, _, _, _ = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 3.8, route_plan_20_30)[RelativeLane.SAME_LANE]
@@ -576,7 +584,7 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
 
 
 @pytest.fixture(scope='function')
-def state_with_left_lane_ending():
+def state_with_left_lane_ending(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_left_lane_ends())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
@@ -587,13 +595,13 @@ def state_with_left_lane_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_right_lane_ending():
+def state_with_right_lane_ending(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_right_lane_ends())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
@@ -604,13 +612,13 @@ def state_with_right_lane_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_same_lane_ending_no_left_lane():
+def state_with_same_lane_ending_no_left_lane(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_left_lane_ends())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
@@ -621,13 +629,13 @@ def state_with_same_lane_ending_no_left_lane():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_same_lane_ending_no_right_lane():
+def state_with_same_lane_ending_no_right_lane(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_right_lane_ends())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
@@ -638,13 +646,13 @@ def state_with_same_lane_ending_no_right_lane():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_right():
+def state_with_lane_split_on_right(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
@@ -655,13 +663,13 @@ def state_with_lane_split_on_right():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_left():
+def state_with_lane_split_on_left(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(left_lane_split_scene_static())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
@@ -672,13 +680,13 @@ def state_with_lane_split_on_left():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_left_and_right():
+def state_with_lane_split_on_left_and_right(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
@@ -689,13 +697,13 @@ def state_with_lane_split_on_left_and_right():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_left_and_right_left_first():
+def state_with_lane_split_on_left_and_right_left_first(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
@@ -706,13 +714,13 @@ def state_with_lane_split_on_left_and_right_left_first():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_left_and_right_right_first():
+def state_with_lane_split_on_left_and_right_right_first(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_right_first())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
@@ -723,13 +731,13 @@ def state_with_lane_split_on_left_and_right_right_first():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_right_ending():
+def state_with_lane_split_on_right_ending(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split_on_right_ends())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
@@ -740,13 +748,13 @@ def state_with_lane_split_on_right_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_left_ending():
+def state_with_lane_split_on_left_ending(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split_on_left_ends())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
@@ -757,13 +765,13 @@ def state_with_lane_split_on_left_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_lane_split_on_left_and_right_ending():
+def state_with_lane_split_on_left_and_right_ending(turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_end())
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
@@ -774,13 +782,13 @@ def state_with_lane_split_on_left_and_right_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False)
+                                               turn_signal=turn_signal, off_map=False)
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan):
+def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan, turn_signal):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
 
@@ -798,7 +806,8 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
     mid_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     ego_map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), mid_lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=ego_map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=ego_map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     # Generate objects at the following locations:
     mid_next_sub_segments, _, _, _ = BehavioralGridState._get_downstream_lane_subsegments(mid_lane_id, ego_lane_lon, 58, route_plan_20_30)[RelativeLane.SAME_LANE]
@@ -829,7 +838,7 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
 
 
 @pytest.fixture(scope='function')
-def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan):
+def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan, turn_signal):
 
     scene_static_with_limits = scene_static_pg_split()
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
@@ -847,7 +856,8 @@ def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan)
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, -0.1, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
+                                               turn_signal=turn_signal, off_map=False)
 
     # Generate objects at the following locations:
     next_sub_segments, _, _,_ = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 3.8, route_plan_20_30)[RelativeLane.SAME_LANE]
@@ -868,46 +878,46 @@ def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan)
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state(state_with_surrounding_objects: State, route_plan_20_30: RoutePlan, turn_signal):
+def behavioral_grid_state(state_with_surrounding_objects: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_surrounding_objects,
-                                                route_plan_20_30, turn_signal, None)
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_acceleration_towards_vehicle(
-        state_with_objects_for_acceleration_towards_vehicle, route_plan_for_oval_track_file: RoutePlan, turn_signal):
+        state_with_objects_for_acceleration_towards_vehicle, route_plan_for_oval_track_file: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_acceleration_towards_vehicle,
-                                                route_plan_for_oval_track_file, turn_signal, None)
+                                                route_plan_for_oval_track_file, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
-        state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan, turn_signal):
+        state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
-                                                route_plan_20_30, turn_signal, None)
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
-        state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan, turn_signal):
+        state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_exact_tracking_mode,
-                                                route_plan_20_30, turn_signal, None)
+                                                route_plan_20_30, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_objects_for_filtering_negative_sT: State,
-                                                                 route_plan_20_30: RoutePlan, turn_signal):
+                                                                 route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
-                                                route_plan_20_30, turn_signal, None)
+                                                route_plan_20_30, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
-        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan, turn_signal):
+        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
-                                                route_plan_20_30, turn_signal, None)
+                                                route_plan_20_30, None)
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan, turn_signal):
+def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
 
     scene_static_with_traffic = scene_static_pg_split()
     stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
@@ -915,16 +925,16 @@ def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
-                                                route_plan_20_30, turn_signal, None)
+                                                route_plan_20_30, None)
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_segments_limits(state_for_testing_lanes_speed_limits_violations, route_plan_20_30: RoutePlan, turn_signal):
+def behavioral_grid_state_with_segments_limits(state_for_testing_lanes_speed_limits_violations, route_plan_20_30: RoutePlan):
     yield BehavioralGridState.create_from_state(state_for_testing_lanes_speed_limits_violations,
-                                                route_plan_20_30, turn_signal, None)
+                                                route_plan_20_30, None)
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_left_lane_ending(state_with_left_lane_ending, route_plan_1_2, turn_signal):
-    yield BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_1_2, turn_signal, None)
+def behavioral_grid_state_with_left_lane_ending(state_with_left_lane_ending, route_plan_1_2):
+    yield BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_1_2, None)
 
 
 @pytest.fixture(scope='function')

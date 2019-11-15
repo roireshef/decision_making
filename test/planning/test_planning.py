@@ -36,7 +36,8 @@ from decision_making.test.messages.scene_static_fixture import scene_static_shor
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         scene_static_short_testable,
-                                                                        scene_dynamic):
+                                                                        scene_dynamic,
+                                                                        turn_signal):
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
 
     # Using logger-mock here because facades catch exceptions and redirect them to logger
@@ -60,6 +61,8 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_facade.start()
 
     pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_testable.serialize())
+
+    pubsub.publish(UC_SYSTEM_TURN_SIGNAL, turn_signal.serialize())
 
     behavioral_facade.periodic_action()
     pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic.serialize())
@@ -109,6 +112,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     predictor_logger.critical.assert_not_called()
 
     pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_testable.serialize())
+    pubsub.publish(UC_SYSTEM_TURN_SIGNAL, turn_signal.serialize())
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
 

@@ -34,10 +34,10 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split
     cstate = MapUtils.get_lane_frenet_frame(lane_id).fstate_to_cstate(np.array([ego_lon, ego_vel, 0, 0, 0, 0]))
 
     ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=cstate, size=size, confidence=0,
-                                               off_map=False)
+                                               off_map=False, turn_signal=turn_signal)
 
     state = State(False, None, [], ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20_30, turn_signal, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20_30, logger)
     # ego is located on the rightest lane, so filter recipes to the right
     filtered_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane != RelativeLane.RIGHT_LANE]
 

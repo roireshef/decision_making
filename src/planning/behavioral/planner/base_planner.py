@@ -47,7 +47,6 @@ class BasePlanner:
         cost params and strategy.
         :param state: the current world state
         :param route_plan: a route plan message
-        :param turn_signal: a turn signal message
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
         behavioral_state = self._create_behavioral_state(state, route_plan)

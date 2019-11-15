@@ -101,8 +101,8 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
         # the if statement in the ternary operator is executed first and will short circuit if False,
         # so a KeyError will not happen when accessing the extended_lane_frames dict
         time_since_turn_signal_changed = behavioral_state.ego_state.timestamp_in_sec - \
-                                         behavioral_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
-        turn_signal_state = behavioral_state.turn_signal.s_Data.e_e_turn_signal_state
+                                         behavioral_state.ego_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
+        turn_signal_state = behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state
         return [(recipe.relative_lane == RelativeLane.SAME_LANE
                  or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]
                  or ((recipe.relative_lane == RelativeLane.LEFT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn)

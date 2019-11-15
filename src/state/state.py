@@ -169,7 +169,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param off_map: indicates if the vehicle is off the map
 
         """
-        return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map, turn_signal=turn_signal)
+        return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map, turn_signal)
 
     @classmethod
     def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map, turn_signal=None):
@@ -183,7 +183,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param confidence: of object's existence
         :param off_map: is the vehicle is off the map
         """
-        return cls(obj_id, timestamp, None, map_state, size, confidence, off_map, turn_signal=turn_signal)
+        return cls(obj_id, timestamp, None, map_state, size, confidence, off_map, turn_signal)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
@@ -191,7 +191,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self.__class__.create_from_cartesian_state(self.obj_id,
                                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
-                                                          self.size, self.confidence, self.off_map, turn_signal=self.turn_signal)
+                                                          self.size, self.confidence, self.off_map, self.turn_signal)
 
     def clone_from_map_state(self, map_state, timestamp_in_sec=None):
         # type: (MapState, Optional[float]) -> DynamicObject
@@ -199,7 +199,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self.create_from_map_state(self.obj_id,
                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
-                                          self.size, self.confidence, self.off_map, turn_signal=self.turn_signal)
+                                          self.size, self.confidence, self.off_map, self.turn_signal)
 
 
 class EgoState(DynamicObject):

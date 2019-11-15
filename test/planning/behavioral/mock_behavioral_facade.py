@@ -50,8 +50,9 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
         try:
 
             scene_dynamic = self._get_current_scene_dynamic()
+            turn_signal = self._get_current_turn_signal()
 
-            state = State.create_state_from_scene_dynamic(scene_dynamic, self._last_gff_segment_ids, self.logger)
+            state = State.create_state_from_scene_dynamic(scene_dynamic, self._last_gff_segment_ids, turn_signal, self.logger)
 
             state.handle_negative_velocities(self.logger)
 
