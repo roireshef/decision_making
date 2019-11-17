@@ -561,8 +561,7 @@ class MapUtils:
         cumulative_length = 0
         for segment in lane_subsegments:
             cumulative_length += segment.e_i_SEnd - segment.e_i_SStart
-            if cumulative_length > lookahead_distance or \
-                    segment.e_i_SegmentID == initial_lane_id:  # host already passed red line, so the merge completed
+            if cumulative_length > lookahead_distance:
                 break
             current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
             downstream_connectivity = current_lane_segment.as_downstream_lanes
@@ -573,8 +572,9 @@ class MapUtils:
             lane_merge_ahead = len(downstream_connectivity) == 1 and \
                                (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
                                 downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION)
-            if lane_merge_ahead:
-                return segment.e_i_SegmentID
+            # if segment.e_i_SegmentID == initial_lane_id then host already passed the red line and the merge completed
+            if lane_merge_ahead and segment.e_i_SegmentID != initial_lane_id:
+                    return segment.e_i_SegmentID
 
         # no merge connection was found
         return None
