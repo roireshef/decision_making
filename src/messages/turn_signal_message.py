@@ -13,7 +13,6 @@ class TurnSignalState(Enum):
     CeSYS_e_Off = 1
     CeSYS_e_LeftTurnSignalOn = 2
     CeSYS_e_RightTurnSignalOn = 3
-    CeSYS_e_HazardLightsOn = 4
 
 
 class DataTurnSignal(PUBSUB_MSG_IMPL):
