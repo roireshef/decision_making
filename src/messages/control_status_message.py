@@ -1,4 +1,4 @@
-from typing import List
+import numpy as np
 from interface.Rte_Types.python.sub_structures.TsSYS_ControlStatus import TsSYSControlStatus
 from interface.Rte_Types.python.sub_structures.TsSYS_DataControlStatus import TsSYSDataControlStatus
 from interface.Rte_Types.python.sub_structures.TsSYS_InterpolatedTrajectory import TsSYSInterpolatedTrajectory
@@ -8,15 +8,15 @@ from decision_making.src.messages.scene_common_messages import Header
 
 
 class InterpolatedTrajectory(PUBSUB_MSG_IMPL):
-    a_latPosition = List[float]   # Interpolated trajectory - lateral position in m [15]
-    a_lonPosition = List[float]   # Interpolated trajectory - longitudinal position in m [15]
-    a_curvature = List[float]     # Interpolated trajectory - curvature in \f$ m^{-1} \f$  [15]
-    a_heading = List[float]       # Interpolated trajectory - heading in rad [15]
-    a_vx = List[float]            # Interpolated trajectory - Vx in \f$ \frac{m}{s} \f$ [15]
-    a_ax = List[float]            # Interpolated trajectory - ax \f$ \frac{m}{s^2} \f$ [15]
+    a_latPosition = np.ndarray   # Interpolated trajectory - lateral position in m [15]
+    a_lonPosition = np.ndarray   # Interpolated trajectory - longitudinal position in m [15]
+    a_curvature = np.ndarray     # Interpolated trajectory - curvature in \f$ m^{-1} \f$  [15]
+    a_heading = np.ndarray       # Interpolated trajectory - heading in rad [15]
+    a_vx = np.ndarray            # Interpolated trajectory - Vx in \f$ \frac{m}{s} \f$ [15]
+    a_ax = np.ndarray            # Interpolated trajectory - ax \f$ \frac{m}{s^2} \f$ [15]
 
-    def __init__(self, a_latPosition: List[float], a_lonPosition: List[float], a_curvature: List[float],
-                 a_heading: List[float], a_vx: List[float], a_ax: List[float]):
+    def __init__(self, a_latPosition: np.ndarray, a_lonPosition: np.ndarray, a_curvature: np.ndarray,
+                 a_heading: np.ndarray, a_vx: np.ndarray, a_ax: np.ndarray):
         self.a_latPosition = a_latPosition
         self.a_lonPosition = a_lonPosition
         self.a_curvature = a_curvature
@@ -27,29 +27,23 @@ class InterpolatedTrajectory(PUBSUB_MSG_IMPL):
     def serialize(self) -> TsSYSInterpolatedTrajectory:
         pubsub_msg = TsSYSInterpolatedTrajectory()
 
-        for i in range(15):
-            pubsub_msg.a_latPosition[i] = self.a_latPosition[i]
-        for i in range(15):
-            pubsub_msg.a_lonPosition[i] = self.a_lonPosition[i]
-        for i in range(15):
-            pubsub_msg.a_curvature[i] = self.a_curvature[i]
-        for i in range(15):
-            pubsub_msg.a_heading[i] = self.a_heading[i]
-        for i in range(15):
-            pubsub_msg.a_vx[i] = self.a_vx[i]
-        for i in range(15):
-            pubsub_msg.a_ax[i] = self.a_ax[i]
+        pubsub_msg.a_latPosition = self.a_latPosition
+        pubsub_msg.a_lonPosition = self.a_lonPosition
+        pubsub_msg.a_curvature = self.a_curvature
+        pubsub_msg.a_heading = self.a_heading
+        pubsub_msg.a_vx = self.a_vx
+        pubsub_msg.a_ax = self.a_ax
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSInterpolatedTrajectory):
-        a_latPosition = [pubsubMsg.a_latPosition[i] for i in range(15)]
-        a_lonPosition = [pubsubMsg.a_lonPosition[i] for i in range(15)]
-        a_curvature = [pubsubMsg.a_curvature[i] for i in range(15)]
-        a_heading = [pubsubMsg.a_heading for i in range(15)]
-        a_vx = [pubsubMsg.a_vx[i] for i in range(15)]
-        a_ax = [pubsubMsg.a_ax[i] for i in range(15)]
+        a_latPosition = pubsubMsg.a_latPosition
+        a_lonPosition = pubsubMsg.a_lonPosition
+        a_curvature = pubsubMsg.a_curvature
+        a_heading = pubsubMsg.a_heading
+        a_vx = pubsubMsg.a_vx
+        a_ax = pubsubMsg.a_ax
 
         return cls(a_latPosition, a_lonPosition, a_curvature, a_heading, a_vx, a_ax)
 
@@ -65,7 +59,7 @@ class DataControlStatus(PUBSUB_MSG_IMPL):
     e_LatDev = float                # Lateral deviation in vehicle frame in m*
     e_LonDev = float                # Longitudinal deviation in vehicle frame in m
     e_VxDev = float                 # Vx deviation in vehicle frame in \f$ \frac{m}{s} \f$
-    a_commit_id = List[int]         # Current commit id for when the model was built. Currently len 41, only 8 characters (short SHA)
+    a_commit_id = np.ndarray        # Current commit id for when the model was built. Currently len 41, only 8 characters (short SHA)
     e_DrvAstdGoSt = int             # Driver assisted go state
     s_InterpTraj = InterpolatedTrajectory     # Interpolated trajectory used as MPC input
     e_vyEst = float                 # Vy Est \f$ \frac{m}{s} \f$
@@ -76,7 +70,7 @@ class DataControlStatus(PUBSUB_MSG_IMPL):
 
     def __init__(self, e_b_IsAlive: bool, e_b_TTCEnabled: bool, e_b_HandsOffStrWh: bool, e_DisableReason: int,
                  e_SteeringCmd: float, e_AxlTorqueCmd: float, e_BrakeAccelCmd: float, e_BrakeType: int,
-                 e_LatDev: float, e_LonDev: float, e_VxDev: float, a_commit_id: List[int],
+                 e_LatDev: float, e_LonDev: float, e_VxDev: float, a_commit_id: np.ndarray,
                  e_DrvAstdGoSt: int, s_InterpTraj: InterpolatedTrajectory, e_vyEst: float,
                  e_RoadBankAccel: float, e_RoadInclinationAccel: float, e_CCSwitchStatus: int):
         """
@@ -117,8 +111,7 @@ class DataControlStatus(PUBSUB_MSG_IMPL):
         pubsub_msg.e_LatDev = self.e_LatDev
         pubsub_msg.e_LonDev = self.e_LonDev
         pubsub_msg.e_VxDev = self.e_VxDev
-        for i in range(41):
-            pubsub_msg.a_commit_id[i] = self.a_commit_id[i]
+        pubsub_msg.a_commit_id = self.a_commit_id
         pubsub_msg.e_DrvAstdGoSt = self.e_DrvAstdGoSt
         pubsub_msg.s_InterpTraj = self.s_InterpTraj.serialize()
         pubsub_msg.e_vyEst = self.e_vyEst
@@ -130,7 +123,7 @@ class DataControlStatus(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataControlStatus):
-        a_commit_id = [pubsubMsg.a_commit_id[i] for i in range(41)]
+        a_commit_id = pubsubMsg.a_commit_id
         s_InterpTraj = InterpolatedTrajectory.deserialize(pubsubMsg.s_InterpTraj)
 
         return cls(pubsubMsg.e_b_IsAlive, pubsubMsg.e_b_TTCEnabled, pubsubMsg.e_b_HandsOffStrWh,
