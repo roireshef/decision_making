@@ -3,12 +3,12 @@ import traceback
 from logging import Logger
 
 import numpy as np
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
-from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
@@ -38,6 +38,7 @@ from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
 class BehavioralPlanningFacade(DmModule):
+    last_log_time = float
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
@@ -50,7 +51,17 @@ class BehavioralPlanningFacade(DmModule):
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
-        self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+        self.last_log_time = -1.0
+
+    def _write_filters_to_log_if_required(self, now: float):
+        """
+        Write list of applicable filters to log every 5 seconds.
+        :param now: time in seconds
+        """
+        if now - self.last_log_time > 5.0:
+            self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for
+                                                              filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.last_log_time = now
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
@@ -90,6 +101,7 @@ class BehavioralPlanningFacade(DmModule):
 
                 state.handle_negative_velocities(self.logger)
 
+            self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
             self.logger.debug("Scene Dynamic host localization published at timestamp: %f," +

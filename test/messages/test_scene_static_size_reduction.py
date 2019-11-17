@@ -1,10 +1,11 @@
 import timeit
 from typing import List
+import pytest
 
 import numpy as np
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneLaneSegmentGeometry import \
+from interface.Rte_Types.python.sub_structures.TsSYS_SceneLaneSegmentGeometry import \
     TsSYSSceneLaneSegmentGeometry
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneStaticGeometry import TsSYSSceneStaticGeometry
+from interface.Rte_Types.python.sub_structures.TsSYS_SceneStaticGeometry import TsSYSSceneStaticGeometry
 from decision_making.src.messages.scene_static_message import SceneStaticGeometry
 
 MAX_NOMINAL_PATH_POINTS = 2000
@@ -86,22 +87,23 @@ def create_scene_static_configurations(num_lanes, random_distribution=False):
         all_lanes.append(curr_lane)
     scene_static_mock_msg = TsSYSSceneStaticGeometryMock(num_lanes, all_lanes)
     return scene_static_mock_msg
-       
 
+
+@pytest.mark.skip(reason="This can be run optionally, instead of creating a MAT file every time all unit tests are run.")
 def test_timings():
     """
     This function runs multiple combinations
     :return:
     """
-    
+
     import scipy.io as sio
 
     global scene_static_mock_msg
-    
+
     def callback_measured():
         global scene_static_mock_msg
         SceneStaticGeometry.deserialize(scene_static_mock_msg)
-    
+
     def callback_create():
         global scene_static_mock_msg
         scene_static_mock_msg = create_scene_static_configurations(k, False)

@@ -86,6 +86,10 @@ class WerlingPlanner(TrajectoryPlanner):
         # it is used only when not is_target_ahead
         ego_by_goal_state = KinematicUtils.create_ego_by_goal_state(goal_frenet_state, T_target_horizon)
 
+        # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
+        # so time points are from t0 = 0 until some T (lon_plan_horizon)
+        total_planning_time_points = np.arange(0, planning_horizon + EPS, self.dt)
+
         # solve the optimization problem in frenet-frame from t=0 to t=T
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
@@ -108,13 +112,17 @@ class WerlingPlanner(TrajectoryPlanner):
                 terminal_s = fconstraints_tT.get_grid_s()
                 terminal_states = NumpyUtils.cartesian_product_matrix_rows(terminal_s, terminal_d)
 
-                time_samples = np.arange(Math.ceil_to_step(T_target_horizon, self.dt) - T_target_horizon, planning_horizon - T_target_horizon + EPS, self.dt)
+                time_samples = np.arange(Math.ceil_to_step(T_target_horizon + EPS, self.dt) - T_target_horizon,
+                                         planning_horizon - T_target_horizon + EPS, self.dt)
                 extrapolated_fstates_s = self.predictor.predict_2d_frenet_states(terminal_states, time_samples)
                 ftrajectories = np.hstack((ftrajectories, extrapolated_fstates_s))
+                assert total_planning_time_points.shape[0] == ftrajectories.shape[1], \
+                    "total_planning_time_points=%d, ftrajectories=%d, T_target_horizon=%f planning_horizon=%f" % \
+                    (total_planning_time_points.shape[0], ftrajectories.shape[1], T_target_horizon, planning_horizon)
         else:
             # only pad
             ftrajectories = self.predictor.predict_2d_frenet_states(ego_by_goal_state[np.newaxis, :],
-                                                                    np.arange(0, planning_horizon + EPS, self.dt))
+                                                                    total_planning_time_points)
             ftrajectories = WerlingPlanner._correct_velocity_values(ftrajectories)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
@@ -136,10 +144,6 @@ class WerlingPlanner(TrajectoryPlanner):
         if len(ctrajectories_filtered) == 0:
             WerlingPlanner._raise_error(state, ftrajectories, ctrajectories, reference_route, T_target_horizon,
                                         planning_horizon, goal, ego_frenet_state, goal_frenet_state, cost_params)
-
-        # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
-        # so time points are from t0 = 0 until some T (lon_plan_horizon)
-        total_planning_time_points = np.arange(0, planning_horizon + EPS, self.dt)
 
         # compute trajectory costs at sampled times
         global_time_samples = total_planning_time_points + state.ego_state.timestamp_in_sec
