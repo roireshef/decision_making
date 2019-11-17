@@ -25,6 +25,51 @@ class CostBasedRoutePlanner(RoutePlanner):
                                         RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction.value:
                                             self._lane_dir_in_route_based_occupancy_cost}
 
+    @prof.ProfileFunction()
+    def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
+        """
+        Calculates lane end and occupancy costs for all the lanes in the NAV plan
+        :input:  RoutePlannerInputData, pre-processed data for RoutePlan cost calcualtions. More details at
+                 RoutePlannerInputData() class definition.
+        :return: DataRoutePlan , the complete route plan information ready to be serialized and published
+        """
+        road_segment_ids_reversed: List[int] = []
+        num_lane_segments_reversed: List[int] = []
+
+        # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
+        # key -> road_segment_id
+        # value -> lane_segment_ids
+
+        self._route_plan_lane_segments_reversed: RoutePlanRoadSegments = []
+        self._route_plan_input_data = route_plan_input_data
+
+        for (road_segment_id, lane_segment_ids) in reversed(self._route_plan_input_data.get_lane_segment_ids_for_route().items()):
+            # If self._route_plan_lane_segments_reversed is empty, it is the first time through this loop.
+            route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
+
+            # append the road segment specific info , as the road seg iteration is reverse
+            road_segment_ids_reversed.append(road_segment_id)
+
+            num_lane_segments_reversed.append(len(lane_segment_ids))
+
+            self._route_plan_lane_segments_reversed.append(route_lane_segments)
+
+        return DataRoutePlan(e_b_is_valid=True,
+                             e_Cnt_num_road_segments=len(road_segment_ids_reversed),
+                             a_i_road_segment_ids=np.array(list(reversed(road_segment_ids_reversed))),
+                             a_Cnt_num_lane_segments=np.array(list(reversed(num_lane_segments_reversed))),
+                             as_route_plan_lane_segments=list(reversed(self._route_plan_lane_segments_reversed)))
+
+    @abstractmethod
+    def _calculate_end_cost_from_downstream_lane(self, lane_segment_id: int, downstream_lane_costs: RoutePlanLaneSegment) -> float:
+        """
+        Calculates lane end cost based on downstream lane segment
+        :param lane_segment_id: Lane ID
+        :param downstream_lane_costs: Downstream lane segment cost information from RP
+        :return: Lane end cost related to provided downstream lane segment
+        """
+        pass
+
     def _mapping_status_based_occupancy_cost(self, mapping_status_attribute: LaneMappingStatusType) -> float:
         """
         Cost of lane map type. Current implementation is binary cost.
@@ -124,16 +169,6 @@ class CostBasedRoutePlanner(RoutePlanner):
                 return MAX_COST
 
         return MIN_COST
-
-    @abstractmethod
-    def _calculate_end_cost_from_downstream_lane(self, lane_segment_id: int, downstream_lane_costs: RoutePlanLaneSegment) -> float:
-        """
-        Calculates lane end cost based on downstream lane segment
-        :param lane_segment_id: Lane ID
-        :param downstream_lane_costs: Downstream lane segment cost information from RP
-        :return: Lane end cost related to provided downstream lane segment
-        """
-        pass
 
     @raises(DownstreamLaneDataNotFound)
     def _lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> (float, bool):
@@ -276,38 +311,3 @@ class CostBasedRoutePlanner(RoutePlanner):
                                                     road_segment_id,
                                                     self._route_plan_input_data.get_next_road_segment_id(road_segment_id)))
         return route_lane_segments
-
-    @prof.ProfileFunction()
-    def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
-        """
-        Calculates lane end and occupancy costs for all the lanes in the NAV plan
-        :input:  RoutePlannerInputData, pre-processed data for RoutePlan cost calcualtions. More details at
-                 RoutePlannerInputData() class definition.
-        :return: DataRoutePlan , the complete route plan information ready to be serialized and published
-        """
-        road_segment_ids_reversed: List[int] = []
-        num_lane_segments_reversed: List[int] = []
-
-        # iterate over all road segments in the route plan in the reverse sequence. Enumerate the iterable to get the index also
-        # key -> road_segment_id
-        # value -> lane_segment_ids
-
-        self._route_plan_lane_segments_reversed: RoutePlanRoadSegments = []
-        self._route_plan_input_data = route_plan_input_data
-
-        for (road_segment_id, lane_segment_ids) in reversed(self._route_plan_input_data.get_lane_segment_ids_for_route().items()):
-            # If self._route_plan_lane_segments_reversed is empty, it is the first time through this loop.
-            route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
-
-            # append the road segment specific info , as the road seg iteration is reverse
-            road_segment_ids_reversed.append(road_segment_id)
-
-            num_lane_segments_reversed.append(len(lane_segment_ids))
-
-            self._route_plan_lane_segments_reversed.append(route_lane_segments)
-
-        return DataRoutePlan(e_b_is_valid=True,
-                             e_Cnt_num_road_segments=len(road_segment_ids_reversed),
-                             a_i_road_segment_ids=np.array(list(reversed(road_segment_ids_reversed))),
-                             a_Cnt_num_lane_segments=np.array(list(reversed(num_lane_segments_reversed))),
-                             as_route_plan_lane_segments=list(reversed(self._route_plan_lane_segments_reversed)))
