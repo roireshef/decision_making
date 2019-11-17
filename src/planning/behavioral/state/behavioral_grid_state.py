@@ -361,6 +361,8 @@ class BehavioralGridState:
     @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound, StraightConnectionNotFound, NavigationPlanTooShort)
     @prof.ProfileFunction()
     def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan,
+                                       forward_horizon: float = MAX_FORWARD_HORIZON,
+                                       backward_horizon: float = MAX_BACKWARD_HORIZON,
                                        can_augment: Optional[List[RelativeLane]] = None) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
@@ -375,14 +377,14 @@ class BehavioralGridState:
                  lane_id, and the RelativeLane.SAME_LANE key can be used to access it. If possible, augmented GFFs will also be returned,
                  and they can be accessed with the respective relative lane key.
         """
-        if station < MAX_BACKWARD_HORIZON:
+        if station < backward_horizon:
             # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane, and the
             # upstream lane subsegments need to be found. The starting station for the forward lookahead should be the beginning of the
             # current lane, and the forward lookahead distance should include the maximum forward horizon ahead of the given station and
             # the backward distance to the beginning of the lane (i.e. the station).
             starting_station = 0.0
-            lookahead_distance = MAX_FORWARD_HORIZON + station
-            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON)
+            lookahead_distance = forward_horizon + station
+            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, backward_horizon)
         else:
             # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
             # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
@@ -390,8 +392,8 @@ class BehavioralGridState:
             # other words, if we're at station = 150 m on a lane and the maximum forward and backward horizons are 400 m and 100 m,
             # respectively, then starting station = 50 m and forward lookahead distance = 400 + 100 = 500 m. This is the case where the GFF
             # does not include any upstream lanes.
-            starting_station = station - MAX_BACKWARD_HORIZON
-            lookahead_distance = MAX_FORWARD_HORIZON + MAX_BACKWARD_HORIZON
+            starting_station = station - backward_horizon
+            lookahead_distance = forward_horizon + backward_horizon
             upstream_lane_subsegments = []
 
         lane_subsegments_dict = BehavioralGridState._get_downstream_lane_subsegments(initial_lane_id=lane_id, initial_s=starting_station,
