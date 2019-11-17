@@ -54,9 +54,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, v_T, w_T, w_J)
 
         # create action specs based on the above output
-        return [ActionSpec(t=T, v=v_T, s=lane_merge_state.red_line_s_on_ego_gff, d=0,
-                           recipe=StaticActionRecipe(RelativeLane.SAME_LANE, v_T, aggr_level))
-                for T, aggr_level in zip(specs_t, AggressivenessLevel)]
+        return np.array([ActionSpec(t=T, v=v_T, s=lane_merge_state.red_line_s_on_ego_gff, d=0,
+                                    recipe=StaticActionRecipe(RelativeLane.SAME_LANE, v_T, aggr_level))
+                         for T, aggr_level in zip(specs_t, AggressivenessLevel)])
 
     def _filter_actions(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> ActionSpecArray:
         """
@@ -65,7 +65,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :param action_specs: action specifications
         :return: array of action_specs of the same size as the input, but filtered actions are None
         """
-        action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state)
+        action_specs_mask = np.array(DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state))
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
         return RuleBasedLaneMergePlanner._safety_filter(lane_merge_state, filtered_action_specs)
