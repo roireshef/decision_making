@@ -91,7 +91,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # Longitudinal planning horizon (Ts)
             T_target_horizon = params.target_time - state.ego_state.timestamp_in_sec
-            T_trajectory_end_horizon = params.trajectory_end_time - state.ego_state.timestamp_in_sec
+            T_trajectory_end_horizon = max(TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
+                                           params.trajectory_end_time - state.ego_state.timestamp_in_sec)
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
@@ -161,8 +162,8 @@ class TrajectoryPlanningFacade(DmModule):
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
         :return: a TrajectoryPlan message ready to send to the controller
         """
-        trajectory_num_points = int(np.clip(np.floor(samplable_trajectory.T / TRAJECTORY_TIME_RESOLUTION),
-                                            TRAJECTORY_NUM_POINTS, MAX_TRAJECTORY_WAYPOINTS))
+        trajectory_num_points = min(int(np.floor(samplable_trajectory.T_extended / TRAJECTORY_TIME_RESOLUTION)),
+                                    MAX_TRAJECTORY_WAYPOINTS)
         trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
                         stop=(trajectory_num_points - 1) * TRAJECTORY_TIME_RESOLUTION,
