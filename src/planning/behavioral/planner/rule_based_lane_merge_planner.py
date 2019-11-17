@@ -54,9 +54,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         specs_t, specs_s = RuleBasedLaneMergePlanner._specify_quartic(v_0, a_0, v_T, w_T, w_J)
 
         # create action specs based on the above output
-        return np.array([ActionSpec(t=T, v=v_T, s=lane_merge_state.red_line_s_on_ego_gff, d=0,
+        return np.array([ActionSpec(t=T, v=v_T, s=s_0 + ds, d=0,
                                     recipe=StaticActionRecipe(RelativeLane.SAME_LANE, v_T, aggr_level))
-                         for T, aggr_level in zip(specs_t, AggressivenessLevel)])
+                         for T, ds, aggr_level in zip(specs_t, specs_s, AggressivenessLevel)])
 
     def _filter_actions(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> ActionSpecArray:
         """
@@ -65,10 +65,17 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :param action_specs: action specifications
         :return: array of action_specs of the same size as the input, but filtered actions are None
         """
-        action_specs_mask = np.array(DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state))
+        action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state)
         filtered_action_specs = np.full(len(action_specs), None)
         filtered_action_specs[action_specs_mask] = action_specs[action_specs_mask]
-        return RuleBasedLaneMergePlanner._safety_filter(lane_merge_state, filtered_action_specs)
+        if not filtered_action_specs.any():
+            raise NoActionsLeftForBPError("RB.filter_actions: All actions were filtered. timestamp_in_sec: %f" %
+                                          lane_merge_state.ego_state.timestamp_in_sec)
+        safe_actions = RuleBasedLaneMergePlanner._safety_filter(lane_merge_state, filtered_action_specs)
+        if not safe_actions.any():
+            raise NoActionsLeftForBPError("RB.filter_actions: No safe actions. timestamp_in_sec: %f" %
+                                          lane_merge_state.ego_state.timestamp_in_sec)
+        return safe_actions
 
     def _evaluate_actions(self, lane_merge_state: LaneMergeState, route_plan: RoutePlan,
                           action_specs: ActionSpecArray) -> np.array:
@@ -82,7 +89,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         action_specs_exist = action_specs.astype(bool)
         if not action_specs_exist.any():
-            raise NoActionsLeftForBPError("RB evaluate_actions: All actions were filtered in BP. timestamp_in_sec: %f" %
+            raise NoActionsLeftForBPError("RB.evaluate_actions: No actions to evaluate. timestamp_in_sec: %f" %
                                           lane_merge_state.ego_state.timestamp_in_sec)
         action_costs = np.full(len(action_specs), 1.)
         most_calm_action_idx = np.argmax(action_specs_exist)
@@ -160,8 +167,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         margins = 0.5 * (actors_data[:, 2, np.newaxis] + lane_merge_state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
         safety_dist = RuleBasedLaneMergePlanner._caclulate_RSS_distances(actors_s, actors_v, margins, target_v, target_t, target_s)
 
-        action_specs[action_specs != None][safety_dist <= 0] = None
-        return action_specs
+        filtered_specs = action_specs[action_specs != None]
+        filtered_specs[safety_dist <= 0] = None
+        return filtered_specs
 
     @staticmethod
     def _caclulate_RSS_distances(actors_s: np.array, actors_v: np.array, margins: np.array,

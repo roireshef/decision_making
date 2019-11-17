@@ -143,7 +143,7 @@ class ActionSpecFiltering:
         self._filters: List[ActionSpecFilter] = filters or []
         self.logger = logger
 
-    def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """
         Filters a list of 'ActionSpec's based on the state of ego and nearby vehicles (BehavioralGridState).
         :param action_specs: A list of objects representing the specified actions to be considered
@@ -173,8 +173,7 @@ class ActionSpecFiltering:
 
         self.logger.debug('\nFiltering_map at timestamp_in_sec %f: %s' %
                           (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(filtering_map.astype(int))))
-
-        return mask.tolist()
+        return mask
 
     @prof.ProfileFunction()
     def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
