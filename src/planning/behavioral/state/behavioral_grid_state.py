@@ -64,7 +64,6 @@ class BehavioralGridState:
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
 
-
     @classmethod
     @prof.ProfileFunction()
     def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):

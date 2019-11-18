@@ -109,7 +109,6 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     predictor_logger.critical.assert_not_called()
 
     pubsub.publish(UC_SYSTEM_SCENE_STATIC, scene_static_short_testable.serialize())
-    pubsub.publish(UC_SYSTEM_TURN_SIGNAL, turn_signal.serialize())
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
 
