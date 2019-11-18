@@ -164,7 +164,7 @@ class RoadSegmentLaneSegmentMismatch(RoutePlanningException):
     pass
 
 
-class MissingInputInformation(RoutePlanningException):
+class MissingMapInformation(RoutePlanningException):
     pass
 
 
