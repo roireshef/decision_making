@@ -276,8 +276,9 @@ class BehavioralPlanningFacade(DmModule):
         if not is_success or serialized_pedal_position is None:
             return None
         pedal_position = PedalPosition.deserialize(serialized_pedal_position)
-        self.logger.debug("%s at time %f: %f" % ("Pedal position received", pedal_position.s_Data.s_RecvTimestamp,
-                                                 pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
+        self.logger.debug("Pedal position received at time %f: %f" %
+                          (pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds,
+                           pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
         return pedal_position
 
     def _get_current_scene_static(self) -> SceneStatic:
