@@ -137,10 +137,13 @@ class BehavioralGridState:
                                                and (lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
                                                                                            LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
                     for lane_id in overlapping_lane_ids:
-                        # use generator to find the desired GFF
-                        gff_with_overlapping_lane = next((extended_lane_frames[rel_lane] for rel_lane in list(extended_lane_frames.keys()) if extended_lane_frames[rel_lane].has_segment_id(lane_id)), None)
-                        if not gff_with_overlapping_lane:
+                        # find GFF that contains the overlapping lane id
+                        gffs_with_overlapping_lane = [gff for gff in extended_lane_frames.values() if gff.has_segment_id(lane_id)]
+                        if len(gffs_with_overlapping_lane) > 0:
+                            gff_with_overlapping_lane = gffs_with_overlapping_lane[0]
+                        else:
                             logger.debug(f"Lane {lane_id} not found within any GFF's while attempting to project object {dynamic_object.obj_id}.")
+                            return []
 
                         if BehavioralGridState.is_object_in_gff(dynamic_object, gff_with_overlapping_lane, logger):
                             # TODO: what to do if lane_fstate can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
@@ -666,6 +669,7 @@ class BehavioralGridState:
 
         point_results = []
         # project points onto other lane if possible. If not possible, skip checking the point
+        # A loop is used instead of the vectorized functions in order to skip points that throw OutOfSegment exceptions
         for point in bbox:
             try:
                 # this conversion may throw OutOfSegment exceptions
