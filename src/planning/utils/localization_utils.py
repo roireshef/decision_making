@@ -8,6 +8,7 @@ from decision_making.src.planning.trajectory.samplable_trajectory import Samplab
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V, \
     C_A, FrenetState2D
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import EgoState, State
 from decision_making.src.utils.geometry_utils import CartesianFrame
@@ -69,7 +70,7 @@ class LocalizationUtils:
 
     @staticmethod
     def get_state_with_expected_ego(state: State, samplable_trajectory: SamplableTrajectory, logger: Logger,
-                                    calling_class_name: str) -> State:
+                                    calling_class_name: str, target_gff: GeneralizedFrenetSerretFrame = None) -> State:
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
         timestamp according to the last trajectory cached in the facade's self._last_trajectory.
@@ -79,6 +80,7 @@ class LocalizationUtils:
         :param state: the state to process
         :param samplable_trajectory: must be SamplableWerlingTrajectory
         :param calling_class_name: used for debug only
+        :param target_gff: if not None, ego should be projected on it
         :return: a new state object with a new ego-vehicle localization
         """
         assert isinstance(samplable_trajectory, SamplableWerlingTrajectory)
@@ -87,7 +89,12 @@ class LocalizationUtils:
         last_gff = samplable_trajectory.frenet_frame
         expected_fstate: FrenetState2D = samplable_trajectory.sample_frenet(np.array([current_time]))[0]
         expected_cstate: CartesianExtendedState = last_gff.fstate_to_cstate(expected_fstate)
-        lane_id, lane_fstate = last_gff.convert_to_segment_state(expected_fstate)
+        if target_gff:
+            target_fstate = target_gff.cstate_to_fstate(expected_cstate)
+        else:
+            target_gff = last_gff
+            target_fstate = expected_fstate
+        lane_id, lane_fstate = target_gff.convert_to_segment_state(target_fstate)
 
         expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_cstate, state.ego_state.timestamp_in_sec)
         expected_ego_state._cached_map_state = MapState(lane_fstate, lane_id)
