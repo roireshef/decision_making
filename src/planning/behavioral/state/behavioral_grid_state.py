@@ -146,8 +146,12 @@ class BehavioralGridState:
                             return []
 
                         if BehavioralGridState.is_object_in_gff(dynamic_object, gff_with_overlapping_lane, logger):
-                            # TODO: what to do if lane_fstate can not be found due to OutOfSegmentBack or OutOfSegmentFront exceptions
-                            lane_fstate = MapUtils.get_lane_frenet_frame(lane_id).cstate_to_fstate(dynamic_object.cartesian_state)
+                            try:
+                                projected_fstate = gff_with_overlapping_lane.cstate_to_fstate(dynamic_object.cartesian_state)
+                                lane_id, lane_fstate = gff_with_overlapping_lane.convert_to_segment_state(projected_fstate)
+                            except (OutOfSegmentBack, OutOfSegmentFront) as e:
+                                logger.debug(str(e))
+                                logger.debug(f"Object {dynamic_object.obj_id} is out of segment for the current GFF and will not be projected.")
 
                             projected_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id,
                                                                            timestamp=dynamic_object.timestamp,
