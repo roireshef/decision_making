@@ -3,7 +3,7 @@ from typing import List, Dict, Tuple
 
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
+from decision_making.src.exceptions import raises, RoadNotFound, \
     UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -308,8 +308,8 @@ class MapUtils:
         return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
-    @raises(RoadNotFound, NavigationPlanTooShort, LaneNotFound)
-    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
+    @raises(RoadNotFound, LaneNotFound)
+    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan, logger: Logger) \
             -> Tuple[List[FrenetSubSegment], float]:
         """
         Advances downstream according to plan as long as there is a single valid (according to navigation plan)
@@ -319,6 +319,7 @@ class MapUtils:
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param logger: Logger object to log warning messages
         :return: Tuple(List of FrenetSubSegment traversed downstream, accumulated traveled distance on that sequence)
         """
 
@@ -354,11 +355,9 @@ class MapUtils:
             next_road_idx_on_plan = current_road_idx_on_plan + 1
 
             if next_road_idx_on_plan >= route_plan.s_Data.e_Cnt_num_road_segments:
-                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
-                                             "current_segment_end_s=%f lookahead_distance=%f" %
-                                             (route_plan.s_Data.a_i_road_segment_ids,
-                                              lookahead_distance - cumulative_distance,
-                                              current_segment_end_s, lookahead_distance))
+                logger.debug(f"NavigationPlanTooShort: Cannot progress further on plan {route_plan.s_Data.a_i_road_segment_ids}"
+                             f" (leftover: {lookahead_distance - cumulative_distance} [m]); current_segment_end_s={current_segment_end_s}"
+                             f" lookahead_distance={lookahead_distance}")
 
             valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
             num_valid_downstream_lanes = len(valid_downstream_lanes.keys())
