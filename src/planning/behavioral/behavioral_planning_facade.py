@@ -108,6 +108,7 @@ class BehavioralPlanningFacade(DmModule):
                 state.handle_negative_velocities(self.logger)
 
             control_status = self._get_current_control_status()
+            engaged = self._is_av_engaged(control_status)
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -127,7 +128,7 @@ class BehavioralPlanningFacade(DmModule):
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                    state.ego_state, self._last_trajectory, engaged, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan.  %s", updated_state.ego_state)
@@ -147,7 +148,15 @@ class BehavioralPlanningFacade(DmModule):
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan(updated_state, route_plan)
 
-            self._last_trajectory = samplable_trajectory
+            # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
+            # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral
+            # offsets up to even crossing lane boundaries
+            self._last_trajectory = samplable_trajectory if engaged else None
+
+            # TODO WHAT SHOULD TP DO (can pass the engage flag in the ego_state)? DOES CONTROL CARE - can possibly check
+            #  the engaged status in the is_actual_state_close_to_expected_state() and share it with TP, so it will
+            #  not use history automatically.
+            #  Need to clear the last_trajectory anyway, so that when we re-engage we don't use a bad value
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
 
@@ -368,6 +377,9 @@ class BehavioralPlanningFacade(DmModule):
 
     def _publish_takeover(self, takeover_message:Takeover) -> None :
         self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_message.serialize())
+
+    def _is_av_engaged(self, control_status: ControlStatus) -> bool:
+        return control_status is not None and control_status.s_Data is not None and control_status.s_Data.e_b_TTCEnabled
 
     @property
     def planner(self):
