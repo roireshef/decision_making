@@ -69,7 +69,7 @@ class LocalizationUtils:
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
 
     @staticmethod
-    def get_state_with_expected_ego(state: State, samplable_trajectory: SamplableTrajectory, logger: Logger,
+    def get_state_with_expected_ego(state: State, samplable_trajectory: SamplableWerlingTrajectory, logger: Logger,
                                     calling_class_name: str, target_gff: GeneralizedFrenetSerretFrame = None) -> State:
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
@@ -80,23 +80,24 @@ class LocalizationUtils:
         :param state: the state to process
         :param samplable_trajectory: must be SamplableWerlingTrajectory
         :param calling_class_name: used for debug only
-        :param target_gff: if not None, ego should be projected on it
+        :param target_gff: if exists, ego is projected on it; otherwise ego is projected on samplable_trajectory
         :return: a new state object with a new ego-vehicle localization
         """
-        assert isinstance(samplable_trajectory, SamplableWerlingTrajectory)
         current_time = state.ego_state.timestamp_in_sec
         # start from previous GFF and calculate the cartesian state
         last_gff = samplable_trajectory.frenet_frame
-        expected_fstate: FrenetState2D = samplable_trajectory.sample_frenet(np.array([current_time]))[0]
-        expected_cstate: CartesianExtendedState = last_gff.fstate_to_cstate(expected_fstate)
-        if target_gff:
-            target_fstate = target_gff.cstate_to_fstate(expected_cstate)
-        else:
-            target_gff = last_gff
-            target_fstate = expected_fstate
+        sampled_fstate: FrenetState2D = samplable_trajectory.sample_frenet(np.array([current_time]))[0]
+        sampled_cstate: CartesianExtendedState = last_gff.fstate_to_cstate(sampled_fstate)
+
+        # if target_gff exists, ego is projected on it; otherwise ego is projected on samplable_trajectory
+        target_fstate = target_gff.cstate_to_fstate(sampled_cstate) if target_gff else sampled_fstate
+        target_gff = target_gff or last_gff
+
+        # calculate map_state of the target ego state
         lane_id, lane_fstate = target_gff.convert_to_segment_state(target_fstate)
 
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_cstate, state.ego_state.timestamp_in_sec)
+        # create updated_state from the target ego state
+        expected_ego_state = state.ego_state.clone_from_cartesian_state(sampled_cstate, state.ego_state.timestamp_in_sec)
         expected_ego_state._cached_map_state = MapState(lane_fstate, lane_id)
         updated_state = state.clone_with(ego_state=expected_ego_state)
 
