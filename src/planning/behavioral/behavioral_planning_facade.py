@@ -273,7 +273,7 @@ class BehavioralPlanningFacade(DmModule):
         :return: PedalPosition
         """
         is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
-        if not is_success:
+        if not is_success or serialized_pedal_position is None:
             return None
         pedal_position = PedalPosition.deserialize(serialized_pedal_position)
         self.logger.debug("%s at time %f: %f" % ("Pedal position received", pedal_position.s_Data.s_RecvTimestamp,
