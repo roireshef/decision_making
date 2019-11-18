@@ -90,16 +90,16 @@ class LocalizationUtils:
         sampled_cstate: CartesianExtendedState = last_gff.fstate_to_cstate(sampled_fstate)
 
         # if target_gff exists, ego is projected on it; otherwise ego is projected on samplable_trajectory
-        target_fstate = target_gff.cstate_to_fstate(sampled_cstate) if target_gff else sampled_fstate
-        target_gff = target_gff or last_gff
+        updated_fstate = target_gff.cstate_to_fstate(sampled_cstate) if target_gff else sampled_fstate
+        selected_gff = target_gff or last_gff
 
         # calculate map_state of the target ego state
-        lane_id, lane_fstate = target_gff.convert_to_segment_state(target_fstate)
+        lane_id, lane_fstate = selected_gff.convert_to_segment_state(updated_fstate)
 
         # create updated_state from the target ego state
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(sampled_cstate, state.ego_state.timestamp_in_sec)
-        expected_ego_state._cached_map_state = MapState(lane_fstate, lane_id)
-        updated_state = state.clone_with(ego_state=expected_ego_state)
+        updated_ego_state = state.ego_state.clone_from_cartesian_state(sampled_cstate, state.ego_state.timestamp_in_sec)
+        updated_ego_state._cached_map_state = MapState(lane_fstate, lane_id)
+        updated_state = state.clone_with(ego_state=updated_ego_state)
 
         # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
         updated_state.is_sampled = True

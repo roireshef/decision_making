@@ -2,6 +2,8 @@ import time
 
 import numpy as np
 import traceback
+
+from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
@@ -40,7 +42,7 @@ import rte.python.profiler as prof
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 last_trajectory: SamplableTrajectory = None):
+                 last_trajectory: SamplableWerlingTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param pubsub: communication layer (DDS/LCM/...) instance
@@ -104,9 +106,8 @@ class TrajectoryPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory, self.logger,
-                                                                              self.__class__.__name__) \
-                    if self._last_trajectory is not None else None
+                updated_state = LocalizationUtils.get_state_with_expected_ego(
+                    state, self._last_trajectory, self.logger, self.__class__.__name__, params.reference_route)
             else:
                 updated_state = state
 
