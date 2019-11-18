@@ -8,7 +8,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import s
     state_with_lane_split_on_left_and_right
 from decision_making.test.planning.custom_fixtures import route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_1_2, \
     route_plan_lane_split_on_left_and_right
-from decision_making.test.planning.custom_fixtures import turn_signal
+
 
 def test_findMinCostAugmentedLane_rightSplitLowerCost(state_with_lane_split_on_right, route_plan_lane_split_on_right):
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right, route_plan_lane_split_on_right, None)
@@ -50,8 +50,7 @@ def test_findMinCostAugmentedLane_leftSplitHigherCost(state_with_lane_split_on_l
     assert min_cost_lane == RelativeLane.SAME_LANE
 
 @patch('decision_making.src.planning.behavioral.evaluators.lane_based_action_spec_evaluator.PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT', False)
-def test_findMinCostAugmentedLane_leftRightSplit_usePreference(state_with_lane_split_on_left_and_right,
-                                                               route_plan_lane_split_on_left_and_right):
+def test_findMinCostAugmentedLane_leftRightSplit_usePreference(state_with_lane_split_on_left_and_right, route_plan_lane_split_on_left_and_right):
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_and_right,
                                                                   route_plan_lane_split_on_left_and_right, None)
     evaluator = AugmentedLaneActionSpecEvaluator(None)

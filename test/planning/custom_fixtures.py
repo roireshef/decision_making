@@ -182,7 +182,7 @@ def dynamic_objects_negative_velocity():
 
 
 @pytest.fixture(scope='function')
-def state(scene_static_short_testable, turn_signal):
+def state(scene_static_short_testable):
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
 
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
@@ -200,7 +200,7 @@ def state(scene_static_short_testable, turn_signal):
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
     ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]),
                          map_state=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
-                         size=size, confidence=0, turn_signal=turn_signal, off_map=False)
+                         size=size, confidence=0, off_map=False)
     yield State(False, occupancy_state, dynamic_objects, ego_state)
 
 

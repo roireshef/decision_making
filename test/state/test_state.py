@@ -12,7 +12,6 @@ from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on
     scene_dynamic_fix_single_host_hypothesis, scene_dynamic_fix_two_host_hypotheses, \
     scene_dynamic_fix_three_host_hypotheses, pubsub, dynamic_objects_negative_velocity
 from decision_making.test.messages.scene_static_fixture import scene_static_oval_with_splits, scene_static_pg_split
-from decision_making.test.planning.custom_fixtures import turn_signal
 
 
 # @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
@@ -30,8 +29,7 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
 
 
 def test_createStateFromSceneDyamic_singleHostHypothesis_correctHostLocalization(pubsub: PubSub,
-                                                                                 scene_dynamic_fix_single_host_hypothesis: SceneDynamic,
-                                                                                 turn_signal):
+                                                                                 scene_dynamic_fix_single_host_hypothesis: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action
@@ -45,14 +43,13 @@ def test_createStateFromSceneDyamic_singleHostHypothesis_correctHostLocalization
 
     state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_single_host_hypothesis,
                                                   selected_gff_segment_ids=gff_segment_ids,
-                                                  logger=logger, turn_signal=turn_signal)
+                                                  logger=logger)
 
     assert state.ego_state.map_state.lane_id == 200
 
 
 def test_createStateFromSceneDyamic_twoHostHypotheses_correctHostLocalization(pubsub: PubSub,
-                                                                              scene_dynamic_fix_two_host_hypotheses: SceneDynamic,
-                                                                              turn_signal):
+                                                                              scene_dynamic_fix_two_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action
@@ -66,14 +63,13 @@ def test_createStateFromSceneDyamic_twoHostHypotheses_correctHostLocalization(pu
 
     state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_two_host_hypotheses,
                                                   selected_gff_segment_ids=gff_segment_ids,
-                                                  logger=logger, turn_signal=turn_signal)
+                                                  logger=logger)
 
     assert state.ego_state.map_state.lane_id == 201
 
 
 def test_createStateFromSceneDyamic_threeHostHypotheses_correctHostLocalization(pubsub: PubSub,
-                                                                                scene_dynamic_fix_three_host_hypotheses: SceneDynamic,
-                                                                                turn_signal):
+                                                                                scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action
@@ -87,14 +83,13 @@ def test_createStateFromSceneDyamic_threeHostHypotheses_correctHostLocalization(
 
     state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_three_host_hypotheses,
                                                   selected_gff_segment_ids=gff_segment_ids,
-                                                  logger=logger, turn_signal=turn_signal)
+                                                  logger=logger)
 
     assert state.ego_state.map_state.lane_id == 2244100
 
 
 def test_createStateFromSceneDyamic_noGFFDifferentEndCosts_correctHostLocalization(pubsub: PubSub,
-                                                                                   scene_dynamic_fix_three_host_hypotheses: SceneDynamic,
-                                                                                   turn_signal):
+                                                                                   scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action
@@ -110,14 +105,13 @@ def test_createStateFromSceneDyamic_noGFFDifferentEndCosts_correctHostLocalizati
     state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_three_host_hypotheses,
                                                   selected_gff_segment_ids=gff_segment_ids,
                                                   route_plan_dict=route_plan_dict,
-                                                  logger=logger, turn_signal=turn_signal)
+                                                  logger=logger)
 
     assert state.ego_state.map_state.lane_id == 19670532
 
 
 def test_createStateFromSceneDyamic_noGFFSimilarEndCosts_correctHostLocalization(pubsub: PubSub,
-                                                                                 scene_dynamic_fix_three_host_hypotheses: SceneDynamic,
-                                                                                 turn_signal):
+                                                                                 scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action
@@ -133,7 +127,7 @@ def test_createStateFromSceneDyamic_noGFFSimilarEndCosts_correctHostLocalization
     state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic_fix_three_host_hypotheses,
                                                   selected_gff_segment_ids=gff_segment_ids,
                                                   route_plan_dict=route_plan_dict,
-                                                  logger=logger, turn_signal=turn_signal)
+                                                  logger=logger)
 
     assert state.ego_state.map_state.lane_id == 19670532
 

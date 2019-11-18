@@ -15,7 +15,6 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, \
     state_with_objects_for_filtering_almost_tracking_mode, state_with_objects_for_filtering_negative_sT, \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, route_plan_20_30
-from decision_making.test.planning.custom_fixtures import turn_signal
 
 def test_filter_recipesWithNonOccupiedCells_filterNonOccupiedCellsActionsOut(
         behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode,

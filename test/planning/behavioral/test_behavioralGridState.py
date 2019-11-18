@@ -28,13 +28,12 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     route_plan_lane_splits_on_left_and_right_right_first, state_with_five_objects_on_oval_track, route_plan_for_oval_track_file
 
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3, route_plan_left_lane_ends, route_plan_right_lane_ends, \
-    route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right, turn_signal
+    route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
 
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_left_first, \
     scene_static_lane_splits_on_left_and_right_right_first, scene_static_oval_with_splits
-
 
 SMALL_DISTANCE_ERROR = 0.01
 
@@ -119,8 +118,7 @@ def test_createFromState_rightLaneEnds_partialGffOnRight(state_with_right_lane_e
     assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFFType.Partial
 
 
-def test_createFromState_laneEndsNoLeftLane_partialGffInLaneNoLeftLane(state_with_same_lane_ending_no_left_lane,
-                                                                       route_plan_left_lane_ends):
+def test_createFromState_laneEndsNoLeftLane_partialGffInLaneNoLeftLane(state_with_same_lane_ending_no_left_lane, route_plan_left_lane_ends):
     """
     Host is on three-lane road, and is in the furthest left lane that ends ahead. A left GFF should not be created, the same lane GFF
     should be partial, and the right lane GFF should be normal.

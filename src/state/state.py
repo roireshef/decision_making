@@ -59,12 +59,12 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     _cached_map_state = MapState
     size = ObjectSize
     confidence = float
-    turn_signal = TurnSignal
     off_map = bool
     is_ghost = bool
+    turn_signal = TurnSignal
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, turn_signal=None, is_ghost = False):
-        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool, TurnSignal, bool) -> None
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, is_ghost = False, turn_signal = None):
+        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool, Optional[bool], Optional[TurnSignal]) -> None
         """
         Data object that hold
         :param obj_id: object id
@@ -83,9 +83,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self._cached_map_state = map_state
         self.size = copy.copy(size)
         self.confidence = confidence
-        self.turn_signal = turn_signal
         self.off_map = off_map
         self.is_ghost = is_ghost
+        self.turn_signal = turn_signal
 
     @property
     def x(self):
@@ -157,8 +157,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return DynamicObject.ticks_to_sec(self.timestamp)
 
     @classmethod
-    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map, turn_signal=None):
-        # type: (int, int, CartesianExtendedState, ObjectSize, float, bool, TurnSignal) -> DynamicObject
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map, turn_signal = None):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float, bool, Optional[TurnSignal]) -> DynamicObject
         """
         Constructor that gets only cartesian-state (without map-state)
         :param obj_id: object id
@@ -172,8 +172,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map, turn_signal)
 
     @classmethod
-    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map, turn_signal=None):
-        # type: (int, int, MapState, ObjectSize, float, bool, TurnSignal) -> DynamicObject
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map, turn_signal = None):
+        # type: (int, int, MapState, ObjectSize, float, bool, Optional[TurnSignal]) -> DynamicObject
         """
         Constructor that gets only map-state (without cartesian-state)
         :param obj_id: object id
@@ -203,8 +203,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, turn_signal, off_map):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, TurnSignal, bool) -> EgoState
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, turn_signal = None):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, bool, Optional[TurnSignal]) -> EgoState
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -216,10 +216,11 @@ class EgoState(DynamicObject):
         :param size: class ObjectSize
         :param confidence: of object's existence
         :param off_map: indicates if the object is off map
+        :param turn_signal: turn signal status
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
-                                             map_state=map_state, size=size, confidence=confidence, turn_signal=turn_signal,
-                                             off_map=off_map)
+                                             map_state=map_state, size=size, confidence=confidence, off_map=off_map,
+                                             turn_signal=turn_signal)
 
 
 T = TypeVar('T', bound='State')
@@ -313,20 +314,20 @@ class State(PUBSUB_MSG_IMPL):
     @classmethod
     def create_state_from_scene_dynamic(cls, scene_dynamic: SceneDynamic,
                                         selected_gff_segment_ids: np.ndarray,
-                                        turn_signal: TurnSignal,
                                         logger: Logger,
-                                        route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None):
+                                        route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None,
+                                        turn_signal: Optional[TurnSignal] = None):
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic: scene dynamic data
         :param selected_gff_segment_ids: list of GFF segment ids for last or current BP action. If this method is called
                from inside BP, the parameter refers to the last chosen BP action, while it refers to current BP action
                if called from inside TP
-        :param turn_signal: turn signal status
         :param logger: Logging module
         :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value.
                Note that it is an optional argument and is used only when the method is called from inside BP and the
                previous BP action is not available, e.g., at the beginning of the planning time.
+        :param turn_signal: turn signal status
         :return: valid State class
         """
 
@@ -345,7 +346,7 @@ class State(PUBSUB_MSG_IMPL):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0, turn_signal=turn_signal, off_map=False)
+                             confidence=1.0, off_map=False, turn_signal=turn_signal)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,

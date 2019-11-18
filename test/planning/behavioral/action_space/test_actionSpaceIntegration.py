@@ -12,8 +12,6 @@ from decision_making.src.state.state import ObjectSize, State, EgoState, Dynamic
 
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_no_split
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20
-from decision_making.test.planning.custom_fixtures import turn_signal
-
 
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes

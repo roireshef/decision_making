@@ -10,7 +10,6 @@ from decision_making.test.planning.route.scene_fixtures import TakeOverTestData,
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     ego_state_for_takeover_message_default_scene
-from decision_making.test.planning.custom_fixtures import turn_signal
 
 
 def test_setTakeoverMessage_defaultScene_noTakeoverFlag(scene_static_pg_split: SceneStatic,
