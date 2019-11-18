@@ -112,6 +112,26 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
                 if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
                 else False for recipe in recipes]
 
+
+class FilterNonLCActionsDuringLC(RecipeFilter):
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        """
+        If the car is in the middle of a lane change, maintain actions towards the target lane if the blinker is still active.
+        """
+        lane_change_target_rel_lane = behavioral_state.ego_state.lane_change_info.destination_relative_lane
+        turn_signal_state = behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state
+        turn_signal_matching = (lane_change_target_rel_lane == RelativeLane.LEFT_LANE and turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn) \
+                            or (lane_change_target_rel_lane == RelativeLane.RIGHT_LANE and turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn) \
+                            or (lane_change_target_rel_lane == RelativeLane.SAME_LANE and turn_signal_state == TurnSignalState.CeSYS_e_Off)
+
+        # if lane change is not active, this filter should not filter any actions
+        return [(not behavioral_state.ego_state.lane_change_info.is_lane_change_active())
+                or (recipe.relative_lane == lane_change_target_rel_lane and turn_signal_matching)
+                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
+                else False for recipe in recipes]
+
+
+# the if statement in the ternary operator is executed first and will short circuit if False,
 class FilterSpeedingOverDesiredVelocityStatic(RecipeFilter):
     """ This filter only compares the target lane speed with an absolute speed limit.
     Does NOT compare against the lane's speed limit, as it is not clear at this stage, which lane segments are relevant.
