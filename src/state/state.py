@@ -73,9 +73,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param map_state: localization in a map-object's frame (road,segment,lane)
         :param size: class ObjectSize
         :param confidence: of object's existence
-        :param turn_signal: blinker status
         :param off_map: indicates if the vehicle is off the map
         :param is_ghost: indicates whether the object is a projection of a real object in a different lane
+        :param turn_signal: blinker status
         """
         self.obj_id = obj_id
         self.timestamp = timestamp
@@ -167,6 +167,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         :param off_map: indicates if the vehicle is off the map
+        :param turn_signal: blinker status
 
         """
         return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map, turn_signal)
@@ -182,6 +183,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         :param off_map: is the vehicle is off the map
+        :param turn_signal: blinker statuss
         """
         return cls(obj_id, timestamp, None, map_state, size, confidence, off_map, turn_signal)
 
