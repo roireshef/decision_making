@@ -36,6 +36,7 @@ class BasePlanner:
         :param logger:
         """
         self.logger = logger
+        self.selected_relative_lane = RelativeLane.SAME_LANE
 
     @prof.ProfileFunction()
     def plan(self, state: State, route_plan: RoutePlan):
@@ -54,6 +55,7 @@ class BasePlanner:
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
         selected_action_recipe, selected_action_spec = self._choose_action(behavioral_state, filtered_actions, costs)
+        self.selected_relative_lane = selected_action_recipe.relative_lane
 
         trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)

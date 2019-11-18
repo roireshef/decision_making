@@ -138,3 +138,18 @@ class ActionSpec:
 
     def as_fstate(self) -> FrenetState2D:
         return np.array([self.s, self.v, 0, self.d, 0, 0])
+
+
+class LaneChangeInfo:
+    def __init__(self, source_relative_lane: RelativeLane, destination_relative_lane: RelativeLane):
+        self.source_relative_lane = source_relative_lane
+        self.destination_relative_lane = destination_relative_lane
+
+    def is_lane_change_active(self) -> bool:
+        """
+        Returns True if the host is currently performing a lane change; otherwise, it returns False.
+        """
+        if (self.source_relative_lane == RelativeLane.SAME_LANE) and (self.destination_relative_lane == RelativeLane.SAME_LANE):
+            return False
+        else:
+            return True
