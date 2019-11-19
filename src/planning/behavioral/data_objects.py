@@ -5,6 +5,7 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.types import FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from src.messages.turn_signal_message import TurnSignal, TurnSignalState
 
 
 class ActionType(Enum):
@@ -146,11 +147,12 @@ class LaneChangeInfo:
         self.source_lane_ids = source_lane_ids
         self.target_lane_ids = target_lane_ids
         self.lane_change_active = False
+        self.in_target_lane = False
 
     def is_lane_change_active(self) -> bool:
         return self.lane_change_active
 
-    def update(self, same_lane_ids: np.ndarray,  target_lane_ids: np.ndarray):
+    def update(self, same_lane_ids: np.ndarray,  target_lane_ids: np.ndarray, turn_signal: TurnSignal):
         """
         Update the lane change status based on the target GFF requested
         :param same_lane_gff:
@@ -174,9 +176,14 @@ class LaneChangeInfo:
             # if in the middle of a lane change and the SAME_LANE gff becomes the same as the target,
             # the host must have shifted lanes
             if np.any(np.isin(self.target_lane_ids, same_lane_ids)):
-                self.lane_change_active = False
-                self.source_lane_ids = same_lane_ids
-                self.target_lane_ids = target_lane_ids
+                self.in_target_lane = True
+
+                # Only re-enable further lane changes after turn signal is off
+                if turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
+                    self.lane_change_active = False
+                    self.in_target_lane = False
+                    self.source_lane_ids = same_lane_ids
+                    self.target_lane_ids = target_lane_ids
 
 
 

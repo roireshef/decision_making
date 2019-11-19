@@ -113,6 +113,22 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
                 else False for recipe in recipes]
 
 
+class FilterFurtherLCActionsAfterLC(RecipeFilter):
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        """
+        Don't allow further lane changes when the first one is not completely finished.
+        """
+        lane_change_active = behavioral_state.ego_state.lane_change_info.is_lane_change_active()
+        is_in_target_lane = behavioral_state.ego_state.lane_change_info.in_target_lane
+        return [not lane_change_active
+                or not is_in_target_lane
+                or (is_in_target_lane and recipe.relative_lane==RelativeLane.SAME_LANE)
+                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
+                else False for recipe in recipes]
+
+
+
+
 class FilterNonLCActionsDuringLC(RecipeFilter):
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         """
