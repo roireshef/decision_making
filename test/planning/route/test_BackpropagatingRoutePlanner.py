@@ -14,6 +14,9 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 
 
 def test_plan_normalScene_accurateRoutePlanOutput(scene_static_pg_split: SceneStatic):
+    """
+    This is a three-lane road with no obstructions. We should see all zero costs in the RP.
+    """
     # Test Data
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     scene_static_base = scene_static_pg_split.s_Data.s_SceneStaticBase
@@ -202,7 +205,9 @@ def test_plan_laneDirectionScenes_backpropagatedCostsCorrectRelativeToOtherLanes
 def test_plan_combinedScenes_backpropagatedCostsCorrectRelativeToOtherLanes(combined_scene_and_expected_output: RoutePlanTestData):
     """
     These scenes are described in the if and elif statement blocks below. Due to backpropgation,
-    only the road segments where the end costs are expected to be different are checked.
+    only the road segments where the end costs are expected to be different are checked. Details on the two scenes
+    that are tested in this unit test can be found here:
+    https://confluence.gm.com/display/ADS133317/Version+1+-+Route+planner+backpropogation?preview=/60097664/61543099/RP%20Backprop%20Unit%20Tests.pptx
     """
     # Test Data
     scene_static = combined_scene_and_expected_output.scene_static
