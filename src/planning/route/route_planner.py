@@ -6,7 +6,7 @@ import rte.python.profiler as prof
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
     SceneRoadSegment, SceneLaneSegmentBase
-from decision_making.src.exceptions import MissingInputInformation, RepeatedRoadSegments, raises,\
+from decision_making.src.exceptions import MissingMapInformation, RepeatedRoadSegments, raises,\
     NavigationSceneDataMismatch, LaneSegmentDataNotFound, RoadSegmentDataNotFound
 
 RoadSegmentDict = Dict[int, SceneRoadSegment]
@@ -60,18 +60,6 @@ class RoutePlannerInputData():
         """
         self._prev_road_segment_id = prev_road_segment_id or {}
 
-    @staticmethod   # Made static method especially as this method doesn't access the classes states/variables
-    @raises(MissingInputInformation)
-    def check_scene_data_validity(scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
-        if not scene.as_scene_lane_segments:
-            raise MissingInputInformation("Route Planner Input Data Processing: Empty scene.as_scene_lane_segments")
-
-        if not scene.as_scene_road_segment:
-            raise MissingInputInformation("Route Planner Input Data Processing: Empty scene.as_scene_road_segment")
-
-        if not nav_plan.a_i_road_segment_ids.size:  # np.ndarray type
-            raise MissingInputInformation("Route Planner Input Data Processing: Empty NAV Plan")
-
     def _update_dict_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
         """
          This method updates route_lane_segments_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
@@ -92,7 +80,7 @@ class RoutePlannerInputData():
             if road_segment_id in nav_plan.a_i_road_segment_ids:    # Empty NAV Plan error would have been caught earlier
                 self._route_road_segments_as_dict[road_segment_id] = scene_road_segment
 
-    @raises(MissingInputInformation, RepeatedRoadSegments, NavigationSceneDataMismatch)
+    @raises(MissingMapInformation, RepeatedRoadSegments, NavigationSceneDataMismatch)
     def _update_routeplan_data(self, nav_plan: NavigationPlan) -> None:
         """
         This method updates route_lane_segments :
@@ -113,7 +101,7 @@ class RoutePlannerInputData():
                 if all_lane_segment_ids_in_this_road_segment.size:
                     self._route_lane_segment_ids[road_segment_id] = all_lane_segment_ids_in_this_road_segment
                 else:
-                    raise MissingInputInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(road_segment_id))
+                    raise MissingMapInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(road_segment_id))
 
             else:
                 raise NavigationSceneDataMismatch('Road segement ID {0} reported in the NAV route not found in scene static base'.format(road_segment_id))
@@ -137,7 +125,7 @@ class RoutePlannerInputData():
             if all_lane_segment_ids_in_this_road_segment.size:
                 self._route_lane_segment_ids[last_road_segment_id] = all_lane_segment_ids_in_this_road_segment
             else:
-                raise MissingInputInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(last_road_segment_id))
+                raise MissingMapInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(last_road_segment_id))
 
         else:
             raise NavigationSceneDataMismatch('Road segement ID {0} reported in the NAV route not found in scene static base'.format(last_road_segment_id))
@@ -155,8 +143,6 @@ class RoutePlannerInputData():
                             by invoking _update_dict_data and _update_routeplan_data methods in that order. Look at the method comments for more
                             details.
         """
-
-        RoutePlannerInputData.check_scene_data_validity(scene, nav_plan)
         # maintain the following order
         self._update_dict_data(scene, nav_plan)
         self._update_routeplan_data(nav_plan)
