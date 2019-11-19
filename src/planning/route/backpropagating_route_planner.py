@@ -23,21 +23,19 @@ class BackpropagatingRoutePlanner(CostBasedRoutePlanner):
             where cost = end cost for downstream lane
                  gamma = discount factor
                      l = length of downstream lane
-                 v_max = speed limit of lane
+                 v_max = speed limit of downstream lane
 
         :param lane_segment_id: Lane ID
         :param downstream_lane_costs: Downstream lane segment cost information from RP
         :return: Lane end cost related to provided downstream lane segment
         """
-        # [m/sec], Speed limit of lane
-        lane_speed_limit = MapUtils.get_lane(lane_segment_id).e_v_nominal_speed
-
         # Downstream lane segment data
         downstream_lane = MapUtils.get_lane(downstream_lane_costs.e_i_lane_segment_id)
         downstream_lane_segment_length = downstream_lane.e_l_length
+        downstream_lane_speed_limit = downstream_lane.e_v_nominal_speed
 
         backprop_end_cost = downstream_lane_costs.e_cst_lane_end_cost \
-                            * (BACKPROP_DISCOUNT_FACTOR ** (downstream_lane_segment_length / lane_speed_limit))
+                            * (BACKPROP_DISCOUNT_FACTOR ** (downstream_lane_segment_length / downstream_lane_speed_limit))
 
         lane_segment_end_cost = backprop_end_cost if backprop_end_cost > BACKPROP_COST_THRESHOLD else MIN_COST
 
