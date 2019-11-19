@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
-    RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound, NavigationPlanTooShort
+    RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -63,6 +63,10 @@ class BehavioralGridState:
         self.ego_state = ego_state
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
+
+    @property
+    def ego_length(self) -> float:
+        return self.ego_state.size.length
 
     @classmethod
     @prof.ProfileFunction()
@@ -293,7 +297,7 @@ class BehavioralGridState:
         try:
             lane_gff_dict = BehavioralGridState._get_generalized_frenet_frames(
                 lane_id=closest_lanes_dict[RelativeLane.SAME_LANE], station=ego_state.map_state.lane_fstate[FS_SX],
-                route_plan=route_plan, can_augment=can_augment)
+                route_plan=route_plan, logger=logger, can_augment=can_augment)
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
             raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
@@ -341,7 +345,8 @@ class BehavioralGridState:
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
                     lane_gffs = BehavioralGridState._get_generalized_frenet_frames(
-                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan)
+                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan,
+                        logger=logger)
 
                     # Note that the RelativeLane keys that are in the returned dictionary from _get_lookahead_frenet_frames are
                     # with respect to the lane ID provided to the function. Therefore, since the lane ID for the left/right lane is
@@ -354,9 +359,11 @@ class BehavioralGridState:
         return extended_lane_frames
 
     @staticmethod
-    @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound, StraightConnectionNotFound, NavigationPlanTooShort)
+    @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound, StraightConnectionNotFound)
     @prof.ProfileFunction()
-    def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan,
+    def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan, logger: Logger,
+                                       forward_horizon: float = MAX_FORWARD_HORIZON,
+                                       backward_horizon: float = MAX_BACKWARD_HORIZON,
                                        can_augment: Optional[List[RelativeLane]] = None) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
@@ -365,20 +372,21 @@ class BehavioralGridState:
         :param lane_id: starting lane_id
         :param station: starting station [m]
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param logger: Logger object to log warning messages
         :param can_augment: List of RelativeLane. All relative lanes inside this can be augmented.
         :return: Dict of generalized Frenet frames with the relative lane as keys
                  The relative lane key is with respect to the provided lane_id. The dictionary will always contain the GFF for the provided
                  lane_id, and the RelativeLane.SAME_LANE key can be used to access it. If possible, augmented GFFs will also be returned,
                  and they can be accessed with the respective relative lane key.
         """
-        if station < MAX_BACKWARD_HORIZON:
+        if station < backward_horizon:
             # If the given station is not far enough along the lane, then the backward horizon will pass the beginning of the lane, and the
             # upstream lane subsegments need to be found. The starting station for the forward lookahead should be the beginning of the
             # current lane, and the forward lookahead distance should include the maximum forward horizon ahead of the given station and
             # the backward distance to the beginning of the lane (i.e. the station).
             starting_station = 0.0
-            lookahead_distance = MAX_FORWARD_HORIZON + station
-            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, MAX_BACKWARD_HORIZON)
+            lookahead_distance = forward_horizon + station
+            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, backward_horizon)
         else:
             # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
             # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
@@ -386,12 +394,13 @@ class BehavioralGridState:
             # other words, if we're at station = 150 m on a lane and the maximum forward and backward horizons are 400 m and 100 m,
             # respectively, then starting station = 50 m and forward lookahead distance = 400 + 100 = 500 m. This is the case where the GFF
             # does not include any upstream lanes.
-            starting_station = station - MAX_BACKWARD_HORIZON
-            lookahead_distance = MAX_FORWARD_HORIZON + MAX_BACKWARD_HORIZON
+            starting_station = station - backward_horizon
+            lookahead_distance = forward_horizon + backward_horizon
             upstream_lane_subsegments = []
 
         lane_subsegments_dict = BehavioralGridState._get_downstream_lane_subsegments(initial_lane_id=lane_id, initial_s=starting_station,
-                                                                                     lookahead_distance=lookahead_distance, route_plan=route_plan,
+                                                                                     lookahead_distance=lookahead_distance,
+                                                                                     route_plan=route_plan, logger=logger,
                                                                                      can_augment=can_augment)
 
         gffs_dict = {}
@@ -464,9 +473,9 @@ class BehavioralGridState:
         return upstream_lane_subsegments
 
     @staticmethod
-    @raises(StraightConnectionNotFound, RoadNotFound, NavigationPlanTooShort, LaneNotFound)
+    @raises(StraightConnectionNotFound, RoadNotFound, LaneNotFound)
     def _get_downstream_lane_subsegments(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                                         route_plan: RoutePlan, can_augment: Optional[List[RelativeLane]] = None) -> \
+                                         route_plan: RoutePlan, logger: Logger, can_augment: Optional[List[RelativeLane]] = None) -> \
             Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
@@ -476,6 +485,7 @@ class BehavioralGridState:
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param logger: Logger object to log warning messages
         :param can_augment: List of RelativeLane. All relative lanes inside this can be augmented.
         :return: Dictionary with potential keys: [RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
                  These keys represent the non-augmented, left-augmented, and right-augmented gffs that can be created.
@@ -492,7 +502,7 @@ class BehavioralGridState:
         lane_subsegments_dict = {}
 
         lane_subsegments, cumulative_distance = MapUtils._advance_on_plan(
-            initial_lane_id, initial_s, lookahead_distance, route_plan)
+            initial_lane_id, initial_s, lookahead_distance, route_plan, logger)
 
         current_lane_id = lane_subsegments[-1].e_i_SegmentID
         valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
@@ -516,7 +526,7 @@ class BehavioralGridState:
                 # recursive call to construct the augmented ("take split", left/right) sequence of lanes (GFF)
                 augmented_lane_dict = BehavioralGridState._get_downstream_lane_subsegments(
                     initial_lane_id=valid_downstream_lanes[maneuver_type], initial_s=0.0,
-                    lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan)
+                    lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan, logger=logger)
 
                 # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
                 # Read the return value description above for more information.
@@ -536,7 +546,7 @@ class BehavioralGridState:
             # recursive call to construct the "keep straight" sequence of lanes (GFF)
             straight_lane_dict = BehavioralGridState._get_downstream_lane_subsegments(
                 initial_lane_id=valid_downstream_lanes[ManeuverType.STRAIGHT_CONNECTION], initial_s=0.0,
-                lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan,
+                lookahead_distance=lookahead_distance - cumulative_distance, route_plan=route_plan, logger=logger,
                 can_augment=can_still_augment)
 
             for rel_lane, _ in straight_lane_dict.items():
