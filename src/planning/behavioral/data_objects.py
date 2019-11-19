@@ -160,7 +160,7 @@ class LaneChangeInfo:
         :return:
         """
         # initialize if first time updating
-        if not self.target_lane_ids or not self.source_lane_ids:
+        if self.target_lane_ids == None or self.source_lane_ids == None:
             self.source_lane_ids = same_lane_ids
             self.target_lane_ids = target_lane_ids
 
