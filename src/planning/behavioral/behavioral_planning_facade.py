@@ -44,6 +44,7 @@ from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
+
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
@@ -147,7 +148,7 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_takeover(takeover_message)
 
             # choose scenario and planner
-            scenario = Scenario.identify_scenario(updated_state, route_plan)
+            scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
             planner_class = scenario.choose_planner(updated_state, route_plan, self.logger)
             planner = planner_class(self.logger)
 

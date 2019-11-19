@@ -109,7 +109,7 @@ class TargetActionSpace(ActionSpace):
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
         # irrelevant due to 0 velocity
         ds = longitudinal_differences + margin_sign * (
-                self.margin_to_keep_from_targets + behavioral_state.ego_state.size.length / 2 + target_lengths / 2)
+                self.margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]
