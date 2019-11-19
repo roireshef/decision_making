@@ -1,6 +1,7 @@
 import time
 import traceback
 from logging import Logger
+from typing import Optional
 
 import numpy as np
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
@@ -274,7 +275,7 @@ class BehavioralPlanningFacade(DmModule):
 
         return takeover_message
 
-    def _get_current_pedal_position(self) -> bool:
+    def _get_current_pedal_position(self) -> Optional[PedalPosition]:
         """
         Read last message of acceleration pedal position and update self._driver_initiated_motion_state
         :return: True if succeeded to read the message
