@@ -155,8 +155,6 @@ class BehavioralPlanningFacade(DmModule):
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
 
-            self._update_lane_change_info(planner.selected_relative_lane)
-
             # Send plan to trajectory
             self._publish_results(trajectory_params)
 
@@ -191,17 +189,6 @@ class BehavioralPlanningFacade(DmModule):
             self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: %s. Trace: %s" %
                                  (e, traceback.format_exc()))
 
-    def _update_lane_change_info(self, selected_relative_lane: RelativeLane):
-        if self._lane_change_info.is_lane_change_active() and (selected_relative_lane == RelativeLane.SAME_LANE):
-            if self._lane_change_info.destination_relative_lane == RelativeLane.LEFT_LANE:
-                self._lane_change_info.source_relative_lane = RelativeLane.RIGHT_LANE
-                self._lane_change_info.destination_relative_lane = RelativeLane.SAME_LANE
-            elif self._lane_change_info.destination_relative_lane == RelativeLane.RIGHT_LANE:
-                self._lane_change_info.source_relative_lane = RelativeLane.LEFT_LANE
-                self._lane_change_info.destination_relative_lane = RelativeLane.SAME_LANE
-        else:
-            self._lane_change_info.source_relative_lane = RelativeLane.SAME_LANE
-            self._lane_change_info.destination_relative_lane = selected_relative_lane
 
     def _get_current_route_plan(self) -> RoutePlan:
         """

@@ -4,6 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.types import FrenetState2D
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 
 
 class ActionType(Enum):
@@ -141,15 +142,43 @@ class ActionSpec:
 
 
 class LaneChangeInfo:
-    def __init__(self, source_relative_lane: RelativeLane, destination_relative_lane: RelativeLane):
-        self.source_relative_lane = source_relative_lane
-        self.destination_relative_lane = destination_relative_lane
+    def __init__(self, source_gff: GeneralizedFrenetSerretFrame, target_gff: GeneralizedFrenetSerretFrame):
+        self.source_gff = source_gff
+        self.target_gff = target_gff
+        self.lane_change_active = False
 
     def is_lane_change_active(self) -> bool:
+        return self.lane_change_active
+
+    def update(self, same_lane_gff: GeneralizedFrenetSerretFrame,  target_gff: GeneralizedFrenetSerretFrame):
         """
-        Returns True if the host is currently performing a lane change; otherwise, it returns False.
+        Update the lane change status based on the target GFF requested
+        :param same_lane_gff:
+        :param target_gff:
+        :return:
         """
-        if (self.source_relative_lane == RelativeLane.SAME_LANE) and (self.destination_relative_lane == RelativeLane.SAME_LANE):
-            return False
+
+        if not self.lane_change_active:
+            # if the gff's do not contain the same segments, they must be different GFFs
+            if not np.any(target_gff.has_segment_ids(self.source_gff.segment_ids)):
+                # if SAME_LANE and target GFFs are different, the action must be a lane change
+                self.lane_change_active = True
+            self.source_gff = same_lane_gff
+            self.target_gff = target_gff
         else:
-            return True
+            # if in the middle of a lane change and the SAME_LANE gff becomes the same as the target,
+            # the host must have shifted lanes
+            if np.any(same_lane_gff.has_segment_ids(self.target_gff.segment_ids)):
+                self.lane_change_active = False
+                self.source_gff = same_lane_gff
+                self.target_gff = target_gff
+
+
+
+
+
+
+
+
+
+
