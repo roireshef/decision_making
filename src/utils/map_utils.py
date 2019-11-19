@@ -12,6 +12,7 @@ from decision_making.src.messages.scene_static_enums import ManeuverType, Traffi
 from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
+from decision_making.src.messages.scene_tcd_message import DynamicTrafficControlDeviceStatus
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RoadSignRestriction
 from decision_making.src.planning.types import CartesianPoint2D, FS_SX, TrafficControlBarInfo, \
     DynamicTrafficControlDeviceInfo, StaticTrafficControlDeviceInfo
@@ -21,6 +22,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 
 
 class MapUtils:
@@ -525,6 +527,7 @@ class MapUtils:
         :return: Dict of static / dynamic TCDs on the the GFF. TCD id -> TCD.
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
+        tcds_status = SceneTrafficControlDevicesStatusModel.get_instance().get_traffic_control_devices_status()
 
         # STATIC signs
         static_tcds_info = {static_tcd.object_id:
@@ -538,7 +541,9 @@ class MapUtils:
                              DynamicTrafficControlDeviceInfo(
                                  id=dynamic_tcd.object_id, sign_type=dynamic_tcd.e_e_traffic_control_device_type,
                                  status_confidence=[(status, status_confidence) for status, status_confidence in
-                                                    zip(dynamic_tcd.a_e_status, dynamic_tcd.a_Pct_status_confidence)])
+                                                    zip(tcds_status[dynamic_tcd.id].a_e_status,
+                                                        tcds_status[dynamic_tcd.id].a_Pct_status_confidence)]
+                                 if tcds_status.has_key(dynamic_tcd.id) else [])
                              for dynamic_tcd in scene_static.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device}
 
         return static_tcds_info, dynamic_tcds_info
@@ -628,5 +633,9 @@ class MapUtils:
         # TODO handle case where argmax is not good enough, and need to choose the worst case that is confident enough
         confidence = np.array([confidence for _, confidence in status_confidence])
         status = np.array([status for status, _ in status_confidence])
-        highest_confidence_idx = np.argmax(confidence)
-        return status[highest_confidence_idx]
+        if len(status) > 0:
+            highest_confidence_idx = np.argmax(confidence)
+            return status[highest_confidence_idx]
+        else:
+            # TODO log warning
+            return TrafficSignalState.RED # if status not found, be strict
