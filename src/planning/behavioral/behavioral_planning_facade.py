@@ -55,7 +55,7 @@ class BehavioralPlanningFacade(DmModule):
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
-        self._lane_change_info = LaneChangeInfo(RelativeLane.SAME_LANE, RelativeLane.SAME_LANE)
+        self._lane_change_info = LaneChangeInfo(None, None)
 
     def _write_filters_to_log_if_required(self, now: float):
         """

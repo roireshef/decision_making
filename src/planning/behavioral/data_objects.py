@@ -157,6 +157,11 @@ class LaneChangeInfo:
         :param target_gff:
         :return:
         """
+        # initialize if first time updating
+        if not self.target_gff or not self.source_gff:
+            self.source_gff = same_lane_gff
+            self.target_gff = target_gff
+
 
         if not self.lane_change_active:
             # if the gff's do not contain the same segments, they must be different GFFs
