@@ -5,7 +5,7 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.types import FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
-from src.messages.turn_signal_message import TurnSignal, TurnSignalState
+from decision_making.src.messages.turn_signal_message import TurnSignal, TurnSignalState
 
 
 class ActionType(Enum):
