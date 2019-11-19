@@ -172,6 +172,12 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference threshold
 
+# limits for allowing tracking mode. During tracking we maintain a fixed speed trajectory with the speed the target.
+# May want to consider replacing with ego speed, so that speed is constant
+TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1       # in [m]
+TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1       # in [m/s]
+TRACKING_ACCELERATION_DISPOSITION_LIMIT = 0.05   # in [m/s^2]
+
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
