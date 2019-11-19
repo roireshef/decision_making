@@ -434,7 +434,7 @@ def test_getGeneralizedFrenetFrames_CanAugmentButNoSplit_NoAugmentedCreated(scen
     assert RelativeLane.LEFT_LANE not in gff_dict
     assert RelativeLane.RIGHT_LANE not in gff_dict
 
-@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 400)
+
 def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_left_first,
                                                                                   route_plan_lane_splits_on_left_and_right_left_first):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first)
@@ -444,6 +444,7 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(s
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_left_first,
                                                                   None,
+                                                                  forward_horizon=400,
                                                                   can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -453,7 +454,7 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(s
     assert np.array_equal(gff_dict[RelativeLane.LEFT_LANE].segment_ids, [201, 211, 222, 232, 242])
     assert np.array_equal(gff_dict[RelativeLane.RIGHT_LANE].segment_ids, [201, 211, 221, 230, 240])
 
-@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 400)
+
 def test_getGeneralizedFrenetFrames_OffsetSplitsRightFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_right_first,
                                                                                    route_plan_lane_splits_on_left_and_right_right_first):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_right_first)
@@ -463,6 +464,7 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsRightFirst_BothAugmentedCreated(
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_right_first,
                                                                   None,
+                                                                  forward_horizon=400,
                                                                   can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -507,7 +509,6 @@ def test_getGeneralizedFrenetFrames_frenetStartsBehindAndEndsAheadOfCurrentLane_
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
-@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 900)
 def test_getGeneralizedFrenetFrames_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
     """
     Make sure that partial/augmentedPartial GFFS are created when the forward horizon is set to be very far ahead
@@ -526,7 +527,8 @@ def test_getGeneralizedFrenetFrames_AugmentedPartialCreatedWhenSplitEnds(left_ri
     del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2_3.s_Data.a_Cnt_num_lane_segments[0] = 1
 
-    gff_dict = BehavioralGridState._get_generalized_frenet_frames(11, 900, route_plan_1_2_3, None, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames(11, 900, route_plan_1_2_3, None,
+                                                                  forward_horizon=900, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFFType.AugmentedPartial
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFFType.AugmentedPartial
