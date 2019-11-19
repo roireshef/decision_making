@@ -80,7 +80,7 @@ class LaneMergeState(BehavioralGridState):
 
         # find merge lane_id of ego_gff, merge side and the first common lane_id
         merge_lane_id = MapUtils.get_merge_lane_id(
-            ego_lane_id, ego_lane_fstate[FS_SX], LANE_MERGE_STATE_FAR_AWAY_DISTANCE, route_plan)
+            ego_lane_id, ego_lane_fstate[FS_SX], LANE_MERGE_STATE_FAR_AWAY_DISTANCE, route_plan, logger)
         downstream_connectivity = MapUtils.get_lane(merge_lane_id).as_downstream_lanes[0]
         maneuver_type, common_lane_id = downstream_connectivity.e_e_maneuver_type, downstream_connectivity.e_i_lane_segment_id
 

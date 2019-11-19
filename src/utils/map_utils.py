@@ -540,8 +540,8 @@ class MapUtils:
         return road_sign_info_on_gff
 
     @staticmethod
-    def get_merge_lane_id(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
-            -> Optional[int]:
+    def get_merge_lane_id(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan,
+                          logger: Logger) -> Optional[int]:
         """
         Given GFF for the current lane, find the closest merge connection into main road.
         Red line is s coordinate, from which host starts to interference laterally with the main road actors.
@@ -551,10 +551,11 @@ class MapUtils:
         :param initial_s: s of ego on initial_lane_id
         :param lookahead_distance: maximal lookahead for the lane merge from ego location
         :param route_plan: the relevant navigation plan to iterate over its road IDs
+        :param logger:
         :return: lane_id of the segment between the red line and the merge point itself
         """
 
-        lane_subsegments, _ = MapUtils._advance_on_plan(initial_lane_id, initial_s, lookahead_distance, route_plan)
+        lane_subsegments, _ = MapUtils._advance_on_plan(initial_lane_id, initial_s, lookahead_distance, route_plan, logger)
 
         # Find the merge point ahead
         cumulative_length = 0
