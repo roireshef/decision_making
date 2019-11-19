@@ -23,7 +23,7 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
-from decision_making.src.messages.turn_signal_message import TurnSignal
+from decision_making.src.messages.turn_signal_message import TurnSignal, TurnSignalState
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.data_objects import LaneChangeInfo, RelativeLane

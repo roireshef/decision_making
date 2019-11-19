@@ -42,9 +42,9 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         # if an augmented lane is chosen to be the minimum_cost_lane or a lane change is desired, also allow the possibility of choosing an
         # action on the straight lane if no actions are available on the augmented lane or the desired lane for a lane change. Prioritize
         # the lane change lane over the minimum_cost_lane.
-        if behavioral_state.ego_state.turn_signal == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
+        if behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
             lanes_to_try = [RelativeLane.LEFT_LANE, minimum_cost_lane, RelativeLane.SAME_LANE]
-        elif behavioral_state.ego_state.turn_signal == TurnSignalState.CeSYS_e_RightTurnSignalOn:
+        elif behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn:
             lanes_to_try = [RelativeLane.RIGHT_LANE, minimum_cost_lane, RelativeLane.SAME_LANE]
         elif minimum_cost_lane != RelativeLane.SAME_LANE:
             lanes_to_try = [minimum_cost_lane, RelativeLane.SAME_LANE]
