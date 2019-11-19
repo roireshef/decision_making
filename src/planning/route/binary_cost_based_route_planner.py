@@ -28,8 +28,10 @@ class CostBasedRoutePlanner(RoutePlanner):
     @prof.ProfileFunction()
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
         """
-        Calculates lane end and occupancy costs for all the lanes in the NAV plan
-        :input:  RoutePlannerInputData, pre-processed data for RoutePlan cost calcualtions. More details at
+        Calculates lane end and occupancy costs for all the lanes in the NAV plan. This is done by starting at the end of the nav. plan
+        and working towards the beginning. Other than on the last road segment in the nav. plan, the costs are dictated by the occupancy
+        and end costs of the downstream lanes.
+        :input:  RoutePlannerInputData, pre-processed data for RoutePlan cost calculations. More details at
                  RoutePlannerInputData() class definition.
         :return: DataRoutePlan , the complete route plan information ready to be serialized and published
         """
