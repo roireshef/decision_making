@@ -1,20 +1,24 @@
 import time
 import traceback
 from logging import Logger
+from typing import Optional
 
 import numpy as np
+from decision_making.src.messages.control_status_message import ControlStatus
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_CONTROL_STATUS
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
-    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED
+    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, \
+    LOG_MSG_CONTROL_STATUS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -67,11 +71,13 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_CONTROL_STATUS)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.unsubscribe(UC_SYSTEM_CONTROL_STATUS)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -101,6 +107,8 @@ class BehavioralPlanningFacade(DmModule):
 
                 state.handle_negative_velocities(self.logger)
 
+            control_status = self._get_current_control_status()
+            engaged = self._is_av_engaged(control_status)
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -120,7 +128,7 @@ class BehavioralPlanningFacade(DmModule):
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                    state.ego_state, self._last_trajectory, engaged, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan.  %s", updated_state.ego_state)
@@ -140,7 +148,15 @@ class BehavioralPlanningFacade(DmModule):
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan(updated_state, route_plan)
 
-            self._last_trajectory = samplable_trajectory
+            # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
+            # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral
+            # offsets up to even crossing lane boundaries
+            self._last_trajectory = samplable_trajectory if engaged else None
+
+            # TODO WHAT SHOULD TP DO (can pass the engage flag in the ego_state)? DOES CONTROL CARE - can possibly check
+            #  the engaged status in the is_actual_state_close_to_expected_state() and share it with TP, so it will
+            #  not use history automatically.
+            #  Need to clear the last_trajectory anyway, so that when we re-engage we don't use a bad value
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
 
@@ -339,6 +355,19 @@ class BehavioralPlanningFacade(DmModule):
 
         return updated_state
 
+    def _get_current_control_status(self) -> Optional[ControlStatus]:
+        is_success, serialized_control_status = self.pubsub.get_latest_sample(topic=UC_SYSTEM_CONTROL_STATUS)
+
+        if serialized_control_status is None:
+            # this is a warning and not an assert, since currently perfect_control does not publish the message
+            self.logger.warning("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                UC_SYSTEM_CONTROL_STATUS)
+            return None
+        control_status = ControlStatus.deserialize(serialized_control_status)
+        self.logger.debug("%s: %f engaged %s" % (LOG_MSG_CONTROL_STATUS, control_status.s_Header.s_Timestamp.timestamp_in_seconds,
+                                                 control_status.s_Data.e_b_TTCEnabled))
+        return control_status
+
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_PARAMS, trajectory_parameters.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, trajectory_parameters))
@@ -348,6 +377,9 @@ class BehavioralPlanningFacade(DmModule):
 
     def _publish_takeover(self, takeover_message:Takeover) -> None :
         self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_message.serialize())
+
+    def _is_av_engaged(self, control_status: ControlStatus) -> bool:
+        return control_status is not None and control_status.s_Data is not None and control_status.s_Data.e_b_TTCEnabled
 
     @property
     def planner(self):
