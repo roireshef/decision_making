@@ -68,8 +68,8 @@ class BasePlanner:
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)", selected_action_spec, timestamp_in_sec)
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_recipe, timestamp_in_sec)
 
-        state.ego_state.lane_change_info.update(behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-                                                , behavioral_state.extended_lane_frames[selected_action_recipe.relative_lane])
+        state.ego_state.lane_change_info.update(behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE].segment_ids
+                                                , behavioral_state.extended_lane_frames[selected_action_recipe.relative_lane].segment_ids)
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
