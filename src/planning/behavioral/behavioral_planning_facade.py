@@ -3,6 +3,8 @@ import traceback
 from logging import Logger
 
 import numpy as np
+from decision_making.src.messages.pedal_position_message import PedalPosition
+from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -38,6 +40,8 @@ from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
 class BehavioralPlanningFacade(DmModule):
+    last_log_time = float
+
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
@@ -50,17 +54,29 @@ class BehavioralPlanningFacade(DmModule):
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
-        self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+        self.last_log_time = -1.0
+
+    def _write_filters_to_log_if_required(self, now: float):
+        """
+        Write list of applicable filters to log every 5 seconds.
+        :param now: time in seconds
+        """
+        if now - self.last_log_time > 5.0:
+            self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for
+                                                              filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.last_log_time = now
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_PEDAL_POSITION)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.unsubscribe(UC_SYSTEM_PEDAL_POSITION)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -90,6 +106,9 @@ class BehavioralPlanningFacade(DmModule):
 
                 state.handle_negative_velocities(self.logger)
 
+            self._get_current_pedal_position()
+
+            self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
             self.logger.debug("Scene Dynamic host localization published at timestamp: %f," +
@@ -121,7 +140,7 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_takeover(takeover_message)
 
             # choose scenario and planner
-            scenario = Scenario.identify_scenario(updated_state, route_plan)
+            scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
             planner_class = scenario.choose_planner(updated_state, route_plan, self.logger)
             planner = planner_class(self.logger)
 
@@ -182,7 +201,7 @@ class BehavioralPlanningFacade(DmModule):
         return route_plan
 
     @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
-    def _set_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState) -> Takeover:
+    def _set_takeover_message(self, route_plan_data: DataRoutePlan, ego_state: EgoState) -> Takeover:
         """
         Calculate the takeover message based on the static route plan
         The takeover flag will be set to True if all lane end costs for a downstream road segment
@@ -248,6 +267,20 @@ class BehavioralPlanningFacade(DmModule):
                                     s_Data=DataTakeover(takeover_flag))
 
         return takeover_message
+
+    def _get_current_pedal_position(self) -> PedalPosition:
+        """
+        Read last message of brake & acceleration pedals position
+        :return: PedalPosition
+        """
+        is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
+        if not is_success or serialized_pedal_position is None:
+            return None
+        pedal_position = PedalPosition.deserialize(serialized_pedal_position)
+        self.logger.debug("Pedal position received at time %f: %f" %
+                          (pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds,
+                           pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
+        return pedal_position
 
     def _get_current_scene_static(self) -> SceneStatic:
         with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):

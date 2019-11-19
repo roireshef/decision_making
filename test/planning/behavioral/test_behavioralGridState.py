@@ -12,7 +12,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import DynamicObject, MapState, ObjectSize
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
-from decision_making.src.exceptions import NavigationPlanTooShort, UpstreamLaneNotFound
+from decision_making.src.exceptions import UpstreamLaneNotFound
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
     state_with_surrounding_objects, state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, \
@@ -377,7 +377,7 @@ def test_getGeneralizedFrenetFrames_onEndingLane_PartialGFFCreated(scene_static_
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[1][2]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[1] -= 1
 
-    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, None)
     # check partial SAME_LANE
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [12])
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Partial
@@ -389,7 +389,7 @@ def test_getGeneralizedFrenetFrames_onFullLane_NormalGFFCreated(scene_static_rig
     starting_lon = 800
     starting_lane = 11
 
-    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, None)
     assert np.array_equal(gff_dict[RelativeLane.SAME_LANE].segment_ids, [11,21])
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
 
@@ -401,7 +401,8 @@ def test_getGeneralizedFrenetFrames_LeftSplitAugmentedGFFCreated(left_lane_split
     starting_lane = 11
     can_augment = [RelativeLane.LEFT_LANE]
 
-    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, can_augment = can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, None,
+                                                                  can_augment=can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -418,7 +419,8 @@ def test_getGeneralizedFrenetFrames_RightSplitAugmentedGFFCreated(right_lane_spl
     starting_lane = 11
     can_augment = [RelativeLane.RIGHT_LANE]
 
-    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, None,
+                                                                  can_augment=can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -440,7 +442,7 @@ def test_getGeneralizedFrenetFrames_LeftRightSplitAugmentedGFFsCreated(left_righ
     del route_plan_1_2.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2.s_Data.a_Cnt_num_lane_segments[0] = 1
 
-    gff_dict = BehavioralGridState._get_generalized_frenet_frames(11, 600, route_plan_1_2, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames(11, 600, route_plan_1_2, None, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFFType.Augmented
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFFType.Augmented
@@ -456,7 +458,8 @@ def test_getGeneralizedFrenetFrames_CanAugmentButNoSplit_NoAugmentedCreated(scen
     starting_lane = 11
     can_augment = [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
 
-    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_1_2, None,
+                                                                  can_augment=can_augment)
 
     # check same_lane
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -464,7 +467,7 @@ def test_getGeneralizedFrenetFrames_CanAugmentButNoSplit_NoAugmentedCreated(scen
     assert RelativeLane.LEFT_LANE not in gff_dict
     assert RelativeLane.RIGHT_LANE not in gff_dict
 
-@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 400)
+
 def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_left_first,
                                                                                   route_plan_lane_splits_on_left_and_right_left_first):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first)
@@ -473,6 +476,8 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(s
     can_augment = [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_left_first,
+                                                                  None,
+                                                                  forward_horizon=400,
                                                                   can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -482,7 +487,7 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsLeftFirst_BothAugmentedCreated(s
     assert np.array_equal(gff_dict[RelativeLane.LEFT_LANE].segment_ids, [201, 211, 222, 232, 242])
     assert np.array_equal(gff_dict[RelativeLane.RIGHT_LANE].segment_ids, [201, 211, 221, 230, 240])
 
-@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 400)
+
 def test_getGeneralizedFrenetFrames_OffsetSplitsRightFirst_BothAugmentedCreated(scene_static_lane_splits_on_left_and_right_right_first,
                                                                                    route_plan_lane_splits_on_left_and_right_right_first):
     SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_right_first)
@@ -491,6 +496,8 @@ def test_getGeneralizedFrenetFrames_OffsetSplitsRightFirst_BothAugmentedCreated(
     can_augment = [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
 
     gff_dict = BehavioralGridState._get_generalized_frenet_frames(starting_lane, starting_lon, route_plan_lane_splits_on_left_and_right_right_first,
+                                                                  None,
+                                                                  forward_horizon=400,
                                                                   can_augment=can_augment)
 
     assert gff_dict[RelativeLane.SAME_LANE].gff_type == GFFType.Normal
@@ -518,7 +525,7 @@ def test_getGeneralizedFrenetFrames_frenetStartsBehindAndEndsAheadOfCurrentLane_
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
-    gff = BehavioralGridState._get_generalized_frenet_frames(lane_id, station, route_plan_20_30)[RelativeLane.SAME_LANE]
+    gff = BehavioralGridState._get_generalized_frenet_frames(lane_id, station, route_plan_20_30, None)[RelativeLane.SAME_LANE]
 
     # validate the length of the obtained frenet frame
     assert abs(gff.s_max - (MAX_BACKWARD_HORIZON + MAX_FORWARD_HORIZON)) < SMALL_DISTANCE_ERROR
@@ -535,7 +542,6 @@ def test_getGeneralizedFrenetFrames_frenetStartsBehindAndEndsAheadOfCurrentLane_
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
-@patch('decision_making.src.planning.behavioral.state.behavioral_grid_state.MAX_FORWARD_HORIZON', 900)
 def test_getGeneralizedFrenetFrames_AugmentedPartialCreatedWhenSplitEnds(left_right_lane_split_scene_static, route_plan_1_2_3):
     """
     Make sure that partial/augmentedPartial GFFS are created when the forward horizon is set to be very far ahead
@@ -554,7 +560,8 @@ def test_getGeneralizedFrenetFrames_AugmentedPartialCreatedWhenSplitEnds(left_ri
     del route_plan_1_2_3.s_Data.as_route_plan_lane_segments[0][1]
     route_plan_1_2_3.s_Data.a_Cnt_num_lane_segments[0] = 1
 
-    gff_dict = BehavioralGridState._get_generalized_frenet_frames(11, 900, route_plan_1_2_3, can_augment=can_augment)
+    gff_dict = BehavioralGridState._get_generalized_frenet_frames(11, 900, route_plan_1_2_3, None,
+                                                                  forward_horizon=900, can_augment=can_augment)
 
     assert gff_dict[RelativeLane.LEFT_LANE].gff_type == GFFType.AugmentedPartial
     assert gff_dict[RelativeLane.RIGHT_LANE].gff_type == GFFType.AugmentedPartial
@@ -576,7 +583,9 @@ def test_getDownstreamLaneSubsegments_planFiveOutOfTenSegments_validateTotalLeng
     starting_lon = 20.
     lookahead_dist = 500.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
-    sub_segments, is_partial, is_augmented, _ = BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon, lookahead_dist, route_plan_20_30)[RelativeLane.SAME_LANE]
+    sub_segments, is_partial, is_augmented, _ = BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon,
+                                                                                                     lookahead_dist, route_plan_20_30,
+                                                                                                     None)[RelativeLane.SAME_LANE]
     assert len(sub_segments) == 5
     for seg in sub_segments:
         assert MapUtils.get_lane_ordinal(seg.e_i_SegmentID) == current_ordinal
@@ -618,7 +627,8 @@ def test_getDownstreamLaneSubsegments_navPlanDoesNotFitMap_partialGeneralized(sc
 
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
     # validate getting the relevant exception
-    subsegs, is_partial, _, _ = BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon, lookahead_dist, route_plan)[RelativeLane.SAME_LANE]
+    subsegs, is_partial, _, _ = BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon, lookahead_dist,
+                                                                                     route_plan, None)[RelativeLane.SAME_LANE]
 
     subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
 
@@ -631,36 +641,6 @@ def test_getDownstreamLaneSubsegments_navPlanDoesNotFitMap_partialGeneralized(sc
     assert np.array_equal(subseg_ids, [231, 241, 251, 261, 271])
     # make sure the GFF created was of type Partial since it should not extend the entire route plan
     assert is_partial == True
-
-
-def test_getDownstreamLaneSubsegments_navPlanTooShort_validateRelevantException(scene_static_pg_split, route_plan_20_30):
-    """
-    test the method _get_downstream_lane_subsegments
-        test exception for too short nav plan; validate the relevant exception
-    """
-
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    current_road_idx = 3
-    current_ordinal = 1
-    starting_lon = 20.
-    lookahead_dist = 500.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
-    nav_plan_length = 7
-
-    # Modify route plan for this test case
-    route_plan = route_plan_20_30
-    route_plan.s_Data.e_Cnt_num_road_segments = nav_plan_length
-    route_plan.s_Data.a_i_road_segment_ids = route_plan.s_Data.a_i_road_segment_ids[:nav_plan_length]
-    route_plan.s_Data.a_Cnt_num_lane_segments = route_plan.s_Data.a_Cnt_num_lane_segments[:nav_plan_length]
-    route_plan.s_Data.as_route_plan_lane_segments = route_plan.s_Data.as_route_plan_lane_segments[:nav_plan_length]
-
-    # test the case when the navigation plan is too short; validate the relevant exception
-    try:
-        BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon, lookahead_dist, route_plan)
-        assert False
-    except NavigationPlanTooShort:
-        assert True
 
 
 def test_getDownstreamLaneSubsegments_lookAheadDistLongerThanMap_validatePartialGeneralized(scene_static_pg_split, route_plan_20_30):
@@ -687,7 +667,9 @@ def test_getDownstreamLaneSubsegments_lookAheadDistLongerThanMap_validatePartial
                                                           RoutePlanLaneSegment(302,0,0)])
 
     # test the case when the map is too short; validate partial lookahead is done
-    subsegs, is_partial, is_augmented, _ = BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon, lookadhead_dist, route_plan)[RelativeLane.SAME_LANE]
+    subsegs, is_partial, is_augmented, _ = BehavioralGridState._get_downstream_lane_subsegments(starting_lane_id, starting_lon,
+                                                                                                lookadhead_dist, route_plan,
+                                                                                                None)[RelativeLane.SAME_LANE]
     subseg_ids = [subseg.e_i_SegmentID for subseg in subsegs]
 
     # make sure the subsegments are in the correct order
