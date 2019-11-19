@@ -228,6 +228,24 @@ class EgoState(DynamicObject):
                                              turn_signal=turn_signal)
         self.lane_change_info = lane_change_info
 
+    def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
+        # type: (CartesianExtendedState, Optional[float]) -> EgoState
+        """ clones self while overriding cartesian_state and optionally timestamp
+            overridden method for EgoState
+        """
+        ego_state = super().clone_from_cartesian_state(cartesian_state, timestamp_in_sec)
+        ego_state.lane_change_info = self.lane_change_info
+        return ego_state
+
+
+    def clone_from_map_state(self, map_state, timestamp_in_sec=None):
+        # type: (MapState, Optional[float]) -> DynamicObject
+        """ clones self while overriding map_state and optionally timestamp
+            overridden method for EgoState
+        """
+        ego_state = super().clone_from_map_state(map_state, timestamp_in_sec)
+        ego_state.lane_change_info = self.lane_change_info
+        return ego_state
 
 T = TypeVar('T', bound='State')
 
