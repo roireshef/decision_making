@@ -105,14 +105,14 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
             control_status = self._get_current_control_status()
-            engaged = self._is_av_engaged(control_status)
+            is_engaged = self._is_av_engaged(control_status)
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, engaged, self.logger, self.__class__.__name__):
+                    state.ego_state, self._last_trajectory, is_engaged, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state, params.reference_route)
             else:
                 updated_state = state
@@ -126,7 +126,7 @@ class TrajectoryPlanningFacade(DmModule):
                     T_trajectory_end_horizon, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
-                                                           samplable_trajectory=samplable_trajectory, engaged=engaged)
+                                                           samplable_trajectory=samplable_trajectory, is_engaged=is_engaged)
 
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
@@ -159,19 +159,20 @@ class TrajectoryPlanningFacade(DmModule):
 
     # TODO: add map_origin that is sent from the outside
     @prof.ProfileFunction()
-    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory, engaged: bool):
+    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory, is_engaged: bool):
         """
         sample trajectory points from the samplable-trajectory, translate them according to ego's reference point and
         wrap them in a message to the controller
         :param timestamp: the timestamp to use as a reference for the beginning of trajectory
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
+        :param is_engaged: whether AV is currently engaged
         :return: a TrajectoryPlan message ready to send to the controller
         """
         trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
                         stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                         num=TRAJECTORY_NUM_POINTS) + timestamp)
-        self._last_trajectory = samplable_trajectory if engaged else None
+        self._last_trajectory = samplable_trajectory if is_engaged else None
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields

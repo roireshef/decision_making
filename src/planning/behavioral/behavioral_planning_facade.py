@@ -113,7 +113,7 @@ class BehavioralPlanningFacade(DmModule):
 
             self._get_current_pedal_position()
             control_status = self._get_current_control_status()
-            engaged = self._is_av_engaged(control_status)
+            is_engaged = self._is_av_engaged(control_status)
 
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
@@ -134,7 +134,7 @@ class BehavioralPlanningFacade(DmModule):
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, engaged, self.logger, self.__class__.__name__):
+                    state.ego_state, self._last_trajectory, is_engaged, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan.  %s", updated_state.ego_state)
@@ -157,7 +157,7 @@ class BehavioralPlanningFacade(DmModule):
             # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
             # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral
             # offsets up to even crossing lane boundaries
-            self._last_trajectory = samplable_trajectory if engaged else None
+            self._last_trajectory = samplable_trajectory if is_engaged else None
 
             # TODO WHAT SHOULD TP DO (can pass the engage flag in the ego_state)? DOES CONTROL CARE - can possibly check
             #  the engaged status in the is_actual_state_close_to_expected_state() and share it with TP, so it will
