@@ -105,14 +105,14 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
             control_status = self._get_current_control_status()
-            is_engaged = self._is_av_engaged(control_status)
+            is_engaged = control_status is not None and control_status.is_av_engaged()
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, is_engaged, self.logger, self.__class__.__name__):
+            if is_engaged and LocalizationUtils.is_actual_state_close_to_expected_state(
+                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state, params.reference_route)
             else:
                 updated_state = state

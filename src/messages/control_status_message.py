@@ -158,3 +158,9 @@ class ControlStatus(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSControlStatus):
         return cls(Header.deserialize(pubsubMsg.s_Header),
                    DataControlStatus.deserialize(pubsubMsg.s_Data))
+
+    def is_av_engaged(self) -> bool:
+        """
+        :return: True if AV engaged, False otherwise
+        """
+        return self.s_Data is not None and self.s_Data.e_b_TTCEnabled
