@@ -13,16 +13,68 @@ from decision_making.src.planning.route.route_planner import RoutePlannerInputDa
 from decision_making.src.utils.function_utils import FunctionUtils
 
 
+class OccupancyCostMapping():
+    """
+    This class holds static methods that map lane attributes to occupancy costs
+    """
+    @staticmethod
+    def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
+        """
+        Cost of lane map type. Current implementation is binary cost.
+        :param mapping_status_attribute: type of mapped
+        :return: normalized cost (MIN_COST to MAX_COST)
+        """
+        if ((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
+                (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
+            return MIN_COST
+        return MAX_COST
+
+    @staticmethod
+    def construction_zone_based_occupancy_cost(construction_zone_attribute: LaneConstructionType) -> float:
+        """
+        Cost of construction zone type. Current implementation is binary cost.
+        :param construction_zone_attribute: type of lane construction
+        :return: Normalized cost (MIN_COST to MAX_COST)
+        """
+        if ((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
+                (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
+            return MIN_COST
+        return MAX_COST
+
+    @staticmethod
+    def lane_dir_in_route_based_occupancy_cost(lane_dir_in_route_attribute: MapLaneDirection) -> float:
+        """
+        Cost of lane direction. Current implementation is binary cost.
+        :param lane_dir_in_route_attribute: map lane direction in respect to host
+        :return: Normalized cost (MIN_COST to MAX_COST)
+        """
+        if ((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
+                (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
+                (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
+            return MIN_COST
+        return MAX_COST
+
+    @staticmethod
+    def gm_authority_based_occupancy_cost(gm_authority_attribute: GMAuthorityType) -> float:
+        """
+        Cost of GM authorized driving area. Current implementation is binary cost.
+        :param gm_authority_attribute: type of GM authority
+        :return: Normalized cost (MIN_COST to MAX_COST)
+        """
+        if gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None:
+            return MIN_COST
+        return MAX_COST
+
+
 class CostBasedRoutePlanner(metaclass=ABCMeta):
-    def __init__(self):
-        self._occupancy_cost_methods = {RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value:
-                                            self._mapping_status_based_occupancy_cost,
-                                        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value:
-                                            self._gm_authority_based_occupancy_cost,
-                                        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value:
-                                            self._construction_zone_based_occupancy_cost,
-                                        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction.value:
-                                            self._lane_dir_in_route_based_occupancy_cost}
+    occupancy_cost_methods = {RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value:
+                                  OccupancyCostMapping.mapping_status_based_occupancy_cost,
+                              RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value:
+                                  OccupancyCostMapping.gm_authority_based_occupancy_cost,
+                              RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value:
+                                  OccupancyCostMapping.construction_zone_based_occupancy_cost,
+                              RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction.value:
+                                  OccupancyCostMapping.lane_dir_in_route_based_occupancy_cost}
 
     @prof.ProfileFunction()
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
@@ -72,50 +124,6 @@ class CostBasedRoutePlanner(metaclass=ABCMeta):
         """
         pass
 
-    def _mapping_status_based_occupancy_cost(self, mapping_status_attribute: LaneMappingStatusType) -> float:
-        """
-        Cost of lane map type. Current implementation is binary cost.
-        :param mapping_status_attribute: type of mapped
-        :return: normalized cost (MIN_COST to MAX_COST)
-        """
-        if ((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
-                (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
-            return MIN_COST
-        return MAX_COST
-
-    def _construction_zone_based_occupancy_cost(self, construction_zone_attribute: LaneConstructionType) -> float:
-        """
-        Cost of construction zone type. Current implementation is binary cost.
-        :param construction_zone_attribute: type of lane construction
-        :return: Normalized cost (MIN_COST to MAX_COST)
-        """
-        if ((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
-                (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
-            return MIN_COST
-        return MAX_COST
-
-    def _lane_dir_in_route_based_occupancy_cost(self, lane_dir_in_route_attribute: MapLaneDirection) -> float:
-        """
-        Cost of lane direction. Current implementation is binary cost.
-        :param lane_dir_in_route_attribute: map lane direction in respect to host
-        :return: Normalized cost (MIN_COST to MAX_COST)
-        """
-        if ((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
-                (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
-                (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
-            return MIN_COST
-        return MAX_COST
-
-    def _gm_authority_based_occupancy_cost(self, gm_authority_attribute: GMAuthorityType) -> float:
-        """
-        Cost of GM authorized driving area. Current implementation is binary cost.
-        :param gm_authority_attribute: type of GM authority
-        :return: Normalized cost (MIN_COST to MAX_COST)
-        """
-        if gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None:
-            return MIN_COST
-        return MAX_COST
-
     @raises(LaneAttributeNotFound)
     def _lane_attribute_based_occupancy_cost(self, lane_attribute_index: int, lane_attribute_value: int) -> float:
         """
@@ -125,8 +133,8 @@ class CostBasedRoutePlanner(metaclass=ABCMeta):
         :param lane_attribute_value: value of the pointed lane attribute
         :return: Normalized lane occupancy cost based on the concerned lane attribute (MIN_COST to MAX_COST)
         """
-        if lane_attribute_index in self._occupancy_cost_methods:
-            occupancy_cost_method = self._occupancy_cost_methods[lane_attribute_index]
+        if lane_attribute_index in CostBasedRoutePlanner.occupancy_cost_methods:
+            occupancy_cost_method = CostBasedRoutePlanner.occupancy_cost_methods[lane_attribute_index]
 
             # The occupancy cost methods expect an enum, not an int. So, in order to convert lane_attribute_value to
             # the proper enum, we have to determine the enumeration type from the selected occupancy cost method.
