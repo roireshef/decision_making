@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
@@ -312,6 +312,10 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
     def __init__(self):
         super().__init__()
 
+
+
+
+
     def _get_velocity_limits_of_points(self, action_spec: ActionSpec, frenet_frame: GeneralizedFrenetSerretFrame) -> \
             [np.array, np.array]:
         """
@@ -320,6 +324,13 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         :param frenet_frame:
         :return:
         """
+
+        def _get_lat_limit(c):
+            for lower, upper, limit in LAT_ACC_LIMITS_BY_K:
+                if lower <= 1/c < upper:
+                    return limit
+
+
         # get the worst case braking distance from spec.v to 0
         max_braking_distance = self.braking_distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
         max_relevant_s = min(action_spec.s + max_braking_distance, frenet_frame.s_max)
@@ -332,8 +343,11 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get velocity limits for all points in the range
         curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[0]:beyond_spec_range[1], 0]), EPS)
 
+        lat_acc_limits = [_get_lat_limit(c) for c in curvatures]
+
         # TODO: Change this line to get the LAT_ACC_LIMITS from table
-        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
+        # points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
+        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * lat_acc_limits / curvatures)
 
         return points_s, points_velocity_limits
 

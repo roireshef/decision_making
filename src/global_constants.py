@@ -93,13 +93,9 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 LAT_ACC_LIMITS = np.array([-2, 2])
 
 # Latitudinal Acceleration Limits [m/sec^2] by curvature (
-LAT_ACC_LIMITS_BY_K = {
-     20: 4.0,
-     100: 3.5,
-     200: 2.5,
-     400: 2.2,
-     float('inf'): 2.0
-}
+
+LAT_ACC_LIMITS_BY_K = [(0, 20, 4.0), (20, 100, 3.5), (100, 200, 2.5), (200, 400, 2.2), (400, float('inf'), 2.0)]
+# LAT_ACC_LIMITS_BY_K = [(20, 4.0), (100, 3.5), (200, 2.5), (400, 2.2), (float('inf'), 2.0)]
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 0.9
