@@ -486,10 +486,10 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
         :param as_upstream_lanes: Lane-segments upstream of this lane-segment
         :param e_v_nominal_speed: Nominal speed (i.e. speed limit) of this lane-segment
         :param e_l_length: Lane segment length in meters
-        :param e_Cnt_num_active_lane_attributes: TODO: Add description
-        :param a_i_active_lane_attribute_indices: TODO: Add description
-        :param a_cmp_lane_attributes: TODO: Add description
-        :param a_cmp_lane_attribute_confidences: TODO: Add description
+        :param e_Cnt_num_active_lane_attributes: Number of active lane attributes
+        :param a_i_active_lane_attribute_indices: Array that holds the indices of the active lane attributes in a_cmp_lane_attributes
+        :param a_cmp_lane_attributes: Array where each element corresponds to a different lane attribute
+        :param a_cmp_lane_attribute_confidences: Array where each element corresponds to the confidence in the respective lane attribute assignment
         :param e_Cnt_lane_overlap_count: Total number of lane overlaps for this lane segment
         :param as_lane_overlaps: Lane overlap information for this lane segment
         """
