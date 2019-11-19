@@ -29,14 +29,14 @@ class DataPedalPosition(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSDataPedalPosition()
         pubsub_msg.e_Pct_BrakePedalPosition = self.e_Pct_BrakePedalPosition
         pubsub_msg.e_Pct_AcceleratorPedalPosition = self.e_Pct_AcceleratorPedalPosition
-        pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp
+        pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp.serialize()
         pubsub_msg.e_b_Valid = self.e_b_Valid
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataPedalPosition):
         return cls(pubsubMsg.e_Pct_BrakePedalPosition, pubsubMsg.e_Pct_AcceleratorPedalPosition,
-                   pubsubMsg.s_RecvTimestamp, pubsubMsg.e_b_Valid)
+                   Timestamp.deserialize(pubsubMsg.s_RecvTimestamp), pubsubMsg.e_b_Valid)
 
 
 class PedalPosition(PUBSUB_MSG_IMPL):
@@ -60,4 +60,4 @@ class PedalPosition(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSPedalPosition):
-        return cls(pubsubMsg.s_Header, pubsubMsg.s_Data)
+        return cls(Header.deserialize(pubsubMsg.s_Header), DataPedalPosition.deserialize(pubsubMsg.s_Data))

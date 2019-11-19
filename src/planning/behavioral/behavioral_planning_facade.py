@@ -42,6 +42,7 @@ from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
 class BehavioralPlanningFacade(DmModule):
+    last_log_time = float
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
@@ -55,7 +56,17 @@ class BehavioralPlanningFacade(DmModule):
         self._started_receiving_states = False
         self._driver_initiated_motion_state = DriverInitiatedMotionState()
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
-        self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+        self.last_log_time = -1.0
+
+    def _write_filters_to_log_if_required(self, now: float):
+        """
+        Write list of applicable filters to log every 5 seconds.
+        :param now: time in seconds
+        """
+        if now - self.last_log_time > 5.0:
+            self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for
+                                                              filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.last_log_time = now
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
@@ -89,8 +100,6 @@ class BehavioralPlanningFacade(DmModule):
                 self._remove_deactivated_flow_control(scene_static)
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            self._get_current_pedal_position()
-
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
@@ -101,6 +110,11 @@ class BehavioralPlanningFacade(DmModule):
 
                 state.handle_negative_velocities(self.logger)
 
+            pedal_position = self._get_current_pedal_position()
+            if pedal_position:
+                self._driver_initiated_motion_state.update(pedal_position)
+
+            self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
             self.logger.debug("Scene Dynamic host localization published at timestamp: %f," +
@@ -266,18 +280,13 @@ class BehavioralPlanningFacade(DmModule):
         :return: True if succeeded to read the message
         """
         is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
-        if is_success:
-            pedal_position = PedalPosition.deserialize(serialized_pedal_position)
-            timestamp = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
-            accelerator_pedal_position = pedal_position.s_Data.e_Pct_AcceleratorPedalPosition
-            self.logger.debug("%s at time %f: %f" % ("Pedal position received", pedal_position.s_Data.s_RecvTimestamp,
-                                                     pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
-        else:
-            timestamp = accelerator_pedal_position = 0
-            self.logger.debug("Pedal position was not received; set DIM inactive")
-
-        self._driver_initiated_motion_state.update(timestamp, accelerator_pedal_position)
-        return is_success
+        if not is_success or serialized_pedal_position is None:
+            return None
+        pedal_position = PedalPosition.deserialize(serialized_pedal_position)
+        self.logger.debug("Pedal position received at time %f: %f" %
+                          (pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds,
+                           pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
+        return pedal_position
 
     def _get_current_scene_static(self) -> SceneStatic:
         with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):
