@@ -43,7 +43,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         self._route_plan_lane_segments_reversed: RoutePlanRoadSegments = []
         self._route_plan_input_data = route_plan_input_data
 
-        for (road_segment_id, lane_segment_ids) in reversed(self._route_plan_input_data.get_lane_segment_ids_for_route().items()):
+        for road_segment_id, lane_segment_ids in reversed(self._route_plan_input_data.get_lane_segment_ids_for_route().items()):
             # If self._route_plan_lane_segments_reversed is empty, it is the first time through this loop.
             route_lane_segments = self._road_segment_cost_calc(road_segment_id=road_segment_id)
 
