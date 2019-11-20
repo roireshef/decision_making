@@ -131,7 +131,7 @@ class FilterNonLCActionsDuringLC(RecipeFilter):
 
         # if lane change is not active or the lane change is toward an augmented lane,
         # this filter should not filter any actions
-        return [(not behavioral_state.ego_state.lane_change_info.is_lane_change_active())
+        return [(not behavioral_state.ego_state.lane_change_info.lane_change_active)
                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]
                 or (recipe.relative_lane == lane_change_target_rel_lane and turn_signal_matching)
                 if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)

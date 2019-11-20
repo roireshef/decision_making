@@ -149,8 +149,6 @@ class LaneChangeInfo:
         self.lane_change_active = False
         self.in_target_lane = False
 
-    def is_lane_change_active(self) -> bool:
-        return self.lane_change_active
 
     def update(self, same_lane_ids: np.ndarray,  target_lane_ids: np.ndarray, turn_signal: TurnSignal):
         """
