@@ -210,7 +210,8 @@ LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
 LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
 # [m/sec] velocity resolution in action space
 LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
-
+# aggressiveness level (value) of lane-merge quartic actions
+LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL = 1
 
 # Werling Planner #
 
