@@ -480,13 +480,9 @@ def test_filter_filterForSLimit_dontFilterValidAction(
 
 def test_curvatureSensitiveLateralAcceleration_checkSomething(behavioral_grid_state_with_traffic_control,
                                                       scene_static_pg_split):
+    # TODO: Create real test for this!
     # Get s position on frenet frame
     ego_location = behavioral_grid_state_with_traffic_control.ego_state.map_state.lane_fstate[FS_SX]
-    gff = behavioral_grid_state_with_traffic_control.extended_lane_frames[RelativeLane.SAME_LANE]
-
-    gff_states_up_to_speed_limit = np.array(
-        [[np.float(i), 0., 0., 0., 0., 0.] for i in range(int(ego_location), int(ego_location) + 3)])
-
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
     filter = BeyondSpecCurvatureFilter()

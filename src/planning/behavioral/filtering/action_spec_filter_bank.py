@@ -312,10 +312,6 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
     def __init__(self):
         super().__init__()
 
-
-
-
-
     def _get_velocity_limits_of_points(self, action_spec: ActionSpec, frenet_frame: GeneralizedFrenetSerretFrame) -> \
             [np.array, np.array]:
         """
@@ -324,12 +320,14 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         :param frenet_frame:
         :return:
         """
-
-        def _get_lat_limit(c):
-            for lower, upper, limit in LAT_ACC_LIMITS_BY_K:
-                if lower <= 1/c < upper:
-                    return limit
-
+        def lat_acc_limit_interpolation(k):
+            """
+            :param k: Curvature
+            :return: the lateral acceleration limits
+            """
+            for lower, upper, lower_limit, upper_limit in LAT_ACC_LIMITS_BY_K:
+                if lower <= 1/k < upper:
+                    return lower_limit + (upper_limit-lower_limit)/(upper-lower) * (1/k-lower)
 
         # get the worst case braking distance from spec.v to 0
         max_braking_distance = self.braking_distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
@@ -343,11 +341,8 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get velocity limits for all points in the range
         curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[0]:beyond_spec_range[1], 0]), EPS)
 
-        lat_acc_limits = [_get_lat_limit(c) for c in curvatures]
-
-        # TODO: Change this line to get the LAT_ACC_LIMITS from table
-        # points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
-        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * lat_acc_limits / curvatures)
+        lat_acc_limits = np.array([lat_acc_limit_interpolation(k) for k in curvatures])
+        points_velocity_limits = np.abs(np.sqrt(BP_LAT_ACC_STRICT_COEF * lat_acc_limits / curvatures))
 
         return points_s, points_velocity_limits
 
