@@ -92,6 +92,12 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-2, 2])
 
+# Latitudinal Acceleration Limits [m/sec^2] for lane change turn in
+LAT_ACC_LIMITS_LC_TURN_IN = np.array([-.5, .5])
+
+# Latitudinal Acceleration Limits [m/sec^2] for lane change turn out
+LAT_ACC_LIMITS_LC_TURN_OUT = np.array([-.6, .6])
+
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 0.9
 
