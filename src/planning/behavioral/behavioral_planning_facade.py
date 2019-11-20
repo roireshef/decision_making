@@ -97,7 +97,6 @@ class BehavioralPlanningFacade(DmModule):
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
-
             with DMProfiler(self.__class__.__name__ + '._get_current_turn_signal'):
                 turn_signal = self._get_current_turn_signal()
 

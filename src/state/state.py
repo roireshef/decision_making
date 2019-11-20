@@ -151,7 +151,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param time_in_nanoseconds:
         :return: time in seconds
         """
-        return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
+        return np.array(time_in_nanoseconds) * TIMESTAMP_RESOLUTION_IN_SEC
 
     @property
     def timestamp_in_sec(self):
@@ -206,6 +206,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
+    left_out_fields = 'lane_change_info'
+
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, turn_signal = None,
                  lane_change_info = None):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, bool, Optional[TurnSignal], Optional[LaneChangeInfo]) -> EgoState
@@ -227,6 +229,7 @@ class EgoState(DynamicObject):
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map,
                                              turn_signal=turn_signal)
         self.lane_change_info = lane_change_info
+
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> EgoState
@@ -270,6 +273,7 @@ class State(PUBSUB_MSG_IMPL):
         self.occupancy_state = occupancy_state
         self.dynamic_objects = dynamic_objects
         self.ego_state = ego_state
+
 
     def clone_with(self, is_sampled: bool = None, occupancy_state: OccupancyState = None,
                    dynamic_objects: List[DynamicObject] = None, ego_state: EgoState = None) -> T:

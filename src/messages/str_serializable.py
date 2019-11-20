@@ -2,7 +2,6 @@ import inspect
 from enum import Enum
 import numpy as np
 
-
 # The key of static member that determines which fields will be left out when serializing the class
 SERIALIZABLE_LEFT_OUT_FIELDS_KEY = 'left_out_fields'
 

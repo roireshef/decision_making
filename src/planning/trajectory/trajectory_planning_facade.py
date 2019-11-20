@@ -86,7 +86,7 @@ class TrajectoryPlanningFacade(DmModule):
                                                               logger=self.logger)
                 state.handle_negative_velocities(self.logger)
 
-            self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
+            self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, str(state)))
 
             # Longitudinal planning horizon (Ts)
             T_target_horizon = params.target_time - state.ego_state.timestamp_in_sec
