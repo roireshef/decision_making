@@ -16,7 +16,7 @@ class RecipeFilter:
     """
 
     @abstractmethod
-    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState, logger: Optional[Logger] = None) -> List[bool]:
         """
         Filters an ActionRecipe based on the state of ego and nearby vehicles (BehavioralGridState).
         :param recipes: an object representing the semantic action to be considered
@@ -48,7 +48,7 @@ class RecipeFiltering:
         """
         mask = [True for i in range(len(recipes))]
         for recipe_filter in self._filters:
-            mask = recipe_filter.filter(recipes, behavioral_state)
+            mask = recipe_filter.filter(recipes, behavioral_state, self.logger)
             recipes = [recipes[i] if mask[i] else None for i in range(len(recipes))]
         return mask
 

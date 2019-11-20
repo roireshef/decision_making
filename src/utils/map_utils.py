@@ -483,7 +483,7 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
-    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame) -> List[RoadSignInfo]:
+    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame, logger: Logger = None) -> List[RoadSignInfo]:
         """
         Returns a list of the locations (s coordinates) of stop signs and stop bars on the GFF, with their type
         The list is ordered from closest traffic flow control to farthest.
@@ -491,7 +491,7 @@ class MapUtils:
         :return: A list of distances to stop signs and stop bars on the the GFF, ordered from closest traffic flow
         control to farthest, along with the type of the control.
         """
-        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)  # ensures the returned value is sorted
+        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet, logger)  # ensures the returned value is sorted
         # TODO verify these are the correct stop bar enums
         desired_sign_types = [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]
         stop_bars_and_signs = MapUtils.filter_flow_control_by_type(road_signs, desired_sign_types)
@@ -513,7 +513,7 @@ class MapUtils:
         return selected_road_signs
 
     @staticmethod
-    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> List[RoadSignInfo]:
+    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame, logger: Logger = None) -> List[RoadSignInfo]:
         """
         Returns a list of the locations (s coordinates) of Static_Traffic_flow_controls on the GFF, with their type
         The list is ordered from closest traffic flow control to farthest.
@@ -531,6 +531,11 @@ class MapUtils:
                 lane_ids.append(lane_id)
                 road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
                 road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
+            if logger is not None:
+                if len(road_sign_types) > 0:
+                    logger.debug("RoadSign for lane %d type %s s %s" % (lane_id, road_sign_types, road_signs_s_on_lane_segments))
+                else:
+                    logger.debug("No RoadSign for lane %s" % lane_id)
         frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
         frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
         road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]

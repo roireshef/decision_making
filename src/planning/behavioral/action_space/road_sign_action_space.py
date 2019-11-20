@@ -63,7 +63,7 @@ class RoadSignActionSpace(TargetActionSpace):
         :return: distance to closest stop bar
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
-        stop_bar_and_stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
+        stop_bar_and_stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet, self.logger)
         stop_signs = MapUtils.filter_flow_control_by_type(stop_bar_and_stop_signs, [RoadObjectType.StopSign])
         stop_bars = MapUtils.filter_flow_control_by_type(stop_bar_and_stop_signs,
                                                          [RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right])
