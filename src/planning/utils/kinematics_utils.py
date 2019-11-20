@@ -230,18 +230,18 @@ class KinematicUtils:
         """
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
-        non_zero_actions = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
+        non_zero = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
 
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
         time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
-            w_T, w_J, a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions])
+            w_T[non_zero], w_J[non_zero], a_0[non_zero], v_0[non_zero], v_T[non_zero])
 
         # Find roots of the polynomial in order to get extremum points
         cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, time_limit]))
 
         # return T as the minimal real root
         T = np.zeros_like(v_0)
-        T[non_zero_actions] = np.fmin.reduce(cost_real_roots, axis=-1)
+        T[non_zero] = np.fmin.reduce(cost_real_roots, axis=-1)
         return T
 
     @staticmethod
@@ -279,7 +279,7 @@ class KinematicUtils:
                                                                       T[non_zero])
         distances[non_zero] = Math.zip_polyval2d(s_profile_coefs, T[non_zero, np.newaxis])[:, 0]
 
-        if acc_limits:
+        if acc_limits is not None:
             # check acceleration limits
             in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs, T[non_zero], acc_limits)
 
@@ -304,7 +304,7 @@ class BrakingDistances:
         v0, vT = np.meshgrid(FILTER_V_0_GRID.array, FILTER_V_T_GRID.array, indexing='ij')
         v0, vT = np.ravel(v0), np.ravel(vT)
         # calculate distances for braking actions
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness_level]
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness_level.value]
         distances = np.zeros_like(v0)
         distances[v0 > vT], _ = KinematicUtils.specify_quartic_actions(w_T, w_J, v0[v0 > vT], vT[v0 > vT], time_limit=np.inf)
         return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))

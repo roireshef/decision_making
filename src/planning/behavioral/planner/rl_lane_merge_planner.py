@@ -12,6 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import StaticActionRec
     ActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_ACTION_SPEC_FILTERING
+from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import ActionSpecArray, FS_SX, BoolArray
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -71,8 +72,8 @@ class RL_LaneMergePlanner(BasePlanner):
 
         # create action specs based on the above output
         return np.array([ActionSpec(t=t, v=vt, s=s_0 + s, d=0,
-                                    recipe=StaticActionRecipe(RelativeLane.SAME_LANE, vt, aggr_level))
-                         for vt, t, s, aggr_level in zip(v_T, T, ds, AggressivenessLevel)])
+                                    recipe=StaticActionRecipe(RelativeLane.SAME_LANE, vt, LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL))
+                         for vt, t, s in zip(v_T, T, ds)])
 
     def _filter_actions(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> ActionSpecArray:
         """
@@ -81,12 +82,15 @@ class RL_LaneMergePlanner(BasePlanner):
         :param action_specs: array of ActionSpec (part of actions may be None)
         :return: array of ActionSpec of the original size, with None for filtered actions
         """
+        return action_specs
+
         # filter actions by the regular action_spec filters of the single_lane_planner
         mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state)
-        valid_action_specs = np.array(list(compress(action_specs, mask)))
 
         # filter out actions that don't enable to brake before the red line
-        mask[mask] = self._red_line_filter(lane_merge_state, valid_action_specs)
+        # TODO: restore red line filter
+        # valid_action_specs = np.array(list(compress(action_specs, mask)))
+        # mask[mask] = self._red_line_filter(lane_merge_state, valid_action_specs)
 
         filtered_action_specs = np.copy(action_specs)
         filtered_action_specs[~mask] = None
@@ -101,9 +105,10 @@ class RL_LaneMergePlanner(BasePlanner):
         """
         if len(action_specs) == 0:
             return np.array([])
-        specs_vs = np.array([[spec.v, spec.s] for spec in action_specs])
+        extended_specs = ConstraintSpecFilter.extend_action_specs(action_specs, min_action_time=1.)
+        specs_vs = np.array([[spec.v, spec.s] for spec in extended_specs])
         spec_v, spec_s = specs_vs.T
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL]
         braking_distances, _ = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=spec_v, v_T=np.zeros_like(spec_v))
         return np.array(spec_s + braking_distances < lane_merge_state.red_line_s_on_ego_gff)
 
@@ -116,7 +121,8 @@ class RL_LaneMergePlanner(BasePlanner):
         :param action_specs: np.array of action specs
         :return: array of actions costs: the lower the better
         """
-        if not action_specs.astype(bool).any():
+        action_mask = action_specs.astype(bool)
+        if not action_mask.any():
             raise NoActionsLeftForBPError("All actions were filtered in BP. timestamp_in_sec: %f" %
                                           lane_merge_state.ego_state.timestamp_in_sec)
 
@@ -131,16 +137,23 @@ class RL_LaneMergePlanner(BasePlanner):
 
         logits, _, values, _ = self.model._forward({SampleBatch.CUR_OBS: encoded_state}, [])  # [0][0].detach()
 
-        probabilities = torch.nn.functional.softmax(logits, dim=1)
+        torch_probabilities = torch.nn.functional.softmax(logits, dim=1)
+        probabilities = torch_probabilities.detach().numpy()[0]
         print('probabilities: ', probabilities, 'value: ', values)
 
-        # logits.numpy()[~action_mask] = -np.inf
-        chosen_action_idx = np.argmax(logits.detach().numpy())
+        probabilities[~action_mask] = 0
+        chosen_action_idx = np.argmax(probabilities)
 
         # TODO: remove it when RL will use UC action space
         # max_v = [spec.v for spec in action_specs if spec is not None and spec.v <= 25][-1]
         # chosen_action_idx = [i for i, spec in enumerate(action_specs) if spec is not None and spec.v == max_v][0]
         print('RL: chosen_action_idx=', chosen_action_idx, 'chosen_spec=', action_specs[chosen_action_idx])
+
+
+        actors_s = np.array([actor.s_relative_to_ego for actor in lane_merge_state.actors_states])
+        actors_s = np.sort(actors_s)
+        print('Spaces beetween actors', np.diff(actors_s))
+
 
         costs = np.full(len(action_specs), 1)
         costs[chosen_action_idx] = 0
