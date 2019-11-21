@@ -1,16 +1,18 @@
 import copy
-import numpy as np
 from logging import Logger
+from typing import List, Optional, Dict, Tuple, TypeVar
+
+import numpy as np
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoStateLaneIdNotValid
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
     EGO_HEIGHT, LANE_END_COST_IND
+from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
+from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
+from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
-from typing import List, Optional, Dict, Tuple, TypeVar
-from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
-from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
-from decision_making.src.messages.scene_static_enums import ManeuverType
 
 
 class DynamicObjectsData:
@@ -128,29 +130,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
             self._cached_map_state = MapState(lane_frenet.cstate_to_fstate(self.cartesian_state), closest_lane_id)
         return self._cached_map_state
 
-    @staticmethod
-    def sec_to_ticks(time_in_seconds):
-        # type: (float) -> int
-        """
-        Convert seconds to ticks (nanoseconds)
-        :param time_in_seconds:
-        :return: time in ticks (nanoseconds)
-        """
-        return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
-
-    @staticmethod
-    def ticks_to_sec(time_in_nanoseconds):
-        # type: (int) -> float
-        """
-        Convert ticks (nanoseconds) to seconds
-        :param time_in_nanoseconds:
-        :return: time in seconds
-        """
-        return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
-
     @property
     def timestamp_in_sec(self):
-        return DynamicObject.ticks_to_sec(self.timestamp)
+        return Math.ticks_to_sec(self.timestamp)
 
     @classmethod
     def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map):
@@ -185,7 +167,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
         return self.__class__.create_from_cartesian_state(self.obj_id,
-                                                          DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
+                                                          Math.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
                                                           self.size, self.confidence, self.off_map)
 
@@ -193,7 +175,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         # type: (MapState, Optional[float]) -> DynamicObject
         """clones self while overriding map_state and optionally timestamp"""
         return self.create_from_map_state(self.obj_id,
-                                          DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
+                                          Math.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
                                           self.size, self.confidence, self.off_map)
 
@@ -323,7 +305,7 @@ class State(PUBSUB_MSG_IMPL):
         :return: valid State class
         """
 
-        timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
+        timestamp = Math.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
 
         selected_host_hyp_idx = State.select_ego_hypothesis(scene_dynamic, selected_gff_segment_ids, logger, route_plan_dict)
