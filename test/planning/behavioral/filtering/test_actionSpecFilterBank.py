@@ -497,10 +497,10 @@ def test_curvatureSensitiveLateralAcceleration_checkSomething(behavioral_grid_st
 
 
 def test_LatAccLimitInterpolation():
-    curvatures = []
-    expected_interpolated_accleration_limits = []
+    curvatures = [1/250, 1/270, 1/275, 1/400]
+    expected_interpolated_accleration_limits = [2.033333, 2.0066667, 2, 2]
 
-    LAT_ACC_LIMITS_BY_K
-
+    for k, expected_limit in zip(curvatures, expected_interpolated_accleration_limits):
+        np.testing.assert_almost_equal(lat_acc_limit_interpolation(k), expected_limit)
 
 
