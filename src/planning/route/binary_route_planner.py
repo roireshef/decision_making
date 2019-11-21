@@ -1,11 +1,11 @@
 from decision_making.src.global_constants import MAX_COST, MIN_COST
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
-from decision_making.src.planning.route.binary_cost_based_route_planner import CostBasedRoutePlanner
+from decision_making.src.planning.route.binary_cost_based_route_planner import RoutePlanner
 
 
-class BinaryRoutePlanner(CostBasedRoutePlanner):
+class BinaryRoutePlanner(RoutePlanner):
     """
-    child class CostBasedRoutePlanner that contains implementation details of binary route planner
+    child class RoutePlanner that contains implementation details of binary route planner
     """
     def __init__(self):
         super().__init__()

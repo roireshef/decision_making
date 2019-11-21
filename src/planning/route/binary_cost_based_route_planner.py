@@ -66,7 +66,7 @@ class OccupancyCostMapping():
         return MAX_COST
 
 
-class CostBasedRoutePlanner(metaclass=ABCMeta):
+class RoutePlanner(metaclass=ABCMeta):
     occupancy_cost_methods = {RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value:
                                   OccupancyCostMapping.mapping_status_based_occupancy_cost,
                               RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value:
@@ -133,8 +133,8 @@ class CostBasedRoutePlanner(metaclass=ABCMeta):
         :param lane_attribute_value: value of the pointed lane attribute
         :return: Normalized lane occupancy cost based on the concerned lane attribute (MIN_COST to MAX_COST)
         """
-        if lane_attribute_index in CostBasedRoutePlanner.occupancy_cost_methods:
-            occupancy_cost_method = CostBasedRoutePlanner.occupancy_cost_methods[lane_attribute_index]
+        if lane_attribute_index in RoutePlanner.occupancy_cost_methods:
+            occupancy_cost_method = RoutePlanner.occupancy_cost_methods[lane_attribute_index]
 
             # The occupancy cost methods expect an enum, not an int. So, in order to convert lane_attribute_value to
             # the proper enum, we have to determine the enumeration type from the selected occupancy cost method.
@@ -145,7 +145,7 @@ class CostBasedRoutePlanner(metaclass=ABCMeta):
 
             return occupancy_cost_method(attribute_type(lane_attribute_value))
         else:
-            raise LaneAttributeNotFound('Cost Based Route Planner: lane_attribute_index {0} not supported'.format(lane_attribute_index))
+            raise LaneAttributeNotFound('RoutePlanner: lane_attribute_index {0} not supported'.format(lane_attribute_index))
 
     @raises(LaneAttributeNotFound)
     def _lane_occupancy_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> float:
@@ -160,13 +160,13 @@ class CostBasedRoutePlanner(metaclass=ABCMeta):
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attributes):
                 lane_attribute_value = lane_segment_base_data.a_cmp_lane_attributes[lane_attribute_index]
             else:
-                raise LaneAttributeNotFound('Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute value'
+                raise LaneAttributeNotFound('RoutePlanner: lane_attribute_index {0} doesn\'t have corresponding lane attribute value'
                                             .format(lane_attribute_index))
 
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attribute_confidences):
                 lane_attribute_confidence = lane_segment_base_data.a_cmp_lane_attribute_confidences[lane_attribute_index]
             else:
-                raise LaneAttributeNotFound('Cost Based Route Planner: lane_attribute_index {0} doesn\'t have corresponding lane attribute '
+                raise LaneAttributeNotFound('RoutePlanner: lane_attribute_index {0} doesn\'t have corresponding lane attribute '
                                             'confidence value'.format(lane_attribute_index))
 
             if (lane_attribute_confidence < LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD):
@@ -320,7 +320,7 @@ class CostBasedRoutePlanner(metaclass=ABCMeta):
             route_lane_segments.append(route_lane_segment)
 
         if downstream_road_segment_not_found:
-            raise RoadSegmentLaneSegmentMismatch('Cost Based Route Planner: Not a single downstream lane segment for the current '
+            raise RoadSegmentLaneSegmentMismatch('RoutePlanner: Not a single downstream lane segment for the current '
                                                  'road segment ID {0} were found in the route plan downstream road segment ID {1} '
                                                  'described in the navigation plan'.format(
                                                     road_segment_id,
