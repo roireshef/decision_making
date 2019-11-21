@@ -4,6 +4,7 @@ from logging import Logger
 from typing import Optional
 
 import numpy as np
+from decision_making.src.messages.scene_static_enums import RoadObjectType
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
@@ -15,17 +16,16 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
-    RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
+    RoutePlanningException, MappingException, raises, LaneNotFound
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
-    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, \
-    DRIVER_INITIATED_MOTION_MESSAGE_LOOKAHEAD
+    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
-from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficFlowControl
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
@@ -35,7 +35,7 @@ from decision_making.src.planning.trajectory.samplable_trajectory import Samplab
 from decision_making.src.planning.types import FS_SX, FS_SV, C_X, C_Y
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import State, EgoState, MapState
+from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
@@ -98,8 +98,21 @@ class BehavioralPlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
-                self._remove_deactivated_flow_control(scene_static)
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
+
+                # TODO ADD STOP SIGN REMOVE
+                SELECTED_STOP_LANE_ID = 103352065  # 19670531
+                for relative in [-1, 0, 1]:  # do on up to 3 lanes SAME, RIGHT, LEFT
+                    try:
+                        if True:
+                            patched_lane = MapUtils.get_lane(lane_id=SELECTED_STOP_LANE_ID + relative)
+                            lane_length = patched_lane.e_l_length
+                            stop_bar = StaticTrafficFlowControl(RoadObjectType.StopSign, lane_length - 1, 100)
+                            patched_lane.as_static_traffic_flow_control.append(stop_bar)
+                    except LaneNotFound:
+                        pass
+
+            pedal_position = self._get_current_pedal_position()
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
@@ -107,13 +120,9 @@ class BehavioralPlanningFacade(DmModule):
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
                                                               logger=self.logger,
-                                                              driver_initiated_motion=self._driver_initiated_motion_state.is_active())
+                                                              dim_state=self._driver_initiated_motion_state)
 
                 state.handle_negative_velocities(self.logger)
-
-            pedal_position = self._get_current_pedal_position()
-            if pedal_position:
-                self._driver_initiated_motion_state.update(pedal_position)
 
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
@@ -156,6 +165,10 @@ class BehavioralPlanningFacade(DmModule):
             self._last_trajectory = samplable_trajectory
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
+
+            ego_map_state = updated_state.ego_state.map_state
+            self._driver_initiated_motion_state.update_state(
+                ego_map_state.lane_id, ego_map_state.lane_fstate, trajectory_params.reference_route, pedal_position)
 
             # Send plan to trajectory
             self._publish_results(trajectory_params)
@@ -283,6 +296,7 @@ class BehavioralPlanningFacade(DmModule):
         if not is_success or serialized_pedal_position is None:
             return None
         pedal_position = PedalPosition.deserialize(serialized_pedal_position)
+        print('Pedal: ', pedal_position.s_Data.e_Pct_AcceleratorPedalPosition, 'at time', pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds)
         self.logger.debug("Pedal position received at time %f: %f" %
                           (pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds,
                            pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))

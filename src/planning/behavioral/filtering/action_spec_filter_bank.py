@@ -166,18 +166,18 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :param behavioral_state: BehavioralGridState in context
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
+        # if driver initiated driving by pressing on acceleration pedal, ignore the stop bar
+        stop_bar_id_to_ignore = behavioral_state.ego_state.get_stop_bar_to_ignore()
+
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_locations = np.asarray([stop_sign.s for stop_sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
+        stop_bars_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet, stop_bar_id_to_ignore)
+        stop_bar_locations = np.asarray([stop_sign.s for stop_sign in stop_bars_signs])
         ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
 
         return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any() \
             if len(stop_bar_locations) > 0 else False
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
-        # if driver initiated driving by pressing on acceleration pedal, ignore the stop bars
-        if behavioral_state.ego_state.driver_initiated_motion:
-            return np.ones(len(action_specs)).astype(bool)
-
         return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
                          for action_spec in action_specs])
 
@@ -280,17 +280,6 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         #  start of the action, or 1 BP cycle later, instead of relative to the end of the action.
         super().__init__(aggresiveness_level=AggressivenessLevel.STANDARD)
 
-    def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> Union[float, None]:
-        """
-        Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
-        :param target_lane_frenet:
-        :param action_spec_s:
-        :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
-        """
-        stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
-        distances = [stop_sign.s for stop_sign in stop_signs if stop_sign.s >= action_spec_s]
-        return distances[0] if len(distances) > 0 else None
-
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
         """
         Checks if there are stop signs. Returns the `s` of the first (closest) stop-sign
@@ -298,15 +287,16 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         :param action_spec: action specification
         :return: s of the next stop bar, target velocity (zero)
         """
-        # if driver initiated driving by pressing on acceleration pedal, ignore the stop bars
-        if behavioral_state.ego_state.driver_initiated_motion:
-            return np.array([np.inf]), np.array([0])
+        # if driver initiated driving by pressing on acceleration pedal, ignore the stop bar
+        stop_bar_id_to_ignore = behavioral_state.ego_state.get_stop_bar_to_ignore()
 
+        # get the s value of the closest StaticTrafficFlow beyond action_spec
         target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
-        if stop_bar_s is None:  # no stop bars
+        stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet, stop_bar_id_to_ignore)
+        stop_bars_s = [stop_bar.s for stop_bar in stop_signs if stop_bar.s >= action_spec.s]
+        if len(stop_bars_s) == 0:  # no stop bars
             self._raise_true()
-        return np.array([stop_bar_s]), np.array([0])
+        return np.array([stop_bars_s[0]]), np.array([0])
 
 
 class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):

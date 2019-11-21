@@ -4,6 +4,7 @@ from logging import Logger
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoStateLaneIdNotValid
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
     EGO_HEIGHT, LANE_END_COST_IND
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
@@ -201,7 +202,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 class EgoState(DynamicObject):
     def __init__(self, obj_id: int, timestamp: int, cartesian_state: CartesianExtendedState, map_state: MapState,
                  size: ObjectSize, confidence: float, off_map: bool,
-                 driver_initiated_motion: bool = False):
+                 dim_state: DriverInitiatedMotionState = None):
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -213,12 +214,18 @@ class EgoState(DynamicObject):
         :param size: class ObjectSize
         :param confidence: of object's existence
         :param off_map: indicates if the object is off map
-        :param driver_initiated_motion: True if the driver presses acceleration pedal long and strong enough to
-               initialize motion after stopping on stop bar
+        :param dim_state: driver initiated motion state
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map)
-        self.driver_initiated_motion = driver_initiated_motion
+        self._dim_state = dim_state
+
+    def get_stop_bar_to_ignore(self):
+        """
+        Used by driver initiated motion: return stop bar id to ignore if acceleration pedal was pressed
+        :return: stop bar id that should be ignored
+        """
+        return self._dim_state.stop_bar_to_ignore() if self._dim_state is not None else None
 
 
 T = TypeVar('T', bound='State')
@@ -314,7 +321,7 @@ class State(PUBSUB_MSG_IMPL):
                                         selected_gff_segment_ids: np.ndarray,
                                         logger: Logger,
                                         route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None,
-                                        driver_initiated_motion: bool = False):
+                                        dim_state: DriverInitiatedMotionState = None):
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic: scene dynamic data
@@ -325,8 +332,7 @@ class State(PUBSUB_MSG_IMPL):
         :param route_plan_dict: dictionary data with lane id as key and tuple of (occupancy and end costs) as value.
                Note that it is an optional argument and is used only when the method is called from inside BP and the
                previous BP action is not available, e.g., at the beginning of the planning time.
-        :param driver_initiated_motion: True if the driver presses acceleration pedal long and strong enough to
-               initialize motion after stopping on stop bar
+        :param dim_state: driver initiated motion state
         :return: valid State class
         """
 
@@ -345,7 +351,7 @@ class State(PUBSUB_MSG_IMPL):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0, off_map=False, driver_initiated_motion=driver_initiated_motion)
+                             confidence=1.0, off_map=False, dim_state=dim_state)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,

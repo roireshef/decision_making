@@ -483,52 +483,35 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
-    def get_next_stop_sign_location(initial_lane_id: int, initial_lane_s: float, lookahead: float,
-                                    route_plan: RoutePlan) -> [int, float]:
-        """
-        Look for the next stop bar/sign starting from the given mapping location within given lookahead
-        :param initial_lane_id: start the search from lane_id
-        :param initial_lane_s: [m] start the search from station of the given lane_id
-        :param lookahead: [m] how far to look for the stop sign
-        :param route_plan: the route plan
-        :return: [lane_id, lane_station] or [None, None] if the stop bar/sign was not found
-        """
-        lane_subsegments, _ = MapUtils._advance_on_plan(initial_lane_id, initial_lane_s, lookahead, route_plan)
-        frenet_frames = [MapUtils.get_lane_frenet_frame(lane.e_i_SegmentID) for lane in lane_subsegments]
-        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, lane_subsegments)
-        road_sign_info_on_gff = MapUtils.get_stop_bar_and_stop_sign(gff)
-        if len(road_sign_info_on_gff) > 0:
-            lane_id, lane_fstate = gff.convert_to_segment_state(np.array([road_sign_info_on_gff[0].s, 0, 0, 0, 0, 0]))
-            return lane_id, lane_fstate[FS_SX]
-        return None, None
-
-    @staticmethod
-    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame) -> List[RoadSignInfo]:
+    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame, stop_bar_id_to_ignore = None) -> List[RoadSignInfo]:
         """
         Returns a list of the locations (s coordinates) of stop signs and stop bars on the GFF, with their type
         The list is ordered from closest traffic flow control to farthest.
         :param lane_frenet: The GFF on which to retrieve the static flow controls.
+        :param stop_bar_id_to_ignore: id of stop sign/bar to ignore (used by driver initiated motion)
         :return: A list of distances to stop signs and stop bars on the the GFF, ordered from closest traffic flow
         control to farthest, along with the type of the control.
         """
         road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)  # ensures the returned value is sorted
         # TODO verify these are the correct stop bar enums
         desired_sign_types = [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]
-        stop_bars_and_signs = MapUtils.filter_flow_control_by_type(road_signs, desired_sign_types)
+        stop_bars_and_signs = MapUtils.filter_flow_control_by_type(road_signs, desired_sign_types, stop_bar_id_to_ignore)
         return stop_bars_and_signs
 
     @staticmethod
-    def filter_flow_control_by_type(road_signs: List[RoadSignInfo], road_sign_types: List[RoadObjectType]) -> List[
-        RoadSignInfo]:
+    def filter_flow_control_by_type(road_signs: List[RoadSignInfo], road_sign_types: List[RoadObjectType],
+                                    stop_bar_id_to_ignore = None) -> List[RoadSignInfo]:
         """
         Filters the given road signs list to the desired road sign types
         :param road_signs: list of road signs to filter
         :param road_sign_types: list of desired road sign types
+        :param stop_bar_id_to_ignore: id of stop sign/bar to ignore (used by driver initiated motion)
         :return: filtered list of road signs
         """
         selected_road_signs = []
         for road_sign in road_signs:
-            if road_sign.sign_type in road_sign_types:
+            if road_sign.sign_type in road_sign_types and \
+                    (stop_bar_id_to_ignore is None or road_sign.sign_id != stop_bar_id_to_ignore):
                 selected_road_signs.append(road_sign)
         return selected_road_signs
 
@@ -545,18 +528,19 @@ class MapUtils:
         # s coordinates
         road_signs_s_on_lane_segments = []
         road_sign_types = []
-        for lane_subseg in lane_frenet.segments:
-            lane_segment = MapUtils.get_lane(lane_subseg.e_i_SegmentID)
+        road_sign_ids = []
+        for lane_id in lane_frenet.segment_ids:
+            lane_segment = MapUtils.get_lane(lane_id)
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
-                if lane_subseg.e_i_SStart <= static_traffic_flow_control.e_l_station <= lane_subseg.e_i_SEnd:
-                    lane_ids.append(lane_subseg.e_i_SegmentID)
-                    road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
-                    road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
+                lane_ids.append(lane_id)
+                road_sign_ids.append((lane_id, static_traffic_flow_control.e_l_station))
+                road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
+                road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
         frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
         frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
         road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
-        road_sign_info_on_gff = [RoadSignInfo(sign_type=sign_type, s=s) for sign_type, s in
-                                 zip(road_sign_types, road_sign_s_on_gff)]
+        road_sign_info_on_gff = [RoadSignInfo(sign_id=sign_id, sign_type=sign_type, s=s) for sign_id, sign_type, s in
+                                 zip(road_sign_ids, road_sign_types, road_sign_s_on_gff)]
         road_sign_info_on_gff.sort(key=lambda x: x.s)  # sort by distance after the conversion to real distance
         return road_sign_info_on_gff
 

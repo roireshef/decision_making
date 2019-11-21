@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from typing import NamedTuple
+from typing import NamedTuple, Tuple
 from decision_making.src.messages.scene_static_enums import RoadObjectType
 
 ## TIMESTAMPS ##
@@ -121,5 +121,6 @@ ActionSpecArray = np.array
 
 class RoadSignInfo(NamedTuple):
     # Info on road signs
+    sign_id: Tuple  # TODO: change it to real id
     sign_type: RoadObjectType  # type of road sign
     s: float  # distance from road sign
