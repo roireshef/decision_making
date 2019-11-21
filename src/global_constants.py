@@ -102,10 +102,7 @@ LAT_ACC_LIMITS_BY_K = [(0, 6, 3, 3),
                        (100, 150, 2.32, 2.2),
                        (150, 200, 2.2, 2.1),
                        (200, 275, 2.1, 2),
-                       (275, 400, 2, 2),
-                       (400, 500, 2, 2),
-                       (500, 600, 2, 2),
-                       (600, 700, 2, 2)]
+                       (275, np.inf, 2, 2)]
 
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits

@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -346,17 +346,16 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         :param curvatures: 1d array of curvature values
         :return: 1d array of lateral acceleration limits
         """
-        return np.array([BeyondSpecCurvatureFilter.lat_acc_limit_interpolation(k) for k in curvatures])
+        min_radius, max_radius = LAT_ACC_LIMITS_BY_K[:, 0], LAT_ACC_LIMITS_BY_K[:, 1]
+        min_accels, max_accels = LAT_ACC_LIMITS_BY_K[:, 2], LAT_ACC_LIMITS_BY_K[:, 3]
 
-    @staticmethod
-    def lat_acc_limit_interpolation(k):
-        """
-        :param k: Curvature
-        :return: the lateral acceleration limits
-        """
-        for lower, upper, lower_limit, upper_limit in LAT_ACC_LIMITS_BY_K:
-            if lower <= 1/k < upper:
-                return lower_limit + (upper_limit-lower_limit)/(upper-lower) * (1/k-lower)
+        radii = 1 / curvatures
+
+        slopes = (max_accels - min_accels) / (max_radius - min_radius)
+
+        row_idxs = np.argmin(max_radius[:, np.newaxis] <= curvatures, axis=0)
+
+        return min_accels[row_idxs] + slopes[row_idxs] * (curvatures - min_radius[row_idxs])
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
         """
