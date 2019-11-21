@@ -54,6 +54,7 @@ class DriverInitiatedMotionState:
         if self.state == DIM_States.NORMAL:
             return
 
+        # check the acceleration pedal position
         accel_pedal_position = pedal_position.s_Data.e_Pct_AcceleratorPedalPosition
         timestamp_in_sec = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
         if accel_pedal_position >= DRIVER_INITIATED_MOTION_PEDAL_THRESH:
@@ -65,18 +66,25 @@ class DriverInitiatedMotionState:
         elif self.state == DIM_States.READY:  # no pedal
             self.pedal_from_time = self.active_from_time = np.inf
 
+        # check if we crossed stop bar or timeout after releasing of pedal
         if self.state == DIM_States.ACTIVE:
-            # check if we crossed stop bar or timeout after releasing of pedal
             stop_sign_s = reference_route.convert_from_segment_state(np.array([self.stop_bar_id[1], 0, 0, 0, 0, 0]),
                                                                      self.stop_bar_id[0])[FS_SX]
             if stop_sign_s < ego_s or timestamp_in_sec - self.active_from_time > DRIVER_INITIATED_MOTION_TIMEOUT:
                 self._reset()  # NORMAL state
 
     def _reset(self):
+        """
+        Reset the state to its default settings
+        """
         self.state = DIM_States.NORMAL
         self.pedal_from_time = self.active_from_time = np.inf
         self.stop_bar_id = None
 
     def stop_bar_to_ignore(self):
+        """
+        Return stop bar id if the state is ACTIVE
+        :return: stop bar id or None if not active
+        """
         return self.stop_bar_id if self.state == DIM_States.ACTIVE else None
 

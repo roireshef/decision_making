@@ -533,6 +533,7 @@ class MapUtils:
             lane_segment = MapUtils.get_lane(lane_id)
             for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
                 lane_ids.append(lane_id)
+                # TODO: replace road_sign_id by the real id when it will be ready
                 road_sign_ids.append((lane_id, static_traffic_flow_control.e_l_station))
                 road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
                 road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)

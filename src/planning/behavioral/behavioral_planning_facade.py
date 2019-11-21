@@ -112,8 +112,6 @@ class BehavioralPlanningFacade(DmModule):
                     except LaneNotFound:
                         pass
 
-            pedal_position = self._get_current_pedal_position()
-
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
@@ -166,6 +164,8 @@ class BehavioralPlanningFacade(DmModule):
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
 
+            # read pedal position from pubsub and update DIM state accordingly
+            pedal_position = self._get_current_pedal_position()
             ego_map_state = updated_state.ego_state.map_state
             self._driver_initiated_motion_state.update_state(
                 ego_map_state.lane_id, ego_map_state.lane_fstate, trajectory_params.reference_route, pedal_position)
