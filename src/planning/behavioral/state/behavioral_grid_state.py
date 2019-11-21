@@ -594,7 +594,7 @@ class BehavioralGridState:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _get_longitudinal_grid_cell(object: DynamicObjectWithRoadSemantics, ego_state: EgoState):
+    def _get_longitudinal_grid_cell(obj: DynamicObjectWithRoadSemantics, ego_state: EgoState):
         """
         Given a dynamic object representation and ego state, calculate what is the proper longitudinal
         relative-grid-cell to project it on. An object is set to be in FRONT cell if the distance from its rear to ego's
@@ -602,15 +602,15 @@ class BehavioralGridState:
         An object is set to be in REAR cell if the distance from its front to ego's rear is greater
         than LON_MARGIN_FROM_EGO. Otherwise, the object is set to be parallel to ego.
         (positive if object is in front). difference is computed between objects'-centers
-        :param object: the object to project onto the ego-relative grid
+        :param obj: the object to project onto the ego-relative grid
         :param ego_state: ego state for localization and size
         :return: RelativeLongitudinalPosition enum's value representing the longitudinal projection on the relative-grid
         """
-        obj_length = object.dynamic_object.size.length
+        obj_length = obj.dynamic_object.size.length
         ego_length = ego_state.size.length
-        if object.longitudinal_distance > (obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
+        if obj.longitudinal_distance > (obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
             return RelativeLongitudinalPosition.FRONT
-        elif object.longitudinal_distance < -(obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
+        elif obj.longitudinal_distance < -(obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
             return RelativeLongitudinalPosition.REAR
         else:
             return RelativeLongitudinalPosition.PARALLEL

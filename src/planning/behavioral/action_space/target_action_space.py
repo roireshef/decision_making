@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 import numpy as np
 from logging import Logger
-from typing import Optional, List, Type
+from typing import Optional, List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
