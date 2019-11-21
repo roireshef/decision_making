@@ -27,10 +27,7 @@ class DriverInitiatedMotionState:
     stop_bar_id = (int, int)
 
     def __init__(self):
-        self.state = DIM_States.NORMAL
-        self.pedal_from_time = np.inf
-        self.active_from_time = np.inf
-        self.stop_bar_id = None
+        self._reset()
 
     def update_state(self, ego_lane_id: int, ego_lane_fstate: FrenetState2D, reference_route: GeneralizedFrenetSerretFrame,
                      pedal_position: PedalPosition) -> None:
@@ -50,10 +47,12 @@ class DriverInitiatedMotionState:
             # find the next bar in the horizon
             stop_bars = MapUtils.get_stop_bar_and_stop_sign(reference_route)
             close_stop_bars = [stop_bar.s for stop_bar in stop_bars if 0 < stop_bar.s - ego_s < stop_bar_horizon]
+            print('vel=', ego_velocity, 'ego_s', ego_s, 'close bars=', stop_bars)
             if len(close_stop_bars):
                 lane_id, lane_fstate = reference_route.convert_to_segment_state(np.array([close_stop_bars[0], 0, 0, 0, 0, 0]))
                 self.stop_bar_id = (lane_id, lane_fstate[FS_SX])
                 self.state = DIM_States.READY
+                print('DIM_READY')
         if self.state == DIM_States.NORMAL:
             return
 
@@ -65,6 +64,7 @@ class DriverInitiatedMotionState:
             if timestamp_in_sec - self.pedal_from_time >= DRIVER_INITIATED_MOTION_PEDAL_TIME:
                 self.active_from_time = timestamp_in_sec
                 self.state = DIM_States.ACTIVE
+                print('DIM_ACTIVE: id=', self.stop_bar_id, 'vel=', ego_velocity)
         elif self.state == DIM_States.READY:  # no pedal
             self.pedal_from_time = self.active_from_time = np.inf
 
@@ -74,6 +74,7 @@ class DriverInitiatedMotionState:
                                                                      self.stop_bar_id[0])[FS_SX]
             if stop_sign_s < ego_s or timestamp_in_sec - self.active_from_time > DRIVER_INITIATED_MOTION_TIMEOUT:
                 self._reset()  # NORMAL state
+                print('DIM_NORMAL')
 
     def _reset(self):
         self.state = DIM_States.NORMAL

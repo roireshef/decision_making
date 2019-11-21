@@ -216,7 +216,7 @@ DRIVER_INITIATED_MOTION_VELOCITY_LIMIT = 0.1
 # [sec] maximal time to reach the next stop bar (keeping current ego velocity)
 DRIVER_INITIATED_MOTION_MAX_TIME_TO_STOP_BAR = 5
 # [m] how far to look for the next stop bar to perform DIM
-DRIVER_INITIATED_MOTION_STOP_BAR_HORIZON = 3
+DRIVER_INITIATED_MOTION_STOP_BAR_HORIZON = 5
 # acceleration pedal strength in [0..1]
 DRIVER_INITIATED_MOTION_PEDAL_THRESH = 0.05
 # [sec] time period of sufficient throttle pedal
