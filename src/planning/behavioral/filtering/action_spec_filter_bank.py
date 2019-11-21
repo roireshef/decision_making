@@ -320,14 +320,6 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         :param frenet_frame:
         :return:
         """
-        def lat_acc_limit_interpolation(k):
-            """
-            :param k: Curvature
-            :return: the lateral acceleration limits
-            """
-            for lower, upper, lower_limit, upper_limit in LAT_ACC_LIMITS_BY_K:
-                if lower <= 1/k < upper:
-                    return lower_limit + (upper_limit-lower_limit)/(upper-lower) * (1/k-lower)
 
         # get the worst case braking distance from spec.v to 0
         max_braking_distance = self.braking_distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
@@ -341,10 +333,30 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get velocity limits for all points in the range
         curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[0]:beyond_spec_range[1], 0]), EPS)
 
-        lat_acc_limits = np.array([lat_acc_limit_interpolation(k) for k in curvatures])
+        lat_acc_limits = BeyondSpecCurvatureFilter._lat_acc_limit_interpolation_1d(curvatures)
         points_velocity_limits = np.abs(np.sqrt(BP_LAT_ACC_STRICT_COEF * lat_acc_limits / curvatures))
 
         return points_s, points_velocity_limits
+
+    @staticmethod
+    def _lat_acc_limit_interpolation_1d(curvatures: np.ndarray):
+        """
+        takes a 1d array of curvature values and compares them against the acceleration limits table per curvature,
+        to get the lateral acceleration limit corresponding to those curvature values
+        :param curvatures: 1d array of curvature values
+        :return: 1d array of lateral acceleration limits
+        """
+        return np.array([BeyondSpecCurvatureFilter.lat_acc_limit_interpolation(k) for k in curvatures])
+
+    @staticmethod
+    def lat_acc_limit_interpolation(k):
+        """
+        :param k: Curvature
+        :return: the lateral acceleration limits
+        """
+        for lower, upper, lower_limit, upper_limit in LAT_ACC_LIMITS_BY_K:
+            if lower <= 1/k < upper:
+                return lower_limit + (upper_limit-lower_limit)/(upper-lower) * (1/k-lower)
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
         """
