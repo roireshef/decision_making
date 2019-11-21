@@ -353,9 +353,9 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
 
         slopes = (max_accels - min_accels) / (max_radius - min_radius)
 
-        row_idxs = np.argmin(max_radius[:, np.newaxis] <= curvatures, axis=0)
+        row_idxs = np.argmin(max_radius[:, np.newaxis] <= radii, axis=0)
 
-        return min_accels[row_idxs] + slopes[row_idxs] * (curvatures - min_radius[row_idxs])
+        return min_accels[row_idxs] + slopes[row_idxs] * (radii - min_radius[row_idxs])
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
         """
