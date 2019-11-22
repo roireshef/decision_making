@@ -2,7 +2,7 @@ from logging import Logger
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, \
     LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
-    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, MAX_FORWARD_HORIZON, MAX_BACKWARD_HORIZON
+    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, MAX_FORWARD_HORIZON, MAX_BACKWARD_HORIZON, LANE_MERGE_ACTORS_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState, \
@@ -89,7 +89,7 @@ class LaneMergeState(BehavioralGridState):
         try:
             # create GFF for the host's lane
             ego_gff = BehavioralGridState._get_generalized_frenet_frames(
-                lane_id=ego_lane_id, station=ego_lane_fstate[FS_SX], route_plan=route_plan)[RelativeLane.SAME_LANE]
+                lane_id=ego_lane_id, station=ego_lane_fstate[FS_SX], route_plan=route_plan, logger=logger)[RelativeLane.SAME_LANE]
 
             # project ego on its GFF
             ego_on_same_gff = ego_gff.convert_from_segment_state(ego_lane_fstate, ego_lane_id)
@@ -106,7 +106,8 @@ class LaneMergeState(BehavioralGridState):
             # then merge_dist (merge-point relative to ego) is added to MAX_BACKWARD_HORIZON and subtracted
             # from MAX_FORWARD_HORIZON.
             target_gff = BehavioralGridState._get_generalized_frenet_frames(
-                lane_id=common_lane_id, station=0, route_plan=route_plan, forward_horizon=MAX_FORWARD_HORIZON - merge_dist,
+                lane_id=common_lane_id, station=0, route_plan=route_plan, logger=logger,
+                forward_horizon=MAX_FORWARD_HORIZON - merge_dist,
                 backward_horizon=MAX_BACKWARD_HORIZON + merge_dist)[RelativeLane.SAME_LANE]
 
             all_gffs = {RelativeLane.SAME_LANE: ego_gff, target_rel_lane: target_gff}
@@ -122,7 +123,8 @@ class LaneMergeState(BehavioralGridState):
             actors_with_road_semantics = \
                 sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, all_gffs, projected_ego),
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
-            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state)
+            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state,
+                                                                               LANE_MERGE_ACTORS_HORIZON)
 
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego, red_line_s, target_rel_lane)
 

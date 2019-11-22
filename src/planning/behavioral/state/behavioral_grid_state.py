@@ -565,7 +565,8 @@ class BehavioralGridState:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _project_objects_on_grid(objects: List[DynamicObjectWithRoadSemantics], ego_state: EgoState) -> \
+    def _project_objects_on_grid(objects: List[DynamicObjectWithRoadSemantics], ego_state: EgoState,
+                                 lookahead_dist: float = PLANNING_LOOKAHEAD_DIST) -> \
             Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]:
         """
         Takes a list of objects and projects them unto a semantic grid relative to ego vehicle.
@@ -583,7 +584,7 @@ class BehavioralGridState:
         # We consider only object on the adjacent lanes
         for obj in objects:
             # ignore vehicles out of pre-defined range and vehicles not in adjacent lanes
-            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and obj.relative_lanes is not None:
+            if abs(obj.longitudinal_distance) <= lookahead_dist and obj.relative_lanes is not None:
                 # compute longitudinal projection on the grid
                 object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
                 # loop through all the rel_lanes in the case of an obj belonging to more than one (splits/merges)

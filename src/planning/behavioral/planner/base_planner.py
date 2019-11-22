@@ -53,7 +53,7 @@ class BasePlanner:
         actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
-        selected_action_recipe, selected_action_spec = self._choose_action(behavioral_state, filtered_actions, costs)
+        selected_action_spec = self._choose_action(behavioral_state, filtered_actions, costs)
 
         trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
@@ -64,7 +64,7 @@ class BasePlanner:
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)", selected_action_spec, timestamp_in_sec)
-        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_recipe, timestamp_in_sec)
+        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_spec.recipe, timestamp_in_sec)
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
@@ -110,14 +110,14 @@ class BasePlanner:
 
     @abstractmethod
     def _choose_action(self, behavioral_state: BehavioralGridState, actions: ActionSpecArray, costs: np.array) -> \
-            [ActionRecipe, ActionSpec]:
+            ActionSpec:
         """
         Given action specifications and their costs, choose the best action (usually non-filtered action with the
         lowest cost)
         :param behavioral_state: behavioral state relevant for specific scenario
         :param actions: array of action specifications
         :param costs: array of actions costs
-        :return: tuple: the chosen action recipe and its specification
+        :return: the chosen action specification
         """
         pass
 

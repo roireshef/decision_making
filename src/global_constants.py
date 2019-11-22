@@ -206,10 +206,22 @@ LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION = 4.5
 LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH = 150
 # [m] maximum forward horizon from a lane merge on the ego road for engaging the lane-merge policy
 LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
+# [m] maximum horizon for actors relative s
+LANE_MERGE_ACTORS_HORIZON = 800
 # [m/sec] maximal velocity of actors and in action space
-LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
+LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25.
 # [m/sec] velocity resolution in action space
-LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
+LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5.
+# [m/sec^2] worst-case deceleration of front actor before lane-merge (used by rule-based planner)
+LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL = 3.
+# [m/sec^2] worst-case acceleration of back actor before lane-merge (used by rule-based planner)
+LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL = 1.
+# [m/sec^2] back actor's deceleration in RSS formula that enables to yield the way to the back actor
+LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL = 3.8
+# [m/sec] maximal actors' velocity in the lane merge scenarios
+LANE_MERGE_ACTORS_MAX_VELOCITY = 25.
+# [sec] time limits of RL actions
+LANE_MERGE_ACTION_T_LIMITS = np.array([0, 30])
 
 
 # Werling Planner #
