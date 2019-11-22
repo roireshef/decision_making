@@ -3,6 +3,8 @@ import traceback
 from logging import Logger
 
 import numpy as np
+from decision_making.src.messages.pedal_position_message import PedalPosition
+from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -27,7 +29,6 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV, C_X, C_Y
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -39,6 +40,7 @@ from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
+
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
@@ -67,11 +69,13 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_PEDAL_POSITION)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.unsubscribe(UC_SYSTEM_PEDAL_POSITION)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -101,6 +105,8 @@ class BehavioralPlanningFacade(DmModule):
 
                 state.handle_negative_velocities(self.logger)
 
+            self._get_current_pedal_position()
+
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
@@ -121,9 +127,8 @@ class BehavioralPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                updated_state = self._get_state_with_expected_ego(state)
-                self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
-                                  "according to previous plan.  %s", updated_state.ego_state)
+                updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
+                                                                              self.logger, self.__class__.__name__)
             else:
                 updated_state = state
 
@@ -133,7 +138,7 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_takeover(takeover_message)
 
             # choose scenario and planner
-            scenario = Scenario.identify_scenario(updated_state, route_plan)
+            scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
             planner_class = scenario.choose_planner(updated_state, route_plan, self.logger)
             planner = planner_class(self.logger)
 
@@ -194,7 +199,7 @@ class BehavioralPlanningFacade(DmModule):
         return route_plan
 
     @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
-    def _set_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState) -> Takeover:
+    def _set_takeover_message(self, route_plan_data: DataRoutePlan, ego_state: EgoState) -> Takeover:
         """
         Calculate the takeover message based on the static route plan
         The takeover flag will be set to True if all lane end costs for a downstream road segment
@@ -261,6 +266,20 @@ class BehavioralPlanningFacade(DmModule):
 
         return takeover_message
 
+    def _get_current_pedal_position(self) -> PedalPosition:
+        """
+        Read last message of brake & acceleration pedals position
+        :return: PedalPosition
+        """
+        is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
+        if not is_success or serialized_pedal_position is None:
+            return None
+        pedal_position = PedalPosition.deserialize(serialized_pedal_position)
+        self.logger.debug("Pedal position received at time %f: %f" %
+                          (pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds,
+                           pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
+        return pedal_position
+
     def _get_current_scene_static(self) -> SceneStatic:
         with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):
             is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
@@ -286,58 +305,6 @@ class BehavioralPlanningFacade(DmModule):
             raise MsgDeserializationError("SceneDynamic was received without any host localization")
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_dynamic
-
-    def _get_state_with_expected_ego(self, state: State) -> State:
-        """
-        takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
-        timestamp according to the last trajectory cached in the facade's self._last_trajectory.
-        Note: lateral velocity is zeroed since we don't plan for drifts and lateral components are being reflected in
-        yaw and curvature.
-        :param state: the state to process
-        :return: a new state object with a new ego-vehicle localization
-        """
-        current_time = state.ego_state.timestamp_in_sec
-        expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
-
-        updated_state = state.clone_with(ego_state=expected_ego_state)
-
-        if updated_state.ego_state.map_state.lane_id != state.ego_state.map_state.lane_id:
-            # Since the ego lane ID for the updated_state can be different from the original state, specially for the
-            # case of multiple host hypotheses, we overwrite it with the selected ego lane ID from state here.
-            lane_frenet = MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id)
-            cartesian_state = expected_ego_state.cartesian_state
-
-            # Lambda function for calculating distance between two points
-            distance_between_points = lambda x, y: (((x[C_X] - y[C_X]) ** 2) + ((x[C_Y] - y[C_Y]) ** 2)) ** (1 / 2)
-
-            try:
-                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-
-            except OutOfSegmentBack:
-                self.logger.warning(f"OutOfSegmentBack was raised. Host is "
-                                    f"{distance_between_points(cartesian_state[[C_X, C_Y]], lane_frenet.points[0])}"
-                                    f"from first point in Frenet frame.")
-
-                # TODO: check distance to first point before overwriting cartesian position
-                cartesian_state[[C_X, C_Y]] = lane_frenet.points[0]
-                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-
-            except OutOfSegmentFront:
-                self.logger.warning(f"OutOfSegmentFront was raised. Host is "
-                                    f"{distance_between_points(cartesian_state[[C_X, C_Y]], lane_frenet.points[-1])}"
-                                    f"from last point in Frenet frame.")
-
-                # TODO: check distance to last point before overwriting cartesian position
-                cartesian_state[[C_X, C_Y]] = lane_frenet.points[-1]
-                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-
-            updated_state.ego_state._cached_map_state = MapState(lane_fstate, state.ego_state.map_state.lane_id)
-
-        # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
-        updated_state.is_sampled = True
-
-        return updated_state
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_PARAMS, trajectory_parameters.serialize())

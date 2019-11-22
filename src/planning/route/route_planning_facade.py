@@ -1,22 +1,27 @@
-from logging import Logger
 import time
 import traceback
+from logging import Logger
+
+import numpy as np
 import rte.python.profiler as prof
-from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from decision_making.src.exceptions import MissingMapInformation, raises
 from decision_making.src.exceptions import MsgDeserializationError, RoutePlanningException
 from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, \
     LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
+from decision_making.src.messages.route_plan_message import DataRoutePlan
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, NavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.planning.route.binary_cost_based_route_planner import RoutePlanner
 from decision_making.src.planning.route.route_planner import RoutePlannerInputData
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 
 
 class RoutePlanningFacade(DmModule):
@@ -53,8 +58,10 @@ class RoutePlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
+                SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            SceneStaticModel.get_instance().set_scene_static(scene_static)
+            self._check_scene_data_validity(scene=scene_static.s_Data.s_SceneStaticBase,
+                                            nav_plan=scene_static.s_Data.s_NavigationPlan)
 
             route_planner_input = RoutePlannerInputData()
             route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
@@ -77,7 +84,12 @@ class RoutePlanningFacade(DmModule):
             self.logger.debug(str(e))
 
         except RoutePlanningException as e:
-            self.logger.warning(e)
+            scene_static_road_segments = scene_static.s_Data.s_SceneStaticBase.as_scene_road_segment or []
+            scene_static_road_segment_ids = [rs.e_i_road_segment_id for rs in scene_static_road_segments]
+            inputs_str_dict = {"navigation plan road segments": scene_static.s_Data.s_NavigationPlan.a_i_road_segment_ids.tolist(),
+                               "scene static base road segments": scene_static_road_segment_ids}
+            self.logger.error("RoutePlanningException: %s. When inputs are %s. Trace: %s", e, inputs_str_dict,
+                              traceback.format_exc())
 
         except Exception as e:
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
@@ -94,6 +106,25 @@ class RoutePlanningFacade(DmModule):
         self.timestamp = Timestamp.from_seconds(scene_static.s_Header.s_Timestamp.timestamp_in_seconds)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
+
+    @staticmethod   # Made static method especially as this method doesn't access the classes states/variables
+    @raises(MissingMapInformation)
+    def _check_scene_data_validity(scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
+        if not scene.as_scene_lane_segments:
+            raise MissingMapInformation("RoutePlanner MissingInputInformation: Empty scene.as_scene_lane_segments")
+
+        if not scene.as_scene_road_segment:
+            raise MissingMapInformation("RoutePlanner MissingInputInformation: Empty scene.as_scene_road_segment")
+
+        if not nav_plan.a_i_road_segment_ids.size:  # np.ndarray type
+            raise MissingMapInformation("RoutePlanner MissingInputInformation: Empty NAV Plan")
+
+        scene_road_segment_ids = [road.e_i_road_segment_id for road in scene.as_scene_road_segment]
+        is_nav_road_segment_in_scene_static = np.in1d(nav_plan.a_i_road_segment_ids, scene_road_segment_ids)
+        if not is_nav_road_segment_in_scene_static.all():
+            raise MissingMapInformation("RoutePlanner MissingInputInformation: road segments %s are in the navigation "
+                                        "plan but not in scene static list of road segments" %
+                                        nav_plan.a_i_road_segment_ids[~is_nav_road_segment_in_scene_static])
 
     @prof.ProfileFunction()
     def _publish_results(self, s_Data: DataRoutePlan) -> None:

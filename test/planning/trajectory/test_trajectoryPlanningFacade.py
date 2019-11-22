@@ -68,19 +68,21 @@ def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
     route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
 
     frenet = FrenetSerret2DFrame.fit(route_points)
+    sub_segment = FrenetSubSegment(segment_id=0, s_start=0, s_end=frenet.s_max)
+    gff = GeneralizedFrenetSerretFrame.build([frenet], [sub_segment])
     poly_s_coefs = np.array([4.58963156e-01, -2.31312529e+00, 3.49717428e+00,
                              -9.50993030e-08, 5.99999999e+00, 9.50994838e-10])
 
     poly_d_coefs = np.array([5.58098455e-01, -2.05184044e+00, 1.97018719e+00,
                              3.80399214e-08, -1.14119374e-08, 5.00000000e-01])
 
-    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
+    samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, 1011.5, gff, poly_s_coefs, poly_d_coefs)
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     # expected ego is the ego-state sampled from the facade._last_trajectory at time given by state.ego_state.timestamp
     state.ego_state.timestamp = 1001 * 1e9
-    modified_state = facade._get_state_with_expected_ego(state)
+    modified_state = LocalizationUtils.get_state_with_expected_ego(state, samplable_trajectory, facade.logger, "test")
 
     sampled_ego_state_vec = samplable_trajectory.sample(np.array([1001]))[0]
 
