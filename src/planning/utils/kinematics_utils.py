@@ -3,11 +3,13 @@ from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRI
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX
+    FS_DX, FS_DV, FS_DA
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from typing import List
 
 
 class KinematicUtils:
@@ -39,7 +41,9 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
-                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits) -> np.ndarray:
+                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
+                                   baseline_gff: GeneralizedFrenetSerretFrame = None,
+                                   rel_lat_accel_limits: Limits = None, rel_mask: List[bool] = None) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -47,11 +51,31 @@ class KinematicUtils:
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
+        :param baseline_gff
+        :param rel_lat_accel_limits
+        :param rel_mask
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
+
+        conforms_rel_limits = np.full(len(ctrajectories), True)
+        if baseline_gff is not None and rel_lat_accel_limits is not None and rel_mask is not None:
+            if np.any(rel_mask):
+                ftrajectories_on_baseline = baseline_gff.ctrajectories_to_ftrajectories(ctrajectories)
+                # set DX, DV, DA to 0 to simulate traveling on the baseline GFF
+                ftrajectories_on_baseline[:,:,FS_DX] = 0
+                ftrajectories_on_baseline[:,:,FS_DV] = 0
+                ftrajectories_on_baseline[:,:,FS_DA] = 0
+                # Convert back to ctrajectories to get curvature
+                ctrajectories_on_baseline = baseline_gff.ftrajectories_to_ctrajectories(ftrajectories_on_baseline)
+                baseline_lat_accel = ctrajectories_on_baseline[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
+
+                # Calculate relative difference in lat accel
+                lat_accel_of_interest = ctrajectories[rel_mask, :, C_V] ** 2 * ctrajectories[rel_mask, :, C_K]
+                lat_accel_difference = lat_accel_of_interest - baseline_lat_accel
+                conforms_rel_limits[rel_mask] = np.all(NumpyUtils.is_in_limits(lat_accel_difference, rel_lat_accel_limits), axis=1)
 
         # check velocity and acceleration limits
         # note: while we filter any trajectory that exceeds the velocity limit, we allow trajectories to break the
@@ -60,6 +84,7 @@ class KinematicUtils:
                                  NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
                                  NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
 
+        # return np.logical_and(conforms_limits, conforms_rel_limits)
         return conforms_limits
 
     @staticmethod

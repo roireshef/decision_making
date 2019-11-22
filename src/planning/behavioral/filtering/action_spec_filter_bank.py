@@ -5,10 +5,10 @@ from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, REL_LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
+    RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
@@ -50,9 +50,20 @@ class FilterForKinematics(ActionSpecFilter):
         """
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
-        return KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)
 
+        baseline_gff = lane_change_mask = None
+        # if a LC is desired, relative lat accel limits need to be checked
+        if behavioral_state.ego_state.lane_change_info:
+            if behavioral_state.ego_state.lane_change_info.lane_change_desired:
+                baseline_gff = behavioral_state.ego_state.lane_change_info.baseline_gff
+                lane_change_mask = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                                    and behavioral_state.extended_lane_frames[spec.relative_lane].gff_type
+                                    not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                                    for spec in action_specs]
+
+        return KinematicUtils.filter_by_cartesian_limits(
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS,
+        baseline_gff, REL_LAT_ACC_LIMITS, lane_change_mask)
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
     @prof.ProfileFunction()

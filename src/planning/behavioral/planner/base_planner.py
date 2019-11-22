@@ -14,8 +14,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, \
-    ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION,\
-    LAT_ACC_LIMITS_LC
+    ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
@@ -151,11 +150,6 @@ class BasePlanner:
         goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)
         cost_params = BasePlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
                                                         ego_size=ego.size)
-
-        # Modify lat accel parameters for lane change
-        if behavioral_state.ego_state.lane_change_info.lane_change_active:
-            cost_params.lat_acceleration_limits = LAT_ACC_LIMITS_LC
-
 
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)

@@ -418,6 +418,7 @@ def state_with_objects_for_acceleration_towards_vehicle():
     scene_dynamic.dynamic_objects[0].off_map = False
     # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
     scene_dynamic.ego_state.cartesian_state[C_A] = 1
+    scene_dynamic.ego_state.lane_change_info = None
     yield scene_dynamic
 
 

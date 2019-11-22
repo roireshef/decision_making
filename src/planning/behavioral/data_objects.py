@@ -147,9 +147,11 @@ class LaneChangeInfo:
     def __init__(self, source_lane_ids: np.ndarray, target_lane_ids: np.ndarray):
         self.source_lane_ids = source_lane_ids
         self.target_lane_ids = target_lane_ids
+        self.lane_change_desired = False
         self.lane_change_active = False
         self.in_target_lane = False
         self.lc_start_time_utc = -1
+        self.baseline_gff = None
 
     def __str__(self):
         # print as dict for logs
@@ -164,6 +166,10 @@ class LaneChangeInfo:
             return 0
         return time.time() - self.lc_start_time_utc
 
+    def enable_lc_desired(self):
+        if not self.lane_change_active:
+            self.lane_change_desired = True
+
 
     def update(self, same_lane_ids: np.ndarray,  target_lane_ids: np.ndarray, turn_signal: TurnSignal):
         """
@@ -176,7 +182,6 @@ class LaneChangeInfo:
         if self.target_lane_ids is None or self.source_lane_ids is None:
             self.source_lane_ids = same_lane_ids
             self.target_lane_ids = target_lane_ids
-
 
         if not self.lane_change_active:
             # if the gff's do not contain the same segments, they must be different GFFs
@@ -194,10 +199,12 @@ class LaneChangeInfo:
 
                 # Only re-enable further lane changes after turn signal is off
                 if turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
+                    self.lane_change_desired = False
                     self.lane_change_active = False
                     self.in_target_lane = False
                     self.source_lane_ids = same_lane_ids
                     self.target_lane_ids = target_lane_ids
+                    self.baseline_gff = None
 
 
 
