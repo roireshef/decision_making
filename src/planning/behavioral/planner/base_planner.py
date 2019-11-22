@@ -15,7 +15,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, \
     ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION,\
-    LAT_ACC_LIMITS_LC_TURN_IN, LAT_ACC_LIMITS_LC_TURN_OUT
+    LAT_ACC_LIMITS_LC
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
@@ -154,10 +154,7 @@ class BasePlanner:
 
         # Modify lat accel parameters for lane change
         if behavioral_state.ego_state.lane_change_info.lane_change_active:
-            if not behavioral_state.ego_state.lane_change_info.in_target_lane:
-                cost_params.lat_acceleration_limits = LAT_ACC_LIMITS_LC_TURN_IN
-            else:
-                cost_params.lat_acceleration_limits = LAT_ACC_LIMITS_LC_TURN_OUT
+            cost_params.lat_acceleration_limits = LAT_ACC_LIMITS_LC
 
 
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)

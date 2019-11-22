@@ -78,6 +78,13 @@ class StaticActionSpace(ActionSpace):
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
 
+        # TODO: This is considered a hack
+        # override goal time when a lane change is being performed
+        if behavioral_state.ego_state.lane_change_info and behavioral_state.ego_state.lane_change_info.lane_change_active:
+            seconds_left_for_lc = 6.0 - behavioral_state.ego_state.lane_change_info.time_from_start()
+            if seconds_left_for_lc > 0:
+                T = seconds_left_for_lc
+
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuarticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
                                                              v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T=T)(T)

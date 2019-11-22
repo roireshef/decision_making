@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import List
+import time
 import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
@@ -148,10 +149,20 @@ class LaneChangeInfo:
         self.target_lane_ids = target_lane_ids
         self.lane_change_active = False
         self.in_target_lane = False
+        self.lc_start_time_utc = -1
 
     def __str__(self):
         # print as dict for logs
         return str(self.__dict__)
+
+    def time_from_start(self):
+        """
+        Gets time since lane change became active
+        :return:
+        """
+        if not self.lane_change_active:
+            return 0
+        return time.time() - self.lc_start_time_utc
 
 
     def update(self, same_lane_ids: np.ndarray,  target_lane_ids: np.ndarray, turn_signal: TurnSignal):
@@ -172,6 +183,7 @@ class LaneChangeInfo:
             if not np.any(np.isin(self.source_lane_ids, target_lane_ids)):
                 # if SAME_LANE and target GFFs are different, the action must be a lane change
                 self.lane_change_active = True
+                self.lc_start_time_utc = time.time()
             self.source_lane_ids = same_lane_ids
             self.target_lane_ids = target_lane_ids
         else:
