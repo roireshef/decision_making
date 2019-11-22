@@ -10,7 +10,6 @@ from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegment
     MapLaneDirection, GMAuthorityType, LaneConstructionType
 from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, MAX_COST, MIN_COST
 from decision_making.src.planning.route.route_planner import RoutePlannerInputData
-from decision_making.src.utils.function_utils import FunctionUtils
 
 
 class OccupancyCostMapping():
@@ -67,14 +66,11 @@ class OccupancyCostMapping():
 
 
 class RoutePlanner(metaclass=ABCMeta):
-    occupancy_cost_methods = {RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value:
-                                  OccupancyCostMapping.mapping_status_based_occupancy_cost,
-                              RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value:
-                                  OccupancyCostMapping.gm_authority_based_occupancy_cost,
-                              RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction.value:
-                                  OccupancyCostMapping.construction_zone_based_occupancy_cost,
-                              RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction.value:
-                                  OccupancyCostMapping.lane_dir_in_route_based_occupancy_cost}
+    # This is a class variable that is shared between all RoutePlanner instances
+    occupancy_cost_methods = {LaneMappingStatusType: OccupancyCostMapping.mapping_status_based_occupancy_cost,
+                              GMAuthorityType: OccupancyCostMapping.gm_authority_based_occupancy_cost,
+                              LaneConstructionType: OccupancyCostMapping.construction_zone_based_occupancy_cost,
+                              MapLaneDirection: OccupancyCostMapping.lane_dir_in_route_based_occupancy_cost}
 
     @prof.ProfileFunction()
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
@@ -125,29 +121,6 @@ class RoutePlanner(metaclass=ABCMeta):
         pass
 
     @raises(LaneAttributeNotFound)
-    def _lane_attribute_based_occupancy_cost(self, lane_attribute_index: int, lane_attribute_value: int) -> float:
-        """
-        This method is a wrapper on the individual lane attribute cost calculations and arbitrates
-        according to the (input) lane attribute, which lane attribute method to invoke
-        :param lane_attribute_index: pointer to the concerned lane attribute in RoutePlanLaneSegmentAttr enum
-        :param lane_attribute_value: value of the pointed lane attribute
-        :return: Normalized lane occupancy cost based on the concerned lane attribute (MIN_COST to MAX_COST)
-        """
-        if lane_attribute_index in RoutePlanner.occupancy_cost_methods:
-            occupancy_cost_method = RoutePlanner.occupancy_cost_methods[lane_attribute_index]
-
-            # The occupancy cost methods expect an enum, not an int. So, in order to convert lane_attribute_value to
-            # the proper enum, we have to determine the enumeration type from the selected occupancy cost method.
-            # All of the enumeration types are included in the function annotations so we can get the proper
-            # enumeration type from there.
-            argument_annotations = FunctionUtils.get_argument_annotations(occupancy_cost_method)
-            attribute_type = argument_annotations[0]
-
-            return occupancy_cost_method(attribute_type(lane_attribute_value))
-        else:
-            raise LaneAttributeNotFound('RoutePlanner: lane_attribute_index {0} not supported'.format(lane_attribute_index))
-
-    @raises(LaneAttributeNotFound)
     def _lane_occupancy_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase) -> float:
         """
         Calculates lane occupancy cost for a single lane segment
@@ -158,7 +131,7 @@ class RoutePlanner(metaclass=ABCMeta):
         for lane_attribute_index in lane_segment_base_data.a_i_active_lane_attribute_indices:
             # lane_attribute_index gives the index lookup for lane attributes and confidences
             if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attributes):
-                lane_attribute_value = lane_segment_base_data.a_cmp_lane_attributes[lane_attribute_index]
+                lane_attribute = lane_segment_base_data.a_cmp_lane_attributes[lane_attribute_index]
             else:
                 raise LaneAttributeNotFound('RoutePlanner: lane_attribute_index {0} doesn\'t have corresponding lane attribute value'
                                             .format(lane_attribute_index))
@@ -172,8 +145,13 @@ class RoutePlanner(metaclass=ABCMeta):
             if (lane_attribute_confidence < LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD):
                 continue
 
-            lane_attribute_occupancy_cost = self._lane_attribute_based_occupancy_cost(
-                lane_attribute_index=lane_attribute_index, lane_attribute_value=lane_attribute_value)
+            try:
+                lane_attribute_occupancy_cost = RoutePlanner.occupancy_cost_methods[type(lane_attribute)](lane_attribute)
+            except KeyError:
+                raise LaneAttributeNotFound(f"RoutePlanner: Could not find the occupancy cost method that corresponds to lane attribute "
+                                            f"type {type(lane_attribute)}. The supported types are "
+                                            f"{RoutePlanner.occupancy_cost_methods.keys()}.")
+
             # Check if the lane is unoccupiable
             if (lane_attribute_occupancy_cost == MAX_COST):
                 return MAX_COST

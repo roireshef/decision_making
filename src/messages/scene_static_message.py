@@ -1,3 +1,4 @@
+from enum import IntEnum
 from typing import List
 import numpy as np
 from interface.Rte_Types.python.sub_structures.TsSYS_AdjacentLane import TsSYSAdjacentLane
@@ -16,9 +17,10 @@ from interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import TsSY
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegment import TsSYSSceneRoadSegment
 from interface.Rte_Types.python.sub_structures.TsSYS_LaneOverlap import TsSYSLaneOverlap
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header 
+from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 from decision_making.src.messages.scene_static_enums import MapLaneType, MapRoadSegmentType, MovingDirection,\
-    ManeuverType, MapLaneMarkerType, RoadObjectType, TrafficSignalState, LaneOverlapType
+    ManeuverType, MapLaneMarkerType, RoadObjectType, TrafficSignalState, LaneOverlapType, RoutePlanLaneSegmentAttr, \
+    LaneMappingStatusType, GMAuthorityType, LaneConstructionType, MapLaneDirection
 
 MAX_LANE_ATTRIBUTES = 8
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
@@ -448,11 +450,17 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
     e_l_length = float
     e_Cnt_num_active_lane_attributes = int
     a_i_active_lane_attribute_indices = np.ndarray
-    a_cmp_lane_attributes = np.ndarray
+    a_cmp_lane_attributes = List[IntEnum]
     a_cmp_lane_attribute_confidences = np.ndarray
     e_Cnt_lane_overlap_count = int
     as_lane_overlaps = List[LaneOverlap]
 
+    # These are class variables that are shared between all instances of SceneLaneSegmentBase
+    lane_attribute_types = {RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus: LaneMappingStatusType,
+                            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA: GMAuthorityType,
+                            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction: LaneConstructionType,
+                            RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction: MapLaneDirection}
+    num_lane_attributes = len(lane_attribute_types)
 
     def __init__(self, e_i_lane_segment_id: int, e_i_road_segment_id: int, e_e_lane_type: MapLaneType,
                  e_Cnt_static_traffic_flow_control_count: int,
@@ -465,7 +473,7 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
                  e_Cnt_upstream_lane_count: int, as_upstream_lanes: List[LaneSegmentConnectivity],
                  e_v_nominal_speed: float, e_l_length: float,
                  e_Cnt_num_active_lane_attributes: int, a_i_active_lane_attribute_indices: np.ndarray,
-                 a_cmp_lane_attributes: np.ndarray, a_cmp_lane_attribute_confidences: np.ndarray,
+                 a_cmp_lane_attributes: List[IntEnum], a_cmp_lane_attribute_confidences: np.ndarray,
                  e_Cnt_lane_overlap_count: int, as_lane_overlaps: List[LaneOverlap]):
         """
         Lane-segment information
@@ -555,7 +563,7 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_num_active_lane_attributes = self.e_Cnt_num_active_lane_attributes
         pubsub_msg.a_i_active_lane_attribute_indices = self.a_i_active_lane_attribute_indices
 
-        pubsub_msg.a_cmp_lane_attributes = self.a_cmp_lane_attributes # These are sparse arrays. So copy the entire array
+        pubsub_msg.a_cmp_lane_attributes = np.array(self.a_cmp_lane_attributes) # These are sparse arrays. So copy the entire array
         pubsub_msg.a_cmp_lane_attribute_confidences = self.a_cmp_lane_attribute_confidences # These are sparse arrays. So copy the entire array
 
         pubsub_msg.e_Cnt_lane_overlap_count = self.e_Cnt_lane_overlap_count
@@ -596,6 +604,11 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_lane_overlap_count):
             as_lane_overlaps.append(LaneOverlap.deserialize(pubsubMsg.as_lane_overlaps[i]))
 
+        # Convert Numpy array to list and convert elements to respective enumerations
+        lane_attributes = pubsubMsg.a_cmp_lane_attributes.tolist()
+        for i in range(SceneLaneSegmentBase.num_lane_attributes):
+            lane_attributes[i] = SceneLaneSegmentBase.lane_attribute_types[RoutePlanLaneSegmentAttr(i)](lane_attributes[i])
+
         return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, pubsubMsg.e_e_lane_type,
                    pubsubMsg.e_Cnt_static_traffic_flow_control_count, as_static_traffic_flow_control,
                    pubsubMsg.e_Cnt_dynamic_traffic_flow_control_count, as_dynamic_traffic_flow_control,
@@ -607,7 +620,7 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_l_length,
                    pubsubMsg.e_Cnt_num_active_lane_attributes,
                    pubsubMsg.a_i_active_lane_attribute_indices[:pubsubMsg.e_Cnt_num_active_lane_attributes],
-                   pubsubMsg.a_cmp_lane_attributes[:MAX_LANE_ATTRIBUTES],
+                   lane_attributes,
                    pubsubMsg.a_cmp_lane_attribute_confidences[:MAX_LANE_ATTRIBUTES],
                    pubsubMsg.e_Cnt_lane_overlap_count, as_lane_overlaps)
 

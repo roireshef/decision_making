@@ -62,15 +62,16 @@ def modify_default_lane_attributes(lane_attribute_modifications: LaneAttributeMo
             # Default lane attribute values
             num_active_lane_attributes = 4
             active_lane_attribute_indices = np.array([0, 1, 2, 3])
-            lane_attributes = np.array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
-                                        GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
-                                        LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                        MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value])
+            lane_attributes = [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap,
+                               GMAuthorityType.CeSYS_e_GMAuthorityType_None,
+                               LaneConstructionType.CeSYS_e_LaneConstructionType_Normal,
+                               MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle]
             lane_attribute_confidences = np.ones(4)
 
             for lane_attribute_modification in lane_attribute_modifications[lane_segment.e_i_lane_segment_id]:
                 if lane_attribute_modification[0] is True:
-                    lane_attributes[lane_attribute_modification[1]] = lane_attribute_modification[2]
+                    lane_attribute_type = type(lane_attributes[lane_attribute_modification[1]])
+                    lane_attributes[lane_attribute_modification[1]] = lane_attribute_type(lane_attribute_modification[2])
                     lane_attribute_confidences[lane_attribute_modification[1]] = lane_attribute_modification[3]
                 else:
                     active_lane_attribute_indices = np.delete(active_lane_attribute_indices, lane_attribute_modification[1])
