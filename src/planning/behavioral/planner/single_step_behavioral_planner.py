@@ -91,9 +91,8 @@ class SingleStepBehavioralPlanner(BasePlanner):
                                               list(action_specs_exist), route_plan)
 
     def _choose_action(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray, costs: np.array) -> \
-            [ActionRecipe, ActionSpec]:
+            ActionSpec:
         """
         see base class
         """
-        selected_action_index = int(np.argmin(costs))
-        return self.action_space.recipes[selected_action_index], action_specs[selected_action_index]
+        return action_specs[np.argmin(costs)]
