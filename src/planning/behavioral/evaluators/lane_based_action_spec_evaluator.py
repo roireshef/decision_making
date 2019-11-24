@@ -55,7 +55,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
         """
         Try to find a valid road sign action (FOLLOW_ROAD_SIGN) for target_lane
         Selection only needs to consider aggressiveness level, as all the target speeds are ZERO_SPEED.
-        :param action_specs: specifications of action_recipes.
+        :param action_recipes: action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
         :param target_lane: lane to choose actions from
         :return: index of the chosen action_recipe within action_recipes. If there are no valid actions, -1 is returned
@@ -69,7 +69,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
     def _get_follow_lane_valid_action_idx(self, action_recipes: List[ActionRecipe], action_specs_mask: List[bool], target_lane: RelativeLane) -> int:
         """
         Look for valid static action with the minimal aggressiveness level and fastest speed
-        :param action_specs: specifications of action_recipes.
+        :param action_recipes: action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
         :param target_lane: lane to choose actions from
         :return: index of the chosen action_recipe within action_recipes. If there are no valid actions, -1 is returned

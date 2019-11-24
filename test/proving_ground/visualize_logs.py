@@ -1,13 +1,13 @@
 import ast
+
 import matplotlib.pyplot as plt
 import numpy as np
-
 from decision_making.paths import Paths
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON
 from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y, FS_DX
-from decision_making.src.state.state import EgoState
+from decision_making.src.planning.utils.math_utils import Math
 
 
 def plot_dynamics(log_file_path: str):
@@ -93,7 +93,7 @@ def plot_dynamics(log_file_path: str):
                 ego_sv.append(0)
                 ego_sx.append(0)
                 ego_dx.append(0)
-            timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
+            timestamp_in_sec.append(Math.ticks_to_sec(state_dict['ego_state']['timestamp']))
 
         if 'BehavioralGrid: time' in text:
             behavioral_grid_str = text.split('BehavioralGrid: time')[1]
