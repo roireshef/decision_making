@@ -100,7 +100,7 @@ class BehavioralPlanningFacade(DmModule):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-                # TODO ADD STOP SIGN REMOVE
+                # TODO: ADD STOP SIGN REMOVE
                 SELECTED_STOP_LANE_ID = 103352065  # 19670531
                 for relative in [-1, 0, 1]:  # do on up to 3 lanes SAME, RIGHT, LEFT
                     try:

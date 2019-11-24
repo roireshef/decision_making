@@ -21,10 +21,17 @@ class DIM_States(Enum):
 
 
 class DriverInitiatedMotionState:
-    state = DIM_States
-    pedal_from_time = float
-    active_from_time = float
-    stop_bar_id = (int, int)
+    """
+    This class is an implementation of the state machine of DIM:
+    0. Start with NORMAL state.
+    1. When the velocity is below a threshold and a next stop bar is close, goto READY state and remember the stop bar id.
+    2. When the acceleration pedal was pressed for enough time, goto ACTIVE state.
+    3. After crossing this stop bar or after timeout since the pedal was released, goto NORMAL state.
+    """
+    state = DIM_States                  # the current state
+    pedal_pressed_from_time = float     # from which time the pedal is pressed continuously till now
+    pedal_pressed_last_time = float     # last time the pedal was pressed continuously for time > time_threshold
+    stop_bar_id = (int, int)            # the closest stop bar id at the moment of pressing the pedal
 
     def __init__(self):
         self._reset()
@@ -58,19 +65,20 @@ class DriverInitiatedMotionState:
         accel_pedal_position = pedal_position.s_Data.e_Pct_AcceleratorPedalPosition
         timestamp_in_sec = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
         if accel_pedal_position >= DRIVER_INITIATED_MOTION_PEDAL_THRESH:
-            self.pedal_from_time = min(self.pedal_from_time, timestamp_in_sec)  # update pedal_from_time
-            # if the pedal was pressed for enough time, update the state
-            if timestamp_in_sec - self.pedal_from_time >= DRIVER_INITIATED_MOTION_PEDAL_TIME:
-                self.active_from_time = timestamp_in_sec
+            self.pedal_pressed_from_time = min(self.pedal_pressed_from_time, timestamp_in_sec)  # update pedal_from_time
+            # if the pedal was pressed for enough time, DIM state becomes ACTIVE
+            if timestamp_in_sec - self.pedal_pressed_from_time >= DRIVER_INITIATED_MOTION_PEDAL_TIME:
+                self.pedal_pressed_last_time = timestamp_in_sec
                 self.state = DIM_States.ACTIVE
+        # if the pedal was released when DIM state is not active, then reset the pedal times
         elif self.state == DIM_States.READY:  # no pedal
-            self.pedal_from_time = self.active_from_time = np.inf
+            self.pedal_pressed_from_time = self.pedal_pressed_last_time = np.inf
 
-        # check if we crossed stop bar or timeout after releasing of pedal
+        # check if ego crossed the stop bar or timeout after releasing of pedal
         if self.state == DIM_States.ACTIVE:
             stop_sign_s = reference_route.convert_from_segment_state(np.array([self.stop_bar_id[1], 0, 0, 0, 0, 0]),
                                                                      self.stop_bar_id[0])[FS_SX]
-            if stop_sign_s < ego_s or timestamp_in_sec - self.active_from_time > DRIVER_INITIATED_MOTION_TIMEOUT:
+            if stop_sign_s < ego_s or timestamp_in_sec - self.pedal_pressed_last_time > DRIVER_INITIATED_MOTION_TIMEOUT:
                 self._reset()  # NORMAL state
 
     def _reset(self):
@@ -78,7 +86,7 @@ class DriverInitiatedMotionState:
         Reset the state to its default settings
         """
         self.state = DIM_States.NORMAL
-        self.pedal_from_time = self.active_from_time = np.inf
+        self.pedal_pressed_from_time = self.pedal_pressed_last_time = np.inf
         self.stop_bar_id = None
 
     def stop_bar_to_ignore(self):
