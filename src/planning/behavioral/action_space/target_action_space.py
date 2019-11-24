@@ -158,7 +158,8 @@ class TargetActionSpace(ActionSpace):
 
         return action_specs
 
-    def _modify_target_speed_if_ego_is_faster_than_target(self, behavioral_state: BehavioralGridState, ds: np.ndarray, v_0: np.ndarray, v_T: np.ndarray):
+    def _modify_target_speed_if_ego_is_faster_than_target(self, behavioral_state: BehavioralGridState, ds: np.ndarray,
+                                                          v_0: np.ndarray, v_T: np.ndarray):
         """
         If the speed of the ego is higher than that of the leading vehicle, set the v_T to be lower than the real v_T.
         This will limit the ego's speed and help in case of sudden brake by the leading vehicle.
