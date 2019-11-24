@@ -144,7 +144,7 @@ REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION = 1.4
 REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2
 
 SPEEDING_VIOLATION_TIME_TH = 3.0  # in [seconds]. Speeding violation allowed time from START of action.
-SPEEDING_SPEED_TH = 1.0  # in [m/s]. Allowed magnitude of speeding violation.
+SPEEDING_SPEED_TH = 2.0 / 3.6  # in [m/s]. Allowed magnitude of speeding violation.
 
 # Trajectory Planner #
 
