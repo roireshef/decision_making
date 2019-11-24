@@ -13,7 +13,7 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
-    RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
+    RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
     MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED
@@ -29,10 +29,10 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import FS_SX, FS_SV, C_X, C_Y
+from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import State, EgoState, MapState
+from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
@@ -61,8 +61,8 @@ class BehavioralPlanningFacade(DmModule):
         :param now: time in seconds
         """
         if now - self.last_log_time > 5.0:
-            self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for
-                                                              filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
+                                                              as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
             self.last_log_time = now
 
     def _start_impl(self):

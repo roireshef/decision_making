@@ -125,7 +125,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
     def fpoints_to_cpoints(self, fpoints: FrenetTrajectory2D) -> CartesianPath2D:
         """
         Transforms frenet-frame points to cartesian-frame points (using self.curve)
-        :param fpoint: Frenet-frame trajectory (matrix)
+        :param fpoints: Frenet-frame trajectory (matrix)
         :return: Cartesian-frame trajectory (matrix)
         """
         a_s, _, N_s, _, _ = self._taylor_interp(fpoints[..., FP_SX])
@@ -134,7 +134,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
     def fstate_to_cstate(self, fstate: FrenetState2D) -> CartesianExtendedState:
         """
         Transforms Frenet-frame state to cartesian-frame state
-        :param ftrajectory: a frenet-frame state
+        :param fstate: a frenet-frame state
         :return: a cartesian-frame state (given in the coordinate frame of self.points)
         """
         return self.ftrajectory_to_ctrajectory(np.array([fstate]))[0]
