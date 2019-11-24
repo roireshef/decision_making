@@ -543,10 +543,10 @@ class MapUtils:
         dynamic_tcds_info = {dynamic_tcd.object_id:
                              DynamicTrafficControlDeviceInfo(
                                  id=dynamic_tcd.object_id, sign_type=dynamic_tcd.e_e_traffic_control_device_type,
-                                 status=[status for status in tcds_status[dynamic_tcd.id].a_e_status]
-                                 if dynamic_tcd.id in tcds_status else [],
-                                 confidence=[confidence for confidence in tcds_status[dynamic_tcd.id].confidence]
-                                 if dynamic_tcd.id in tcds_status else [])
+                                 status=[status for status in tcds_status[dynamic_tcd.object_id].a_e_status]
+                                 if dynamic_tcd.object_id in tcds_status else [],
+                                 confidence=[confidence for confidence in tcds_status[dynamic_tcd.object_id].a_Pct_status_confidence]
+                                 if dynamic_tcd.object_id in tcds_status else [])
                              for dynamic_tcd in scene_static.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device}
 
         return static_tcds_info, dynamic_tcds_info
@@ -586,10 +586,10 @@ class MapUtils:
         for active_dynamic_tcd in active_dynamic_tcds:
             status = MapUtils._get_confident_status(active_dynamic_tcd.status, active_dynamic_tcd.confidence)
             if active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
-                if status != TrafficSignalState.TrafficSignalState_GREEN:
+                if status != TrafficSignalState.GREEN:
                     restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
             elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
-                if status != TrafficSignalState.TrafficSignalState_RAILROAD_CROSSING_CLEAR:
+                if status != TrafficSignalState.RAILROAD_CROSSING_CLEAR:
                     restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
             elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.SCHOOL_ZONE:
                 # TODO: Need to understand how to get the information on days + hours at which this is in effect.
