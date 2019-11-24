@@ -13,9 +13,11 @@ from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
-from decision_making.src.messages.scene_static_message import SceneStatic
-from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan
-from decision_making.src.planning.route.route_planner import RoutePlanner, RoutePlannerInputData
+from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, NavigationPlan
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
+from decision_making.src.planning.route.binary_cost_based_route_planner import RoutePlanner
+from decision_making.src.planning.route.route_planner import RoutePlannerInputData
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
@@ -56,6 +58,7 @@ class RoutePlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
+                SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             self._check_scene_data_validity(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)

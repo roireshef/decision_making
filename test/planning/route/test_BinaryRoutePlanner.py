@@ -2,8 +2,8 @@ import numpy as np
 
 from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
 from decision_making.src.messages.scene_static_message import SceneStatic
-from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
-from decision_making.src.planning.route.route_planner import RoutePlannerInputData
+from decision_making.src.planning.route.binary_route_planner import BinaryRoutePlanner
+from decision_making.src.planning.route.binary_cost_based_route_planner import RoutePlannerInputData
 from decision_making.test.planning.route.scene_fixtures import RoutePlanTestData, \
     construction_scene_and_expected_output, map_scene_and_expected_output, \
     gmfa_scene_and_expected_output, lane_direction_scene_and_expected_output, \
@@ -19,7 +19,7 @@ def test_plan_normalScene_accurateRoutePlanOutput(scene_static_pg_split: SceneSt
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
     route_planner_input.reformat_input_data(scene=scene_static_base, nav_plan=navigation_plan)
-    route_plan_obj = BinaryCostBasedRoutePlanner()
+    route_plan_obj = BinaryRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
     # Expected Outputs
@@ -35,22 +35,23 @@ def test_plan_normalScene_accurateRoutePlanOutput(scene_static_pg_split: SceneSt
     assert route_plan_output.e_Cnt_num_road_segments == exp_num_road_segments
     assert route_plan_output.a_i_road_segment_ids.all() == exp_road_segment_ids.all()
     assert route_plan_output.a_Cnt_num_lane_segments.all() == exp_num_lane_segments.all()
-    for i in range(len(exp_route_plan_lane_segments)) :
-        for j in range(len(exp_route_plan_lane_segments[i])) :
+    for i in range(len(exp_route_plan_lane_segments)):
+        for j in range(len(exp_route_plan_lane_segments[i])):
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_end_cost
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost == exp_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             assert route_plan_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id == exp_route_plan_lane_segments[i][j].e_i_lane_segment_id
 
+
 def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = construction_scene_and_expected_output.scene_static
-    expected_output = construction_scene_and_expected_output.expected_output
+    expected_output = construction_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = BinaryCostBasedRoutePlanner()
+    route_plan_obj = BinaryRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
     print(route_plan_output)
@@ -65,25 +66,27 @@ def test_plan_constructionScenes_accurateRoutePlanOutput(construction_scene_and_
             expected_laneseg_id = expected_output.as_route_plan_lane_segments[i][j].e_i_lane_segment_id
             expected_lane_occupancy_cost = expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost
             expected_lane_end_cost = expected_output.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost
-            assert (lane_segment.e_i_lane_segment_id ==expected_laneseg_id),\
-                "output lane_segment_id:"+str(lane_segment.e_i_lane_segment_id)+"  expected lane_segment_id:"+str(expected_laneseg_id)
+            assert (lane_segment.e_i_lane_segment_id == expected_laneseg_id),\
+                "output lane_segment_id:" + str(lane_segment.e_i_lane_segment_id) + "  expected lane_segment_id:" + str(expected_laneseg_id)
             assert(lane_segment.e_cst_lane_occupancy_cost == expected_lane_occupancy_cost),\
-                "lane_segment_id:"+str(lane_segment.e_i_lane_segment_id)+\
-                    "   output lane_occ_cost:"+str(lane_segment.e_cst_lane_occupancy_cost)+"  expected lane_occ_cost:"+str(expected_lane_occupancy_cost)
+                "lane_segment_id:" + str(lane_segment.e_i_lane_segment_id) + \
+                "   output lane_occ_cost:" + str(lane_segment.e_cst_lane_occupancy_cost) + \
+                "  expected lane_occ_cost:" + str(expected_lane_occupancy_cost)
             assert(lane_segment.e_cst_lane_end_cost == expected_lane_end_cost),\
-                "lane_segment_id:"+str(lane_segment.e_i_lane_segment_id)+\
-                    "   output lane_end_cost:"+str(lane_segment.e_cst_lane_end_cost)+"  expected lane_end_cost:"+str(expected_lane_end_cost)
+                "lane_segment_id:" + str(lane_segment.e_i_lane_segment_id) + \
+                "   output lane_end_cost:" + str(lane_segment.e_cst_lane_end_cost) + \
+                "  expected lane_end_cost:" + str(expected_lane_end_cost)
 
 def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = map_scene_and_expected_output.scene_static
-    expected_output = map_scene_and_expected_output.expected_output
+    expected_output = map_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = BinaryCostBasedRoutePlanner()
+    route_plan_obj = BinaryRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
     # Assertions
@@ -100,13 +103,13 @@ def test_plan_mapScenes_accurateRoutePlanOutput(map_scene_and_expected_output: R
 def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = gmfa_scene_and_expected_output.scene_static
-    expected_output = gmfa_scene_and_expected_output.expected_output
+    expected_output = gmfa_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = BinaryCostBasedRoutePlanner()
+    route_plan_obj = BinaryRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
     # Assertions
@@ -123,13 +126,13 @@ def test_plan_gmfaScenes_accurateRoutePlanOutput(gmfa_scene_and_expected_output:
 def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = lane_direction_scene_and_expected_output.scene_static
-    expected_output = lane_direction_scene_and_expected_output.expected_output
+    expected_output = lane_direction_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = BinaryCostBasedRoutePlanner()
+    route_plan_obj = BinaryRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
     # Assertions
@@ -146,13 +149,13 @@ def test_plan_laneDirectionScenes_accurateRoutePlanOutput(lane_direction_scene_a
 def test_plan_combinedScenes_accurateRoutePlanOutput(combined_scene_and_expected_output: RoutePlanTestData):
     # Test Data
     scene_static = combined_scene_and_expected_output.scene_static
-    expected_output = combined_scene_and_expected_output.expected_output
+    expected_output = combined_scene_and_expected_output.expected_binary_output
 
     # Route Planner Logic
     route_planner_input = RoutePlannerInputData()
     route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
-    route_plan_obj = BinaryCostBasedRoutePlanner()
+    route_plan_obj = BinaryRoutePlanner()
     route_plan_output = route_plan_obj.plan(route_planner_input)
 
     # Assertions
