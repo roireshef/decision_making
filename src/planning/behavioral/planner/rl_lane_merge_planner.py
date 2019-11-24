@@ -28,6 +28,7 @@ from gym.spaces.box import Box
 
 # TODO: remove the dependency on planning_research
 from planning_research.src.flow_rl.models.dual_input_conv_model import DualInputConvModel
+from ray.rllib.models.pytorch.model import TorchModel
 
 
 class RL_LaneMergePlanner(BasePlanner):
@@ -39,7 +40,12 @@ class RL_LaneMergePlanner(BasePlanner):
         self.model = RL_LaneMergePlanner.load_model(Paths.get_policy_model())
 
     @staticmethod
-    def load_model(model_path: str):
+    def load_model(model_path: str) -> TorchModel:
+        """
+        Load RL policy model from file
+        :param model_path: model path
+        :return: the loaded RL model
+        """
         # TODO: use global constant for the model path
         model_state_dict = torch.load(model_path)
 
