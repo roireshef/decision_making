@@ -1,8 +1,5 @@
 from logging import Logger
-
 import numpy as np
-from itertools import compress
-
 from decision_making.paths import Paths
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, \
@@ -12,12 +9,11 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, ActionSpec, RelativeLane, \
     AggressivenessLevel
-from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
-    DEFAULT_ACTION_SPEC_FILTERING
-from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
+from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.types import ActionSpecArray, BoolArray, FS_1D_LEN
+from decision_making.src.planning.types import ActionSpecArray, FS_1D_LEN
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.state.state import State
@@ -123,8 +119,9 @@ class RL_LaneMergePlanner(BasePlanner):
         idx = np.argmax(probabilities * action_mask.astype(int))
         actors_s = np.array([actor.s_relative_to_ego for actor in lane_merge_state.actors_states])
         actors_s = np.sort(actors_s)
-        print('RL: chosen_spec=', action_specs[idx], 'probabilities: ', probabilities, 'value: ', values,
-              'Spaces beetween actors', np.diff(actors_s))
+        print('RL: chosen_spec=', action_specs[idx], 'probabilities: ', probabilities, 'value: ', values)
+        print('Rel_s', NumpyUtils.str_log(actors_s))
+        print('Spaces beetween actors', NumpyUtils.str_log(np.diff(actors_s)))
 
         # mask filtered actions and return costs (1 - probability)
         costs = 1 - probabilities * action_mask.astype(int)
