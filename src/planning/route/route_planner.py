@@ -204,7 +204,7 @@ class RoutePlannerInputData():
         if road_segment_id not in self._prev_road_segment_id:
             raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry for previous road segment found for road segment ID {0}'.format(road_segment_id))
 
-        self._prev_road_segment_id[road_segment_id]
+        return self._prev_road_segment_id[road_segment_id]
 
     def __str__(self) -> str:
         """
