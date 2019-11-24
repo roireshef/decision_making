@@ -583,10 +583,10 @@ def construction_scene_for_takeover_test(request):
         route_plan_data.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
         route_plan_data.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
 
-        ego_state = generate_ego_state(ego_lane_id = 211 , ego_lane_station = 30)
+        ego_state = generate_ego_state(ego_lane_id=211, ego_lane_station=30)
 
     else:
         lane_modifications = {}
 
     return TakeOverTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                            route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takeover)
+                            route_plan_data=route_plan_data, ego_state=ego_state, expected_takeover=expected_takeover)

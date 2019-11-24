@@ -188,16 +188,18 @@ class RoutePlannerInputData():
         return self._route_lane_segment_ids[road_segment_id]
 
     @raises(RoadSegmentDataNotFound)
-    def get_next_road_segment(self, road_segment_id: int) -> int:
+    def get_next_road_segment_id(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
         if road_segment_id not in self._next_road_segment_id:
             raise RoadSegmentDataNotFound('RoutePlanner: No entry for next road segment found for road segment ID {0}'.format(road_segment_id))
 
+        return self._next_road_segment_id[road_segment_id]
+
 
     @raises(RoadSegmentDataNotFound)
-    def get_prev_road_segment(self, road_segment_id: int) -> int:
+    def get_prev_road_segment_id(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
