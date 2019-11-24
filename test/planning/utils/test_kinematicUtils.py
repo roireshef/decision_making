@@ -1,10 +1,13 @@
 import numpy as np
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, SAFETY_HEADWAY
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, SAFETY_HEADWAY, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionSpecEvaluator
 
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+
 
 
 def test_isMaintainingDistance_safeSettings_returnsTrue():
@@ -212,3 +215,38 @@ def test_filterByVelocityLimit_velocityDecreasesAboveLimit_invalid():
 
     conforms = KinematicUtils.filter_by_velocity_limit(ctrajectories, velocity_limits, T)
     assert not conforms[0]
+
+
+# test KinematicUtils.specify_quartic_actions for different scenarios
+def test_specifyQuarticActions_differentAggressivenessLevels_validActionsNumberIsCorrect():
+
+    # both velocities and weights are scalars
+    w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
+    ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=25., v_T=0.)
+    assert np.sum(np.isfinite(T)) == 1
+
+    # velocities are scalars
+    w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
+    ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=40., v_T=0.)
+    assert np.sum(np.isfinite(T)) == 1
+
+    # don't limit the acceleration
+    w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
+    ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=40., v_T=0., acc_limits=None)
+    assert np.sum(np.isfinite(T)) == 2
+
+    # don't limit time & acceleration
+    w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS.T
+    ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=40., v_T=0., action_horizon_limit=np.inf, acc_limits=None)
+    assert np.sum(np.isfinite(T)) == 3
+
+    # weights are scalars
+    w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+    ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=np.array([20., 25.]), v_T=np.array([0., 0.]))
+    assert np.sum(np.isfinite(T)) == 1
+
+    # don't limit the time horizon
+    w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+    ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=np.array([20., 25.]), v_T=np.array([0., 0.]),
+                                                   action_horizon_limit=np.inf)
+    assert np.sum(np.isfinite(T)) == 2

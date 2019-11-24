@@ -56,3 +56,8 @@ class Paths:
     def get_scene_dynamic_absolute_path_filename(filename):
         # type: (str) -> str
         return os.path.join(Paths.get_scene_dynamic_path(), filename)
+
+    @staticmethod
+    def get_policy_model():
+        # type: () -> str
+        return os.path.join(os.path.dirname(__file__), 'resources/models/checkpoint.torch')

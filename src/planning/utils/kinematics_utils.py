@@ -259,7 +259,9 @@ class KinematicUtils:
         :param a_0: scalar or array of initial accelerations [m/s^2]
         :param action_horizon_limit: [sec] time limit for an action
         :param acc_limits: [m/sec^2] array of type np.array([min, max]): longitudinal acceleration limits
-        :return: two arrays: actions' distances and times; actions not meeting acceleration limits have infinite distance
+            If acc_limits is None, the longitudinal limits are not tested.
+        :return: two arrays: actions' distances and times; actions not meeting time or acceleration limits have
+            infinite distance and time
         """
         # convert weights, velocities and acceleration to arrays if they are scalars
         if np.isscalar(w_J):
@@ -277,21 +279,31 @@ class KinematicUtils:
 
         # calculate actions' planning time
         T = KinematicUtils.calc_T_s(w_T, w_J, v_0, a_0, v_T, action_horizon_limit)
-        non_zero = ~np.isclose(T, 0)
+        T[~np.isfinite(T)] = np.inf  # convert NAN values to inf
+        valid_non_zero = ~np.isclose(T, 0) & np.isfinite(T)
+        positive_T = T[valid_non_zero]
 
-        # calculate actions' planning distance
+        # calculate actions' planning distance, for zero actions distances is 0
         distances = np.zeros_like(T)
-        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0[non_zero], v_0[non_zero], v_T[non_zero],
-                                                                      T[non_zero])
-        distances[non_zero] = Math.zip_polyval2d(s_profile_coefs, T[non_zero, np.newaxis])[:, 0]
+        # for invalid actions set distances to infinity
+        distances[~np.isfinite(T)] = np.inf
+
+        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0[valid_non_zero], v_0[valid_non_zero],
+                                                                      v_T[valid_non_zero], positive_T)
+        distances[valid_non_zero] = Math.zip_polyval2d(s_profile_coefs, positive_T[:, np.newaxis])[:, 0]
 
         if acc_limits is not None:
             # check acceleration limits
-            in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs, T[non_zero], acc_limits)
+            in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs, positive_T, acc_limits)
 
-            # distances & times for accelerations which are not in limits are defined as infinity
-            distances[non_zero][~in_limits] = np.inf
-            T[non_zero][~in_limits] = np.inf
+            # distances for accelerations which are not in limits get infinity
+            non_zero_distances = distances[valid_non_zero]
+            non_zero_distances[~in_limits] = np.inf
+            distances[valid_non_zero] = non_zero_distances
+
+            # times for accelerations which are not in limits get infinity
+            positive_T[~in_limits] = np.inf
+            T[valid_non_zero] = positive_T
 
         return distances, T
 

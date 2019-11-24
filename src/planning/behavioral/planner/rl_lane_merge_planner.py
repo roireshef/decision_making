@@ -2,6 +2,8 @@ from logging import Logger
 
 import numpy as np
 from itertools import compress
+
+from decision_making.paths import Paths
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, \
     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION, \
@@ -14,7 +16,7 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_STATI
     DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.types import ActionSpecArray, BoolArray
+from decision_making.src.planning.types import ActionSpecArray, BoolArray, FS_1D_LEN
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
@@ -27,9 +29,6 @@ from gym.spaces.box import Box
 # TODO: remove the dependency on planning_research
 from planning_research.src.flow_rl.models.dual_input_conv_model import DualInputConvModel
 
-from pathlib import Path
-CHECKPOINT_PATH = str(Path.home()) + '/temp/checkpoint_6881/checkpoint-6881.torch'
-
 
 class RL_LaneMergePlanner(BasePlanner):
 
@@ -37,8 +36,7 @@ class RL_LaneMergePlanner(BasePlanner):
         super().__init__(logger)
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
-        # TODO: use global constant for the model path
-        self.model = RL_LaneMergePlanner.load_model(CHECKPOINT_PATH)
+        self.model = RL_LaneMergePlanner.load_model(Paths.get_policy_model())
 
     @staticmethod
     def load_model(model_path: str):
@@ -46,7 +44,7 @@ class RL_LaneMergePlanner(BasePlanner):
         model_state_dict = torch.load(model_path)
 
         # TODO: create global constants for observation space initialization
-        ego_box = Box(low=-np.inf, high=np.inf, shape=(1, 3), dtype=np.float32)
+        ego_box = Box(low=-np.inf, high=np.inf, shape=(1, FS_1D_LEN), dtype=np.float32)
         actors_box = Box(low=-np.inf, high=np.inf, shape=(2, 68), dtype=np.float32)
         obs_space = GymTuple((ego_box, actors_box))
         options = {"custom_options": {"hidden_size": 64}}
@@ -59,7 +57,7 @@ class RL_LaneMergePlanner(BasePlanner):
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> ActionSpecArray:
         """
-        Create action space compatible with the current RL checkpoint (currently it consists of 6 static actions
+        Create action space compatible with the current RL checkpoint (for example 6 static actions
         with target velocities 0, 5, 10, 15, 20, 25 and STANDARD aggressiveness level).
         :param lane_merge_state: LaneMergeState that inherits from BehavioralGridState
         :return: array of action specs
@@ -137,7 +135,7 @@ class RL_LaneMergePlanner(BasePlanner):
                                    torch.from_numpy(actors_state[np.newaxis, :]).float())
 
         # call RL inference
-        logits, _, values, _ = self.model._forward({SampleBatch.CUR_OBS: encoded_state}, [])
+        logits, _, values, _ = self.model._forward({SampleBatch.CUR_OBS: encoded_state})
 
         # convert logits to probabilities
         torch_probabilities = torch.nn.functional.softmax(logits, dim=1)
