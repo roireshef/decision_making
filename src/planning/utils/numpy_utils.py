@@ -47,6 +47,18 @@ class NumpyUtils:
         return np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX])
 
     @staticmethod
+    def is_in_limits_2d(arr: np.array, limits: Limits):
+        """
+        tests if values of arr are in the limit [lb, ub]
+        :param arr: any tensor shape whose first axis correspond to the first axis in limits
+        :param limits: Limits object - 2D numpy array of [[lower_bound1, upper_bound1], [lower_bound2, upper_bound2],...]
+        :return: tensor of boolean values of the shape of <arr>
+        """
+        assert len(limits.shape) == 2, "Can't use is_in_limits_2d with <limits> of shape other than 2 dimensions"
+        assert len(arr.shape) > 1, "Can't use is_in_limits_2d with <arr> of shape smaller than 2 dimensions"
+        return np.logical_and(arr >= limits[:, LIMIT_MIN, np.newaxis], arr <= limits[:, LIMIT_MAX, np.newaxis])
+
+    @staticmethod
     def is_almost_in_limits(arr: np.array, limits: Limits):
         """
         tests if values of arr are in the limit [lb, ub] or very close to the limits

@@ -1,16 +1,37 @@
+from typing import Dict
+
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX
+    FS_DX, Limits2D, RangedLimits2D
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 
 
 class KinematicUtils:
+    @staticmethod
+    def get_lateral_acceleration_limit_by_curvature(curvatures: np.ndarray, ranged_limits: RangedLimits2D):
+        """
+        takes a 1d array of curvature values and compares them against the acceleration limits table per curvature,
+        to get the lateral acceleration limit corresponding to those curvature values
+        :param curvatures: numpy array of curvature values (any shape)
+        :param ranged_limits: ranged limits (radius ranges -> acceleration limits at those ranges)
+        :return: 1d array of lateral acceleration limits
+        """
+        min_radius, max_radius, min_accels, max_accels = np.split(ranged_limits, 4, axis=1)
+
+        radii_1d = 1 / curvatures.ravel()
+
+        slopes = (max_accels - min_accels) / (max_radius - min_radius)
+
+        row_idxs = np.argmin(max_radius <= radii_1d, axis=0)
+
+        return np.reshape(min_accels[row_idxs] + slopes[row_idxs] * (radii_1d[:, np.newaxis] - min_radius[row_idxs]),curvatures.shape)
+
     @staticmethod
     def is_maintaining_distance(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):
         """
@@ -39,7 +60,7 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
-                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits) -> np.ndarray:
+                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits2D) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -58,7 +79,7 @@ class KinematicUtils:
         #       desired velocity limit, as long as they slowdown towards the desired velocity.
         conforms_limits = np.all(NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
                                  NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
-                                 NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
+                                 NumpyUtils.is_in_limits_2d(lat_acceleration, lat_acceleration_limits), axis=1)
 
         return conforms_limits
 

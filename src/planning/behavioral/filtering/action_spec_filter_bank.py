@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -50,8 +50,12 @@ class FilterForKinematics(ActionSpecFilter):
         """
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
+        lat_acc_limits_abs = KinematicUtils.get_lateral_acceleration_limit_by_curvature(ctrajectories[..., C_K],
+                                                                                        LAT_ACC_LIMITS_BY_K)
+        lat_acc_limits_two_sided = np.stack((-lat_acc_limits_abs, lat_acc_limits_abs), -1)
+
         return KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * lat_acc_limits_two_sided)
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
@@ -333,29 +337,10 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get velocity limits for all points in the range
         curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[0]:beyond_spec_range[1], 0]), EPS)
 
-        lat_acc_limits = BeyondSpecCurvatureFilter._lat_acc_limit_interpolation_1d(curvatures)
+        lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(curvatures, LAT_ACC_LIMITS_BY_K)
         points_velocity_limits = np.abs(np.sqrt(BP_LAT_ACC_STRICT_COEF * lat_acc_limits / curvatures))
 
         return points_s, points_velocity_limits
-
-    @staticmethod
-    def _lat_acc_limit_interpolation_1d(curvatures: np.ndarray):
-        """
-        takes a 1d array of curvature values and compares them against the acceleration limits table per curvature,
-        to get the lateral acceleration limit corresponding to those curvature values
-        :param curvatures: 1d array of curvature values
-        :return: 1d array of lateral acceleration limits
-        """
-        min_radius, max_radius = LAT_ACC_LIMITS_BY_K[:, 0], LAT_ACC_LIMITS_BY_K[:, 1]
-        min_accels, max_accels = LAT_ACC_LIMITS_BY_K[:, 2], LAT_ACC_LIMITS_BY_K[:, 3]
-
-        radii = 1 / curvatures
-
-        slopes = (max_accels - min_accels) / (max_radius - min_radius)
-
-        row_idxs = np.argmin(max_radius[:, np.newaxis] <= radii, axis=0)
-
-        return min_accels[row_idxs] + slopes[row_idxs] * (radii - min_radius[row_idxs])
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
         """

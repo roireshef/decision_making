@@ -7,12 +7,10 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 EPS = np.finfo(np.float32).eps
 MPH_TO_MPS = 2.23694
 
-
 # Communication Layer
 
 # PubSub message class implementation for all DM messages
 PUBSUB_MSG_IMPL = StrSerializable
-
 
 # Behavioral Planner
 
@@ -38,33 +36,33 @@ PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
 
 # Trajectory cost parameters
-OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_COST = 1.0 * 1e5  # cost around obstacles (sigmoid)
+OBSTACLE_SIGMOID_K_PARAM = 9.0  # sigmoid k (slope) param of objects on road
 
-DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
-LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
+DEVIATION_FROM_LANE_COST = 0.07  # cost of deviation from lane (sigmoid)
+LANE_SIGMOID_K_PARAM = 4  # sigmoid k (slope) param of going out-of-lane-center
 
-DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
-SHOULDER_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of going out-of-shoulder
-SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
+DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2  # cost of deviation to shoulders (sigmoid)
+SHOULDER_SIGMOID_K_PARAM = 8.0  # sigmoid k (slope) param of going out-of-shoulder
+SHOULDER_SIGMOID_OFFSET = 0.2  # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
-DEVIATION_FROM_ROAD_COST = 1.0 * 1e3        # cost of deviation from road (sigmoid)
-ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
+DEVIATION_FROM_ROAD_COST = 1.0 * 1e3  # cost of deviation from road (sigmoid)
+ROAD_SIGMOID_K_PARAM = 20  # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3       # ratio between lateral and longitudinal deviation costs from the goal
-DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation from the goal
-GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
-GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
+DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3  # ratio between lateral and longitudinal deviation costs from the goal
+DEVIATION_FROM_GOAL_COST = 2.5 * 1e2  # cost of longitudinal deviation from the goal
+GOAL_SIGMOID_K_PARAM = 0.5  # sigmoid k (slope) param of going out-of-goal
+GOAL_SIGMOID_OFFSET = 7  # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
-LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being very far from road shoulders (so we don't
-                                            # penalize on that).
+LARGE_DISTANCE_FROM_SHOULDER = 1e8  # a large value indicating being very far from road shoulders (so we don't
+# penalize on that).
 
-LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
-LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 1.0  # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 1.0  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 # original velocities in [mph] are converted into [m/s]
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 75/MPH_TO_MPS # TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 75 / MPH_TO_MPS  # TODO - get this value from the map
 
 # [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
 # we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
@@ -72,8 +70,8 @@ TP_DESIRED_VELOCITY_DEVIATION = 1
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 # original velocities in [mph] are converted into [m/s]
-VELOCITY_LIMITS = np.array([0.0, 80/MPH_TO_MPS])
-VELOCITY_STEP = 5/MPH_TO_MPS
+VELOCITY_LIMITS = np.array([0.0, 80 / MPH_TO_MPS])
+VELOCITY_STEP = 5 / MPH_TO_MPS
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
@@ -94,16 +92,15 @@ LAT_ACC_LIMITS = np.array([-2, 2])
 
 # Latitudinal Acceleration Limits [m/sec^2] by curvature.  Each tuple consists of the following
 # (radius range start, radius range end, radius start limit, radius end limit).
-LAT_ACC_LIMITS_BY_K = [(0, 6, 3, 3),
-                       (6, 25, 3, 2.8),
-                       (25, 50, 2.8, 2.55),
-                       (50, 75, 2.55, 2.4),
-                       (75, 100, 2.4, 2.32),
-                       (100, 150, 2.32, 2.2),
-                       (150, 200, 2.2, 2.1),
-                       (200, 275, 2.1, 2),
-                       (275, np.inf, 2, 2)]
-
+LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
+                                (6, 25, 3, 2.8),
+                                (25, 50, 2.8, 2.55),
+                                (50, 75, 2.55, 2.4),
+                                (75, 100, 2.4, 2.32),
+                                (100, 150, 2.32, 2.2),
+                                (150, 200, 2.2, 2.1),
+                                (200, 275, 2.1, 2),
+                                (275, np.inf, 2, 2)])
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 0.9
@@ -183,13 +180,13 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as if the ego vehicle is
 # currently in the desired location and not in its actual location.
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
 
 # limits for allowing tracking mode. During tracking we maintain a fixed speed trajectory with the speed the target.
 # May want to consider replacing with ego speed, so that speed is constant
-TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1       # in [m]
-TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1       # in [m/s]
-TRACKING_ACCELERATION_DISPOSITION_LIMIT = 0.05   # in [m/s^2]
+TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1  # in [m]
+TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1  # in [m/s]
+TRACKING_ACCELERATION_DISPOSITION_LIMIT = 0.05  # in [m/s^2]
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
@@ -223,7 +220,6 @@ LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
 LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
 # [m/sec] velocity resolution in action space
 LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
-
 
 # Werling Planner #
 
@@ -274,7 +270,6 @@ DEFAULT_CURVATURE = 0.0
 FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN = 0.15
 FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 
-
 # Route Planner #
 LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD = 0.7
 
@@ -296,7 +291,6 @@ MIN_COST = 0.0
 # have an end or occupancy cost equal to 0.99, and it may be desirable to not consider it as a valid lane. This is
 # different from the actual maximum cost (= MAX_COST).
 SATURATED_COST = 1.0
-
 
 # State #
 
@@ -322,7 +316,6 @@ FILTER_OFF_ROAD_OBJECTS = False
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.3
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
 ROUTE_PLANNING_MODULE_PERIOD = 1
-
 
 #### NAMES OF MODULES FOR LOGGING ####
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
@@ -358,7 +351,6 @@ LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from d
 LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from actual location (actual frenet: %s)"
 LOG_MSG_BEHAVIORAL_GRID = "BehavioralGrid"
 LOG_MSG_PROFILER_PREFIX = "DMProfiler Stats: "
-
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9

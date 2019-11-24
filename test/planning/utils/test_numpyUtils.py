@@ -43,3 +43,34 @@ def test_getIndex_bonBoundaries_returnsCorrectIndices():
 
     for v, ind in zip(values, expected_indices):
         assert ind == grid.get_index(v)
+
+
+def test_isInLimits2D_twoOnOneDimensionalArray_returnsExpecetedValuesWell():
+    limits = np.array([[0, 2], [5, 6]])
+    arr = np.array([[[ 1,  2,  3],
+        [ 4,  5,  6]],
+       [[10, 20, 30],
+        [40, 50, 60]]])
+
+    expected = np.array([[[ True,  True, False],
+        [False,  True,  True]],
+       [[False, False, False],
+        [False, False, False]]])
+    np.testing.assert_array_equal(NumpyUtils.is_in_limits_2d(arr, limits), expected)
+
+
+def test_isInLimits2D_twoOnThreeDimensionalArray_returnsExpecetedValuesWell():
+    limits = np.array([[0, 2], [5, 6]])
+    arr = np.array([[1, 2, 3], [4, 5, 6]])
+
+    expected = np.array([[ True,  True, False], [False,  True,  True]])
+    np.testing.assert_array_equal(NumpyUtils.is_in_limits_2d(arr, limits), expected)
+
+
+def test_isInLimits2D_twoOnOneDimensionalArray_returnsExpecetedValuesWell():
+    limits = np.array([[0, 2], [5, 6]])
+    arr = np.array([[1], [8]])
+
+    expected = np.array([[True], [False]])
+    np.testing.assert_array_equal(NumpyUtils.is_in_limits_2d(arr, limits), expected)
+
