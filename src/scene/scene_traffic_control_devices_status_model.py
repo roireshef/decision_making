@@ -10,6 +10,7 @@ class SceneTrafficControlDevicesStatusModel:
      A <<Singleton>>
     """
     __instance = None
+    traffic_control_devices_status: Dict[int, DynamicTrafficControlDeviceStatus]
 
     def __init__(self) -> None:
         self._traffic_control_devices_status = None
@@ -23,7 +24,7 @@ class SceneTrafficControlDevicesStatusModel:
             cls.__instance = SceneTrafficControlDevicesStatusModel()
         return cls.__instance
 
-    def set_traffic_control_devices_status(self, traffic_control_devices_status: Dict[DynamicTrafficControlDeviceStatus]) -> None:
+    def set_traffic_control_devices_status(self, traffic_control_devices_status: Dict[int, DynamicTrafficControlDeviceStatus]) -> None:
         """
         Add a SceneTrafficControlDevicesStatus to the model. Currently this assumes there is only
         a single message
@@ -32,7 +33,7 @@ class SceneTrafficControlDevicesStatusModel:
         """
         self._traffic_control_devices_status = traffic_control_devices_status
 
-    def get_traffic_control_devices_status(self) -> Dict[DynamicTrafficControlDeviceStatus]:
+    def get_traffic_control_devices_status(self) -> Dict[int, DynamicTrafficControlDeviceStatus]:
         """
         Gets the last message in list
         :return:  The SceneTrafficControlDevicesStatus

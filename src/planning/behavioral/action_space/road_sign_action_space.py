@@ -3,8 +3,7 @@ from typing import List, Type
 
 import numpy as np
 from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR, \
-    CLOSE_ENOUGH
-from decision_making.src.messages.scene_static_enums import RoadObjectType
+    DIM_MARGIN_TO_STOP_BAR
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
@@ -64,14 +63,17 @@ class RoadSignActionSpace(TargetActionSpace):
         :return: distance to closest stop bar
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
-        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet)  # ensures the returned value is sorted by distance
+        ego_location = behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
+        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location + DIM_MARGIN_TO_STOP_BAR)
         static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
         # check for active stop bar from the closest to the farthest
         for stop_bar in stop_bars:
-            active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
-            road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
-            should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
-            if should_stop:
-                return stop_bar.s - behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
+            # If TCB is in front of the vehicle
+            if stop_bar.s > ego_location:
+                active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
+                road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
+                should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
+                if should_stop:
+                    return stop_bar.s - ego_location
         return float("inf")

@@ -3,9 +3,8 @@ from unittest.mock import patch
 import pytest
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.messages.scene_static_message import SceneStatic, StaticTrafficControlDevice, \
-    RoadObjectType, TrafficControlBar
-from decision_making.src.messages.scene_static_enums import NominalPathPoint, StaticTrafficControlDeviceType
+from decision_making.src.messages.scene_static_message import SceneStatic, TrafficControlBar
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.exceptions import UpstreamLaneNotFound
@@ -24,7 +23,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 MAP_SPLIT = "PG_split.bin"
 
 
-def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split: SceneStatic,
+def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split,
                                                           behavioral_grid_state_with_objects_for_filtering_too_aggressive):
 
     gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
@@ -34,15 +33,17 @@ def test_getStaticTrafficFlowControlsS_findsSingleStopIdx(scene_static_pg_split:
     lane_id, segment_states = gff.convert_to_segment_states(gff_state)
     segment_s = segment_states[0][0]
 
+    for lane_segment in scene_static_pg_split.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     stop_bar1 = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=segment_s, e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
-    stop_bar2 = TrafficControlBar(e_i_traffic_control_bar_id=2, e_l_station=segment_s, e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
-    stop_bar3 = TrafficControlBar(e_i_traffic_control_bar_id=3, e_l_station=segment_s, e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
+    stop_bar2 = TrafficControlBar(e_i_traffic_control_bar_id=2, e_l_station=segment_s-1, e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
+    stop_bar3 = TrafficControlBar(e_i_traffic_control_bar_id=3, e_l_station=segment_s-2, e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
     MapUtils.get_lane(lane_id).as_traffic_control_bar.append(stop_bar1)
     MapUtils.get_lane(lane_id).as_traffic_control_bar.append(stop_bar2)
     MapUtils.get_lane(lane_id).as_traffic_control_bar.append(stop_bar3)
     gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
-    actual = MapUtils.get_traffic_control_bars_s(gff)
+    actual = MapUtils.get_traffic_control_bars_s(gff, 0)
     assert len(actual) == 3
     assert actual[0].s == 10.0
     assert actual[1].s == 11.0

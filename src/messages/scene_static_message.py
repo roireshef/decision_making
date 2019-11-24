@@ -3,7 +3,6 @@ import numpy as np
 from interface.Rte_Types.python.sub_structures.TsSYS_AdjacentLane import TsSYSAdjacentLane
 from interface.Rte_Types.python.sub_structures.TsSYS_BoundaryPoint import TsSYSBoundaryPoint
 from interface.Rte_Types.python.sub_structures.TsSYS_StaticTrafficControlDevice import TsSYSStaticTrafficControlDevice
-from interface.Rte_Types.python.sub_structures.TsSYS_DynamicStatus import TsSYSDynamicStatus
 from interface.Rte_Types.python.sub_structures.TsSYS_DynamicTrafficControlDevice import TsSYSDynamicTrafficControlDevice
 from interface.Rte_Types.python.sub_structures.TsSYS_LaneSegmentConnectivity import TsSYSLaneSegmentConnectivity
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneLaneSegmentBase import TsSYSSceneLaneSegmentBase
@@ -15,11 +14,11 @@ from interface.Rte_Types.python.sub_structures.TsSYS_SceneStatic import TsSYSSce
 from interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import TsSYSDataSceneStatic
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegment import TsSYSSceneRoadSegment
 from interface.Rte_Types.python.sub_structures.TsSYS_LaneOverlap import TsSYSLaneOverlap
+from interface.Rte_Types.python.sub_structures.TsSYS_TrafficControlBar import TsSYSTrafficControlBar
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header 
+from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 from decision_making.src.messages.scene_static_enums import MapLaneType, MapRoadSegmentType, MovingDirection, \
-    ManeuverType, MapLaneMarkerType, RoadObjectType, TrafficSignalState, LaneOverlapType, \
-    StaticTrafficControlDeviceType, DynamicTrafficControlDeviceType
+    ManeuverType, MapLaneMarkerType, LaneOverlapType, StaticTrafficControlDeviceType, DynamicTrafficControlDeviceType
 
 MAX_LANE_ATTRIBUTES = 8
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
@@ -209,8 +208,8 @@ class TrafficControlBar(PUBSUB_MSG_IMPL):
         self.e_i_static_traffic_control_device_id = e_i_static_traffic_control_device_id
         self.e_i_dynamic_traffic_control_device_id = e_i_dynamic_traffic_control_device_id
 
-    def serialize(self) -> TsSYS_TrafficControlBar:
-        pubsub_msg = TsSYS_TrafficControlBar()
+    def serialize(self) -> TsSYSTrafficControlBar:
+        pubsub_msg = TsSYSTrafficControlBar()
 
         pubsub_msg.e_i_traffic_control_bar_id = self.e_i_traffic_control_bar_id
         pubsub_msg.e_l_station = self.e_l_station
@@ -219,12 +218,12 @@ class TrafficControlBar(PUBSUB_MSG_IMPL):
             pubsub_msg.e_i_static_traffic_control_device_id[i] = self.e_i_static_traffic_control_device_id[i]
         pubsub_msg.e_Cnt_dynamic_traffic_control_device_count = len(self.e_i_dynamic_traffic_control_device_id)
         for i in range(pubsub_msg.e_Cnt_dynamic_traffic_control_device_count):
-            pubsub_msg.e_i_dynamic_static_control_device_id[i] = self.e_i_dynamic_traffic_control_device_id[i]
+            pubsub_msg.e_i_dynamic_traffic_control_device_id[i] = self.e_i_dynamic_traffic_control_device_id[i]
 
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYS_TrafficControlBar):
+    def deserialize(cls, pubsubMsg: TsSYSTrafficControlBar):
         return cls(pubsubMsg.e_i_traffic_control_bar_id, pubsubMsg.e_l_station,
                    pubsubMsg.e_i_static_traffic_control_device_id, pubsubMsg.e_i_dynamic_traffic_control_device_id)
 
@@ -241,10 +240,12 @@ class StaticTrafficControlDevice(PUBSUB_MSG_IMPL):
                  e_i_controlled_lane_segment_id: List[int], e_l_station: float, e_l_lateral_offset: float):
         """
         Static traffic-flow-control device, eg. Stop Signs (not relevant for M0)
-        :param e_e_road_object_type:
+        :param object_id:
+        :param e_e_traffic_control_device_type:
+        :param e_Pct_confidence:
+        :param e_i_controlled_lane_segment_id
         :param e_l_station:
         :param e_l_lateral_offset:
-        :param e_Pct_confidence:
         """
         self.object_id = object_id
         self.e_e_traffic_control_device_type = e_e_traffic_control_device_type
@@ -275,32 +276,6 @@ class StaticTrafficControlDevice(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_l_lateral_offset)
 
 
-class DynamicStatus(PUBSUB_MSG_IMPL):
-    e_e_status = TrafficSignalState
-    e_Pct_confidence = float
-
-    def __init__(self, e_e_status: TrafficSignalState, e_Pct_confidence: float):
-        """
-        Status of Dynamic traffic-flow-control device, eg. red-yellow-green (not relevant for M0)
-        :param e_e_status:
-        :param e_Pct_confidence:
-        """
-        self.e_e_status = e_e_status
-        self.e_Pct_confidence = e_Pct_confidence
-
-    def serialize(self) -> TsSYSDynamicStatus:
-        pubsub_msg = TsSYSDynamicStatus()
-
-        pubsub_msg.e_e_status = self.e_e_status.value
-        pubsub_msg.e_Pct_confidence = self.e_Pct_confidence
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSDynamicStatus):
-        return cls(TrafficSignalState(pubsubMsg.e_e_status), pubsubMsg.e_Pct_confidence)
-
-
 class DynamicTrafficControlDevice(PUBSUB_MSG_IMPL):
     object_id = int
     e_e_traffic_control_device_type = DynamicTrafficControlDeviceType
@@ -308,7 +283,7 @@ class DynamicTrafficControlDevice(PUBSUB_MSG_IMPL):
     e_l_station = float
     e_l_lateral_offset = float
 
-    def __init__(self, object_id: int, e_e_traffic_control_device_type: RoadObjectType,
+    def __init__(self, object_id: int, e_e_traffic_control_device_type: DynamicTrafficControlDeviceType,
                  e_i_controlled_lane_segment_id: List[int], e_l_station: float, e_l_lateral_offset: float):
         """
         Dynamic traffic-flow-control device, e.g. Traffic lights (not relevant for M0)
@@ -427,7 +402,7 @@ class SceneStaticGeometry(PUBSUB_MSG_IMPL):
                  a_nominal_path_points: np.ndarray):
         """
         Scene provider's static scene information
-        :param e_b_Valid:
+        :param a_nominal_path_points:
         :param e_Cnt_num_lane_segments: Total number of lane-segments(geometry) in the static scene
         :param as_scene_lane_segments: All lane-segments(geometry) in the static scene
         """
@@ -699,11 +674,11 @@ class SceneStaticBase(PUBSUB_MSG_IMPL):
             pubsub_msg.as_scene_road_segment[i] = self.as_scene_road_segment[i].serialize()
 
         pubsub_msg.e_Cnt_static_traffic_control_device_count = len(self.as_static_traffic_control_device)
-        for i in range(len(pubsub_msg.as_static_traffic_control_device)):
+        for i in range(len(self.as_static_traffic_control_device)):
             pubsub_msg.as_static_traffic_control_device[i] = self.as_static_traffic_control_device[i].serialize()
 
         pubsub_msg.e_Cnt_dynamic_traffic_control_device_count = len(self.as_dynamic_traffic_control_device)
-        for i in range(len(pubsub_msg.as_dynamic_traffic_control_device)):
+        for i in range(len(self.as_dynamic_traffic_control_device)):
             pubsub_msg.as_dynamic_traffic_control_device[i] = self.as_dynamic_traffic_control_device[i].serialize()
 
         return pubsub_msg

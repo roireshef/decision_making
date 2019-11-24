@@ -303,7 +303,7 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
     e_Cnt_num_objects = int
     as_object_localization = List[ObjectLocalization]
     s_host_localization = HostLocalization
-    as_dynamic_traffic_control_device_status = Dict[DynamicTrafficControlDeviceStatus]
+    as_dynamic_traffic_control_device_status = Dict[int, DynamicTrafficControlDeviceStatus]
 
     def __init__(self, e_b_Valid, s_RecvTimestamp, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization,
                  s_host_localization):

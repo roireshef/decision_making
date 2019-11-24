@@ -9,10 +9,9 @@ from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OC
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType, TrafficSignalState, \
     StaticTrafficControlDeviceType, DynamicTrafficControlDeviceType
-from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
     SceneLaneSegmentBase, SceneRoadSegment
-from decision_making.src.messages.scene_tcd_message import DynamicTrafficControlDeviceStatus
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RoadSignRestriction
 from decision_making.src.planning.types import CartesianPoint2D, FS_SX, TrafficControlBarInfo, \
     DynamicTrafficControlDeviceInfo, StaticTrafficControlDeviceInfo
@@ -487,11 +486,13 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
-    def get_traffic_control_bars_s(lane_frenet: GeneralizedFrenetSerretFrame) -> List[TrafficControlBarInfo]:
+    def get_traffic_control_bars_s(lane_frenet: GeneralizedFrenetSerretFrame, start_offset: float) -> \
+            List[TrafficControlBarInfo]:
         """
         Returns a list of the TrafficControlBars and their locations (s coordinates) on the GFF
         The list is ordered from closest traffic flow control to farthest.
         :param lane_frenet: The GFF on which to retrieve the TCBs.
+        :param start_offset: An offset relative to GFF start from which TCBs are returned
         :return: List of TrafficControlBars and their distances on the the GFF, ordered from closest to farthest.
         """
         lane_ids = []
@@ -500,6 +501,7 @@ class MapUtils:
         tcb_ids = []
         tcb_static_tcd_ids = []
         tcb_dynamic_tcd_ids = []
+        offset = max(start_offset, 0)
         for lane_id in lane_frenet.segment_ids:
             lane_segment = MapUtils.get_lane(lane_id)
             for traffic_control_bar in lane_segment.as_traffic_control_bar:
@@ -513,7 +515,8 @@ class MapUtils:
         tcb_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
         tcb_info_on_gff = [TrafficControlBarInfo(id=tcb_id, s=s, static_TCD_ids=static_tcd_ids, dynamic_TCD_ids=dynamic_tcd_ids)
                            for tcb_id, s, static_tcd_ids, dynamic_tcd_ids in
-                           zip(tcb_ids, tcb_s_on_gff, tcb_static_tcd_ids, tcb_dynamic_tcd_ids)]
+                           zip(tcb_ids, tcb_s_on_gff, tcb_static_tcd_ids, tcb_dynamic_tcd_ids)
+                           if offset < s < lane_frenet.s_max]  # ensures we only return control bars that are within the GFF
         tcb_info_on_gff.sort(key=lambda x: x.s)  # sort by distance after the conversion to real distance
 
         return tcb_info_on_gff
@@ -540,10 +543,10 @@ class MapUtils:
         dynamic_tcds_info = {dynamic_tcd.object_id:
                              DynamicTrafficControlDeviceInfo(
                                  id=dynamic_tcd.object_id, sign_type=dynamic_tcd.e_e_traffic_control_device_type,
-                                 status_confidence=[(status, status_confidence) for status, status_confidence in
-                                                    zip(tcds_status[dynamic_tcd.id].a_e_status,
-                                                        tcds_status[dynamic_tcd.id].a_Pct_status_confidence)]
-                                 if tcds_status.has_key(dynamic_tcd.id) else [])
+                                 status=[status for status in tcds_status[dynamic_tcd.id].a_e_status]
+                                 if dynamic_tcd.id in tcds_status else [],
+                                 confidence=[confidence for confidence in tcds_status[dynamic_tcd.id].confidence]
+                                 if dynamic_tcd.id in tcds_status else [])
                              for dynamic_tcd in scene_static.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device}
 
         return static_tcds_info, dynamic_tcds_info
@@ -581,7 +584,7 @@ class MapUtils:
                                                StaticTrafficControlDeviceType.MOVABLE_BARRIER]:
                 restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
         for active_dynamic_tcd in active_dynamic_tcds:
-            status = MapUtils._get_confident_status(active_dynamic_tcd.status_confidence)
+            status = MapUtils._get_confident_status(active_dynamic_tcd.status, active_dynamic_tcd.confidence)
             if active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
                 if status != TrafficSignalState.TrafficSignalState_GREEN:
                     restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
@@ -623,22 +626,23 @@ class MapUtils:
             return True
 
     @staticmethod
-    def _get_confident_status(status_confidence: List[(TrafficSignalState, float)]) -> TrafficSignalState:
+    def _get_confident_status(status: List[TrafficSignalState], confidence: List[float]) -> TrafficSignalState:
         """
         Given a list of statuses and their confidence for a dynamic TCD, decide which status to use.
         Currently uses the status with the highest probability
-        :param status_confidence: List of tuples (status, confidence) of a dynamic TCD
+        :param status: List of statuses of a dynamic TCD
+        :param confidence: List of confidence per status of a dynamic TCD
         :return: A single status to be used as a probability 1 status
         """
         # TODO handle case where argmax is not good enough, and need to choose the worst case that is confident enough
-        confidence = np.array([confidence for _, confidence in status_confidence])
-        status = np.array([status for status, _ in status_confidence])
+        confidence = np.array(confidence)
+        status = np.array(status)
         if len(status) > 0:
             highest_confidence_idx = np.argmax(confidence)
             return status[highest_confidence_idx]
         else:
             # TODO log warning
-            return TrafficSignalState.RED # if status not found, be strict
+            return TrafficSignalState.RED  # if status not found, be strict
 
     @staticmethod
     def get_merge_lane_id(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan,

@@ -128,7 +128,8 @@ class StaticTrafficControlDeviceInfo(NamedTuple):
 class DynamicTrafficControlDeviceInfo(NamedTuple):
     id: int  # object_id of sign
     sign_type: RoadObjectType  # type of road sign
-    status_confidence: List[(TrafficSignalState, float)]  # status of object
+    status: List[TrafficSignalState]  # status of object
+    confidence: List[float]  # confidence in status
 
 
 class TrafficControlBarInfo(NamedTuple):

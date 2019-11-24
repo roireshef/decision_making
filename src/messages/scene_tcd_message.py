@@ -31,7 +31,7 @@ class DynamicTrafficControlDeviceStatus(PUBSUB_MSG_IMPL):
         pubsub_msg.e_i_dynamic_traffic_control_device_id = self.e_i_dynamic_traffic_control_device_id
         pubsub_msg.e_Cnt_status_count = len(self.a_e_status)
         for i in range(pubsub_msg.e_Cnt_status_count):
-            pubsub_msg.a_e_status[i] = self.a_e_status[i].serialize()
+            pubsub_msg.a_e_status[i] = self.a_e_status[i].value
         for i in range(pubsub_msg.e_Cnt_status_count):
             pubsub_msg.a_Pct_status_confidence[i] = self.a_Pct_status_confidence[i]
 
@@ -43,7 +43,7 @@ class DynamicTrafficControlDeviceStatus(PUBSUB_MSG_IMPL):
 
         a_e_status = list()
         for i in range(pubsubMsg.e_Cnt_status_count):
-            a_e_status.append(TrafficSignalState.deserialize(pubsubMsg.a_e_status[i]))
+            a_e_status.append(TrafficSignalState(pubsubMsg.a_e_status[i]))  # convert uint8 to TrafficSignalState
 
         a_Pct_status_confidence = list()
         for i in range(pubsubMsg.e_Cnt_status_count):
@@ -99,7 +99,7 @@ class DataSceneTrafficControlDevices(PUBSUB_MSG_IMPL):
 
 class SceneTrafficControlDevices(PUBSUB_MSG_IMPL):
     """
-    PubSub topic=  SCENE_TRAFFIC_CONTROL_DEVICES TODO 1. subscribe to the topic
+    PubSub topic=  SCENE_TRAFFIC_CONTROL_DEVICES
     Contains information of Traffic Control Devices controlling Traffic Control Bars ( ??? Hz)
     """
     s_Header = Header

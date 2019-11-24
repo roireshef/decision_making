@@ -43,7 +43,7 @@ class FilterOvertakeActions(RecipeFilter):
 class FilterActionsTowardsCellsWithoutStopSignsOrStopBars(RecipeFilter):
     def filter(self, recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [len(MapUtils.get_traffic_control_bars_s(
-            behavioral_state.extended_lane_frames[recipe.relative_lane])) > 0
+            lane_frenet=behavioral_state.extended_lane_frames[recipe.relative_lane], start_offset=0)) > 0
                 if ((recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames))
                 else False
                 for recipe in recipes]
