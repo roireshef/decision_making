@@ -71,7 +71,7 @@ class RL_LaneMergePlanner(BasePlanner):
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL]
 
         # specify static actions for all target velocities (without time limit and without acceleration limits)
-        ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0, time_limit=np.inf, acc_limits=None)
+        ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0, action_horizon_limit=np.inf, acc_limits=None)
 
         # create action specs based on the above output
         aggr_level = AggressivenessLevel(LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL)

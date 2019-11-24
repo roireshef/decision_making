@@ -246,8 +246,8 @@ class KinematicUtils:
 
     @staticmethod
     def specify_quartic_actions(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array, a_0: np.array = None,
-                                time_limit: float = BP_ACTION_T_LIMITS[1], acc_limits: np.array = LON_ACC_LIMITS) -> \
-            [np.array, np.array]:
+                                action_horizon_limit: float = BP_ACTION_T_LIMITS[1],
+                                acc_limits: np.array = LON_ACC_LIMITS) -> [np.array, np.array]:
         """
         Calculate the distances and times for the given actions' weights and scenario params.
         Actions not meeting the acceleration limits have infinite distance and time.
@@ -257,20 +257,26 @@ class KinematicUtils:
         :param v_0: scalar or array of initial velocities [m/s]
         :param v_T: scalar or array of desired final velocities [m/s]
         :param a_0: scalar or array of initial accelerations [m/s^2]
-        :param time_limit: [sec] time limit for an action
+        :param action_horizon_limit: [sec] time limit for an action
         :param acc_limits: [m/sec^2] array of type np.array([min, max]): longitudinal acceleration limits
         :return: two arrays: actions' distances and times; actions not meeting acceleration limits have infinite distance
         """
         # convert weights, velocities and acceleration to arrays if they are scalars
-        w_J = w_J if not np.isscalar(w_J) else np.array([w_J]) if np.isscalar(v_T) else np.full(v_T.shape, w_J)
-        w_T = w_T if not np.isscalar(w_T) else np.array([w_T]) if np.isscalar(v_T) else np.full(v_T.shape, w_T)
+        if np.isscalar(w_J):
+            if np.isscalar(v_T):
+                w_J, w_T = np.array([w_J]), np.array([w_T])
+            else:
+                w_J, w_T = np.full(v_T.shape, w_J), np.full(v_T.shape, w_T)
 
         v_0 = np.full(w_J.shape, v_0) if np.isscalar(v_0) else v_0
         v_T = np.full(w_J.shape, v_T) if np.isscalar(v_T) else v_T
-        a_0 = np.zeros_like(v_0) if a_0 is None else np.full(w_J.shape, a_0) if np.isscalar(a_0) else a_0
+        if a_0 is None:
+            a_0 = np.zeros_like(w_J)
+        elif np.isscalar(a_0):
+            a_0 = np.full(w_J.shape, a_0)
 
         # calculate actions' planning time
-        T = KinematicUtils.calc_T_s(w_T, w_J, v_0, a_0, v_T, time_limit)
+        T = KinematicUtils.calc_T_s(w_T, w_J, v_0, a_0, v_T, action_horizon_limit)
         non_zero = ~np.isclose(T, 0)
 
         # calculate actions' planning distance
@@ -298,6 +304,7 @@ class BrakingDistances:
     def create_braking_distances(aggressiveness_level: AggressivenessLevel) -> np.array:
         """
         Creates distances of all follow_lane with the given aggressiveness_level.
+        Actions violating acceleration limits get infinite distance.
         :return: the actions' distances
         """
         # create v0 & vT arrays for all braking actions
@@ -306,5 +313,5 @@ class BrakingDistances:
         # calculate distances for braking actions
         w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness_level.value]
         distances = np.zeros_like(v0)
-        distances[v0 > vT], _ = KinematicUtils.specify_quartic_actions(w_T, w_J, v0[v0 > vT], vT[v0 > vT], time_limit=np.inf)
+        distances[v0 > vT], _ = KinematicUtils.specify_quartic_actions(w_T, w_J, v0[v0 > vT], vT[v0 > vT], action_horizon_limit=np.inf)
         return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
