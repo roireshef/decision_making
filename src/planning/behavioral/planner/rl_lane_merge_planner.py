@@ -84,35 +84,7 @@ class RL_LaneMergePlanner(BasePlanner):
         :param action_specs: array of ActionSpec (part of actions may be None)
         :return: array of ActionSpec of the original size, with None for filtered actions
         """
-        # TODO: remove the next line when RL will be trained with filters
         return action_specs  # DON'T filter the actions
-
-        # filter actions by the regular action_spec filters of the single_lane_planner
-        mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state)
-
-        # filter out actions that don't enable to brake before the red line
-        valid_action_specs = np.array(list(compress(action_specs, mask)))
-        mask[mask] = self._red_line_filter(lane_merge_state, valid_action_specs)
-
-        filtered_action_specs = np.copy(action_specs)
-        filtered_action_specs[~mask] = None
-        return filtered_action_specs
-
-    def _red_line_filter(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray) -> BoolArray:
-        """
-        filter out actions that don't enable to brake before the red line
-        :param lane_merge_state: lane merge state
-        :param action_specs: array of ActionSpec
-        :return: boolean array of the original size, with False for filtered actions
-        """
-        if len(action_specs) == 0:
-            return np.array([])
-        extended_specs = ConstraintSpecFilter.extend_action_specs(action_specs, min_action_time=1.)
-        specs_vs = np.array([[spec.v, spec.s] for spec in extended_specs])
-        spec_v, spec_s = specs_vs.T
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL]
-        braking_distances, _ = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=spec_v, v_T=np.zeros_like(spec_v))
-        return np.array(spec_s + braking_distances < lane_merge_state.red_line_s_on_ego_gff)
 
     def _evaluate_actions(self, lane_merge_state: LaneMergeState, route_plan: RoutePlan,
                           action_specs: ActionSpecArray) -> np.ndarray:
