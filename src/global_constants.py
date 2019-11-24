@@ -175,6 +175,12 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference threshold
 
+# limits for allowing tracking mode. During tracking we maintain a fixed speed trajectory with the speed the target.
+# May want to consider replacing with ego speed, so that speed is constant
+TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1       # in [m]
+TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1       # in [m/s]
+TRACKING_ACCELERATION_DISPOSITION_LIMIT = 0.05   # in [m/s^2]
+
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
@@ -196,6 +202,17 @@ ROAD_SHOULDERS_WIDTH = 1.5
 # error). This factor is the maximum mean square error (per point) allowed. For example, 0.0001 mean that the
 # max. standard deviation is 1 [cm] so the max. squared standard deviation is 10e-4.
 SPLINE_POINT_DEVIATION = 0.0001
+
+# [m] occupancy grid resolution for encoding lane merge state
+LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION = 4.5
+# [m] the horizon from ego in each side of the main road in occupancy grid of lane merge state
+LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH = 150
+# [m] maximum forward horizon from a lane merge on the ego road for engaging the lane-merge policy
+LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
+# [m/sec] maximal velocity of actors and in action space
+LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
+# [m/sec] velocity resolution in action space
+LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
 
 
 # Werling Planner #

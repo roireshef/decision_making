@@ -1,9 +1,9 @@
 from logging import Logger
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.exceptions import raises, RoadNotFound, NavigationPlanTooShort, \
+from decision_making.src.exceptions import raises, RoadNotFound, \
     UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -306,8 +306,8 @@ class MapUtils:
         return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
-    @raises(RoadNotFound, NavigationPlanTooShort, LaneNotFound)
-    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan) \
+    @raises(RoadNotFound, LaneNotFound)
+    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan, logger: Logger) \
             -> Tuple[List[FrenetSubSegment], float]:
         """
         Advances downstream according to plan as long as there is a single valid (according to navigation plan)
@@ -317,6 +317,7 @@ class MapUtils:
         :param initial_s: initial longitude along <initial_lane_id>
         :param lookahead_distance: the desired distance of lookahead in [m].
         :param route_plan: the relevant navigation plan to iterate over its road IDs.
+        :param logger: Logger object to log warning messages
         :return: Tuple(List of FrenetSubSegment traversed downstream, accumulated traveled distance on that sequence)
         """
 
@@ -352,11 +353,9 @@ class MapUtils:
             next_road_idx_on_plan = current_road_idx_on_plan + 1
 
             if next_road_idx_on_plan >= route_plan.s_Data.e_Cnt_num_road_segments:
-                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
-                                             "current_segment_end_s=%f lookahead_distance=%f" %
-                                             (route_plan.s_Data.a_i_road_segment_ids,
-                                              lookahead_distance - cumulative_distance,
-                                              current_segment_end_s, lookahead_distance))
+                logger.debug(f"NavigationPlanTooShort: Cannot progress further on plan {route_plan.s_Data.a_i_road_segment_ids}"
+                             f" (leftover: {lookahead_distance - cumulative_distance} [m]); current_segment_end_s={current_segment_end_s}"
+                             f" lookahead_distance={lookahead_distance}")
 
             valid_downstream_lanes = MapUtils._get_valid_downstream_lanes(current_lane_id, route_plan)
             num_valid_downstream_lanes = len(valid_downstream_lanes.keys())
@@ -539,3 +538,43 @@ class MapUtils:
                                  zip(road_sign_types, road_sign_s_on_gff)]
         road_sign_info_on_gff.sort(key=lambda x: x.s)  # sort by distance after the conversion to real distance
         return road_sign_info_on_gff
+
+    @staticmethod
+    def get_merge_lane_id(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan,
+                          logger: Logger) -> Optional[int]:
+        """
+        Given GFF for the current lane, find the closest merge connection into main road.
+        Red line is s coordinate, from which host starts to interference laterally with the main road actors.
+        We assume that there is a host's road segment starting from the red line and ending at the merge point.
+        If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
+        :param initial_lane_id: current lane id of ego
+        :param initial_s: s of ego on initial_lane_id
+        :param lookahead_distance: maximal lookahead for the lane merge from ego location
+        :param route_plan: the relevant navigation plan to iterate over its road IDs
+        :param logger:
+        :return: lane_id of the segment between the red line and the merge point itself
+        """
+
+        lane_subsegments, _ = MapUtils._advance_on_plan(initial_lane_id, initial_s, lookahead_distance, route_plan, logger)
+
+        # Find the merge point ahead
+        cumulative_length = 0
+        for segment in lane_subsegments:
+            cumulative_length += segment.e_i_SEnd - segment.e_i_SStart
+            if cumulative_length > lookahead_distance:
+                break
+            current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
+            downstream_connectivity = current_lane_segment.as_downstream_lanes
+
+            # Red line is s coordinate, from which host starts to interference laterally with the main road actors.
+            # We assume that there is a host's road segment starting from the red line and ending at the merge point.
+            # If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
+            lane_merge_ahead = len(downstream_connectivity) == 1 and \
+                               (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
+                                downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION)
+            # if segment.e_i_SegmentID == initial_lane_id then host already passed the red line and the merge completed
+            if lane_merge_ahead and segment.e_i_SegmentID != initial_lane_id:
+                    return segment.e_i_SegmentID
+
+        # no merge connection was found
+        return None

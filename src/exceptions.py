@@ -97,10 +97,6 @@ class UpstreamLaneNotFound(MappingException):
     pass
 
 
-class NavigationPlanTooShort(MappingException):
-    pass
-
-
 class RoadNotFound(MappingException):
     pass
 
@@ -168,7 +164,7 @@ class RoadSegmentLaneSegmentMismatch(RoutePlanningException):
     pass
 
 
-class MissingInputInformation(RoutePlanningException):
+class MissingMapInformation(RoutePlanningException):
     pass
 
 
