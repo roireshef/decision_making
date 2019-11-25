@@ -72,7 +72,7 @@ TP_DESIRED_VELOCITY_DEVIATION = 1
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 # original velocities in [mph] are converted into [m/s]
-VELOCITY_LIMITS = np.array([0.0, 80/MPH_TO_MPS])
+VELOCITY_LIMITS = np.array([0.0, 90/MPH_TO_MPS])
 VELOCITY_STEP = 5/MPH_TO_MPS
 
 # Planning horizon for the TP query sent by BP [sec]
