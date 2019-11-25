@@ -124,12 +124,11 @@ class SceneStaticUtils:
                                                                      e_l_length=nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
                                                                      e_Cnt_num_active_lane_attributes=4,
                                                                      a_i_active_lane_attribute_indices=np.array([0, 1, 2, 3]),
-                                                                     a_cmp_lane_attributes=np.array(
-                                                                         [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
-                                                                          GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
-                                                                          LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                                                          MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value
-                                                                          ]),
+                                                                     a_cmp_lane_attributes=
+                                                                         [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap,
+                                                                          GMAuthorityType.CeSYS_e_GMAuthorityType_None,
+                                                                          LaneConstructionType.CeSYS_e_LaneConstructionType_Normal,
+                                                                          MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle],
                                                                      a_cmp_lane_attribute_confidences=np.ones(4),
                                                                      e_Cnt_lane_overlap_count=0,
                                                                      as_lane_overlaps=lane_overlap))
