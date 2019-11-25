@@ -221,6 +221,7 @@ class MapUtils:
         :param lane_id: id of lane of interest
         :param ss: longitudes of the lane center points (w.r.t. the lane Frenet frame) (must be 1D array)
         :return: distances from the right lane border, distances from the left lane border
+                 (both 1D arrays, length corresponds to number of points in ss)
         """
         nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 
