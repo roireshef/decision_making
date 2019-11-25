@@ -6,7 +6,7 @@ import rte.python.profiler as prof
 from decision_making.src.messages.route_plan_message import DataRoutePlan
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
     SceneRoadSegment, SceneLaneSegmentBase
-from decision_making.src.exceptions import MissingInputInformation, RepeatedRoadSegments, raises,\
+from decision_making.src.exceptions import MissingMapInformation, RepeatedRoadSegments, raises,\
     NavigationSceneDataMismatch, LaneSegmentDataNotFound, RoadSegmentDataNotFound
 
 RoadSegmentDict = Dict[int, SceneRoadSegment]
@@ -60,18 +60,6 @@ class RoutePlannerInputData():
         """
         self._prev_road_segment_id = prev_road_segment_id or {}
 
-    @staticmethod   # Made static method especially as this method doesn't access the classes states/variables
-    @raises(MissingInputInformation)
-    def check_scene_data_validity(scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
-        if not scene.as_scene_lane_segments:
-            raise MissingInputInformation("Route Planner Input Data Processing: Empty scene.as_scene_lane_segments")
-
-        if not scene.as_scene_road_segment:
-            raise MissingInputInformation("Route Planner Input Data Processing: Empty scene.as_scene_road_segment")
-
-        if not nav_plan.a_i_road_segment_ids.size:  # np.ndarray type
-            raise MissingInputInformation("Route Planner Input Data Processing: Empty NAV Plan")
-
     def _update_dict_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
         """
          This method updates route_lane_segments_base_as_dict : all the lanesegment base structures for lane in the route, as a dictionary for fast access
@@ -92,7 +80,7 @@ class RoutePlannerInputData():
             if road_segment_id in nav_plan.a_i_road_segment_ids:    # Empty NAV Plan error would have been caught earlier
                 self._route_road_segments_as_dict[road_segment_id] = scene_road_segment
 
-    @raises(MissingInputInformation, RepeatedRoadSegments, NavigationSceneDataMismatch)
+    @raises(MissingMapInformation, RepeatedRoadSegments, NavigationSceneDataMismatch)
     def _update_routeplan_data(self, nav_plan: NavigationPlan) -> None:
         """
         This method updates route_lane_segments :
@@ -113,7 +101,7 @@ class RoutePlannerInputData():
                 if all_lane_segment_ids_in_this_road_segment.size:
                     self._route_lane_segment_ids[road_segment_id] = all_lane_segment_ids_in_this_road_segment
                 else:
-                    raise MissingInputInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(road_segment_id))
+                    raise MissingMapInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(road_segment_id))
 
             else:
                 raise NavigationSceneDataMismatch('Road segement ID {0} reported in the NAV route not found in scene static base'.format(road_segment_id))
@@ -137,7 +125,7 @@ class RoutePlannerInputData():
             if all_lane_segment_ids_in_this_road_segment.size:
                 self._route_lane_segment_ids[last_road_segment_id] = all_lane_segment_ids_in_this_road_segment
             else:
-                raise MissingInputInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(last_road_segment_id))
+                raise MissingMapInformation('Route Planner Input Data Processing: no lane segments in road segment ID {0}'.format(last_road_segment_id))
 
         else:
             raise NavigationSceneDataMismatch('Road segement ID {0} reported in the NAV route not found in scene static base'.format(last_road_segment_id))
@@ -155,8 +143,6 @@ class RoutePlannerInputData():
                             by invoking _update_dict_data and _update_routeplan_data methods in that order. Look at the method comments for more
                             details.
         """
-
-        RoutePlannerInputData.check_scene_data_validity(scene, nav_plan)
         # maintain the following order
         self._update_dict_data(scene, nav_plan)
         self._update_routeplan_data(nav_plan)
@@ -176,7 +162,7 @@ class RoutePlannerInputData():
             # Access all the lane segment lite data from lane segment dict
             current_lane_segment_base_data = self._route_lane_segments_base_as_dict[lane_segment_id]
         else:
-            raise LaneSegmentDataNotFound('Cost Based Route Planner: Lane segment ID {0} not found in route_lane_segments_base_as_dict'.format(lane_segment_id))
+            raise LaneSegmentDataNotFound('RoutePlanner: Lane segment ID {0} not found in route_lane_segments_base_as_dict'.format(lane_segment_id))
 
         return current_lane_segment_base_data
 
@@ -188,7 +174,7 @@ class RoutePlannerInputData():
                         value - np.ndarray(LaneSegmentID) (ordered as in the road segment structure )
         """
         if not self._route_lane_segment_ids:
-            raise LaneSegmentDataNotFound("Cost Based Route Planner: Trying to access empty route lane segment ids ")
+            raise LaneSegmentDataNotFound("RoutePlanner: Trying to access empty route lane segment ids ")
         return self._route_lane_segment_ids
 
     @raises(RoadSegmentDataNotFound)
@@ -197,28 +183,30 @@ class RoutePlannerInputData():
          This method returns np.ndarray(road_segment_id) (ordered as in the road segment structure )
         """
         if road_segment_id not in self._route_lane_segment_ids:
-            raise RoadSegmentDataNotFound('Cost Based Route Planner: In _route_lane_segment_ids couldn\'t find road_segment_id {0}'.format(road_segment_id))
+            raise RoadSegmentDataNotFound('RoutePlanner: In _route_lane_segment_ids couldn\'t find road_segment_id {0}'.format(road_segment_id))
 
         return self._route_lane_segment_ids[road_segment_id]
 
     @raises(RoadSegmentDataNotFound)
-    def get_next_road_segment(self, road_segment_id: int) -> int:
+    def get_next_road_segment_id(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
         if road_segment_id not in self._next_road_segment_id:
-            raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry for next road segment found for road segment ID {0}'.format(road_segment_id))
+            raise RoadSegmentDataNotFound('RoutePlanner: No entry for next road segment found for road segment ID {0}'.format(road_segment_id))
+
+        return self._next_road_segment_id[road_segment_id]
 
 
     @raises(RoadSegmentDataNotFound)
-    def get_prev_road_segment(self, road_segment_id: int) -> int:
+    def get_prev_road_segment_id(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
         if road_segment_id not in self._prev_road_segment_id:
-            raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry for previous road segment found for road segment ID {0}'.format(road_segment_id))
+            raise RoadSegmentDataNotFound('RoutePlanner: No entry for previous road segment found for road segment ID {0}'.format(road_segment_id))
 
-        self._prev_road_segment_id[road_segment_id]
+        return self._prev_road_segment_id[road_segment_id]
 
     def __str__(self) -> str:
         """
@@ -230,11 +218,3 @@ class RoutePlannerInputData():
             print_route_planner_input_data = print_route_planner_input_data + "roadseg:" + str(road_segment_id) + "\t"
 
         return print_route_planner_input_data
-
-
-class RoutePlanner(metaclass=ABCMeta):
-    """Abstract route planner class"""
-    @abstractmethod
-    def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
-        """Abstract route planner method. Implementation details will be in child class/methods """
-        pass

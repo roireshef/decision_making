@@ -55,7 +55,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
         """
         Try to find a valid road sign action (FOLLOW_ROAD_SIGN) for target_lane
         Selection only needs to consider aggressiveness level, as all the target speeds are ZERO_SPEED.
-        :param action_specs: specifications of action_recipes.
+        :param action_recipes: action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
         :param target_lane: lane to choose actions from
         :return: index of the chosen action_recipe within action_recipes. If there are no valid actions, -1 is returned
@@ -69,7 +69,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
     def _get_follow_lane_valid_action_idx(self, action_recipes: List[ActionRecipe], action_specs_mask: List[bool], target_lane: RelativeLane) -> int:
         """
         Look for valid static action with the minimal aggressiveness level and fastest speed
-        :param action_specs: specifications of action_recipes.
+        :param action_recipes: action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
         :param target_lane: lane to choose actions from
         :return: index of the chosen action_recipe within action_recipes. If there are no valid actions, -1 is returned
@@ -289,7 +289,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
             # when approaching the leading vehicle, the distance becomes 0, and so does the headway,
             # leading to a selection of AGGRESSIVE action for no reason. Especially noticeable in stop&go tests
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                     behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
+                     behavioral_state.ego_length / 2 + target.dynamic_object.size.length / 2
 
             # calculate safety margin (on frenet longitudinal axis)
             min_headway = LaneBasedActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_s, target_poly_s, margin, np.array([0, spec.t]))
