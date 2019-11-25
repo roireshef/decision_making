@@ -151,7 +151,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param time_in_nanoseconds:
         :return: time in seconds
         """
-        return np.array(time_in_nanoseconds) * TIMESTAMP_RESOLUTION_IN_SEC
+        return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
 
     @property
     def timestamp_in_sec(self):
@@ -206,6 +206,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
+    # this field prevents the logger from trying to serialize this field
     left_out_fields = 'lane_change_info'
 
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, turn_signal = None,

@@ -56,14 +56,17 @@ class KinematicUtils:
         :param rel_mask
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
+        # all three arguments are neeed to filter by relative limits 
+        filter_relative = baseline_gff is not None and rel_lat_accel_limits is not None and rel_mask is not None
+
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
 
         conforms_rel_limits = np.full(len(ctrajectories), True)
-        if baseline_gff is not None and rel_lat_accel_limits is not None and rel_mask is not None:
+        if filter_relative: 
             if np.any(rel_mask):
-                ftrajectories_on_baseline = baseline_gff.ctrajectories_to_ftrajectories(ctrajectories)
+                ftrajectories_on_baseline = baseline_gff.ctrajectories_to_ftrajectories(ctrajectories[rel_mask])
                 # set DX, DV, DA to 0 to simulate traveling on the baseline GFF
                 ftrajectories_on_baseline[:,:,FS_DX] = 0
                 ftrajectories_on_baseline[:,:,FS_DV] = 0

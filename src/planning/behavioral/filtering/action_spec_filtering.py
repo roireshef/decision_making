@@ -47,7 +47,7 @@ class ActionSpecFilter:
         return specs_by_rel_lane, indices_by_rel_lane
 
     @staticmethod
-    def _build_trajectories(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState, mask: List[bool] = None) -> (np.ndarray, np.ndarray):
+    def _build_trajectories(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> (np.ndarray, np.ndarray):
         """
         Builds a baseline trajectory out of the action specs (terminal states)
         :param action_specs: an ordered list of action specs

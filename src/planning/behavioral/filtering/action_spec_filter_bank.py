@@ -53,13 +53,12 @@ class FilterForKinematics(ActionSpecFilter):
 
         baseline_gff = lane_change_mask = None
         # if a LC is desired, relative lat accel limits need to be checked
-        if behavioral_state.ego_state.lane_change_info:
-            if behavioral_state.ego_state.lane_change_info.lane_change_desired:
-                baseline_gff = behavioral_state.ego_state.lane_change_info.baseline_gff
-                lane_change_mask = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                                    and behavioral_state.extended_lane_frames[spec.relative_lane].gff_type
-                                    not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                                    for spec in action_specs]
+        if behavioral_state.ego_state.lane_change_info.lane_change_desired:
+            baseline_gff = behavioral_state.ego_state.lane_change_info.baseline_gff
+            lane_change_mask = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                                and behavioral_state.extended_lane_frames[spec.relative_lane].gff_type
+                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                                for spec in action_specs]
 
         return KinematicUtils.filter_by_cartesian_limits(
             ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS,

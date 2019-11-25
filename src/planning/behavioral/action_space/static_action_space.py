@@ -80,7 +80,7 @@ class StaticActionSpace(ActionSpace):
 
         # TODO: This is considered a hack
         # override goal time when a lane change is being performed
-        if behavioral_state.ego_state.lane_change_info and behavioral_state.ego_state.lane_change_info.lane_change_active:
+        if behavioral_state.ego_state.lane_change_info.lane_change_active:
             seconds_left_for_lc = 6.0 - behavioral_state.ego_state.lane_change_info.time_from_start()
             if seconds_left_for_lc > 0:
                 T = seconds_left_for_lc

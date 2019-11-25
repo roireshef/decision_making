@@ -52,12 +52,15 @@ class SingleStepBehavioralPlanner(BasePlanner):
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
 
+        action_specs = np.full(len(action_recipes), None)
+        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+
+
         # If any lane change recipe passes the filters, a lane change is desired
         lane_change_mask = [recipe.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
                             and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type
-                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                            for i, recipe in enumerate(action_recipes)
-                            if recipes_mask[i]]
+                            not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                            for i, recipe in enumerate(valid_action_recipes)]
         lane_change_desired = np.any(lane_change_mask)
 
         # store baseline gff
@@ -65,10 +68,6 @@ class SingleStepBehavioralPlanner(BasePlanner):
             behavioral_state.ego_state.lane_change_info.enable_lc_desired()
             behavioral_state.ego_state.lane_change_info.baseline_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
 
-
-
-        action_specs = np.full(len(action_recipes), None)
-        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
         action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
 
         # TODO: FOR DEBUG PURPOSES!
