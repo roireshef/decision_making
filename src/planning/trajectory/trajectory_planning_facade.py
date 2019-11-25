@@ -2,6 +2,8 @@ import time
 
 import numpy as np
 import traceback
+
+from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
@@ -25,12 +27,11 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, FP_SX, C_Y, FS_DX, \
-    FS_SX
+from decision_making.src.planning.types import CartesianTrajectories, FP_SX, C_Y, FS_DX,  FS_SX
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.state.state import State, MapState
+from decision_making.src.state.state import State
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger
@@ -41,7 +42,7 @@ import rte.python.profiler as prof
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 last_trajectory: SamplableTrajectory = None):
+                 last_trajectory: SamplableWerlingTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param pubsub: communication layer (DDS/LCM/...) instance
@@ -90,7 +91,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # Longitudinal planning horizon (Ts)
             T_target_horizon = params.target_time - state.ego_state.timestamp_in_sec
-            T_trajectory_end_horizon = params.trajectory_end_time - state.ego_state.timestamp_in_sec
+            T_trajectory_end_horizon = max(TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
+                                           params.trajectory_end_time - state.ego_state.timestamp_in_sec)
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
@@ -105,9 +107,8 @@ class TrajectoryPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                sampled_state = self._get_state_with_expected_ego(state, params.reference_route) \
-                    if self._last_trajectory is not None else None
-                updated_state = sampled_state
+                updated_state = LocalizationUtils.get_state_with_expected_ego(
+                    state, self._last_trajectory, self.logger, self.__class__.__name__, params.reference_route)
             else:
                 updated_state = state
 
@@ -161,25 +162,24 @@ class TrajectoryPlanningFacade(DmModule):
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
         :return: a TrajectoryPlan message ready to send to the controller
         """
+        trajectory_num_points = min(int(np.floor(samplable_trajectory.T_extended / TRAJECTORY_TIME_RESOLUTION)),
+                                    MAX_TRAJECTORY_WAYPOINTS)
         trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
-                        stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                        num=TRAJECTORY_NUM_POINTS) + timestamp)
+                        stop=(trajectory_num_points - 1) * TRAJECTORY_TIME_RESOLUTION,
+                        num=trajectory_num_points) + timestamp)
         self._last_trajectory = samplable_trajectory
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
         # TODO: understand if padding with zeros is necessary
-        allowed_tracking_errors = np.ones(shape=[TRAJECTORY_NUM_POINTS, 4]) * [NEGLIGIBLE_DISPOSITION_LAT,  # left
+        allowed_tracking_errors = np.ones(shape=[trajectory_num_points, 4]) * [NEGLIGIBLE_DISPOSITION_LAT,  # left
                                                                                NEGLIGIBLE_DISPOSITION_LAT,  # right
                                                                                NEGLIGIBLE_DISPOSITION_LON,  # front
                                                                                NEGLIGIBLE_DISPOSITION_LON]  # rear
-        waypoints = np.vstack((np.hstack((trajectory_points, allowed_tracking_errors,
-                                          np.zeros(shape=[TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE -
-                                                          trajectory_points.shape[1] - allowed_tracking_errors.shape[1]]
-                                                   ))),
-                               np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS,
-                                               TRAJECTORY_WAYPOINT_SIZE])))
+        waypoints = np.hstack((trajectory_points, allowed_tracking_errors,
+                               np.zeros(shape=[trajectory_num_points, TRAJECTORY_WAYPOINT_SIZE -
+                                               trajectory_points.shape[1] - allowed_tracking_errors.shape[1]])))
 
         timestamp_object = Timestamp.from_seconds(timestamp)
         map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp_object)
@@ -188,7 +188,7 @@ class TrajectoryPlanningFacade(DmModule):
                                                          e_Cnt_version=0),
                                          s_Data=DataTrajectoryPlan(s_Timestamp=timestamp_object, s_MapOrigin=map_origin,
                                                                    a_TrajectoryWaypoints=waypoints,
-                                                                   e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
+                                                                   e_Cnt_NumValidTrajectoryWaypoints=trajectory_num_points))
 
         return trajectory_plan
 
@@ -232,34 +232,6 @@ class TrajectoryPlanningFacade(DmModule):
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_VISUALIZATION, debug_msg.serialize())
-
-    @prof.ProfileFunction()
-    def _get_state_with_expected_ego(self, state: State, reference_route: GeneralizedFrenetSerretFrame = None) -> State:
-        """
-        takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
-        timestamp according to the last trajectory cached in the facade's self._last_trajectory.
-        Note: lateral velocity is zeroed since we don't plan for drifts and lateral components are being reflected in
-        yaw and curvature.
-        :param state: the state to process
-        :param reference_route: the frenet frame of the reference route
-        :return: a new state object with a new ego-vehicle localization
-        """
-        current_time = state.ego_state.timestamp_in_sec
-        expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec,
-                                                                        state.ego_state.timestamp_in_sec)
-        updated_state = state.clone_with(ego_state=expected_ego_state)
-
-        if reference_route is not None:
-            # create the map_state for the ego in the updated state
-            gff_fstate = reference_route.cstate_to_fstate(updated_state.ego_state.cartesian_state)
-            lane_id ,lane_fstate = reference_route.convert_to_segment_state(gff_fstate)
-            updated_state.ego_state._cached_map_state = MapState(lane_fstate, lane_id)
-
-        # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
-        updated_state.is_sampled = True
-
-        return updated_state
 
     @staticmethod
     @prof.ProfileFunction()

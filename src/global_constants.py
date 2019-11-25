@@ -172,18 +172,26 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 0.5    # lateral (ego's side direction) difference threshold
 
+# limits for allowing tracking mode. During tracking we maintain a fixed speed trajectory with the speed the target.
+# May want to consider replacing with ego speed, so that speed is constant
+TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1       # in [m]
+TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1       # in [m/s]
+TRACKING_ACCELERATION_DISPOSITION_LIMIT = 0.05   # in [m/s^2]
+
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 20
+# TODO: check safety in BP along the whole padded trajectory (see MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
+TRAJECTORY_NUM_POINTS = 50
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 3.0
+# TODO: make it consistent with TRAJECTORY_NUM_POINTS
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 3.
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
@@ -193,6 +201,17 @@ ROAD_SHOULDERS_WIDTH = 1.5
 # error). This factor is the maximum mean square error (per point) allowed. For example, 0.0001 mean that the
 # max. standard deviation is 1 [cm] so the max. squared standard deviation is 10e-4.
 SPLINE_POINT_DEVIATION = 0.0001
+
+# [m] occupancy grid resolution for encoding lane merge state
+LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION = 4.5
+# [m] the horizon from ego in each side of the main road in occupancy grid of lane merge state
+LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH = 150
+# [m] maximum forward horizon from a lane merge on the ego road for engaging the lane-merge policy
+LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
+# [m/sec] maximal velocity of actors and in action space
+LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
+# [m/sec] velocity resolution in action space
+LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
 
 
 # Werling Planner #
@@ -267,6 +286,11 @@ MIN_COST = 0.0
 # different from the actual maximum cost (= MAX_COST).
 SATURATED_COST = 1.0
 
+# Discount factor used to limit the effect of backpropagating downstream lane end costs
+BACKPROP_DISCOUNT_FACTOR = 0.75
+
+# Threshold at which a backpropagated lane end cost will just be set equal to MIN_COST
+BACKPROP_COST_THRESHOLD = 0.001
 
 # State #
 
