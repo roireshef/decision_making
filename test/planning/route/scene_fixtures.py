@@ -17,9 +17,10 @@ from decision_making.src.planning.types import LaneSegmentID
 
 
 class RoutePlanTestData:
-    def __init__(self, scene_static: SceneStatic, expected_output: DataRoutePlan):
+    def __init__(self, scene_static: SceneStatic, expected_binary_output: DataRoutePlan, scene_name: str):
         self.scene_static = scene_static
-        self.expected_output = expected_output
+        self.expected_binary_output = expected_binary_output
+        self.scene_name = scene_name
 
 
 class TakeOverTestData:
@@ -61,15 +62,16 @@ def modify_default_lane_attributes(lane_attribute_modifications: LaneAttributeMo
             # Default lane attribute values
             num_active_lane_attributes = 4
             active_lane_attribute_indices = np.array([0, 1, 2, 3])
-            lane_attributes = np.array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
-                                        GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
-                                        LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                        MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value])
+            lane_attributes = [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap,
+                               GMAuthorityType.CeSYS_e_GMAuthorityType_None,
+                               LaneConstructionType.CeSYS_e_LaneConstructionType_Normal,
+                               MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle]
             lane_attribute_confidences = np.ones(4)
 
             for lane_attribute_modification in lane_attribute_modifications[lane_segment.e_i_lane_segment_id]:
                 if lane_attribute_modification[0] is True:
-                    lane_attributes[lane_attribute_modification[1]] = lane_attribute_modification[2]
+                    lane_attribute_type = type(lane_attributes[lane_attribute_modification[1]])
+                    lane_attributes[lane_attribute_modification[1]] = lane_attribute_type(lane_attribute_modification[2])
                     lane_attribute_confidences[lane_attribute_modification[1]] = lane_attribute_modification[3]
                 else:
                     active_lane_attribute_indices = np.delete(active_lane_attribute_indices, lane_attribute_modification[1])
@@ -88,7 +90,7 @@ def modify_default_lane_attributes(lane_attribute_modifications: LaneAttributeMo
                                           "scene_three"])
 def construction_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan_for_PG_split_file()
+    expected_binary_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -102,15 +104,15 @@ def construction_scene_and_expected_output(request):
                                      1.0)]}
 
         # Road Segment 20
-        expected_output.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 21
-        expected_output.as_route_plan_lane_segments[1][1].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][1].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
 
-        expected_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
 
     elif request.param is "scene_two":
         lane_modifications = {291: [(True,
@@ -123,15 +125,15 @@ def construction_scene_and_expected_output(request):
                                      1.0)]}
 
         # Road Segment 28
-        expected_output.as_route_plan_lane_segments[8][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 29
-        expected_output.as_route_plan_lane_segments[9][1].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][1].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
 
-        expected_output.as_route_plan_lane_segments[9][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
 
     elif request.param is "scene_three":
         lane_modifications = {251: [(True,
@@ -144,27 +146,28 @@ def construction_scene_and_expected_output(request):
                                      1.0)]}
 
         # Road Segment 24
-        expected_output.as_route_plan_lane_segments[4][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[4][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 25
-        expected_output.as_route_plan_lane_segments[5][1].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[5][1].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[5][2].e_cst_lane_occupancy_cost = 1.0
 
-        expected_output.as_route_plan_lane_segments[5][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[5][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
     else:
         lane_modifications = {}
 
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                             expected_output=expected_output)
+                             expected_binary_output=expected_binary_output,
+                             scene_name=request.param)
 
 
 @pytest.fixture(scope='function', params=["scene_one",
                                           "scene_two"])
 def map_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan_for_PG_split_file()
+    expected_binary_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -173,9 +176,9 @@ def map_scene_and_expected_output(request):
                                      LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
 
     elif request.param is "scene_two":
         lane_modifications = {290: [(True,
@@ -192,24 +195,25 @@ def map_scene_and_expected_output(request):
                                      1.0)]}
 
         # Road Segment 28
-        expected_output.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[8][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 29
-        expected_output.as_route_plan_lane_segments[9][0].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][1].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][0].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][1].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
 
-        expected_output.as_route_plan_lane_segments[9][0].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][0].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
 
     else:
         lane_modifications = {}
 
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                             expected_output=expected_output)
+                             expected_binary_output=expected_binary_output,
+                             scene_name=request.param)
 
 
 @pytest.fixture(scope='function', params=["scene_one",
@@ -224,7 +228,7 @@ def map_scene_and_expected_output(request):
                                           "scene_ten"])
 def gmfa_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan_for_PG_split_file()
+    expected_binary_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -233,101 +237,102 @@ def gmfa_scene_and_expected_output(request):
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_two":
         lane_modifications = {222: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_BadRoadCondition.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_three":
         lane_modifications = {232: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_ComplexRoad.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[3][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[3][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_four":
         lane_modifications = {242: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_MovableBarriers.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[3][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[3][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[4][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_five":
         lane_modifications = {252: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_BidirectionalFreew.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[4][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[5][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_six":
         lane_modifications = {262: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighCrossTrackSlope.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[5][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[6][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[6][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_seven":
         lane_modifications = {272: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighAlongTrackSlope.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[6][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[6][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[7][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[7][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_eight":
         lane_modifications = {282: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighVerticalCurvature.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[7][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[7][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_nine":
         lane_modifications = {292: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_HighHorizontalCurvat.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_ten":
         lane_modifications = {292: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
                                      GMAuthorityType.CeSYS_e_GMAuthorityType_Unknown.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[9][2].e_cst_lane_end_cost = 1.0
     else:
         lane_modifications = {}
 
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                             expected_output=expected_output)
+                             expected_binary_output=expected_binary_output,
+                             scene_name=request.param)
 
 
 @pytest.fixture(scope='function', params=["scene_one"])
 def lane_direction_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan_for_PG_split_file()
+    expected_binary_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -336,22 +341,23 @@ def lane_direction_scene_and_expected_output(request):
                                      MapLaneDirection.CeSYS_e_MapLaneDirection_OppositeTo_HostVehicle.value,
                                      1.0)]}
 
-        expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
 
     else:
         lane_modifications = {}
 
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                             expected_output=expected_output)
+                             expected_binary_output=expected_binary_output,
+                             scene_name=request.param)
 
 
 @pytest.fixture(scope='function', params=["scene_one",
                                           "scene_two"])
 def combined_scene_and_expected_output(request):
     # Set Default Expected Output
-    expected_output = default_route_plan_for_PG_split_file()
+    expected_binary_output = default_route_plan_for_PG_split_file()
 
     # Define Lane Modifications and Modify Expected Outputs
     if request.param is "scene_one":
@@ -377,101 +383,102 @@ def combined_scene_and_expected_output(request):
                                      1.0)]}
 
         # Road Segment 20
-        expected_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[0][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 21
-        expected_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
 
         # Road Segment 22
-        expected_output.as_route_plan_lane_segments[2][1].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][1].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 27
-        expected_output.as_route_plan_lane_segments[7][0].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[7][0].e_cst_lane_end_cost = 1.0
 
         # Road Segment 28
-        expected_output.as_route_plan_lane_segments[8][0].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][0].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[8][0].e_cst_lane_end_cost = 1.0
     elif request.param is "scene_two":
-        # Scenario in Slides
-        road_segment_ids = [1, 2, 3, 4, 5, 6]
+        """
+        The other scenes in this file are on a straight road so visualization is easier. This geometry is a little more
+        complicated so the diagram below was added for clarity. In this scene, no lanes will be blocked, but the goal
+        is to reach lane 71.
 
-        lane_segment_ids = [[1, 2],
-                            [7, 3, 4],
-                            [5, 6],
-                            [8, 9],
-                            [10],
-                            [11]]
+            12 -> 22 -> 33 -> 42
+            11 -> 21 -> 32 -> 41
+                    `-> 31   ,-> 52 -> 71
+                          `-<
+                             `-> 51 -> 61
+        """
+        road_segment_ids = [1, 2, 3, 4, 5, 6, 7]
 
-        navigation_plan = [1, 2, 4, 5]
+        lane_segment_ids = [[11, 12],
+                            [21, 22],
+                            [31, 32, 33],
+                            [41, 42],
+                            [51, 52],
+                            [61],
+                            [71]]
+
+        navigation_plan = [1, 2, 3, 5, 7]
 
         downstream_road_segment_ids = {1: [2],
-                                       2: [3, 4],
-                                       3: [],
-                                       4: [5, 6],
-                                       5: [],
-                                       6: []}
+                                       2: [3],
+                                       3: [4, 5],
+                                       4: [],
+                                       5: [6, 7],
+                                       6: [],
+                                       7: []}
 
-        downstream_lane_connectivity = {1: [(7, ManeuverType.RIGHT_EXIT_CONNECTION),
-                                            (3, ManeuverType.STRAIGHT_CONNECTION)],
-                                        2: [(4, ManeuverType.STRAIGHT_CONNECTION)],
-                                        3: [(5, ManeuverType.STRAIGHT_CONNECTION)],
-                                        4: [(6, ManeuverType.STRAIGHT_CONNECTION)],
-                                        7: [(8, ManeuverType.RIGHT_FORK_CONNECTION),
-                                            (9, ManeuverType.LEFT_FORK_CONNECTION)],
-                                        8: [(11, ManeuverType.STRAIGHT_CONNECTION)],
-                                        9: [(10, ManeuverType.STRAIGHT_CONNECTION)]}
-
-        lane_modifications = {2: [(True,
-                                   RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus.value,
-                                   LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_NotMapped.value,
-                                   1.0)],
-                              4: [(True,
-                                   RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
-                                   GMAuthorityType.CeSYS_e_GMAuthorityType_RoadConstruction.value,
-                                   1.0)]}
+        downstream_lane_connectivity = {11: [(21, ManeuverType.STRAIGHT_CONNECTION)],
+                                        12: [(22, ManeuverType.STRAIGHT_CONNECTION)],
+                                        21: [(31, ManeuverType.RIGHT_EXIT_CONNECTION),
+                                             (32, ManeuverType.STRAIGHT_CONNECTION)],
+                                        22: [(33, ManeuverType.STRAIGHT_CONNECTION)],
+                                        32: [(41, ManeuverType.STRAIGHT_CONNECTION)],
+                                        33: [(42, ManeuverType.STRAIGHT_CONNECTION)],
+                                        31: [(51, ManeuverType.RIGHT_FORK_CONNECTION),
+                                             (52, ManeuverType.LEFT_FORK_CONNECTION)],
+                                        51: [(61, ManeuverType.STRAIGHT_CONNECTION)],
+                                        52: [(71, ManeuverType.STRAIGHT_CONNECTION)]}
 
         scene_static_publisher = SceneStaticPublisher(road_segment_ids=road_segment_ids,
                                                       lane_segment_ids=lane_segment_ids,
                                                       navigation_plan=navigation_plan,
                                                       downstream_road_segment_ids=downstream_road_segment_ids,
-                                                      downstream_lane_connectivity=downstream_lane_connectivity,
-                                                      lane_attribute_modifications=lane_modifications)
+                                                      downstream_lane_connectivity=downstream_lane_connectivity)
 
         # Expected Output
-        expected_output = DataRoutePlan(e_b_is_valid=True,
-                                        e_Cnt_num_road_segments = len(navigation_plan),
-                                        a_i_road_segment_ids = np.array(navigation_plan),
-                                        a_Cnt_num_lane_segments = np.array([2, 3, 2, 1]),
-                                        as_route_plan_lane_segments = [[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
-                                                                                             e_cst_lane_occupancy_cost=0.0,
-                                                                                             e_cst_lane_end_cost=0.0)
-                                                                        for lane_segment_id in lane_segment_ids[road_segment_id - 1]]
-                                                                       for road_segment_id in navigation_plan])
-
-        # Road Segment 1
-        expected_output.as_route_plan_lane_segments[0][1].e_cst_lane_occupancy_cost = 1.0
-        expected_output.as_route_plan_lane_segments[0][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output = DataRoutePlan(e_b_is_valid=True,
+                                               e_Cnt_num_road_segments = len(navigation_plan),
+                                               a_i_road_segment_ids = np.array(navigation_plan),
+                                               a_Cnt_num_lane_segments = np.array([2, 2, 3, 2, 1]),
+                                               as_route_plan_lane_segments = [[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
+                                                                                                    e_cst_lane_occupancy_cost=0.0,
+                                                                                                    e_cst_lane_end_cost=0.0)
+                                                                               for lane_segment_id in lane_segment_ids[road_segment_id - 1]]
+                                                                              for road_segment_id in navigation_plan])
 
         # Road Segment 2
-        expected_output.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1.0
-        expected_output.as_route_plan_lane_segments[1][2].e_cst_lane_occupancy_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
 
         # Road Segment 4
-        expected_output.as_route_plan_lane_segments[2][0].e_cst_lane_end_cost = 1.0
+        expected_binary_output.as_route_plan_lane_segments[3][0].e_cst_lane_end_cost = 1.0
 
         return RoutePlanTestData(scene_static=scene_static_publisher.generate_data(),
-                                 expected_output=expected_output)
+                                 expected_binary_output=expected_binary_output,
+                                 scene_name=request.param)
     else:
         lane_modifications = {}
 
     return RoutePlanTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                             expected_output=expected_output)
+                             expected_binary_output=expected_binary_output,
+                             scene_name=request.param)
 
 
 def generate_ego_state(ego_lane_id: int, ego_lane_station: float) -> EgoState:
@@ -576,10 +583,10 @@ def construction_scene_for_takeover_test(request):
         route_plan_data.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0
         route_plan_data.as_route_plan_lane_segments[2][2].e_cst_lane_end_cost = 1.0
 
-        ego_state = generate_ego_state(ego_lane_id = 211 , ego_lane_station = 30)
+        ego_state = generate_ego_state(ego_lane_id=211, ego_lane_station=30)
 
     else:
         lane_modifications = {}
 
     return TakeOverTestData(scene_static=modify_default_lane_attributes(lane_modifications),
-                            route_plan_data=route_plan_data, ego_state = ego_state, expected_takeover = expected_takeover)
+                            route_plan_data=route_plan_data, ego_state=ego_state, expected_takeover=expected_takeover)

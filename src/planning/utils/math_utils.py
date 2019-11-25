@@ -2,7 +2,7 @@ from typing import Union, TypeVar
 
 import numpy as np
 
-from decision_making.src.global_constants import EXP_CLIP_TH
+from decision_making.src.global_constants import EXP_CLIP_TH, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.planning.types import Limits, BoolArray
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
@@ -124,6 +124,26 @@ class Math:
         ceiled_val = np.ceil(value * (1 / step)) / (1 / step)
 
         return ceiled_val
+
+    @staticmethod
+    def sec_to_ticks(time_in_seconds):
+        # type: (float) -> int
+        """
+        Convert seconds to ticks (nanoseconds)
+        :param time_in_seconds:
+        :return: time in ticks (nanoseconds)
+        """
+        return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
+
+    @staticmethod
+    def ticks_to_sec(time_in_nanoseconds):
+        # type: (int) -> float
+        """
+        Convert ticks (nanoseconds) to seconds
+        :param time_in_nanoseconds:
+        :return: time in seconds
+        """
+        return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
 
     @staticmethod
     def roots(p):
