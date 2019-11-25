@@ -1,7 +1,6 @@
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
-
 import numpy as np
 
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState

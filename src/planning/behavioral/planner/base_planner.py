@@ -58,7 +58,7 @@ class BasePlanner:
         trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
-        timestamp_in_sec = behavioral_state.ego_state.timestamp_in_sec
+        timestamp_in_sec = state.ego_state.timestamp_in_sec
         baseline_trajectory = BasePlanner.generate_baseline_trajectory(
             timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])

@@ -145,7 +145,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             # minimal margin used in addition to headway (center-to-center of both objects)
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                     behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
+                     behavioral_state.ego_length / 2 + target.dynamic_object.size.length / 2
 
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
