@@ -3,7 +3,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_enums import MapLaneMarkerType, MapRoadSegmentType,\
-    MapLaneType, TrafficSignalState, MovingDirection, ManeuverType, LaneMappingStatusType,\
+    MapLaneType, MovingDirection, ManeuverType, LaneMappingStatusType,\
     MapLaneDirection, GMAuthorityType, LaneConstructionType, RoutePlanLaneSegmentAttr
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, \
     SceneStaticGeometry, SceneStaticBase, NavigationPlan, SceneLaneSegmentGeometry, \
@@ -195,24 +195,6 @@ class SceneStaticPublisher:
         return [TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=0.0,
                                   e_i_static_traffic_control_device_id=[1],
                                   e_i_dynamic_traffic_control_device_id=[2])]
-
-    def _generate_dynamic_status(self) -> List[DynamicStatus]:
-        """ Generates default dynamic status data """
-        return [DynamicStatus(e_e_status=TrafficSignalState.NO_DETECTION,
-                              e_Pct_confidence=0)]
-
-    def _generate_dynamic_traffic_flow_control(self) -> List[DynamicTrafficFlowControl]:
-        """ Generates default dynamic traffic flow control data """
-        return [DynamicTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
-                                          e_l_station=0,
-                                          e_Cnt_dynamic_status_count=0,
-                                          as_dynamic_status=self._generate_dynamic_status())]
-
-    def _generate_traffic_flow_control(self) -> List[StaticTrafficFlowControl]:
-        """ Generates default traffic flow control data """
-        return [StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
-                                         e_l_station=0,
-                                         e_Pct_confidence=0)]
 
     def _generate_lane_overlap(self) -> List[LaneOverlap]:
         """ Generate default lane overlap data"""
