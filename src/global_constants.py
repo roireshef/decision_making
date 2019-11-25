@@ -103,7 +103,8 @@ LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
                                 (275, np.inf, 2, 2)])
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
-BP_LAT_ACC_STRICT_COEF = 0.9
+BP_LAT_ACC_STRICT_COEF = 1.0
+TP_LAT_ACC_STRICT_COEF = 1.1
 
 # Headway [sec] from a leading vehicle, used for specification target and safety checks accordingly
 SPECIFICATION_HEADWAY = 1.5
