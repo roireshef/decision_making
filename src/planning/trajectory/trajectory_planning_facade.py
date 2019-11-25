@@ -91,7 +91,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # Longitudinal planning horizon (Ts)
             T_target_horizon = params.target_time - state.ego_state.timestamp_in_sec
-            T_trajectory_end_horizon = params.trajectory_end_time - state.ego_state.timestamp_in_sec
+            T_trajectory_end_horizon = max(TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
+                                           params.trajectory_end_time - state.ego_state.timestamp_in_sec)
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
@@ -161,25 +162,24 @@ class TrajectoryPlanningFacade(DmModule):
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
         :return: a TrajectoryPlan message ready to send to the controller
         """
+        trajectory_num_points = min(int(np.floor(samplable_trajectory.T_extended / TRAJECTORY_TIME_RESOLUTION)),
+                                    MAX_TRAJECTORY_WAYPOINTS)
         trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
-                        stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                        num=TRAJECTORY_NUM_POINTS) + timestamp)
+                        stop=(trajectory_num_points - 1) * TRAJECTORY_TIME_RESOLUTION,
+                        num=trajectory_num_points) + timestamp)
         self._last_trajectory = samplable_trajectory
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
         # TODO: understand if padding with zeros is necessary
-        allowed_tracking_errors = np.ones(shape=[TRAJECTORY_NUM_POINTS, 4]) * [NEGLIGIBLE_DISPOSITION_LAT,  # left
+        allowed_tracking_errors = np.ones(shape=[trajectory_num_points, 4]) * [NEGLIGIBLE_DISPOSITION_LAT,  # left
                                                                                NEGLIGIBLE_DISPOSITION_LAT,  # right
                                                                                NEGLIGIBLE_DISPOSITION_LON,  # front
                                                                                NEGLIGIBLE_DISPOSITION_LON]  # rear
-        waypoints = np.vstack((np.hstack((trajectory_points, allowed_tracking_errors,
-                                          np.zeros(shape=[TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE -
-                                                          trajectory_points.shape[1] - allowed_tracking_errors.shape[1]]
-                                                   ))),
-                               np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS,
-                                               TRAJECTORY_WAYPOINT_SIZE])))
+        waypoints = np.hstack((trajectory_points, allowed_tracking_errors,
+                               np.zeros(shape=[trajectory_num_points, TRAJECTORY_WAYPOINT_SIZE -
+                                               trajectory_points.shape[1] - allowed_tracking_errors.shape[1]])))
 
         timestamp_object = Timestamp.from_seconds(timestamp)
         map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp_object)
@@ -188,7 +188,7 @@ class TrajectoryPlanningFacade(DmModule):
                                                          e_Cnt_version=0),
                                          s_Data=DataTrajectoryPlan(s_Timestamp=timestamp_object, s_MapOrigin=map_origin,
                                                                    a_TrajectoryWaypoints=waypoints,
-                                                                   e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
+                                                                   e_Cnt_NumValidTrajectoryWaypoints=trajectory_num_points))
 
         return trajectory_plan
 
