@@ -162,7 +162,7 @@ class RoutePlannerInputData():
             # Access all the lane segment lite data from lane segment dict
             current_lane_segment_base_data = self._route_lane_segments_base_as_dict[lane_segment_id]
         else:
-            raise LaneSegmentDataNotFound('Cost Based Route Planner: Lane segment ID {0} not found in route_lane_segments_base_as_dict'.format(lane_segment_id))
+            raise LaneSegmentDataNotFound('RoutePlanner: Lane segment ID {0} not found in route_lane_segments_base_as_dict'.format(lane_segment_id))
 
         return current_lane_segment_base_data
 
@@ -174,7 +174,7 @@ class RoutePlannerInputData():
                         value - np.ndarray(LaneSegmentID) (ordered as in the road segment structure )
         """
         if not self._route_lane_segment_ids:
-            raise LaneSegmentDataNotFound("Cost Based Route Planner: Trying to access empty route lane segment ids ")
+            raise LaneSegmentDataNotFound("RoutePlanner: Trying to access empty route lane segment ids ")
         return self._route_lane_segment_ids
 
     @raises(RoadSegmentDataNotFound)
@@ -183,28 +183,30 @@ class RoutePlannerInputData():
          This method returns np.ndarray(road_segment_id) (ordered as in the road segment structure )
         """
         if road_segment_id not in self._route_lane_segment_ids:
-            raise RoadSegmentDataNotFound('Cost Based Route Planner: In _route_lane_segment_ids couldn\'t find road_segment_id {0}'.format(road_segment_id))
+            raise RoadSegmentDataNotFound('RoutePlanner: In _route_lane_segment_ids couldn\'t find road_segment_id {0}'.format(road_segment_id))
 
         return self._route_lane_segment_ids[road_segment_id]
 
     @raises(RoadSegmentDataNotFound)
-    def get_next_road_segment(self, road_segment_id: int) -> int:
+    def get_next_road_segment_id(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
         if road_segment_id not in self._next_road_segment_id:
-            raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry for next road segment found for road segment ID {0}'.format(road_segment_id))
+            raise RoadSegmentDataNotFound('RoutePlanner: No entry for next road segment found for road segment ID {0}'.format(road_segment_id))
+
+        return self._next_road_segment_id[road_segment_id]
 
 
     @raises(RoadSegmentDataNotFound)
-    def get_prev_road_segment(self, road_segment_id: int) -> int:
+    def get_prev_road_segment_id(self, road_segment_id: int) -> int:
         """
          This method returns next road segment id of a given road segment id
         """
         if road_segment_id not in self._prev_road_segment_id:
-            raise RoadSegmentDataNotFound('Cost Based Route Planner: No entry for previous road segment found for road segment ID {0}'.format(road_segment_id))
+            raise RoadSegmentDataNotFound('RoutePlanner: No entry for previous road segment found for road segment ID {0}'.format(road_segment_id))
 
-        self._prev_road_segment_id[road_segment_id]
+        return self._prev_road_segment_id[road_segment_id]
 
     def __str__(self) -> str:
         """
@@ -216,11 +218,3 @@ class RoutePlannerInputData():
             print_route_planner_input_data = print_route_planner_input_data + "roadseg:" + str(road_segment_id) + "\t"
 
         return print_route_planner_input_data
-
-
-class RoutePlanner(metaclass=ABCMeta):
-    """Abstract route planner class"""
-    @abstractmethod
-    def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
-        """Abstract route planner method. Implementation details will be in child class/methods """
-        pass

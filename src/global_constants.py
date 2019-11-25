@@ -293,6 +293,12 @@ MIN_COST = 0.0
 # different from the actual maximum cost (= MAX_COST).
 SATURATED_COST = 1.0
 
+# Discount factor used to limit the effect of backpropagating downstream lane end costs
+BACKPROP_DISCOUNT_FACTOR = 0.75
+
+# Threshold at which a backpropagated lane end cost will just be set equal to MIN_COST
+BACKPROP_COST_THRESHOLD = 0.001
+
 # State #
 
 # TODO: set real values
@@ -320,7 +326,6 @@ ROUTE_PLANNING_MODULE_PERIOD = 1
 
 #### NAMES OF MODULES FOR LOGGING ####
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
-ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
