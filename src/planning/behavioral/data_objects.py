@@ -5,8 +5,13 @@ import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.types import FrenetState2D
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.messages.turn_signal_message import TurnSignal, TurnSignalState
+
+# This is done to allow type checking without circular imports at runtime
+# the TYPE_CHECKING variable is always false at runtime, avoiding circular imports
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 
 
 class ActionType(Enum):
@@ -144,9 +149,9 @@ class ActionSpec:
 
 
 class LaneChangeInfo:
-    def __init__(self, source_lane_ids: np.ndarray, target_lane_ids: np.ndarray):
-        self.source_lane_ids = source_lane_ids
-        self.target_lane_ids = target_lane_ids
+    def __init__(self):
+        self.source_lane_ids = []
+        self.target_lane_ids = []
         self.lane_change_desired = False
         self.lane_change_active = False
         self.in_target_lane = False
@@ -170,14 +175,26 @@ class LaneChangeInfo:
         if not self.lane_change_active:
             self.lane_change_desired = True
 
+    def reset(self):
+        """
+        Resets internal flags
+        """
+        self.target_lane_ids = None
+        self.source_lane_ids = None
+        self.lane_change_desired = False
+        self.lane_change_active = False
+        self.in_target_lane = False
+        self.lc_start_time_utc = -1
+        self.baseline_gff = None
 
-    def update(self, same_lane_ids: np.ndarray,  target_lane_ids: np.ndarray, turn_signal: TurnSignal):
+
+    def update(self, behavioral_grid_state: 'BehavioralGridState',  selected_action: ActionSpec):
         """
         Update the lane change status based on the target GFF requested
-        :param same_lane_gff:
-        :param target_gff:
         :return:
         """
+        same_lane_ids = behavioral_grid_state.extended_lane_frames[RelativeLane.SAME_LANE]
+        target_lane_ids = behavioral_grid_state.extended_lane_frames[selected_action.relative_lane]
         # initialize if first time updating
         if self.target_lane_ids is None or self.source_lane_ids is None:
             self.source_lane_ids = same_lane_ids
@@ -198,6 +215,7 @@ class LaneChangeInfo:
                 self.in_target_lane = True
 
                 # Only re-enable further lane changes after turn signal is off
+                turn_signal = behavioral_grid_state.ego_state.turn_signal
                 if turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
                     self.lane_change_desired = False
                     self.lane_change_active = False
@@ -205,13 +223,5 @@ class LaneChangeInfo:
                     self.source_lane_ids = same_lane_ids
                     self.target_lane_ids = target_lane_ids
                     self.baseline_gff = None
-
-
-
-
-
-
-
-
 
 

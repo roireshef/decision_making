@@ -232,6 +232,38 @@ class EgoState(DynamicObject):
         self.lane_change_info = lane_change_info
 
 
+    @classmethod
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map, turn_signal = None, lane_change_info = None):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float, bool, Optional[TurnSignal], Optional[LaneChangeInfo]) -> EgoState
+        """
+        Constructor that gets only cartesian-state (without map-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        :param off_map: indicates if the vehicle is off the map
+        :param turn_signal: blinker status
+        :param lane_change_info: lane change status
+        """
+        return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map, turn_signal, lane_change_info)
+
+    @classmethod
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map, turn_signal = None, lane_change_info = None):
+        # type: (int, int, MapState, ObjectSize, float, bool, Optional[TurnSignal], Optional[LaneChangeInfo]) -> EgoState
+        """
+        Constructor that gets only map-state (without cartesian-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        :param off_map: is the vehicle is off the map
+        :param turn_signal: blinker status
+        :param lane_change_info: lane change status
+        """
+        return cls(obj_id, timestamp, None, map_state, size, confidence, off_map, turn_signal, lane_change_info)
+
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> EgoState
         """ clones self while overriding cartesian_state and optionally timestamp

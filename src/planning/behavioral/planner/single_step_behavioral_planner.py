@@ -59,7 +59,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
         # If any lane change recipe passes the filters, a lane change is desired
         lane_change_mask = [recipe.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
                             and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type
-                            not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
                             for i, recipe in enumerate(valid_action_recipes)]
         lane_change_desired = np.any(lane_change_mask)
 

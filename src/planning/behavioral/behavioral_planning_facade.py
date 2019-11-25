@@ -26,13 +26,14 @@ from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.turn_signal_message import TurnSignal, TurnSignalState
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.data_objects import LaneChangeInfo, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import LaneChangeInfo, ActionSpec
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import FS_SX, FS_SV, C_X, C_Y
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState, MapState
 from decision_making.src.utils.dm_profiler import DMProfiler
@@ -55,7 +56,7 @@ class BehavioralPlanningFacade(DmModule):
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
-        self._lane_change_info = LaneChangeInfo(None, None)
+        self._lane_change_info = LaneChangeInfo()
 
     def _write_filters_to_log_if_required(self, now: float):
         """
@@ -148,7 +149,10 @@ class BehavioralPlanningFacade(DmModule):
             planner = planner_class(self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
-                trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan(updated_state, route_plan)
+                trajectory_params, samplable_trajectory, behavioral_visualization_message,\
+                    behavioral_state, selected_action_spec = planner.plan(updated_state, route_plan)
+
+            self._update_state(behavioral_state, selected_action_spec)
 
             self._last_trajectory = samplable_trajectory
 
@@ -187,6 +191,14 @@ class BehavioralPlanningFacade(DmModule):
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: %s. Trace: %s" %
                                  (e, traceback.format_exc()))
+
+    def _update_state(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec):
+        """
+        Update internal state variables
+        :return:
+        """
+        # Update lane change info based on the action selected for this cycle
+        behavioral_state.ego_state.lane_change_info.update(behavioral_state, action_spec)
 
 
     def _get_current_route_plan(self) -> RoutePlan:
