@@ -112,14 +112,15 @@ class KinematicUtils:
         last_allowed_idx = int(min(SPEEDING_VIOLATION_TIME_TH, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) /
                            TRAJECTORY_TIME_RESOLUTION)
         # and vehicle is slowing down when it doesn't,
-        speeding_is_within_limits[:, 0:last_allowed_idx] |= lon_acceleration[:, 0:last_allowed_idx] <= 0
+        is_decelerating = lon_acceleration[:, 0:last_allowed_idx] <= 0
         # or speed limit is exceeded by no more than SPEEDING_SPEED_TH
-        speeding_is_within_limits[:, 0:last_allowed_idx] |= \
-            lon_velocity[:, 0:last_allowed_idx] <= velocity_limits[:, 0:last_allowed_idx] + SPEEDING_SPEED_TH
+        is_within_allowed_speed_violation = lon_velocity[:, 0:last_allowed_idx] <= \
+            velocity_limits[:, 0:last_allowed_idx] + SPEEDING_SPEED_TH
         # or we were above this value to start with, and jerk is negative
+        was_violating_and_jerk_negative = np.logical_and(lon_velocity[:, 0] > velocity_limits[:, 0] + SPEEDING_SPEED_TH,
+                                                         lon_acceleration[:, 0] > lon_acceleration[:, 1])[:, np.newaxis]
         speeding_is_within_limits[:, 0:last_allowed_idx] |= \
-            np.logical_and(lon_velocity[:, 0] > velocity_limits[:, 0] + SPEEDING_SPEED_TH,
-                           lon_acceleration[:, 0] > lon_acceleration[:, 1])[:, np.newaxis]
+            is_decelerating | is_within_allowed_speed_violation | was_violating_and_jerk_negative
         return speeding_is_within_limits
 
     @staticmethod
