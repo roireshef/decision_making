@@ -64,16 +64,17 @@ class RoadSignActionSpace(TargetActionSpace):
         """
         target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
         ego_location = behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
-        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location + DIM_MARGIN_TO_STOP_BAR)
+        # TODO Possibly apply the DIM_MARGIN_TO_STOP_BAR only if there is no other stop bar close in front,
+        #  to handle case of 2 close stop bars say DIM_MARGIN_TO_STOP_BAR-1 apart
+        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - DIM_MARGIN_TO_STOP_BAR)
         static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
         # check for active stop bar from the closest to the farthest
         for stop_bar in stop_bars:
-            # If TCB is in front of the vehicle
-            if stop_bar.s > ego_location:
-                active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
-                road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
-                should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
-                if should_stop:
-                    return stop_bar.s - ego_location
+            # Only considers TCB is in front of (ego_location - DIM_MARGIN_TO_STOP_BAR)
+            active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
+            road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
+            should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
+            if should_stop:
+                return stop_bar.s - ego_location
         return float("inf")

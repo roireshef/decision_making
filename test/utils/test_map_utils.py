@@ -81,6 +81,16 @@ def test_getTrafficControlBarsS_findsClosestStop(scene_static_pg_split,
     assert actual[2].s == 12.0
 
 
+def test_getTrafficControlBarsS_IgnoresTcbsBehindStartOffset(scene_static_pg_split,
+                                                 behavioral_grid_state_with_objects_for_filtering_too_aggressive):
+    gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
+    _setup_stop_bars_in_map(scene_static_pg_split, gff, [STOP_SIGN_ID], [TRAFFIC_LIGHT_ID])
+
+    actual = MapUtils.get_traffic_control_bars_s(gff, 11.5)
+    assert len(actual) == 1
+    assert actual[0].s == 12.0
+
+
 def test_getTrafficControlDevices_findsDevices(scene_static_pg_split,
                                                  behavioral_grid_state_with_objects_for_filtering_too_aggressive):
     gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
