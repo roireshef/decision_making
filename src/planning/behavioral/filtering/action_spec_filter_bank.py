@@ -304,6 +304,14 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
             self._raise_true()
         return np.array([stop_bar_s]), np.array([0])
 
+def lat_acc_limit_interpolation(k):
+    """
+    :param k: Curvature
+    :return: the lateral acceleration limits
+    """
+    for lower, upper, lower_limit, upper_limit in LAT_ACC_LIMITS_BY_K:
+        if lower <= 1/k < upper:
+            return lower_limit + (upper_limit-lower_limit)/(upper-lower) * (1/k-lower)
 
 class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
     """
