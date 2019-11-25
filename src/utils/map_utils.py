@@ -218,9 +218,9 @@ class MapUtils:
     def get_dists_to_lane_borders(lane_id: int, ss: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         get distances from the lane center to the lane borders at given longitudes from the lane's origin
-        :param lane_id:
-        :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
-        :return: distance from the right lane border, distance from the left lane border
+        :param lane_id: id of lane of interest
+        :param ss: longitudes of the lane center points (w.r.t. the lane Frenet frame) (must be 1D array)
+        :return: distances from the right lane border, distances from the left lane border
         """
         nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 

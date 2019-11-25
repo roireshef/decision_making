@@ -41,6 +41,10 @@ def scene_dynamic_accel_towards_vehicle():
 
 @pytest.fixture()
 def scene_static_mound_road_north():
+    """
+    Contains scene static data for northbound Mound Rd., right before the split into the turn lane to 19 Mile Rd.
+    :return:
+    """
     return pickle.load(open(Paths.get_scene_static_absolute_path_filename(OBJ_INTRUDING_IN_LANE_SCENE_STATIC_PICKLE_FILE_NAME), 'rb'))
 
 @pytest.fixture()

@@ -687,7 +687,7 @@ class BehavioralGridState:
         for point in bbox:
             try:
                 # this conversion may throw OutOfSegment exceptions
-                obj_gff_fpoint = (gff.cpoint_to_fpoint(point))
+                obj_gff_fpoint = gff.cpoint_to_fpoint(point)
                 obj_gff_fstate = np.array([obj_gff_fpoint[FP_SX], 0, 0, obj_gff_fpoint[FP_DX], 0, 0])
 
                 # get lane_id and progress along that lane's frame for the projected point
