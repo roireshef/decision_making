@@ -1,10 +1,8 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
     SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
     FS_DX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
@@ -74,6 +72,7 @@ class KinematicUtils:
             (initial jerk is calculated by subtracting the first two acceleration samples)
         (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
         (3) keeps the velocity under the desired velocity limit.
+        Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param velocity_limits: 2D matrix [trajectories, timestamps] of nominal velocities to validate against
         :param T: array of target times for ctrajectories
@@ -101,6 +100,7 @@ class KinematicUtils:
         """
         speeding is within allowed limits if it does not violate the speed limit for more than VIOLATION_TIME_TH.
         Furthermore it does so by no more than VIOLATION_SPEED_TH, unless starting velocity is above this value.
+        Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
         :param lon_velocity: trajectories velocities
         :param lon_acceleration: trajectories accelerations
         :param T: array of target times for ctrajectories
