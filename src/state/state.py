@@ -403,7 +403,7 @@ class State(PUBSUB_MSG_IMPL):
         objects_list = []
         for obj_idx in range(dyn_obj_data.num_objects):
             obj_loc = dyn_obj_data.objects_localization[obj_idx]
-            id = obj_loc.e_Cnt_object_id
+            obj_id = obj_loc.e_Cnt_object_id
             cartesian_state = obj_loc.a_cartesian_pose
             # TODO: Handle multiple hypotheses
             map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
@@ -412,7 +412,7 @@ class State(PUBSUB_MSG_IMPL):
                               obj_loc.s_bounding_box.e_l_height)
             confidence = obj_loc.as_object_hypothesis[0].e_r_probability
             off_map = obj_loc.as_object_hypothesis[0].e_b_off_lane
-            dyn_obj = DynamicObject(obj_id=id,
+            dyn_obj = DynamicObject(obj_id=obj_id,
                                     timestamp=timestamp,
                                     cartesian_state=cartesian_state,
                                     map_state=map_state if map_state.lane_id > 0 else None,
