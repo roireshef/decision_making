@@ -98,6 +98,7 @@ class BehavioralPlanningFacade(DmModule):
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
+
             with DMProfiler(self.__class__.__name__ + '._get_current_turn_signal'):
                 turn_signal = self._get_current_turn_signal()
 
@@ -199,7 +200,6 @@ class BehavioralPlanningFacade(DmModule):
         """
         # Update lane change info based on the action selected for this cycle
         behavioral_state.ego_state.lane_change_info.update(behavioral_state, action_spec)
-
 
     def _get_current_route_plan(self) -> RoutePlan:
         """

@@ -20,7 +20,6 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.state.state import State
 
 
-
 class SingleStepBehavioralPlanner(BasePlanner):
     """
     For each received current-state:
@@ -54,7 +53,6 @@ class SingleStepBehavioralPlanner(BasePlanner):
 
         action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
-
 
         # If any lane change recipe passes the filters, a lane change is desired
         lane_change_mask = [recipe.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]

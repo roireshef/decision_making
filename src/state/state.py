@@ -231,7 +231,6 @@ class EgoState(DynamicObject):
                                              turn_signal=turn_signal)
         self.lane_change_info = lane_change_info
 
-
     @classmethod
     def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map, turn_signal = None, lane_change_info = None):
         # type: (int, int, CartesianExtendedState, ObjectSize, float, bool, Optional[TurnSignal], Optional[LaneChangeInfo]) -> EgoState
@@ -306,7 +305,6 @@ class State(PUBSUB_MSG_IMPL):
         self.occupancy_state = occupancy_state
         self.dynamic_objects = dynamic_objects
         self.ego_state = ego_state
-
 
     def clone_with(self, is_sampled: bool = None, occupancy_state: OccupancyState = None,
                    dynamic_objects: List[DynamicObject] = None, ego_state: EgoState = None) -> T:

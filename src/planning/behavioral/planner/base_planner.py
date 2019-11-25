@@ -144,7 +144,6 @@ class BasePlanner:
         goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)
         cost_params = BasePlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
                                                         ego_size=ego.size)
-
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
