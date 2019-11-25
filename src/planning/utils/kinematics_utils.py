@@ -5,6 +5,7 @@ from decision_making.src.planning.behavioral.data_objects import AggressivenessL
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
     FS_DX, FS_DV, FS_DA
 from decision_making.src.planning.types import CartesianExtendedTrajectories
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
@@ -67,13 +68,30 @@ class KinematicUtils:
         if filter_relative: 
             if np.any(rel_mask):
                 ftrajectories_on_baseline = baseline_gff.ctrajectories_to_ftrajectories(ctrajectories[rel_mask])
+
                 # set DX, DV, DA to 0 to simulate traveling on the baseline GFF
                 ftrajectories_on_baseline[:,:,FS_DX] = 0
                 ftrajectories_on_baseline[:,:,FS_DV] = 0
                 ftrajectories_on_baseline[:,:,FS_DA] = 0
+
                 # Convert back to ctrajectories to get curvature
                 ctrajectories_on_baseline = baseline_gff.ftrajectories_to_ctrajectories(ftrajectories_on_baseline)
-                baseline_lat_accel = ctrajectories_on_baseline[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
+
+                # Determine velocity to use for calculating baseline lat. accel. calculation
+                num_trajectories, num_points_per_trajectory, _ = ftrajectories_on_baseline.shape
+                baseline_velocities = np.zeros((num_trajectories, num_points_per_trajectory, 1))
+                curve_speed_control_lat_accel_limit = max(lat_acceleration_limits)
+
+                for i, ftrajectory in enumerate(ftrajectories_on_baseline):
+                    lane_segment_ids, _ = baseline_gff.convert_to_segment_states(ftrajectory)
+
+                    for j, lane_segment_id in enumerate(lane_segment_ids):
+                        speed_limit = MapUtils.get_lane(lane_segment_id).e_v_nominal_speed
+                        curve_speed_control_velocity = np.sqrt(curve_speed_control_lat_accel_limit / ctrajectories_on_baseline[i, j, C_K])
+                        baseline_velocities[i, j, 0] = min(speed_limit, curve_speed_control_velocity)
+
+                # Calculate baseline lat. accel. to use for relative lat. accel. comparison
+                baseline_lat_accel = baseline_velocities ** 2 * ctrajectories_on_baseline[:, :, C_K]
 
                 # Calculate relative difference in lat accel
                 lat_accel_of_interest = ctrajectories[rel_mask, :, C_V] ** 2 * ctrajectories[rel_mask, :, C_K]
