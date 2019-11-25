@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterForKinematics, \
     FilterIfNone as FilterSpecIfNone, FilterForSafetyTowardsTargetVehicle, StaticTrafficFlowControlFilter, \
     BeyondSpecStaticTrafficFlowControlFilter, FilterForLaneSpeedLimits, BeyondSpecSpeedLimitFilter, \
-    BeyondSpecPartialGffFilter, FilterForSLimit, BeyondSpecCurvatureFilter, lat_acc_limit_interpolation
+    BeyondSpecPartialGffFilter, FilterForSLimit, BeyondSpecCurvatureFilter
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as FilterRecipeIfNone
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -479,9 +479,8 @@ def test_filter_filterForSLimit_dontFilterValidAction(
     np.testing.assert_array_equal(filter_results, expected_filter_results)
 
 
-def test_curvatureSensitiveLateralAcceleration_checkSomething(behavioral_grid_state_with_traffic_control,
-                                                      scene_static_pg_split):
-    # TODO: Create real test for this!
+def test_beyondSpecCurvatureFilter_testValidAction_returnsTrue(behavioral_grid_state_with_traffic_control,
+                                                               scene_static_pg_split):
     # Get s position on frenet frame
     ego_location = behavioral_grid_state_with_traffic_control.ego_state.map_state.lane_fstate[FS_SX]
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
@@ -495,12 +494,5 @@ def test_curvatureSensitiveLateralAcceleration_checkSomething(behavioral_grid_st
     expected = [True]
     assert actual == expected
 
-
-def test_LatAccLimitInterpolation():
-    curvatures = [1/250, 1/270, 1/275, 1/400]
-    expected_interpolated_accleration_limits = [2.033333, 2.0066667, 2, 2]
-
-    for k, expected_limit in zip(curvatures, expected_interpolated_accleration_limits):
-        np.testing.assert_almost_equal(lat_acc_limit_interpolation(k), expected_limit)
 
 
