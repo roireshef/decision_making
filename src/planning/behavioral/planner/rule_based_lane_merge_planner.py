@@ -18,6 +18,8 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPol
 from decision_making.src.state.state import State
 
 
+OUTPUT_TRAJECTORY_LENGTH = 10
+
 class RuleBasedLaneMergePlanner(BasePlanner):
 
     def __init__(self, logger: Logger):
@@ -195,3 +197,38 @@ class RuleBasedLaneMergePlanner(BasePlanner):
                                                           (2 * LON_ACC_LIMITS[1]) + SAFETY_HEADWAY * back_v)
         safety_dist = np.maximum(front_safety_dist, back_safety_dist)
         return np.min(safety_dist, axis=0)  # AND on actors
+
+    @staticmethod
+    def choose_max_vel_quartic_trajectory(state: LaneMergeState) -> \
+            [bool, np.array]:
+        """
+        Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
+        main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
+        If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
+        :param state: lane merge state, containing data about host and the main road vehicles
+        :return: accelerations array or None if there is no safe action
+        """
+        import time
+        st = time.time()
+
+        planner = RuleBasedLaneMergePlanner(logger)
+        actions = planner._create_action_specs(state)
+        filtered_actions = planner._filter_actions(state, actions)
+        costs = planner._evaluate_actions(state, route_plan, filtered_actions)
+        spec = planner._choose_action(state, filtered_actions, costs)
+        poly_s = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T, spec.t)
+
+        poly_s, specs_t, _, safety_dist = RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(state, params)
+
+        if (safety_dist > 0).any():  # if there are safe actions
+            action_idx = np.argmax(safety_dist > 0)  # the most calm safe action
+        else:  # no safe actions
+            action_idx = np.argmax(safety_dist)  # the most close to safe action
+
+        poly_acc = np.polyder(poly_s[action_idx], m=2)
+        times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
+        accelerations = np.zeros(OUTPUT_TRAJECTORY_LENGTH)
+        accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
+
+        #print('\ntime=', time.time() - st)
+        return safety_dist[action_idx] > 0, accelerations
