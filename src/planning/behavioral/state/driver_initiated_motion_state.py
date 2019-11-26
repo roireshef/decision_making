@@ -29,8 +29,8 @@ class DriverInitiatedMotionState:
     3. After crossing this stop bar or after timeout since the pedal was released, goto NORMAL state.
     """
     state = DIM_States                  # the current state
-    pedal_pressed_from_time = float     # from which time the pedal is pressed continuously till now
-    pedal_pressed_last_time = float     # last time the pedal was pressed
+    pedal_last_change_time = float      # when pedal state (pressed/released) was changed last time
+    is_pedal_pressed = bool             # True if the pedal is currently pressed
     stop_bar_id = (int, int)            # the closest stop bar id at the moment of pressing the pedal
 
     def __init__(self):
@@ -80,7 +80,8 @@ class DriverInitiatedMotionState:
         Reset the state to its default settings
         """
         self.state = DIM_States.DISABLED
-        self.pedal_pressed_from_time = self.pedal_pressed_last_time = np.inf
+        self.pedal_last_change_time = np.inf
+        self.is_pedal_pressed = False
         self.stop_bar_id = None
 
     def _update_pedal_times(self, pedal_position: PedalPosition) -> None:
@@ -89,13 +90,10 @@ class DriverInitiatedMotionState:
         :param pedal_position: current pedal position
         """
         # update self.pedal_pressed_from_time according to the acceleration pedal position
-        timestamp_in_sec = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
-        if pedal_position.s_Data.e_Pct_AcceleratorPedalPosition >= DRIVER_INITIATED_MOTION_PEDAL_THRESH:
-            self.pedal_pressed_from_time = min(self.pedal_pressed_from_time, timestamp_in_sec)  # update pedal_from_time
-            self.pedal_pressed_last_time = timestamp_in_sec
-        # if the pedal was released when DIM state is not confirmed, then reset the pedal times
-        elif self.state == DIM_States.PENDING:  # no pedal
-            self.pedal_pressed_from_time = np.inf
+        currently_pressed = pedal_position.s_Data.e_Pct_AcceleratorPedalPosition >= DRIVER_INITIATED_MOTION_PEDAL_THRESH
+        if currently_pressed != self.is_pedal_pressed:
+            self.pedal_last_change_time = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
+            self.is_pedal_pressed = currently_pressed
 
     def _can_pass_to_pending_state(self, ego_lane_id: int, ego_lane_fstate: FrenetState2D,
                                    reference_route: GeneralizedFrenetSerretFrame) -> [bool, float]:
@@ -130,10 +128,12 @@ class DriverInitiatedMotionState:
         :param pedal_position: the current pedal position
         :return: True if we can pass to the state CONFIRMED
         """
-        timestamp_in_sec = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
-        # if the pedal was pressed strongly enough and for enough time
-        return pedal_position.s_Data.e_Pct_AcceleratorPedalPosition >= DRIVER_INITIATED_MOTION_PEDAL_THRESH and \
-               timestamp_in_sec - self.pedal_pressed_from_time >= DRIVER_INITIATED_MOTION_PEDAL_TIME
+        if self.state == DIM_States.PENDING:
+            timestamp_in_sec = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
+            # if the pedal was pressed strongly enough and for enough time
+            return self.is_pedal_pressed and timestamp_in_sec - self.pedal_last_change_time >= DRIVER_INITIATED_MOTION_PEDAL_TIME
+
+        return False
 
     def _can_pass_to_disabled_state(self, ego_lane_id: int, ego_lane_fstate: FrenetState2D,
                                     reference_route: GeneralizedFrenetSerretFrame, timestamp_in_sec: float):
@@ -150,6 +150,6 @@ class DriverInitiatedMotionState:
             stop_sign_s = reference_route.convert_from_segment_state(np.array([self.stop_bar_id[1], 0, 0, 0, 0, 0]),
                                                                      self.stop_bar_id[0])[FS_SX]
             return stop_sign_s < ego_s or \
-                   timestamp_in_sec - self.pedal_pressed_last_time > DRIVER_INITIATED_MOTION_TIMEOUT
+                   (not self.is_pedal_pressed and timestamp_in_sec - self.pedal_last_change_time > DRIVER_INITIATED_MOTION_TIMEOUT)
 
         return False
