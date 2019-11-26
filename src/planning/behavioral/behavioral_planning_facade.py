@@ -108,7 +108,8 @@ class BehavioralPlanningFacade(DmModule):
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
-                                                              logger=self.logger)
+                                                              logger=self.logger,
+                                                              turn_signal=turn_signal)
 
                 state.handle_negative_velocities(self.logger)
 
