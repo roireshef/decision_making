@@ -615,6 +615,12 @@ class BehavioralGridState:
         else:
             return RelativeLongitudinalPosition.PARALLEL
 
+    def update_dim_state(self) -> None:
+        """
+        Update DIM state machine of ego, using reference_route (current-lane GFF)
+        """
+        self.ego_state.update_dim_state(self.extended_lane_frames[RelativeLane.SAME_LANE])
+
     @staticmethod
     def _log_grid_data(multi_object_grid: Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]],
                        timestamp_in_sec: float, logger: Logger):

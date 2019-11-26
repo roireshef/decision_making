@@ -96,6 +96,12 @@ class BehavioralPlanningFacade(DmModule):
                 route_plan = self._get_current_route_plan()
                 route_plan_dict = route_plan.to_costs_dict()
 
+            # read pedal position from pubsub and update DIM state accordingly
+            pedal_position = self._get_current_pedal_position()
+            # update pedal press/release times according to the acceleration pedal position
+            if pedal_position is not None:
+                self._driver_initiated_motion_state.update_pedal_times(pedal_position)
+
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
@@ -114,14 +120,6 @@ class BehavioralPlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
-
-                # read pedal position from pubsub and update DIM state accordingly
-                pedal_position = self._get_current_pedal_position()
-                host_hypothesis = scene_dynamic.s_Data.s_host_localization.as_host_hypothesis[0]
-                ego_lane_id = host_hypothesis.e_i_lane_segment_id
-                ego_lane_fstate = host_hypothesis.a_lane_frenet_pose[FS_SX]
-                self._driver_initiated_motion_state.update_state(ego_lane_id, ego_lane_fstate, route_plan, pedal_position)
-
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,

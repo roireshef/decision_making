@@ -6,7 +6,6 @@ from decision_making.src.global_constants import DRIVER_INITIATED_MOTION_PEDAL_T
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from enum import Enum
 
-from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.types import FS_SX, FS_SV, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.utils.map_utils import MapUtils
@@ -37,35 +36,32 @@ class DriverInitiatedMotionState:
     def __init__(self):
         self._reset()
 
-    def update_state(self, ego_lane_id: int, ego_lane_fstate: FrenetState2D, route_plan: RoutePlan,
-                     pedal_position: PedalPosition) -> None:
+    def update_state(self, timestamp_in_sec: float, ego_lane_id: int, ego_lane_fstate: FrenetState2D,
+                     reference_route: GeneralizedFrenetSerretFrame) -> None:
         """
         Update DriverInitiatedMotionState according to acceleration pedal strength and how much time it's held
         Remark: the first two parameters may be replaced by MapState but importing MapState causes circular import error
+        :param timestamp_in_sec: current timestamp
         :param ego_lane_id: lane_id of ego
         :param ego_lane_fstate: lane Frenet state of ego (from MapState)
-        :param route_plan: the route plan
-        :param pedal_position: holds acceleration pedal strength
+        :param reference_route: reference route to look for stop bar
         """
         # check if we can pass to PENDING state
-        can_pass_to_pending_state, stop_bar_id = self._can_pass_to_pending_state(ego_lane_id, ego_lane_fstate, route_plan)
+        can_pass_to_pending_state, stop_bar_s = self._can_pass_to_pending_state(ego_lane_id, ego_lane_fstate, reference_route)
         if can_pass_to_pending_state:
-            self.stop_bar_id = stop_bar_id
+            lane_id, lane_fstate = reference_route.convert_to_segment_state(np.array([stop_bar_s, 0, 0, 0, 0, 0]))
+            self.stop_bar_id = (lane_id, lane_fstate[FS_SX])  # TODO: replace by the real stop bar id
             self.state = DIM_States.PENDING
         if self.state == DIM_States.DISABLED:
             self._reset()
             return
 
-        # update pedal press/release times according to the acceleration pedal position
-        self._update_pedal_times(pedal_position)
-
         # check if we can pass to CONFIRMED state
-        if self._can_pass_to_confirmed_state(pedal_position):
+        if self._can_pass_to_confirmed_state(timestamp_in_sec):
             self.state = DIM_States.CONFIRMED
 
         # if ego crossed the stop bar or timeout after releasing of pedal then pass to DISABLED state
-        if self._can_pass_to_disabled_state(ego_lane_id, ego_lane_fstate, route_plan,
-                                            pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds):
+        if self._can_pass_to_disabled_state(ego_lane_id, ego_lane_fstate, reference_route, timestamp_in_sec):
             self._reset()  # set DISABLED state
 
     def stop_bar_to_ignore(self):
@@ -84,7 +80,7 @@ class DriverInitiatedMotionState:
         self.is_pedal_pressed = False
         self.stop_bar_id = None
 
-    def _update_pedal_times(self, pedal_position: PedalPosition) -> None:
+    def update_pedal_times(self, pedal_position: PedalPosition) -> None:
         """
         Update last pedal press/release times according to the current pedal position
         :param pedal_position: current pedal position
@@ -96,13 +92,13 @@ class DriverInitiatedMotionState:
             self.is_pedal_pressed = currently_pressed
 
     def _can_pass_to_pending_state(self, ego_lane_id: int, ego_lane_fstate: FrenetState2D,
-                                   route_plan: RoutePlan) -> [bool, float]:
+                                   reference_route: GeneralizedFrenetSerretFrame) -> [bool, float]:
         """
         Check if the DIM state machine can pass to the state PENDING
         For passing to PENDING state ego velocity should be under a threshold and should be close stop bar.
         :param ego_lane_id: ego lane segment id
         :param ego_lane_fstate: ego lane Frenet state (in its lane segment)
-        :param route_plan: the route plan
+        :param reference_route: the target reference route (GFF)
         :return: 1. whether we can pass to PENDING state,
                  2. if yes, s (relatively to reference_route) of the closest stop bar, None otherwise
         """
@@ -121,15 +117,14 @@ class DriverInitiatedMotionState:
 
         return False, None
 
-    def _can_pass_to_confirmed_state(self, pedal_position: PedalPosition):
+    def _can_pass_to_confirmed_state(self, timestamp_in_sec: float):
         """
         Check if the DIM state machine can pass to the state CONFIRMED
         For passing to CONFIRMED state the acceleration pedal should be pressed strong enough for enough time.
-        :param pedal_position: the current pedal position
+        :param timestamp_in_sec: current timestamp
         :return: True if we can pass to the state CONFIRMED
         """
         if self.state == DIM_States.PENDING:
-            timestamp_in_sec = pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds
             # if the pedal was pressed strongly enough and for enough time
             return self.is_pedal_pressed and timestamp_in_sec - self.pedal_last_change_time >= DRIVER_INITIATED_MOTION_PEDAL_TIME
 
@@ -142,7 +137,7 @@ class DriverInitiatedMotionState:
         :param ego_lane_id: ego lane segment id
         :param ego_lane_fstate: ego lane Frenet state (in its lane segment)
         :param reference_route: the target reference route (GFF)
-        :param timestamp_in_sec: [sec] pedal message timestamp
+        :param timestamp_in_sec: [sec] current timestamp
         :return: True if
         """
         if self.state == DIM_States.CONFIRMED:
