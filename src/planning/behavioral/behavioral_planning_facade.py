@@ -114,6 +114,14 @@ class BehavioralPlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
+
+                # read pedal position from pubsub and update DIM state accordingly
+                pedal_position = self._get_current_pedal_position()
+                host_hypothesis = scene_dynamic.s_Data.s_host_localization.as_host_hypothesis[0]
+                ego_lane_id = host_hypothesis.e_i_lane_segment_id
+                ego_lane_fstate = host_hypothesis.a_lane_frenet_pose[FS_SX]
+                self._driver_initiated_motion_state.update_state(ego_lane_id, ego_lane_fstate, route_plan, pedal_position)
+
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
@@ -163,12 +171,6 @@ class BehavioralPlanningFacade(DmModule):
             self._last_trajectory = samplable_trajectory
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
-
-            # read pedal position from pubsub and update DIM state accordingly
-            pedal_position = self._get_current_pedal_position()
-            ego_map_state = updated_state.ego_state.map_state
-            self._driver_initiated_motion_state.update_state(
-                ego_map_state.lane_id, ego_map_state.lane_fstate, trajectory_params.reference_route, pedal_position)
 
             # Send plan to trajectory
             self._publish_results(trajectory_params)
