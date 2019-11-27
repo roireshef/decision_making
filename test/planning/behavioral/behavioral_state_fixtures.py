@@ -3,7 +3,7 @@ import pickle
 from decision_making.paths import Paths
 from decision_making.src.planning.types import FS_SA, C_A
 
-from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
+from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from typing import List, Dict, Tuple
@@ -541,8 +541,11 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
     scene_static_with_traffic = scene_static_pg_split()
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
-    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_static_traffic_flow_control.append(stop_sign)
+    stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=20,
+                                  e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
+    for lane_segment in scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar.append(stop_bar)
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     road_id = 20
@@ -917,8 +920,11 @@ def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
 def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
 
     scene_static_with_traffic = scene_static_pg_split()
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
-    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_static_traffic_flow_control.append(stop_sign)
+    stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=20,
+                                  e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
+    for lane_segment in scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar.append(stop_bar)
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     yield BehavioralGridState.create_from_state(state_with_traffic_control,

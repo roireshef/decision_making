@@ -1,22 +1,18 @@
 from enum import Enum
-from typing import List
+from typing import List, Dict
 
 import numpy as np
+from decision_making.src.messages.scene_tcd_message import DynamicTrafficControlDeviceStatus
 
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from interface.Rte_Types.python.sub_structures.TsSYS_BoundingBoxSize import \
-    TsSYSBoundingBoxSize
-from interface.Rte_Types.python.sub_structures.TsSYS_DataSceneDynamic import \
-    TsSYSDataSceneDynamic
-from interface.Rte_Types.python.sub_structures.TsSYS_HostLocalization import \
-    TsSYSHostLocalization
+from interface.Rte_Types.python.sub_structures.TsSYS_BoundingBoxSize import TsSYSBoundingBoxSize
+from interface.Rte_Types.python.sub_structures.TsSYS_DataSceneDynamic import TsSYSDataSceneDynamic
+from interface.Rte_Types.python.sub_structures.TsSYS_HostLocalization import TsSYSHostLocalization
 from interface.Rte_Types.python.sub_structures.TsSYS_HostHypothesis import TsSYSHostHypothesis
-from interface.Rte_Types.python.sub_structures.TsSYS_ObjectHypothesis import \
-    TsSYSObjectHypothesis
-from interface.Rte_Types.python.sub_structures.TsSYS_ObjectLocalization import \
-    TsSYSObjectLocalization
+from interface.Rte_Types.python.sub_structures.TsSYS_ObjectHypothesis import TsSYSObjectHypothesis
+from interface.Rte_Types.python.sub_structures.TsSYS_ObjectLocalization import TsSYSObjectLocalization
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
+from decision_making.src.messages.scene_common_messages import Timestamp, Header
 
 MAX_CARTESIANPOSE_FIELDS = 6
 MAX_LANEFRENETPOSE_FIELDS = 6
@@ -307,8 +303,10 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
     e_Cnt_num_objects = int
     as_object_localization = List[ObjectLocalization]
     s_host_localization = HostLocalization
+    as_dynamic_traffic_control_device_status = Dict[int, DynamicTrafficControlDeviceStatus]
 
-    def __init__(self, e_b_Valid, s_RecvTimestamp, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization, s_host_localization):
+    def __init__(self, e_b_Valid, s_RecvTimestamp, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization,
+                 s_host_localization):
         # type: (bool, Timestamp, Timestamp, int, List[ObjectLocalization], HostLocalization) -> None
         """
 
@@ -325,6 +323,7 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         self.e_Cnt_num_objects = e_Cnt_num_objects
         self.as_object_localization = as_object_localization
         self.s_host_localization = s_host_localization
+        self.as_dynamic_traffic_control_device_status = None  # status will be fused from UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES
 
     def serialize(self):
         # type: () -> TsSYSDataSceneDynamic
@@ -349,7 +348,8 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_num_objects):
             obj_localizations.append(ObjectLocalization.deserialize(pubsubMsg.as_object_localization[i]))
 
-        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_RecvTimestamp), Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp), pubsubMsg.e_Cnt_num_objects,
+        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_RecvTimestamp),
+                   Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp), pubsubMsg.e_Cnt_num_objects,
                    obj_localizations, HostLocalization.deserialize(pubsubMsg.s_host_localization))
 
 

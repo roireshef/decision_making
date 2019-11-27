@@ -1,5 +1,5 @@
 import numpy as np
-from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
+from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.map_utils import MapUtils
@@ -45,9 +45,11 @@ def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behav
     segment_s = segment_states[0][0]
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
-                                         e_Pct_confidence=1.0)
-    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+    stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=segment_s,
+                                  e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
+    for lane_segment in scene_static_pg_split.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    MapUtils.get_lane(lane_id).as_traffic_control_bar.append(stop_bar)
 
     filter = StaticTrafficFlowControlFilter()
     t, v, s, d = 10, 20, ego_location + 40.0, 0
@@ -70,10 +72,12 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
     lane_id, segment_states = gff.convert_to_segment_states(gff_state)
     segment_s = segment_states[0][0]
 
+    for lane_segment in scene_static_pg_split.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
-                                         e_Pct_confidence=1.0)
-    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+    stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=segment_s,
+                                  e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
+    MapUtils.get_lane(lane_id).as_traffic_control_bar.append(stop_bar)
 
     filter = BeyondSpecStaticTrafficFlowControlFilter()
     t, v, s, d = 10, 20, gff_stop_sign_location - 2.0, 0
