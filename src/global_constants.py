@@ -221,7 +221,7 @@ LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL = 3.8
 # [m/sec] maximal actors' velocity in the lane merge scenarios
 LANE_MERGE_ACTORS_MAX_VELOCITY = 25.
 # [sec] time limits of RL actions
-LANE_MERGE_ACTION_T_LIMITS = np.array([0, 30])
+LANE_MERGE_ACTION_T_LIMITS = np.array([0, 100])
 
 
 # Werling Planner #

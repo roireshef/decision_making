@@ -199,8 +199,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return np.min(safety_dist, axis=0)  # AND on actors
 
     @staticmethod
-    def choose_max_vel_quartic_trajectory(state: LaneMergeState) -> \
-            [bool, np.array]:
+    def choose_max_vel_quartic_trajectory(state: LaneMergeState) -> [bool, np.array]:
         """
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
         main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
