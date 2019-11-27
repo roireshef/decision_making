@@ -41,14 +41,29 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         # if an augmented lane is chosen to be the minimum_cost_lane or a lane change is desired, also allow the possibility of choosing an
         # action on the straight lane if no actions are available on the augmented lane or the desired lane for a lane change. Prioritize
         # the lane change lane over the minimum_cost_lane.
+        lanes_to_try = []
+
+        # If a turn signal is on, prioritize actions towards that lanes by placing the respective relative lane first in the list.
         if behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
-            lanes_to_try = [RelativeLane.LEFT_LANE, minimum_cost_lane, RelativeLane.SAME_LANE]
+            lanes_to_try = [RelativeLane.LEFT_LANE]
         elif behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn:
-            lanes_to_try = [RelativeLane.RIGHT_LANE, minimum_cost_lane, RelativeLane.SAME_LANE]
-        elif minimum_cost_lane != RelativeLane.SAME_LANE:
-            lanes_to_try = [minimum_cost_lane, RelativeLane.SAME_LANE]
+            lanes_to_try = [RelativeLane.RIGHT_LANE]
+
+        # Append SAME_LANE and minimum_cost_lane accordingly
+        if minimum_cost_lane != RelativeLane.SAME_LANE:
+            lanes_to_try.append(minimum_cost_lane)
+            lanes_to_try.append(RelativeLane.SAME_LANE)
         else:
-            lanes_to_try = [RelativeLane.SAME_LANE]
+            lanes_to_try.append(RelativeLane.SAME_LANE)
+
+        # If we're currently performing a lane change and in the target lane, override the previous lanes_to_try and prioritize actions
+        # in the same lane in order to complete the maneuver.
+        if behavioral_state.ego_state.lane_change_info.lane_change_active:
+            is_host_in_target_lane = behavioral_state.ego_state.lane_change_info.are_target_lane_ids_in_gff(
+                behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE])
+
+            if is_host_in_target_lane:
+                lanes_to_try = [RelativeLane.SAME_LANE]
 
         for target_lane in lanes_to_try:
             # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE

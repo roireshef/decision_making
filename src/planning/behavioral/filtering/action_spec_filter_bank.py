@@ -48,21 +48,33 @@ class FilterForKinematics(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean array per action spec: True if a spec passed the filter
         """
-        _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
+        ftrajectories, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
-
-        baseline_gff = lane_change_mask = None
         # if a LC is desired, relative lat accel limits need to be checked
-        if behavioral_state.ego_state.lane_change_info.lane_change_desired:
-            baseline_gff = behavioral_state.ego_state.lane_change_info.baseline_gff
-            lane_change_mask = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                                and behavioral_state.extended_lane_frames[spec.relative_lane].gff_type
-                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                                for spec in action_specs]
+        lane_change_mask = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                            and behavioral_state.extended_lane_frames[spec.relative_lane].gff_type
+                            not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                            for spec in action_specs]
 
-        return KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS,
-        baseline_gff, REL_LAT_ACC_LIMITS, lane_change_mask)
+        if np.any(lane_change_mask):
+            # If any lane change recipes passed the filters, a lane change is desired.
+            target_lane = np.array(action_specs)[lane_change_mask][0].relative_lane
+
+            baseline_gff = behavioral_state.ego_state.lane_change_info.target_lane_gff or \
+                           behavioral_state.extended_lane_frames[target_lane]
+        elif behavioral_state.ego_state.lane_change_info.lane_change_active:
+            # No lane change recipes might have passed the filters but a lane change might still be currently active. This will happen when
+            # the host crosses into the target lane but has yet to complete the lane change.
+            baseline_gff = behavioral_state.ego_state.lane_change_info.target_lane_gff
+            lane_change_mask = [spec.relative_lane == RelativeLane.SAME_LANE for spec in action_specs]
+        else:
+            baseline_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
+            lane_change_mask = [False] * ctrajectories.shape[0]
+
+        return KinematicUtils.filter_by_cartesian_limits(ftrajectories, ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS,
+                                                         BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS, REL_LAT_ACC_LIMITS, lane_change_mask,
+                                                         baseline_gff)
+
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
     @prof.ProfileFunction()

@@ -93,7 +93,10 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 LAT_ACC_LIMITS = np.array([-2, 2])
 
 # Relative Latitudinal Acceleration Limits [m/sec^2] for lane change
-REL_LAT_ACC_LIMITS = np.array([-.6, .6])
+REL_LAT_ACC_LIMITS = np.array([-1.0, 1.0])
+
+# Set to True if filtering trajectories by relative lat. accel. limits is desired; otherwise, False. Note that this has to be in a list.
+USE_REL_LAT_ACCEL_FILTER_IN_TP = [True]
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 0.9
@@ -148,6 +151,19 @@ REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2
 
 # [sec], Time that has to pass after the turn signal is turned on before considering a lane change
 LANE_CHANGE_DELAY = 1.0
+
+# [sec], Time completion target for lane changes
+LANE_CHANGE_TIME_COMPLETION_TARGET = 6.0
+
+# [sec], Minimum time allowed for lane change actions. This time will override the lane change specification time towards the end of the
+# lane change.
+MIN_LANE_CHANGE_ACTION_TIME = 0.2
+
+# [m], Minimum distance from lane center to consider a lane change complete
+MIN_OFFSET_FOR_LANE_CHANGE_COMPLETE = 0.35
+
+# [rad], Minimum relative heading to consider a lane change complete
+MIN_REL_HEADING_FOR_LANE_CHANGE_COMPLETE = 0.25
 
 # Trajectory Planner #
 

@@ -104,15 +104,18 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
                                          behavioral_state.ego_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
         turn_signal_state = behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state
         lane_change_active = behavioral_state.ego_state.lane_change_info.lane_change_active
-        is_in_target_lane = behavioral_state.ego_state.lane_change_info.in_target_lane
+
+        is_host_in_target_lane = behavioral_state.ego_state.lane_change_info.are_target_lane_ids_in_gff(
+            behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]) if lane_change_active else False
+
         return [(recipe.relative_lane == RelativeLane.SAME_LANE
                  or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]
                  or ((recipe.relative_lane == RelativeLane.LEFT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn)
                      and (time_since_turn_signal_changed > LANE_CHANGE_DELAY)
-                     and not (lane_change_active and is_in_target_lane))
+                     and not (lane_change_active and is_host_in_target_lane))
                  or ((recipe.relative_lane == RelativeLane.RIGHT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn)
                      and (time_since_turn_signal_changed > LANE_CHANGE_DELAY)
-                     and not (lane_change_active and is_in_target_lane)))
+                     and not (lane_change_active and is_host_in_target_lane)))
                 if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
                 else False for recipe in recipes]
 

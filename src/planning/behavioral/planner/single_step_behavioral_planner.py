@@ -8,11 +8,10 @@ from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_sp
     AugmentedLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
-    ActionSpec, ActionRecipe, RelativeLane
+    ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
 from logging import Logger
 
 from decision_making.src.planning.types import ActionSpecArray
@@ -53,19 +52,6 @@ class SingleStepBehavioralPlanner(BasePlanner):
 
         action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
-
-        # If any lane change recipe passes the filters, a lane change is desired
-        lane_change_mask = [recipe.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                            and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type
-                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                            for recipe in valid_action_recipes]
-        lane_change_desired = np.any(lane_change_mask)
-
-        # store baseline gff
-        if lane_change_desired:
-            behavioral_state.ego_state.lane_change_info.enable_lc_desired()
-            behavioral_state.ego_state.lane_change_info.baseline_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-
         action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
 
         # TODO: FOR DEBUG PURPOSES!

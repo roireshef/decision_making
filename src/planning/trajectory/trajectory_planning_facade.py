@@ -7,6 +7,7 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
 
 from decision_making.src.exceptions import MsgDeserializationError, CartesianLimitsViolated, StateHasNotArrivedYet
@@ -16,10 +17,11 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, \
-    LOG_MSG_SCENE_DYNAMIC_RECEIVED
+    LOG_MSG_SCENE_DYNAMIC_RECEIVED, LOG_MSG_SCENE_STATIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
+from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
@@ -31,6 +33,7 @@ from decision_making.src.planning.types import CartesianTrajectories, FP_SX, C_Y
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
@@ -42,7 +45,8 @@ import rte.python.profiler as prof
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 last_trajectory: SamplableWerlingTrajectory = None):
+                 last_trajectory: SamplableWerlingTrajectory = None,
+                 last_host_lane_gff: GeneralizedFrenetSerretFrame = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param pubsub: communication layer (DDS/LCM/...) instance
@@ -50,6 +54,7 @@ class TrajectoryPlanningFacade(DmModule):
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers - types are
         {TrajectoryPlanningStrategy: TrajectoryPlanner}
         :param last_trajectory: a representation of the last trajectory that was planned during self._periodic_action_impl
+        :param last_host_lane_gff: the last reference route provided to the TP that the host is actuall in
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
@@ -59,14 +64,17 @@ class TrajectoryPlanningFacade(DmModule):
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
         self._started_receiving_states = False
+        self._last_host_lane_gff = last_host_lane_gff
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
+        self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
+        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
 
     def _periodic_action_impl(self):
         """
@@ -78,6 +86,10 @@ class TrajectoryPlanningFacade(DmModule):
             start_time = time.time()
 
             params = self._get_mission_params()
+
+            with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
+                scene_static = self._get_current_scene_static()
+                SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
@@ -107,8 +119,13 @@ class TrajectoryPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                # If we're not localized to a lane in the reference route from the BP, then we are likely performing a lane change.
+                # Therefore, we need to provide the host's actual lane as the target GFF.
+                target_gff = self._last_host_lane_gff if state.ego_state.map_state.lane_id not in params.reference_route.segment_ids \
+                    else params.reference_route
+
                 updated_state = LocalizationUtils.get_state_with_expected_ego(
-                    state, self._last_trajectory, self.logger, self.__class__.__name__, params.reference_route)
+                    state, self._last_trajectory, self.logger, self.__class__.__name__, target_gff)
             else:
                 updated_state = state
 
@@ -132,6 +149,10 @@ class TrajectoryPlanningFacade(DmModule):
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
+
+            # If possible, update the host lane gff to use for localization in later cycles.
+            if updated_state.ego_state.map_state.lane_id in params.reference_route.segment_ids:
+                self._last_host_lane_gff = params.reference_route
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
             MetricLogger.get_logger().report()
@@ -198,6 +219,20 @@ class TrajectoryPlanningFacade(DmModule):
                 raise KeyError('strategy_handlers does not contain a  record for ' + elem)
             if not isinstance(self._strategy_handlers[elem], TrajectoryPlanner):
                 raise ValueError('strategy_handlers does not contain a TrajectoryPlanner impl. for ' + elem)
+
+    def _get_current_scene_static(self) -> SceneStatic:
+        with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):
+            is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
+
+        if serialized_scene_static is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_SCENE_STATIC)
+        with DMProfiler(self.__class__.__name__ + '.deserialize'):
+            scene_static = SceneStatic.deserialize(serialized_scene_static)
+        if scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_lane_segments == 0 and scene_static.s_Data.s_SceneStaticBase.e_Cnt_num_road_segments == 0:
+            raise MsgDeserializationError("SceneStatic map was received without any road or lanes")
+        self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
+        return scene_static
 
     def _get_current_scene_dynamic(self) -> SceneDynamic:
         is_success, serialized_scene_dynamic = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_DYNAMIC)

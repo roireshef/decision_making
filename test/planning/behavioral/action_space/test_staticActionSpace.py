@@ -33,7 +33,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split
     cstate = MapUtils.get_lane_frenet_frame(lane_id).fstate_to_cstate(np.array([ego_lon, ego_vel, 0, 0, 0, 0]))
 
     ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=cstate, size=size, confidence=0,
-                                               off_map=False, lane_change_info = LaneChangeInfo())
+                                               off_map=False, lane_change_info = LaneChangeInfo(None, None, False, 0.0))
 
     state = State(False, None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20_30, logger)

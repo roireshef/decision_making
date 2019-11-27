@@ -2,7 +2,7 @@ import numpy as np
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
-    EPS
+    EPS, LANE_CHANGE_TIME_COMPLETION_TARGET, MIN_LANE_CHANGE_ACTION_TIME
 from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
@@ -10,6 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Sta
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from sklearn.utils.extmath import cartesian
@@ -78,12 +79,33 @@ class StaticActionSpace(ActionSpace):
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
 
-        # TODO: This is considered a hack
-        # override goal time when a lane change is being performed
-        if behavioral_state.ego_state.lane_change_info.lane_change_active:
-            seconds_left_for_lc = 6.0 - behavioral_state.ego_state.lane_change_info.time_from_start()
-            if seconds_left_for_lc > 0:
-                T = seconds_left_for_lc
+        # override goal time when a lane change is being performed or desired
+        lane_change_mask = [recipe.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                            and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type
+                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                            if ~np.isnan(T[i]) else False
+                            for i, recipe in enumerate(action_recipes)]
+
+        if np.any(lane_change_mask):
+            # If any lane change recipes passed the filters, a lane change is desired. Override the goal time for only the lane change
+            # actions.
+            if not behavioral_state.ego_state.lane_change_info.lane_change_active:
+                # This will be reached before a lane change has begun
+                T[lane_change_mask] = LANE_CHANGE_TIME_COMPLETION_TARGET
+            else:
+                T[lane_change_mask] = max(MIN_LANE_CHANGE_ACTION_TIME,
+                                          LANE_CHANGE_TIME_COMPLETION_TARGET
+                                          + behavioral_state.ego_state.lane_change_info.lane_change_start_time
+                                          - behavioral_state.ego_state.timestamp_in_sec)
+        elif behavioral_state.ego_state.lane_change_info.lane_change_active:
+            # If no lane change recipes passed the filters but a lane change is currently active, then override the goal time for the
+            # same lane actions. These are the actions that will be used to complete a lane change.
+            same_lane_mask = [recipe.relative_lane == RelativeLane.SAME_LANE if ~np.isnan(T[i]) else False
+                              for i, recipe in enumerate(action_recipes)]
+            T[same_lane_mask] = max(MIN_LANE_CHANGE_ACTION_TIME,
+                                    LANE_CHANGE_TIME_COMPLETION_TARGET
+                                    + behavioral_state.ego_state.lane_change_info.lane_change_start_time
+                                    - behavioral_state.ego_state.timestamp_in_sec)
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuarticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],

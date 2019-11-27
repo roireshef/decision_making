@@ -1,9 +1,10 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
+    TINY_CURVATURE
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX, FS_DV, FS_DA
+    FS_DX, FS_DV, FS_DA, FrenetTrajectories2D
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math_utils import Math
@@ -41,62 +42,68 @@ class KinematicUtils:
         return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
 
     @staticmethod
-    def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
-                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
-                                   baseline_gff: GeneralizedFrenetSerretFrame = None,
-                                   rel_lat_accel_limits: Limits = None, rel_mask: List[bool] = None) -> np.ndarray:
+    def filter_by_cartesian_limits(ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories,
+                                   velocity_limits: Limits, lon_acceleration_limits: Limits, lat_acceleration_limits: Limits,
+                                   relative_lat_acceleration_limits: Limits, relative_lat_acceleration_mask: List[bool],
+                                   baseline_gff: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
-        longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
+        longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity).
+        Also, for all trajectories that are not masked, the lateral acceleration relative to the provided baselien GFF
+        will also be checked. The returned values are the intersection of these two checks.
+        :param ftrajectories: FrenetTrajectories2D object to use while checking relative lat. accel. limit
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param velocity_limits: longitudinal velocity limits to test for in cartesian frame [m/sec]
         :param lon_acceleration_limits: longitudinal acceleration limits to test for in cartesian frame [m/sec^2]
         :param lat_acceleration_limits: lateral acceleration limits to test for in cartesian frame [m/sec^2]
-        :param baseline_gff
-        :param rel_lat_accel_limits
-        :param rel_mask
+        :param relative_lat_acceleration_limits: relative lat accel limits to test against baseline GFF [m/sec^2]
+        :param relative_lat_acceleration_mask: mask for trajectories that should be tested with relative lat accel limits
+        :param baseline_gff: GFF used for calculating baseline lat accel
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
-        # all three arguments are neeed to filter by relative limits
-        filter_relative = baseline_gff is not None and rel_lat_accel_limits is not None and rel_mask is not None
-
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
 
         conforms_rel_limits = np.full(len(ctrajectories), True)
-        if filter_relative:
-            if np.any(rel_mask):
-                ftrajectories_on_baseline = baseline_gff.ctrajectories_to_ftrajectories(ctrajectories[rel_mask])
 
-                # set DX, DV, DA to 0 to simulate traveling on the baseline GFF
-                ftrajectories_on_baseline[:,:,FS_DX] = 0
-                ftrajectories_on_baseline[:,:,FS_DV] = 0
-                ftrajectories_on_baseline[:,:,FS_DA] = 0
+        if np.any(relative_lat_acceleration_mask):
+            ftrajectories_on_baseline = ftrajectories[relative_lat_acceleration_mask, :, :]
 
-                # Convert back to ctrajectories to get curvature
-                ctrajectories_on_baseline = baseline_gff.ftrajectories_to_ctrajectories(ftrajectories_on_baseline)
+            # set DX, DV, DA to 0 to simulate traveling on the baseline GFF
+            ftrajectories_on_baseline[:,:,FS_DX] = 0
+            ftrajectories_on_baseline[:,:,FS_DV] = 0
+            ftrajectories_on_baseline[:,:,FS_DA] = 0
 
-                # Determine velocity to use for calculating baseline lat. accel. calculation
-                num_trajectories, num_points_per_trajectory, _ = ftrajectories_on_baseline.shape
-                baseline_velocities = np.zeros((num_trajectories, num_points_per_trajectory, 1))
-                curve_speed_control_lat_accel_limit = max(lat_acceleration_limits)
+            # Convert back to ctrajectories to get curvature
+            ctrajectories_on_baseline = baseline_gff.ftrajectories_to_ctrajectories(ftrajectories_on_baseline)
 
-                for i, ftrajectory in enumerate(ftrajectories_on_baseline):
-                    lane_segment_ids, _ = baseline_gff.convert_to_segment_states(ftrajectory)
+            # Determine velocity to use for calculating baseline lat. accel.
+            num_trajectories, num_points_per_trajectory, _ = ftrajectories_on_baseline.shape
+            baseline_velocities = np.zeros((num_trajectories, num_points_per_trajectory))
+            curve_speed_control_lat_accel_limit = max(lat_acceleration_limits)
 
-                    for j, lane_segment_id in enumerate(lane_segment_ids):
-                        speed_limit = MapUtils.get_lane(lane_segment_id).e_v_nominal_speed
-                        curve_speed_control_velocity = np.sqrt(curve_speed_control_lat_accel_limit / ctrajectories_on_baseline[i, j, C_K])
-                        baseline_velocities[i, j, 0] = min(speed_limit, curve_speed_control_velocity)
+            for i, ftrajectory in enumerate(ftrajectories_on_baseline):
+                lane_segment_ids, _ = baseline_gff.convert_to_segment_states(ftrajectory)
 
-                # Calculate baseline lat. accel. to use for relative lat. accel. comparison
-                baseline_lat_accel = baseline_velocities ** 2 * ctrajectories_on_baseline[:, :, C_K]
+                for j, lane_segment_id in enumerate(lane_segment_ids):
+                    curvature = max(TINY_CURVATURE, abs(ctrajectories_on_baseline[i, j, C_K]))
+                    curve_speed_control_velocity = np.sqrt(curve_speed_control_lat_accel_limit / curvature)
 
-                # Calculate relative difference in lat accel
-                lat_accel_of_interest = ctrajectories[rel_mask, :, C_V] ** 2 * ctrajectories[rel_mask, :, C_K]
-                lat_accel_difference = lat_accel_of_interest - baseline_lat_accel
-                conforms_rel_limits[rel_mask] = np.all(NumpyUtils.is_in_limits(lat_accel_difference, rel_lat_accel_limits), axis=1)
+                    speed_limit = MapUtils.get_lane(lane_segment_id).e_v_nominal_speed
+
+                    baseline_velocities[i, j] = min(speed_limit, curve_speed_control_velocity)
+
+            # Calculate baseline lat. accel. to use for relative lat. accel. comparison
+            baseline_lat_accel = (baseline_velocities ** 2) * ctrajectories_on_baseline[:, :, C_K]
+
+            # Calculate relative difference in lat. accel.
+            lat_accel_of_interest = (ctrajectories[relative_lat_acceleration_mask, :, C_V] ** 2) \
+                                    * ctrajectories[relative_lat_acceleration_mask, :, C_K]
+            lat_accel_difference = lat_accel_of_interest - baseline_lat_accel
+
+            conforms_rel_limits[relative_lat_acceleration_mask] = np.all(
+                NumpyUtils.is_in_limits(lat_accel_difference, relative_lat_acceleration_limits), axis=1)
 
         # check velocity and acceleration limits
         # note: while we filter any trajectory that exceeds the velocity limit, we allow trajectories to break the
@@ -105,8 +112,7 @@ class KinematicUtils:
                                  NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
                                  NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
 
-        # return np.logical_and(conforms_limits, conforms_rel_limits)
-        return conforms_limits
+        return np.logical_and(conforms_limits, conforms_rel_limits)
 
     @staticmethod
     def filter_by_velocity_limit(ctrajectories: CartesianExtendedTrajectories, velocity_limits: np.ndarray,

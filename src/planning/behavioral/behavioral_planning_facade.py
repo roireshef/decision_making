@@ -25,16 +25,15 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
-from decision_making.src.messages.turn_signal_message import TurnSignal, TurnSignalState
+from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.data_objects import LaneChangeInfo, ActionSpec
+from decision_making.src.planning.behavioral.data_objects import LaneChangeInfo
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
@@ -58,7 +57,7 @@ class BehavioralPlanningFacade(DmModule):
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
-        self._lane_change_info = LaneChangeInfo()
+        self._lane_change_info = LaneChangeInfo(None, None, False, 0.0)
 
     def _write_filters_to_log_if_required(self, now: float):
         """
@@ -111,8 +110,8 @@ class BehavioralPlanningFacade(DmModule):
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
-                                                              turn_signal=turn_signal,
                                                               logger=self.logger,
+                                                              turn_signal=turn_signal,
                                                               lane_change_info=self._lane_change_info)
 
                 state.handle_negative_velocities(self.logger)
@@ -139,8 +138,15 @@ class BehavioralPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                # If a lane change is active and we're not localized to a lane in our last GFF, that means that we're targeting a
+                # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
+                # the target GFF. This will happen when we're performing a lane change.
+                target_gff = self._lane_change_info.source_lane_gff \
+                    if self._lane_change_info.lane_change_active and (state.ego_state.map_state.lane_id not in self._last_gff_segment_ids) \
+                    else None
+
                 updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
-                                                                              self.logger, self.__class__.__name__)
+                                                                              self.logger, self.__class__.__name__, target_gff)
             else:
                 updated_state = state
 
@@ -155,10 +161,10 @@ class BehavioralPlanningFacade(DmModule):
             planner = planner_class(self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
-                trajectory_params, samplable_trajectory, behavioral_visualization_message,\
-                    behavioral_state, selected_action_spec = planner.plan(updated_state, route_plan)
+                trajectory_params, samplable_trajectory, behavioral_visualization_message, behavioral_state, selected_action_spec = \
+                    planner.plan(updated_state, route_plan)
 
-            self._update_state(behavioral_state, selected_action_spec)
+            self._lane_change_info.update(behavioral_state, selected_action_spec)
 
             self._last_trajectory = samplable_trajectory
 
@@ -197,14 +203,6 @@ class BehavioralPlanningFacade(DmModule):
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: %s. Trace: %s" %
                                  (e, traceback.format_exc()))
-
-    def _update_state(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec):
-        """
-        Update internal state variables
-        :return:
-        """
-        # Update lane change info based on the action selected for this cycle
-        behavioral_state.ego_state.lane_change_info.update(behavioral_state, action_spec)
 
     def _get_current_route_plan(self) -> RoutePlan:
         """

@@ -1,5 +1,5 @@
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from decision_making.src.infra.pubsub import PubSub
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
@@ -33,6 +33,7 @@ from decision_making.test.planning.custom_fixtures import pubsub, behavioral_fac
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 
 
+@patch('decision_making.src.planning.trajectory.werling_planner.USE_REL_LAT_ACCEL_FILTER_IN_TP', [False])
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         scene_static_short_testable,
