@@ -229,8 +229,15 @@ class TrafficControlBar(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSTrafficControlBar):
+        e_i_static_traffic_control_device_id = list()
+        for i in range(pubsubMsg.e_Cnt_static_traffic_control_device_count):
+            e_i_static_traffic_control_device_id.append(pubsubMsg.e_i_static_traffic_control_device_id[i])
+        e_i_dynamic_traffic_control_device_id = list()
+        for i in range(pubsubMsg.e_Cnt_dynamic_traffic_control_device_count):
+            e_i_dynamic_traffic_control_device_id.append(pubsubMsg.e_i_dynamic_traffic_control_device_id[i])
+
         return cls(pubsubMsg.e_i_traffic_control_bar_id, pubsubMsg.e_l_station,
-                   pubsubMsg.e_i_static_traffic_control_device_id, pubsubMsg.e_i_dynamic_traffic_control_device_id)
+                   e_i_static_traffic_control_device_id, e_i_dynamic_traffic_control_device_id)
 
 
 class StaticTrafficControlDevice(PUBSUB_MSG_IMPL):
@@ -275,9 +282,13 @@ class StaticTrafficControlDevice(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSStaticTrafficControlDevice):
+        e_i_controlled_lane_segment_id = list()
+        for i in range(pubsubMsg.e_Cnt_controlled_lane_segments_count):
+            e_i_controlled_lane_segment_id.append(pubsubMsg.e_i_controlled_lane_segment_id[i])
+
         return cls(pubsubMsg.e_i_static_traffic_control_device_id,
                    StaticTrafficControlDeviceType(pubsubMsg.e_e_traffic_control_device_type),
-                   pubsubMsg.e_Pct_confidence, pubsubMsg.e_i_controlled_lane_segment_id, pubsubMsg.e_l_station,
+                   pubsubMsg.e_Pct_confidence, e_i_controlled_lane_segment_id, pubsubMsg.e_l_station,
                    pubsubMsg.e_l_lateral_offset)
 
 
@@ -318,9 +329,13 @@ class DynamicTrafficControlDevice(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDynamicTrafficControlDevice):
+        e_i_controlled_lane_segment_id = list()
+        for i in range(pubsubMsg.e_Cnt_controlled_lane_segments_count):
+            e_i_controlled_lane_segment_id.append(pubsubMsg.e_i_controlled_lane_segment_id[i])
+
         return cls(pubsubMsg.e_i_dynamic_traffic_control_device_id,
                    DynamicTrafficControlDeviceType(pubsubMsg.e_e_traffic_control_device_type),
-                   pubsubMsg.e_i_controlled_lane_segment_id,
+                   e_i_controlled_lane_segment_id,
                    pubsubMsg.e_l_station, pubsubMsg.e_l_lateral_offset)
 
 
