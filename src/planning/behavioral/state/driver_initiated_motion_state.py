@@ -1,4 +1,5 @@
 import numpy as np
+from logging import Logger
 from decision_making.src.global_constants import DRIVER_INITIATED_MOTION_PEDAL_THRESH, \
     DRIVER_INITIATED_MOTION_PEDAL_TIME, DRIVER_INITIATED_MOTION_STOP_BAR_HORIZON, \
     DRIVER_INITIATED_MOTION_VELOCITY_LIMIT, DRIVER_INITIATED_MOTION_MAX_TIME_TO_STOP_BAR, \
@@ -33,7 +34,8 @@ class DriverInitiatedMotionState:
     is_pedal_pressed = bool             # True if the pedal is currently pressed
     stop_bar_id = (int, int)            # the closest stop bar id at the moment of pressing the pedal
 
-    def __init__(self):
+    def __init__(self, logger: Logger):
+        self.logger = logger
         self._reset()
 
     def update_state(self, timestamp_in_sec: float, ego_lane_id: int, ego_lane_fstate: FrenetState2D,
@@ -52,6 +54,7 @@ class DriverInitiatedMotionState:
             lane_id, lane_fstate = reference_route.convert_to_segment_state(np.array([stop_bar_s, 0, 0, 0, 0, 0]))
             self.stop_bar_id = (lane_id, lane_fstate[FS_SX])  # TODO: replace by the real stop bar id
             self.state = DIM_States.PENDING
+            self.logger.debug('DIM state: PENDING; stop_bar_id %s', self.stop_bar_id)
         if self.state == DIM_States.DISABLED:
             self._reset()
             return
@@ -59,10 +62,12 @@ class DriverInitiatedMotionState:
         # check if we can pass to CONFIRMED state
         if self._can_pass_to_confirmed_state(timestamp_in_sec):
             self.state = DIM_States.CONFIRMED
+            self.logger.debug('DIM state: CONFIRMED; stop_bar_id %s', self.stop_bar_id)
 
         # if ego crossed the stop bar or timeout after releasing of pedal then pass to DISABLED state
         if self._can_pass_to_disabled_state(ego_lane_id, ego_lane_fstate, reference_route, timestamp_in_sec):
             self._reset()  # set DISABLED state
+            self.logger.debug('DIM state: DISABLED; ')
 
     def stop_bar_to_ignore(self):
         """

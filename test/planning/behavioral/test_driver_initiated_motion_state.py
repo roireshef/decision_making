@@ -1,4 +1,5 @@
 import numpy as np
+from rte.python.logger.AV_logger import AV_Logger
 from decision_making.src.messages.pedal_position_message import PedalPosition, DataPedalPosition
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_enums import RoadObjectType
@@ -14,6 +15,8 @@ from decision_making.src.planning.behavioral.state.driver_initiated_motion_state
 def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg_split):
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
 
+    logger = AV_Logger.get_logger()
+
     # add stop sign to scene_static
     SELECTED_STOP_LANE_ID = 200
     patched_lane = MapUtils.get_lane(lane_id=SELECTED_STOP_LANE_ID)
@@ -26,7 +29,7 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     sub_segment = FrenetSubSegment(lane_id, 0, frenet_frame.s_max)
     reference_route = GeneralizedFrenetSerretFrame.build([frenet_frame], [sub_segment])
 
-    dim_state = DriverInitiatedMotionState()
+    dim_state = DriverInitiatedMotionState(logger)
 
     # too far from the stop sign
     lane_fstate = np.array([stop_bar.e_l_station - 7., 0, 0, 0, 0, 0])
