@@ -47,7 +47,7 @@ class DynamicTrafficControlDeviceStatus(PUBSUB_MSG_IMPL):
 
         a_Pct_status_confidence = list()
         for i in range(pubsubMsg.e_Cnt_status_count):
-            a_Pct_status_confidence.append.append(pubsubMsg.a_Pct_status_confidence[i])
+            a_Pct_status_confidence.append(pubsubMsg.a_Pct_status_confidence[i])
 
         return cls(pubsubMsg.e_i_dynamic_traffic_control_device_id, a_e_status, a_Pct_status_confidence)
 
