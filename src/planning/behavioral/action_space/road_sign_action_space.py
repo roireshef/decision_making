@@ -3,7 +3,7 @@ from typing import List, Type
 
 import numpy as np
 from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR, \
-    DIM_MARGIN_TO_STOP_BAR
+    DIM_MARGIN_TO_STOP_BAR, TOO_FAR_TO_STOP
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
@@ -77,4 +77,4 @@ class RoadSignActionSpace(TargetActionSpace):
             should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
             if should_stop:
                 return stop_bar.s - ego_location
-        return float("inf")
+        return TOO_FAR_TO_STOP
