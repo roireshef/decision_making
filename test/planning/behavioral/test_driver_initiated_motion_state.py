@@ -33,14 +33,12 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
 
     # pedal pressed
     pedal_position = create_pedal_position(time_in_sec=0, pedal_pos=0.1)
-    dim_state.update_pedal_times(pedal_position)
-    dim_state.update_state(pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, lane_id, lane_fstate, reference_route)
+    dim_state.update_state(lane_id, lane_fstate, reference_route, pedal_position)
     assert dim_state.stop_bar_to_ignore() is None
 
     # pedal pressed for enough time
     pedal_position = create_pedal_position(time_in_sec=2, pedal_pos=0.1)
-    dim_state.update_pedal_times(pedal_position)
-    dim_state.update_state(pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, lane_id, lane_fstate, reference_route)
+    dim_state.update_state(lane_id, lane_fstate, reference_route, pedal_position)
     assert dim_state.stop_bar_to_ignore() is None
 
     # near the stop sign
@@ -48,34 +46,29 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
 
     # pedal pressed
     pedal_position = create_pedal_position(time_in_sec=0, pedal_pos=0.1)
-    dim_state.update_pedal_times(pedal_position)
-    dim_state.update_state(pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, lane_id, lane_fstate, reference_route)
+    dim_state.update_state(lane_id, lane_fstate, reference_route, pedal_position)
     assert dim_state.stop_bar_to_ignore() is None
 
     # pedal pressed for enough time
     pedal_position = create_pedal_position(time_in_sec=2, pedal_pos=0.1)
-    dim_state.update_pedal_times(pedal_position)
-    dim_state.update_state(pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, lane_id, lane_fstate, reference_route)
+    dim_state.update_state(lane_id, lane_fstate, reference_route, pedal_position)
     assert dim_state.stop_bar_to_ignore() is not None
 
     # pedal released
     pedal_position = create_pedal_position(time_in_sec=3, pedal_pos=0.01)
-    dim_state.update_pedal_times(pedal_position)
-    dim_state.update_state(pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, lane_id, lane_fstate, reference_route)
+    dim_state.update_state(lane_id, lane_fstate, reference_route, pedal_position)
     assert dim_state.stop_bar_to_ignore() is not None
 
     # crossed the stop sign
     lane_fstate = np.array([stop_bar.e_l_station + 5., 0, 0, 0, 0, 0])
 
     pedal_position = create_pedal_position(time_in_sec=4, pedal_pos=0.01)
-    dim_state.update_pedal_times(pedal_position)
-    dim_state.update_state(pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, lane_id, lane_fstate, reference_route)
+    dim_state.update_state(lane_id, lane_fstate, reference_route, pedal_position)
     assert dim_state.stop_bar_to_ignore() is None
 
     # timeout of the DIM state
     pedal_position = create_pedal_position(time_in_sec=33, pedal_pos=0.01)
-    dim_state.update_pedal_times(pedal_position)
-    dim_state.update_state(pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, lane_id, lane_fstate, reference_route)
+    dim_state.update_state(lane_id, lane_fstate, reference_route, pedal_position)
     assert dim_state.stop_bar_to_ignore() is None
 
 

@@ -445,8 +445,8 @@ class BehavioralGridState:
             elif num_upstream_lanes == 1:
                 chosen_upstream_lane_id = upstream_lane_ids[0]
             elif num_upstream_lanes > 1:
-                # If there are multiple upstream lanes and one of those lanes has a STRAIGHT_CONNECTION maneuver type, choose that lane to
-                # follow. Otherwise, default to choosing the first upstream lane in the list.
+                # If there are multiple upstream lanes and one of those lanes has a STRAIGHT_CONNECTION maneuver type,
+                # choose that lane to follow. Otherwise, default to choosing the first upstream lane in the list.
                 chosen_upstream_lane_id = upstream_lane_ids[0]
                 upstream_lane_maneuver_types = MapUtils.get_upstream_lane_maneuver_types(lane_id)
 
@@ -614,12 +614,6 @@ class BehavioralGridState:
             return RelativeLongitudinalPosition.REAR
         else:
             return RelativeLongitudinalPosition.PARALLEL
-
-    def update_dim_state(self) -> None:
-        """
-        Update DIM state machine of ego, using reference_route (current-lane GFF)
-        """
-        self.ego_state.update_dim_state(self.extended_lane_frames[RelativeLane.SAME_LANE])
 
     @staticmethod
     def _log_grid_data(multi_object_grid: Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]],

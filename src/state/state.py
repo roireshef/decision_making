@@ -10,7 +10,6 @@ from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
@@ -201,15 +200,6 @@ class EgoState(DynamicObject):
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map)
         self._dim_state = dim_state
-
-    def update_dim_state(self, reference_route: GeneralizedFrenetSerretFrame) -> None:
-        """
-        Update DIM state machine of ego, using reference_route (current-lane GFF)
-        :param reference_route: current lane GeneralizedFrenetSerretFrame
-        """
-        if self._dim_state is not None:
-            self._dim_state.update_state(self.timestamp_in_sec, self._cached_map_state.lane_id,
-                                         self._cached_map_state.lane_fstate, reference_route)
 
     def get_stop_bar_to_ignore(self):
         """
