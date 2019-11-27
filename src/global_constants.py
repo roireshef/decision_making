@@ -92,6 +92,7 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-2, 2])
 
+# TODO: Decrease these values to 0.6, which is the actual requirement, when we're able to handle not finding a more conservative trajectory
 # Relative Latitudinal Acceleration Limits [m/sec^2] for lane change
 REL_LAT_ACC_LIMITS = np.array([-1.0, 1.0])
 
