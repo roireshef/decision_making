@@ -5,6 +5,7 @@ import numpy as np
 from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR, \
     DIM_MARGIN_TO_STOP_BAR, TOO_FAR_TO_STOP
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import StaticTrafficFlowControlFilter
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
     RoadSignActionRecipe
@@ -62,19 +63,7 @@ class RoadSignActionSpace(TargetActionSpace):
         :param behavioral_state: BehavioralGridState in context
         :return: distance to closest stop bar
         """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
         ego_location = behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
-        # TODO Possibly apply the DIM_MARGIN_TO_STOP_BAR only if there is no other stop bar close in front,
-        #  to handle case of 2 close stop bars say DIM_MARGIN_TO_STOP_BAR-1 apart
-        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - DIM_MARGIN_TO_STOP_BAR)
-        static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
-
-        # check for active stop bar from the closest to the farthest
-        for stop_bar in stop_bars:
-            # Only considers TCB is in front of (ego_location - DIM_MARGIN_TO_STOP_BAR)
-            active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
-            road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
-            should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
-            if should_stop:
-                return stop_bar.s - ego_location
-        return TOO_FAR_TO_STOP
+        closest_TCB = StaticTrafficFlowControlFilter.get_closest_stop_bar(action.relative_lane, behavioral_state,
+                                                                          DIM_MARGIN_TO_STOP_BAR)
+        return closest_TCB.s - ego_location if closest_TCB is not None else TOO_FAR_TO_STOP
