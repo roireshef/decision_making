@@ -1,6 +1,7 @@
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from typing import List
 
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import StaticTrafficFlowControlFilter
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe, \
@@ -41,7 +42,7 @@ class FilterOvertakeActions(RecipeFilter):
 
 
 class FilterActionsTowardsCellsWithoutStopSignsOrStopBars(RecipeFilter):
-    def filter(self, recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState, logger: Optional[Logger] = None) -> List[bool]:
+    def filter(self, recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [StaticTrafficFlowControlFilter.get_closest_stop_bar(recipe.relative_lane, behavioral_state, 0) is not None
                 if ((recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames))
                 else False for recipe in recipes]

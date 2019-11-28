@@ -185,7 +185,7 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         ego_location = behavioral_state.projected_ego_fstates[relative_lane][FS_SX]
         # TODO Possibly apply the DIM_MARGIN_TO_STOP_BAR only if there is no other stop bar close in front,
         #  to handle case of 2 close stop bars say DIM_MARGIN_TO_STOP_BAR-1 apart
-        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - offset_to_ego)  ################################## DIM_MARGIN_TO_STOP_BAR
+        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - offset_to_ego)
         static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
         # check for active stop bar from the closest to the farthest
