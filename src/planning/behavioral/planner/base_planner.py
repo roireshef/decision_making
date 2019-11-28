@@ -172,6 +172,27 @@ class BasePlanner:
         :param ego_fstate: ego Frenet state w.r.t. reference_route
         :return: a SamplableWerlingTrajectory object
         """
+        poly_coefs_s, poly_coefs_d = BasePlanner.generate_baseline_polynomials(action_spec, ego_fstate)
+
+        minimal_horizon = trajectory_parameters.trajectory_end_time - timestamp
+
+        return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
+                                          T_s=action_spec.t,
+                                          T_d=action_spec.t,
+                                          T_extended=minimal_horizon,
+                                          frenet_frame=trajectory_parameters.reference_route,
+                                          poly_s_coefs=poly_coefs_s,
+                                          poly_d_coefs=poly_coefs_d)
+
+    @staticmethod
+    @prof.ProfileFunction()
+    def generate_baseline_polynomials(action_spec: ActionSpec, ego_fstate: FrenetState2D) -> (np.ndarray, np.ndarray):
+        """
+        Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
+        :param action_spec: action specification that contains all relevant info about the action's terminal state
+        :param ego_fstate: ego Frenet state w.r.t. reference_route
+        :return: a SamplableWerlingTrajectory object
+        """
         # Note: We create the samplable trajectory as a reference trajectory of the current action.
         goal_fstate = action_spec.as_fstate()
         if action_spec.only_padding_mode:
@@ -189,15 +210,7 @@ class BasePlanner:
             poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
             poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
-        minimal_horizon = trajectory_parameters.trajectory_end_time - timestamp
-
-        return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
-                                          T_s=action_spec.t,
-                                          T_d=action_spec.t,
-                                          T_extended=minimal_horizon,
-                                          frenet_frame=trajectory_parameters.reference_route,
-                                          poly_s_coefs=poly_coefs_s,
-                                          poly_d_coefs=poly_coefs_d)
+        return poly_coefs_s, poly_coefs_d
 
     @staticmethod
     def _generate_cost_params(map_state: MapState, ego_size: ObjectSize) -> TrajectoryCostParams:

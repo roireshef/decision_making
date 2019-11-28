@@ -161,32 +161,32 @@ class LaneMergeState(BehavioralGridState):
         return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D}, red_line_s, target_rel_lane)
 
     @staticmethod
-    def encode_state(ego_fstate_1d: FrenetState1D, red_line_s_on_ego_gff: float,
+    def encode_state(ego_fstate: FrenetState1D, red_line_s_on_ego_gff: float,
                      actors_states: List[LaneMergeActorState]) -> GymTuple:
         """
         Encode and normalize the LaneMergeState for RL model usage.
-        :param ego_fstate_1d: 1-dim longitudinal Frenet state of ego
+        :param ego_fstate: 1-dim longitudinal Frenet state of ego
         :param red_line_s_on_ego_gff: s of the red line on host's GFF
         :param actors_states: list of actor states
         :return: tuple of host state and actors state (of type torch.tensor)
         """
         # normalize host & actors states
-        host_state = LaneMergeState._encode_host_state(ego_fstate_1d, red_line_s_on_ego_gff) / \
+        host_state = LaneMergeState._encode_host_state(ego_fstate, red_line_s_on_ego_gff) / \
                      np.array([LANE_MERGE_STATE_FAR_AWAY_DISTANCE, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, 1])
         actors_state = LaneMergeState._encode_actors_state(actors_states) / \
                        np.array([1, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY])[..., np.newaxis]
         return host_state, actors_state
 
     @staticmethod
-    def _encode_host_state(ego_fstate_1d: FrenetState1D, red_line_s_on_ego_gff: float) -> np.array:
+    def _encode_host_state(ego_fstate: FrenetState1D, red_line_s_on_ego_gff: float) -> np.array:
         """
         Encode host state of the LaneMergeState for RL model usage.
-        :param ego_fstate_1d: 1-dim longitudinal Frenet state of ego
+        :param ego_fstate: 1-dim longitudinal Frenet state of ego
         :param red_line_s_on_ego_gff: s of the red line on host's GFF
         :return: numpy array with encoded host state
         """
         # encode host: replace the host station coordinate with its distance to red line
-        host_state = np.array([red_line_s_on_ego_gff - ego_fstate_1d[FS_SX], ego_fstate_1d[FS_SV], ego_fstate_1d[FS_SA]])
+        host_state = np.array([red_line_s_on_ego_gff - ego_fstate[FS_SX], ego_fstate[FS_SV], ego_fstate[FS_SA]])
         return host_state[np.newaxis, :]
 
     @staticmethod

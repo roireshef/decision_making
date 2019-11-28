@@ -109,7 +109,7 @@ class ActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
-    def __init__(self, t: float, v: float, s: float, d: float, recipe: ActionRecipe):
+    def __init__(self, t: float, v: float, s: float, d: float, recipe: ActionRecipe, a: float = 0):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
@@ -123,6 +123,7 @@ class ActionSpec:
         self.s = s
         self.d = d
         self.recipe = recipe
+        self.a = a
 
     @property
     def relative_lane(self):
@@ -137,4 +138,4 @@ class ActionSpec:
         return str({k: str(v) for (k, v) in self.__dict__.items()})
 
     def as_fstate(self) -> FrenetState2D:
-        return np.array([self.s, self.v, 0, self.d, 0, 0])
+        return np.array([self.s, self.v, self.a, self.d, 0, 0])
