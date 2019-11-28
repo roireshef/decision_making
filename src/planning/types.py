@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-from typing import NamedTuple, List
+from typing import NamedTuple, List, Tuple
 from decision_making.src.messages.scene_static_enums import RoadObjectType, TrafficSignalState
 
 ## TIMESTAMPS ##

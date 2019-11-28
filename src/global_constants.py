@@ -217,6 +217,19 @@ LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
 # [m/sec] velocity resolution in action space
 LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
 
+# [m/sec] maximal velocity from which DIM may be performed
+DRIVER_INITIATED_MOTION_VELOCITY_LIMIT = 0.1
+# [sec] maximal time to reach the next stop bar (keeping current ego velocity)
+DRIVER_INITIATED_MOTION_MAX_TIME_TO_STOP_BAR = 5
+# [m] how far to look for the next stop bar to perform DIM
+DRIVER_INITIATED_MOTION_STOP_BAR_HORIZON = 5
+# acceleration pedal strength in [0..1]
+DRIVER_INITIATED_MOTION_PEDAL_THRESH = 0.05
+# [sec] time period of sufficient throttle pedal
+DRIVER_INITIATED_MOTION_PEDAL_TIME = 0.5
+# [sec] time period DIM is active after driver released the pedal
+DRIVER_INITIATED_MOTION_TIMEOUT = 10
+
 
 # Werling Planner #
 

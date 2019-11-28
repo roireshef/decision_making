@@ -304,9 +304,9 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
         """
         Checks if there are stop signs. Returns the `s` of the first (closest) stop-sign
-        :param behavioral_state:
-        :param action_spec:
-        :return: The index of the end point
+        :param behavioral_state: behavioral grid state
+        :param action_spec: action specification
+        :return: s of the next stop bar, target velocity (zero)
         """
         closest_TCB = StaticTrafficFlowControlFilter.get_closest_stop_bar(action_spec.relative_lane, behavioral_state, 0)
         if closest_TCB is None:  # no stop bars
