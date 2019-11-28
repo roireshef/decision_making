@@ -199,7 +199,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return np.min(safety_dist, axis=0)  # AND on actors
 
     @staticmethod
-    def choose_max_vel_quartic_trajectory(state: LaneMergeState) -> [bool, np.array]:
+    def choose_max_vel_quartic_trajectory(state: LaneMergeState) -> np.array:
         """
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
         main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
@@ -207,21 +207,49 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :param state: lane merge state, containing data about host and the main road vehicles
         :return: accelerations array or None if there is no safe action
         """
-        import time
-        st = time.time()
-
         logger = AV_Logger.get_logger()
         planner = RuleBasedLaneMergePlanner(logger)
         actions = planner._create_action_specs(state)
-        filtered_actions = planner._filter_actions(state, actions)
-        if len(filtered_actions) == 0:
+        s_0, v_0, a_0 = state.ego_fstate_1d
+        specs_v, specs_t, specs_s = np.array([[spec.v, spec.t, spec.s] for spec in actions]).T
+
+        # validate accelerations
+        valid_acc, poly_s = RuleBasedLaneMergePlanner._validate_acceleration(v_0, a_0, specs_v, specs_t)
+        valid_actions = actions[valid_acc]
+        valid_poly_s = poly_s[valid_acc]
+
+        # validate safety
+        safe_actions = RuleBasedLaneMergePlanner._safety_filter(state, valid_actions)
+        if not safe_actions.astype(bool).any():
             return np.array([])
-        costs = planner._evaluate_actions(state, None, filtered_actions)
-        spec = planner._choose_action(state, filtered_actions, costs)
-        a_0, v_0 = state.ego_state.cartesian_state[[C_A, C_V]]
-        poly_s = QuarticPoly1D.position_profile_coefficients(a_0, v_0, spec.v, spec.t)
-        poly_acc = np.polyder(poly_s, m=2)
-        times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, spec.t/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
+
+        chosen_action_idx = np.argmax(safe_actions.astype(bool))
+        chosen_action = valid_actions[chosen_action_idx]
+        chosen_poly = valid_poly_s[chosen_action_idx]
+        poly_acc = np.polyder(chosen_poly, m=2)
+        times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, chosen_action.t/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
         accelerations = np.zeros(OUTPUT_TRAJECTORY_LENGTH)
         accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
         return accelerations
+
+    @staticmethod
+    def _validate_acceleration(v_0: float, a_0: float, v_T: float, T: np.array) -> [np.array, np.array]:
+        """
+        Check acceleration in limits for quartic polynomials.
+        * Use faster implementation than QuarticPoly1D.are_accelerations_in_limits
+        :param v_0: initial velocity
+        :param a_0: initial acceleration
+        :param v_T: target velocity(es): either scalar or array of size len(T)
+        :param T: array of planning times
+        :return: boolean array of size len(T) of valid actions and matrix Nx5: s_profile polynomials for all T
+        """
+        # validate acceleration limits of the initial quartic action
+        poly_s = np.zeros((T.shape[0], QuarticPoly1D.num_coefs()))
+        nonnan = ~np.isnan(T)
+        positiveT = np.copy(nonnan)
+        valid_acc = np.copy(nonnan)
+        positiveT[nonnan] = np.greater(T[nonnan], 0)
+        valid_acc[nonnan] = np.equal(T[nonnan], 0)
+        poly_s[positiveT] = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T if np.isscalar(v_T) else v_T[positiveT], T[positiveT])
+        valid_acc[positiveT] = QuarticPoly1D.are_accelerations_in_limits(poly_s[positiveT], T[positiveT], LON_ACC_LIMITS)
+        return valid_acc, poly_s

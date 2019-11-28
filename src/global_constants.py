@@ -213,7 +213,7 @@ LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25.
 # [m/sec] velocity resolution in action space
 LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5.
 # [m/sec^2] worst-case deceleration of front actor before lane-merge (used by rule-based planner)
-LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL = 3.
+LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL = 1.
 # [m/sec^2] worst-case acceleration of back actor before lane-merge (used by rule-based planner)
 LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL = 1.
 # [m/sec^2] back actor's deceleration in RSS formula that enables to yield the way to the back actor
