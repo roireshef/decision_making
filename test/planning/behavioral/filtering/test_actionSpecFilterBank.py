@@ -1,5 +1,5 @@
 import numpy as np
-from decision_making.src.global_constants import LAT_ACC_LIMITS_BY_K
+from decision_making.src.global_constants import LAT_ACC_LIMITS_BY_K, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -161,7 +161,9 @@ def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
                                                                    behavioral_grid_state_with_objects_for_acceleration_towards_vehicle)
 
-    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForKinematics(), FilterForLaneSpeedLimits()], logger=logger)
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(),
+                                                      FilterForKinematics(logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)),
+                                                      FilterForLaneSpeedLimits()], logger=logger)
 
     filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
                                                             behavioral_grid_state_with_objects_for_acceleration_towards_vehicle)
@@ -201,7 +203,9 @@ def test_filter_closeToTrackingMode_allActionsAreValid(
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
                                                                    behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode)
 
-    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForKinematics()], logger=logger)
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(),
+                                                      FilterForKinematics(logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))],
+                                             logger=logger)
 
     filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
                                                             behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode)
@@ -239,7 +243,9 @@ def test_filter_trackingMode_allActionsAreValid(
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
                                                                    behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode)
 
-    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForKinematics()], logger=logger)
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(),
+                                                      FilterForKinematics(logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))],
+                                             logger=logger)
 
     filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
                                                             behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode)
@@ -323,7 +329,9 @@ def test_filter_aggressiveFollowScenario_allActionsAreInvalid(
     action_specs_with_vehicle = dynamic_action_space.specify_goals(actions_with_vehicle,
                                                                    behavioral_grid_state_with_objects_for_filtering_too_aggressive)
 
-    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForKinematics()], logger=logger)
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(),
+                                                      FilterForKinematics(logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))],
+                                             logger=logger)
 
     filter_results = action_spec_filter.filter_action_specs(action_specs_with_vehicle,
                                                             behavioral_grid_state_with_objects_for_filtering_too_aggressive)

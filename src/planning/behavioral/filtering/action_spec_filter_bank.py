@@ -1,23 +1,25 @@
+from abc import ABCMeta, abstractmethod
+from logging import Logger
+from typing import List, Union, Any
+
 import numpy as np
 import rte.python.profiler as prof
 import six
-from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
-    FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
+    VELOCITY_LIMITS, LON_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
-from typing import List, Union, Any
 
 
 class FilterIfNone(ActionSpecFilter):
@@ -35,6 +37,9 @@ class FilterForSLimit(ActionSpecFilter):
 
 
 class FilterForKinematics(ActionSpecFilter):
+    def __init__(self, logger: Logger):
+        self._logger = logger
+
     @prof.ProfileFunction()
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """
@@ -54,8 +59,16 @@ class FilterForKinematics(ActionSpecFilter):
                                                                                         LAT_ACC_LIMITS_BY_K)
         lat_acc_limits_two_sided = np.stack((-lat_acc_limits_abs, lat_acc_limits_abs), -1)
 
+        self._log_debug_message(action_specs, ctrajectories[..., C_K], lat_acc_limits_two_sided)
+
         return KinematicUtils.filter_by_cartesian_limits(
             ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * lat_acc_limits_two_sided)
+
+    def _log_debug_message(self, action_specs: List[ActionSpec], curvatures: np.ndarray, acc_limits: np.ndarray):
+        max_curvature_idx = np.argmax(curvatures)
+        self._logger.debug("FilterForKinematics is working on %s action_specs with max curvature of %s "
+                           "(acceleration limits %s)" % (len(action_specs), curvatures[max_curvature_idx],
+                                                         acc_limits[max_curvature_idx]))
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
