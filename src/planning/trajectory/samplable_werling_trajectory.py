@@ -73,14 +73,14 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
             'self.total_trajectory_time=%f, max(relative_time_points)=%f' % (self.T_extended, max(relative_time_points))
 
         # Handle the longitudinal(s) axis
-        fstates_s = self._sample_lon_frenet(relative_time_points)
+        fstates_s = self.sample_lon_frenet(relative_time_points)
         # Now handle the lateral(d) axis:
         fstates_d = self._sample_lat_frenet(relative_time_points)
 
         # Return trajectory in Frenet coordinates
         return np.hstack((fstates_s, fstates_d))
 
-    def _sample_lon_frenet(self, relative_time_points: np.array) -> FrenetTrajectory1D:
+    def sample_lon_frenet(self, relative_time_points: np.array) -> FrenetTrajectory1D:
         """
         Samples the appropriate longitudinal frenet states from the longitudinal polynomial w.r.t to the given
         relative time points
