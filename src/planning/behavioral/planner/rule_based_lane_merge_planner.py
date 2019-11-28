@@ -12,11 +12,11 @@ from decision_making.src.planning.behavioral.data_objects import AggressivenessL
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, LaneMergeActorState
-from decision_making.src.planning.types import ActionSpecArray, BoolArray
+from decision_making.src.planning.types import ActionSpecArray, BoolArray, C_A, C_V
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D
 from decision_making.src.state.state import State
-
+from rte.python.logger.AV_logger import AV_Logger
 
 OUTPUT_TRAJECTORY_LENGTH = 10
 
@@ -210,24 +210,18 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         import time
         st = time.time()
 
+        logger = AV_Logger.get_logger()
         planner = RuleBasedLaneMergePlanner(logger)
         actions = planner._create_action_specs(state)
         filtered_actions = planner._filter_actions(state, actions)
-        costs = planner._evaluate_actions(state, route_plan, filtered_actions)
+        if len(filtered_actions) == 0:
+            return np.array([])
+        costs = planner._evaluate_actions(state, None, filtered_actions)
         spec = planner._choose_action(state, filtered_actions, costs)
-        poly_s = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T, spec.t)
-
-        poly_s, specs_t, _, safety_dist = RuleBasedLaneMergePlanner._create_safe_distances_for_max_vel_quartic_actions(state, params)
-
-        if (safety_dist > 0).any():  # if there are safe actions
-            action_idx = np.argmax(safety_dist > 0)  # the most calm safe action
-        else:  # no safe actions
-            action_idx = np.argmax(safety_dist)  # the most close to safe action
-
-        poly_acc = np.polyder(poly_s[action_idx], m=2)
-        times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, specs_t[action_idx]/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
+        a_0, v_0 = state.ego_state.cartesian_state[[C_A, C_V]]
+        poly_s = QuarticPoly1D.position_profile_coefficients(a_0, v_0, spec.v, spec.t)
+        poly_acc = np.polyder(poly_s, m=2)
+        times = np.arange(0.5, min(OUTPUT_TRAJECTORY_LENGTH, spec.t/TRAJECTORY_TIME_RESOLUTION)) * TRAJECTORY_TIME_RESOLUTION
         accelerations = np.zeros(OUTPUT_TRAJECTORY_LENGTH)
         accelerations[:times.shape[0]] = np.polyval(poly_acc, times)
-
-        #print('\ntime=', time.time() - st)
-        return safety_dist[action_idx] > 0, accelerations
+        return accelerations
