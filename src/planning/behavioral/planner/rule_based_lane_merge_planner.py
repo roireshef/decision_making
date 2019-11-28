@@ -201,11 +201,12 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     @staticmethod
     def choose_max_vel_quartic_trajectory(state: LaneMergeState) -> np.array:
         """
+        Used by planning_research for SUMO.
         Check existence of rule-based solution that can merge safely, assuming the worst case scenario of
         main road actors. The function tests a single static action toward maximal velocity (ScenarioParams.ego_max_velocity).
         If the action is safe (longitudinal RSS) during crossing red line w.r.t. all main road actors, return True.
         :param state: lane merge state, containing data about host and the main road vehicles
-        :return: accelerations array or None if there is no safe action
+        :return: accelerations array or empty array if there is no safe action
         """
         logger = AV_Logger.get_logger()
         planner = RuleBasedLaneMergePlanner(logger)
@@ -236,7 +237,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     def _validate_acceleration(v_0: float, a_0: float, v_T: float, T: np.array) -> [np.array, np.array]:
         """
         Check acceleration in limits for quartic polynomials.
-        * Use faster implementation than QuarticPoly1D.are_accelerations_in_limits
         :param v_0: initial velocity
         :param a_0: initial acceleration
         :param v_T: target velocity(es): either scalar or array of size len(T)
