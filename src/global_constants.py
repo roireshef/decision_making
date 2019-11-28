@@ -90,8 +90,11 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-2, 2])
 
-# Latitudinal Acceleration Limits [m/sec^2] by curvature.  Each tuple consists of the following
-# (radius range start, radius range end, radius start limit, radius end limit).
+# Latitudinal Acceleration Limits [m/sec^2] by radius. This table represents a piecewise linear function that maps
+# radius of turn to the corresponding lateral acceleration limit to test against. Each tuple in the table consists of
+# the following ("from" radius, "to" radius, ...) to represent the radius range,
+# and (..., "from" acceleration limit, "to" acceleration limit). Within every range we extrapolate linearly between the
+# "from"/"to" acceleration limits
 LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
                                 (6, 25, 3, 2.8),
                                 (25, 50, 2.8, 2.55),

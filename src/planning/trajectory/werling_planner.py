@@ -129,17 +129,20 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
 
         # TODO: this takes ego vehicle's curvature rather than the road's curvature. They differ once we go off-GFF
-        lat_acc_limits_abs = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
-            ctrajectories[..., C_K], TP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS_BY_K)
+        # for each point in the trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
+        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
+            ctrajectories[..., C_K], LAT_ACC_LIMITS_BY_K)
 
-        lat_acc_limits_two_sided = np.stack((-lat_acc_limits_abs, lat_acc_limits_abs), -1)
+        # multiply the nominal lateral acceleration limits by the TP constant (acceleration limits may differ between
+        # TP and BP), and duplicate the vector with negative sign to create boundaries for lateral acceleration
+        two_sided_lat_acc_limits = TP_LAT_ACC_STRICT_COEF * np.stack((-nominal_abs_lat_acc_limits, nominal_abs_lat_acc_limits), -1)
 
         # TODO: desired velocity is dynamically changing when transitioning between road/lane segments
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
-                                                                             lat_acc_limits_two_sided)
+                                                                             two_sided_lat_acc_limits)
 
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 

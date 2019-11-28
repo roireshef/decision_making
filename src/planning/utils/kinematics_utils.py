@@ -17,19 +17,27 @@ class KinematicUtils:
     def get_lateral_acceleration_limit_by_curvature(curvatures: np.ndarray, ranged_limits: RangedLimits2D):
         """
         takes a 1d array of curvature values and compares them against the acceleration limits table per curvature,
-        to get the lateral acceleration limit corresponding to those curvature values
+        to get the lateral acceleration limit corresponding to those curvature values. The acceleration limits are given
+        by a table <ranged_limits> that represents a piecewise-linear function, so for each curvature value in
+        <curvatures> we look for the radius (inverse of curvature) range and within that range we interpolate linearly
+        given the acceleration limits on the boundaries of that range
         :param curvatures: numpy array of curvature values (any shape)
         :param ranged_limits: ranged limits (radius ranges -> acceleration limits at those ranges)
         :return: 1d array of lateral acceleration limits
         """
+        # extract column-vectors from the range_limits matrix
         min_radius, max_radius, min_accels, max_accels = np.split(ranged_limits, 4, axis=1)
 
+        # flatten and compute inverse of curvatures to get 1D array of radii
         radii_1d = 1 / curvatures.ravel()
 
+        # compute the lateral acceleration slope for each radius range (that is, for each range, compute a of ax+b)
         slopes = (max_accels - min_accels) / (max_radius - min_radius)
 
+        # for each radius in <radii_1d>, get the index of the corresponding range in <ranged_limits>
         row_idxs = np.argmin(max_radius <= radii_1d, axis=0)
 
+        # lookup the correct range for each radius in <radii_1d> and compute ax+b to get interpolated lateral acc limit
         return np.reshape(min_accels[row_idxs] + slopes[row_idxs] * (radii_1d[:, np.newaxis] - min_radius[row_idxs]),curvatures.shape)
 
     @staticmethod

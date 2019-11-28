@@ -55,14 +55,19 @@ class FilterForKinematics(ActionSpecFilter):
         """
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
-        lat_acc_limits_abs = KinematicUtils.get_lateral_acceleration_limit_by_curvature(ctrajectories[..., C_K],
-                                                                                        LAT_ACC_LIMITS_BY_K)
-        lat_acc_limits_two_sided = np.stack((-lat_acc_limits_abs, lat_acc_limits_abs), -1)
+        # for each point in the trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
+        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
+            ctrajectories[..., C_K], LAT_ACC_LIMITS_BY_K)
 
-        self._log_debug_message(action_specs, ctrajectories[..., C_K], lat_acc_limits_two_sided)
+        # multiply the nominal lateral acceleration limits by the TP constant (acceleration limits may differ between
+        # TP and BP), and duplicate the vector with negative sign to create boundaries for lateral acceleration
+        two_sided_lat_acc_limits = BP_LAT_ACC_STRICT_COEF * \
+                                   np.stack((-nominal_abs_lat_acc_limits, nominal_abs_lat_acc_limits), -1)
+
+        self._log_debug_message(action_specs, ctrajectories[..., C_K], two_sided_lat_acc_limits)
 
         return KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * lat_acc_limits_two_sided)
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
 
     def _log_debug_message(self, action_specs: List[ActionSpec], curvatures: np.ndarray, acc_limits: np.ndarray):
         max_curvature_idx = np.argmax(curvatures)
@@ -337,20 +342,24 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         :param frenet_frame:
         :return:
         """
-
         # get the worst case braking distance from spec.v to 0
         max_braking_distance = self.braking_distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
         max_relevant_s = min(action_spec.s + max_braking_distance, frenet_frame.s_max)
+
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
         # beyond_spec_range[0] must be BEYOND spec.s because the actual distances from spec.s to the
         # selected points have to be positive.
         beyond_spec_range = frenet_frame.get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0] + 1
+
         # get s for all points in the range
         points_s = frenet_frame.get_s_from_index_on_frame(np.arange(beyond_spec_range[LIMIT_MIN], beyond_spec_range[LIMIT_MAX]), 0)
-        # get velocity limits for all points in the range
+
+        # get curvatures for all points in the range
         curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[LIMIT_MIN]:beyond_spec_range[LIMIT_MAX], 0]), EPS)
 
+        # for each point in the trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
         lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(curvatures, LAT_ACC_LIMITS_BY_K)
+
         points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * lat_acc_limits / curvatures)
 
         return points_s, points_velocity_limits
