@@ -553,6 +553,7 @@ class MapUtils:
         Red line is s coordinate, from which host starts to interference laterally with the main road actors.
         We assume that there is a host's road segment starting from the red line and ending at the merge point.
         If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
+        If there is a stop bar/sign before the red line, then return None.
         :param initial_lane_id: current lane id of ego
         :param initial_s: s of ego on initial_lane_id
         :param lookahead_distance: maximal lookahead for the lane merge from ego location
@@ -570,6 +571,13 @@ class MapUtils:
             if cumulative_length > lookahead_distance:
                 break
             current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
+
+            # if there is a stop bar/sign before the red line, then return None
+            stop_bars = [control for control in current_lane_segment.as_static_traffic_flow_control
+                         if control.e_e_road_object_type in [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]]
+            if len(stop_bars) > 0:
+                break
+
             downstream_connectivity = current_lane_segment.as_downstream_lanes
 
             # Red line is s coordinate, from which host starts to interference laterally with the main road actors.
@@ -580,7 +588,7 @@ class MapUtils:
                                 downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION)
             # if segment.e_i_SegmentID == initial_lane_id then host already passed the red line and the merge completed
             if lane_merge_ahead and segment.e_i_SegmentID != initial_lane_id:
-                    return segment.e_i_SegmentID
+                return segment.e_i_SegmentID
 
         # no merge connection was found
         return None
