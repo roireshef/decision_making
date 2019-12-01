@@ -99,6 +99,18 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
 
+            # pedal position is a signal used for Driver Initiated Motion
+            # TODO: implement usage in DIM
+            self._get_current_pedal_position()
+
+            # Turn signal (blinkers) is a signal used for Lane Change on Demand
+            turn_signal = self._get_current_turn_signal()
+
+            # Control status is a signal that is used as a proxy for vehicle's Engagement status
+            # Logic is to keep planning in disengaged mode, but always "re-plan" (use actual localization)
+            control_status = self._get_current_control_status()
+            is_engaged = control_status is not None and control_status.is_av_engaged()
+
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
                 route_plan_dict = route_plan.to_costs_dict()
@@ -107,8 +119,6 @@ class BehavioralPlanningFacade(DmModule):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            with DMProfiler(self.__class__.__name__ + '._get_current_turn_signal'):
-                turn_signal = self._get_current_turn_signal()
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
@@ -119,11 +129,6 @@ class BehavioralPlanningFacade(DmModule):
                                                               turn_signal=turn_signal)
 
                 state.handle_negative_velocities(self.logger)
-
-            self._get_current_pedal_position()
-
-            control_status = self._get_current_control_status()
-            is_engaged = control_status is not None and control_status.is_av_engaged()
 
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
