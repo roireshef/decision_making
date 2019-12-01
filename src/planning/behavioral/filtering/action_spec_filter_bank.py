@@ -166,37 +166,10 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :param behavioral_state: BehavioralGridState in context
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
-        closest_TCB = StaticTrafficFlowControlFilter.get_closest_stop_bar(action_spec.relative_lane, behavioral_state, 0)
+        closest_TCB = MapUtils.get_closest_stop_bar(
+            behavioral_state.extended_lane_frames[action_spec.relative_lane],
+            behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX], 0)
         return closest_TCB is not None and closest_TCB.s < action_spec.s
-
-    @staticmethod
-    def get_closest_stop_bar(relative_lane: RelativeLane, behavioral_state: BehavioralGridState, offset_to_ego: float) \
-            -> Optional[TrafficControlBarInfo]:
-        """
-        Returns the s value of the closest Stop Bar or Stop sign.
-        If both types exist, prefer stop bar, if close enough to stop sign.
-        No existence checks necessary, as it was already tested by FilterActionsTowardsCellsWithoutRoadSigns
-        :param relative_lane: the relative lane of the action to be considered
-        :param behavioral_state: BehavioralGridState in context
-        :param offset_to_ego the offset relative to the ego location from which to start looking for a stop bar
-        :return: distance to closest stop bar
-        """
-        target_lane_frenet = behavioral_state.extended_lane_frames[relative_lane]  # the target GFF
-        ego_location = behavioral_state.projected_ego_fstates[relative_lane][FS_SX]
-        # TODO Possibly apply the DIM_MARGIN_TO_STOP_BAR only if there is no other stop bar close in front,
-        #  to handle case of 2 close stop bars say DIM_MARGIN_TO_STOP_BAR-1 apart
-        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - offset_to_ego)
-        static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
-
-        # check for active stop bar from the closest to the farthest
-        for stop_bar in stop_bars:
-            # Only considers TCB is in front of (ego_location - DIM_MARGIN_TO_STOP_BAR)
-            active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
-            road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
-            should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
-            if should_stop:
-                return stop_bar
-        return None
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
@@ -308,7 +281,9 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         :param action_spec:
         :return: The index of the end point
         """
-        closest_TCB = StaticTrafficFlowControlFilter.get_closest_stop_bar(action_spec.relative_lane, behavioral_state, 0)
+        closest_TCB = MapUtils.get_closest_stop_bar(
+            behavioral_state.extended_lane_frames[action_spec.relative_lane],
+            behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX], 0)
         if closest_TCB is None:  # no stop bars
             self._raise_true()
         return np.array([closest_TCB.s]), np.array([0])

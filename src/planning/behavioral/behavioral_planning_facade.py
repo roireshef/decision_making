@@ -104,7 +104,7 @@ class BehavioralPlanningFacade(DmModule):
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
                 SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(
-                    scene_dynamic.s_Data.as_dynamic_traffic_control_device_status)
+                    self._get_current_tcd_status())
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
@@ -310,10 +310,6 @@ class BehavioralPlanningFacade(DmModule):
         scene_dynamic = SceneDynamic.deserialize(serialized_scene_dynamic)
         if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count == 0:
             raise MsgDeserializationError("SceneDynamic was received without any host localization")
-        # fuse the TCDs status into the data from scene_dynamic
-        scene_tcd_status = self._get_current_tcd_status()
-        scene_dynamic.s_Data.as_dynamic_traffic_control_device_status = \
-            scene_tcd_status.s_Data.as_dynamic_traffic_control_device_status
 
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_dynamic

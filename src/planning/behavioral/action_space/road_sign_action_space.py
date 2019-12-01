@@ -64,6 +64,6 @@ class RoadSignActionSpace(TargetActionSpace):
         :return: distance to closest stop bar
         """
         ego_location = behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
-        closest_TCB = StaticTrafficFlowControlFilter.get_closest_stop_bar(action.relative_lane, behavioral_state,
-                                                                          DIM_MARGIN_TO_STOP_BAR)
+        closest_TCB = MapUtils.get_closest_stop_bar(behavioral_state.extended_lane_frames[action.relative_lane],
+                                                    ego_location, DIM_MARGIN_TO_STOP_BAR)
         return closest_TCB.s - ego_location if closest_TCB is not None else TOO_FAR_TO_STOP
