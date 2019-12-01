@@ -405,20 +405,24 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         ego_length = state.ego_length
         ego_fstate = state.ego_fstate_1d
         actors_states = state.actors_states
+        actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
+                                                      for actor in actors_states]).T
+        actors_s, actors_v, actors_length = actors_s[:, np.newaxis, np.newaxis], actors_v[:, np.newaxis, np.newaxis], \
+                                            actors_length[:, np.newaxis, np.newaxis]
+        margins = 0.5 * (actors_length + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 
         # calculate planning time bounds given target_s
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
-        a_min, a_max = LON_ACC_LIMITS
+        a_min, a_max = LON_ACC_LIMITS[0], 1.5
         T_max = LANE_MERGE_ACTION_T_LIMITS[1] + EPS
-        T_min = max(EPS, (-v_0 + np.sqrt(v_0*v_0 + 2*a_max*target_s)) / a_max)
-
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
-        braking_distances, braking_times = KinematicUtils.specify_quartic_actions(
-            w_T, w_J, np.array([v_0]), np.array([0.]), np.array([a_0]))
-        brake_dist, brake_time = braking_distances[0], braking_times[0]
+        w_J_agg, _, w_T_agg = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+        brake_dist, brake_time = KinematicUtils.specify_quartic_actions(w_T_agg, w_J_agg, v_0, 0., a_0)
         if brake_dist > target_s:
             T_max = min(T_max, brake_time - np.sqrt(-2 * (brake_dist - target_s) / a_min))
-        v_min = max(v_0 + a_min * T_max, 0)
+        T_min = (np.sqrt(v_0*v_0 + 2*a_max*target_s) - v_0) / a_max  # time of passing target_s with constant a_max
+
+        v_min = min(v_0, np.min(actors_v))
+        # final velocity in case of passing target_s with constant a_max
         v_max = min(2 * target_s / T_min - v_0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + EPS)
         dilute = 1
 
@@ -452,18 +456,17 @@ class RuleBasedLaneMergePlanner(BasePlanner):
                   'v_bounds=', [v_min, v_max, v_res], 'dilute=', dilute)
 
             # grid of possible planning times
-            t_grid = np.arange(T_min, T_max, T_res)
+            T_avg = min(T_max, target_s / max(v_0, EPS))
+            t_grid = np.random.normal(loc=T_avg, scale=0.2*(T_max-T_min), size=100)
+            t_grid = t_grid[(t_grid >= T_min) & (t_grid <= T_max)]
             # grid of possible target ego velocities
-            v_grid = np.arange(v_min, v_max, v_res)
+            v_grid = np.random.normal(loc=v_0, scale=0.2*(v_max-v_min), size=50)
+            v_grid = v_grid[(v_grid >= v_min) & (v_grid <= v_max)]
 
             if len(actors_states) == 0:
                 meshgrid_v, meshgrid_t = np.meshgrid(v_grid, t_grid)
                 return meshgrid_v.flatten(), meshgrid_t.flatten()
 
-            actors_data = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in actors_states])
-            actors_s = actors_data[:, 0, np.newaxis, np.newaxis]
-            actors_v = actors_data[:, 1, np.newaxis, np.newaxis]
-            margins = 0.5 * (actors_data[:, 2, np.newaxis, np.newaxis] + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
             ego_v = v_grid[:, np.newaxis]  # target ego velocity should be in different dimension than planning time
 
             safety_dist = RuleBasedLaneMergePlanner._caclulate_RSS_distances(actors_s, actors_v, margins, ego_v, t_grid, target_s)
