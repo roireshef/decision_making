@@ -87,7 +87,8 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 
-# Latitudinal Acceleration Limits [m/sec^2]
+# Lateral Acceleration Limits [m/sec^2]
+# TODO: deprecated - should be replaced or removed as it is replaced by LAT_ACC_LIMITS_BY_K
 LAT_ACC_LIMITS = np.array([-2, 2])
 
 # Latitudinal Acceleration Limits [m/sec^2] by radius. This table represents a piecewise linear function that maps

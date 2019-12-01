@@ -38,7 +38,8 @@ class KinematicUtils:
         row_idxs = np.argmin(max_radius <= radii_1d, axis=0)
 
         # lookup the correct range for each radius in <radii_1d> and compute ax+b to get interpolated lateral acc limit
-        return np.reshape(min_accels[row_idxs] + slopes[row_idxs] * (radii_1d[:, np.newaxis] - min_radius[row_idxs]),curvatures.shape)
+        delta_from_max_radius = np.nan_to_num(max_radius[row_idxs] - radii_1d[:, np.newaxis])
+        return np.reshape(max_accels[row_idxs] - slopes[row_idxs] * delta_from_max_radius, curvatures.shape)
 
     @staticmethod
     def is_maintaining_distance(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):

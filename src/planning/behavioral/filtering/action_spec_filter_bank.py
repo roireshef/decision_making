@@ -70,10 +70,11 @@ class FilterForKinematics(ActionSpecFilter):
             ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
 
     def _log_debug_message(self, action_specs: List[ActionSpec], curvatures: np.ndarray, acc_limits: np.ndarray):
-        max_curvature_idx = np.argmax(curvatures)
+        max_curvature_idxs = np.argmax(curvatures, axis=1)
         self._logger.debug("FilterForKinematics is working on %s action_specs with max curvature of %s "
-                           "(acceleration limits %s)" % (len(action_specs), curvatures[max_curvature_idx],
-                                                         acc_limits[max_curvature_idx]))
+                           "(acceleration limits %s)" % (len(action_specs),
+                                                         curvatures[np.arange(len(curvatures)), max_curvature_idxs],
+                                                         acc_limits[np.arange(len(acc_limits)), max_curvature_idxs]))
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
