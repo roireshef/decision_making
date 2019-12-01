@@ -159,6 +159,9 @@ MAX_IMMEDIATE_DECEL = - LON_ACC_LIMITS[0] - 1
 REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION = 1.4
 REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2
 
+SPEEDING_VIOLATION_TIME_TH = 3.0  # in [seconds]. Speeding violation allowed time from START of action.
+SPEEDING_SPEED_TH = 2.0 / 3.6  # in [m/s]. Allowed magnitude of speeding violation.
+
 # Trajectory Planner #
 
 # [m] Resolution for the interpolation of the reference route
@@ -348,6 +351,7 @@ METRIC_LOGGER_DELIMITER = '_'
 LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
 LOG_MSG_SCENE_STATIC_RECEIVED = "Received SceneStatic message with Timestamp: "
 LOG_MSG_SCENE_DYNAMIC_RECEIVED = "Received SceneDynamic message with Timestamp: "
+LOG_MSG_CONTROL_STATUS = "Received ControlStatus message with Timestamp: "
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
 LOG_MSG_ROUTE_PLANNER_OUTPUT = "RoutePlanningFacade output is"
