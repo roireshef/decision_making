@@ -95,7 +95,8 @@ LAT_ACC_LIMITS = np.array([-2, 2])
 # radius of turn to the corresponding lateral acceleration limit to test against. Each tuple in the table consists of
 # the following ("from" radius, "to" radius, ...) to represent the radius range,
 # and (..., "from" acceleration limit, "to" acceleration limit). Within every range we extrapolate linearly between the
-# "from"/"to" acceleration limits
+# "from"/"to" acceleration limits.
+# NOTE: it's important to have a slope of 0 for the last tuple if it includes np.inf !!
 LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
                                 (6, 25, 3, 2.8),
                                 (25, 50, 2.8, 2.55),

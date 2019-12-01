@@ -37,9 +37,17 @@ class KinematicUtils:
         # for each radius in <radii_1d>, get the index of the corresponding range in <ranged_limits>
         row_idxs = np.argmin(max_radius <= radii_1d, axis=0)
 
+        # simple a*(X-x0) + value(x0) formula relative to the lower side of the relevant range
+        delta_radius = radii_1d[:, np.newaxis] - min_radius[row_idxs]
+        acceleration_limit = slopes[row_idxs] * delta_radius + min_accels[row_idxs]
+
+        # when taking radius_of_turn==inf, <delta_radius> is nan and therefor <acceleration_limit>. In this spacial case
+        # the acceleration limit at the upper side of the range is taken
+        is_inf = np.isinf(radii_1d[:, np.newaxis])
+        acceleration_limit[is_inf] = max_accels[row_idxs][is_inf]
+
         # lookup the correct range for each radius in <radii_1d> and compute ax+b to get interpolated lateral acc limit
-        delta_from_max_radius = np.nan_to_num(max_radius[row_idxs] - radii_1d[:, np.newaxis])
-        return np.reshape(max_accels[row_idxs] - slopes[row_idxs] * delta_from_max_radius, curvatures.shape)
+        return np.reshape(acceleration_limit, curvatures.shape)
 
     @staticmethod
     def is_maintaining_distance(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):
