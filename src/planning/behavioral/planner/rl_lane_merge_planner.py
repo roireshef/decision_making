@@ -10,6 +10,7 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, ActionSpec, RelativeLane, \
     AggressivenessLevel
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.models.dual_input_conv_model import DualInputConvModel
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import ActionSpecArray, FS_1D_LEN
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -19,11 +20,8 @@ from decision_making.src.planning.behavioral.state.lane_merge_state import LaneM
 from decision_making.src.state.state import State
 from ray.rllib.evaluation import SampleBatch
 import torch
-from gym.spaces.tuple_space import Tuple as GymTuple
+from gym.spaces.tuple import Tuple as GymTuple
 from gym.spaces.box import Box
-
-# TODO: remove the dependency on planning_research
-from planning_research.src.flow_rl.models.dual_input_conv_model import DualInputConvModel
 from ray.rllib.models.pytorch.model import TorchModel
 
 
@@ -42,7 +40,6 @@ class RL_LaneMergePlanner(BasePlanner):
         :param model_path: model path
         :return: the loaded RL model
         """
-        # TODO: use global constant for the model path
         model_state_dict = torch.load(model_path)
 
         # TODO: create global constants for observation space initialization
