@@ -60,4 +60,4 @@ class Paths:
     @staticmethod
     def get_policy_model():
         # type: () -> str
-        return os.path.join(os.path.dirname(__file__), 'resources/models/checkpoint.torch')
+        return os.path.join(os.path.dirname(__file__), 'resources/rl_models/checkpoint.torch')

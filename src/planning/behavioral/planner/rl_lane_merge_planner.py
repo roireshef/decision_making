@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, ActionSpec, RelativeLane, \
     AggressivenessLevel
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.models.dual_input_conv_model import DualInputConvModel
+from decision_making.src.planning.behavioral.rl_models.dual_input_conv_model import DualInputConvModel
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.types import ActionSpecArray, FS_1D_LEN
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
