@@ -3,11 +3,13 @@ import time
 import numpy as np
 import traceback
 
+from decision_making.src.messages.control_status_message import ControlStatus
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_CONTROL_STATUS
 
 from decision_making.src.exceptions import MsgDeserializationError, CartesianLimitsViolated, StateHasNotArrivedYet
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
@@ -16,7 +18,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, \
-    LOG_MSG_SCENE_DYNAMIC_RECEIVED
+    LOG_MSG_SCENE_DYNAMIC_RECEIVED, LOG_MSG_CONTROL_STATUS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
@@ -35,7 +37,7 @@ from decision_making.src.state.state import State
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger
-from typing import Dict
+from typing import Dict, Optional
 import rte.python.profiler as prof
 
 
@@ -63,10 +65,12 @@ class TrajectoryPlanningFacade(DmModule):
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
+        self.pubsub.subscribe(UC_SYSTEM_CONTROL_STATUS)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
+        self.pubsub.unsubscribe(UC_SYSTEM_CONTROL_STATUS)
 
     def _periodic_action_impl(self):
         """
@@ -91,7 +95,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # Longitudinal planning horizon (Ts)
             T_target_horizon = params.target_time - state.ego_state.timestamp_in_sec
-            T_trajectory_end_horizon = params.trajectory_end_time - state.ego_state.timestamp_in_sec
+            T_trajectory_end_horizon = max(TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
+                                           params.trajectory_end_time - state.ego_state.timestamp_in_sec)
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
@@ -100,11 +105,14 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", T_target_horizon)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
+            control_status = self._get_current_control_status()
+            is_engaged = control_status is not None and control_status.is_av_engaged()
+
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if LocalizationUtils.is_actual_state_close_to_expected_state(
+            if is_engaged and LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = LocalizationUtils.get_state_with_expected_ego(
                     state, self._last_trajectory, self.logger, self.__class__.__name__, params.reference_route)
@@ -120,7 +128,7 @@ class TrajectoryPlanningFacade(DmModule):
                     T_trajectory_end_horizon, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
-                                                           samplable_trajectory=samplable_trajectory)
+                                                           samplable_trajectory=samplable_trajectory, is_engaged=is_engaged)
 
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
@@ -153,33 +161,33 @@ class TrajectoryPlanningFacade(DmModule):
 
     # TODO: add map_origin that is sent from the outside
     @prof.ProfileFunction()
-    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory):
+    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory, is_engaged: bool):
         """
         sample trajectory points from the samplable-trajectory, translate them according to ego's reference point and
         wrap them in a message to the controller
         :param timestamp: the timestamp to use as a reference for the beginning of trajectory
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
+        :param is_engaged: whether AV is currently engaged
         :return: a TrajectoryPlan message ready to send to the controller
         """
+        trajectory_num_points = min(int(np.floor(samplable_trajectory.T_extended / TRAJECTORY_TIME_RESOLUTION)),
+                                    MAX_TRAJECTORY_WAYPOINTS)
         trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
-                        stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                        num=TRAJECTORY_NUM_POINTS) + timestamp)
-        self._last_trajectory = samplable_trajectory
+                        stop=(trajectory_num_points - 1) * TRAJECTORY_TIME_RESOLUTION,
+                        num=trajectory_num_points) + timestamp)
+        self._last_trajectory = samplable_trajectory if is_engaged else None
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
         # TODO: understand if padding with zeros is necessary
-        allowed_tracking_errors = np.ones(shape=[TRAJECTORY_NUM_POINTS, 4]) * [NEGLIGIBLE_DISPOSITION_LAT,  # left
+        allowed_tracking_errors = np.ones(shape=[trajectory_num_points, 4]) * [NEGLIGIBLE_DISPOSITION_LAT,  # left
                                                                                NEGLIGIBLE_DISPOSITION_LAT,  # right
                                                                                NEGLIGIBLE_DISPOSITION_LON,  # front
                                                                                NEGLIGIBLE_DISPOSITION_LON]  # rear
-        waypoints = np.vstack((np.hstack((trajectory_points, allowed_tracking_errors,
-                                          np.zeros(shape=[TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE -
-                                                          trajectory_points.shape[1] - allowed_tracking_errors.shape[1]]
-                                                   ))),
-                               np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS,
-                                               TRAJECTORY_WAYPOINT_SIZE])))
+        waypoints = np.hstack((trajectory_points, allowed_tracking_errors,
+                               np.zeros(shape=[trajectory_num_points, TRAJECTORY_WAYPOINT_SIZE -
+                                               trajectory_points.shape[1] - allowed_tracking_errors.shape[1]])))
 
         timestamp_object = Timestamp.from_seconds(timestamp)
         map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp_object)
@@ -188,7 +196,7 @@ class TrajectoryPlanningFacade(DmModule):
                                                          e_Cnt_version=0),
                                          s_Data=DataTrajectoryPlan(s_Timestamp=timestamp_object, s_MapOrigin=map_origin,
                                                                    a_TrajectoryWaypoints=waypoints,
-                                                                   e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
+                                                                   e_Cnt_NumValidTrajectoryWaypoints=trajectory_num_points))
 
         return trajectory_plan
 
@@ -282,3 +290,17 @@ class TrajectoryPlanningFacade(DmModule):
             # at most MAX_NUM_POINTS_FOR_VIZ points
             objects_visualizations, "")
         return TrajectoryVisualizationMsg(header, visualization_data)
+
+    def _get_current_control_status(self) -> Optional[ControlStatus]:
+        is_success, serialized_control_status = self.pubsub.get_latest_sample(topic=UC_SYSTEM_CONTROL_STATUS)
+
+        if serialized_control_status is None:
+            # this is a warning and not an assert, since currently perfect_control does not publish the message
+            self.logger.warning("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                UC_SYSTEM_CONTROL_STATUS)
+            return None
+        control_status = ControlStatus.deserialize(serialized_control_status)
+        self.logger.debug("%s: %f engaged %s" % (LOG_MSG_CONTROL_STATUS, control_status.s_Header.s_Timestamp.timestamp_in_seconds,
+                                                 control_status.s_Data.e_b_TTCEnabled))
+        return control_status
+

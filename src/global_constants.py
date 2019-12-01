@@ -143,6 +143,9 @@ MAX_IMMEDIATE_DECEL = - LON_ACC_LIMITS[0] - 1
 REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION = 1.4
 REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2
 
+SPEEDING_VIOLATION_TIME_TH = 3.0  # in [seconds]. Speeding violation allowed time from START of action.
+SPEEDING_SPEED_TH = 2.0 / 3.6  # in [m/s]. Allowed magnitude of speeding violation.
+
 # Trajectory Planner #
 
 # [m] Resolution for the interpolation of the reference route
@@ -182,14 +185,16 @@ TRACKING_ACCELERATION_DISPOSITION_LIMIT = 0.05   # in [m/s^2]
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 20
+# TODO: check safety in BP along the whole padded trajectory (see MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
+TRAJECTORY_NUM_POINTS = 50
 
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
 # [sec] Minimum required time horizon for trajectory (including padding)
-MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 3.0
+# TODO: make it consistent with TRAJECTORY_NUM_POINTS
+MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON = 3.
 
 # TODO: set real values from map / perception
 # Road shoulders width in [m]
@@ -337,6 +342,7 @@ METRIC_LOGGER_DELIMITER = '_'
 LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
 LOG_MSG_SCENE_STATIC_RECEIVED = "Received SceneStatic message with Timestamp: "
 LOG_MSG_SCENE_DYNAMIC_RECEIVED = "Received SceneDynamic message with Timestamp: "
+LOG_MSG_CONTROL_STATUS = "Received ControlStatus message with Timestamp: "
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
 LOG_MSG_ROUTE_PLANNER_OUTPUT = "RoutePlanningFacade output is"
