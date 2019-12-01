@@ -486,6 +486,33 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
+    def get_closest_stop_bar(target_lane_frenet: GeneralizedFrenetSerretFrame, ego_location: float,
+                             offset_to_ego: float) -> Optional[TrafficControlBarInfo]:
+        """
+        Returns the s value of the closest Stop Bar or Stop sign.
+        If both types exist, prefer stop bar, if close enough to stop sign.
+        No existence checks necessary, as it was already tested by FilterActionsTowardsCellsWithoutRoadSigns
+        :param target_lane_frenet:
+        :param ego_location: on GFF
+        :param offset_to_ego the offset relative to the ego location from which to start looking for a stop bar
+        :return: distance to closest stop bar
+        """
+        # TODO Possibly apply the DIM_MARGIN_TO_STOP_BAR only if there is no other stop bar close in front,
+        #  to handle case of 2 close stop bars say DIM_MARGIN_TO_STOP_BAR-1 apart
+        stop_bars = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - offset_to_ego)
+        static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
+
+        # check for active stop bar from the closest to the farthest
+        for stop_bar in stop_bars:
+            # Only considers TCB is in front of (ego_location - DIM_MARGIN_TO_STOP_BAR)
+            active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
+            road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
+            should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
+            if should_stop:
+                return stop_bar
+        return None
+
+    @staticmethod
     def get_traffic_control_bars_s(lane_frenet: GeneralizedFrenetSerretFrame, start_offset: float) -> \
             List[TrafficControlBarInfo]:
         """
@@ -576,7 +603,8 @@ class MapUtils:
         :return: A single restriction imposed by the TCDs
         """
         restriction = RoadSignRestriction.NONE
-        # TODO break cases below into finer cases when relevant
+        # TODO break cases below into finer cases when relevant,
+        #  e.g when there is a stop sign + traffic light with green light, we can proceed
         for active_static_tcd in active_static_tcds:
             if active_static_tcd.sign_type in [StaticTrafficControlDeviceType.YIELD,
                                                StaticTrafficControlDeviceType.STOP,
@@ -607,10 +635,7 @@ class MapUtils:
         :param restriction2: 2nd restriction to consider
         :return: combined restriction
         """
-        if restriction1.value > restriction2.value:
-            return restriction1
-        else:
-            return restriction2
+        return restriction1 if restriction1.value > restriction2.value else restriction2
 
     @staticmethod
     def should_stop_at_stop_bar(restriction: RoadSignRestriction) -> bool:
@@ -620,10 +645,7 @@ class MapUtils:
         :param restriction: to evaluate
         :return: whether it is required to stop at stop bar
         """
-        if restriction == RoadSignRestriction.NONE:
-            return False
-        else:
-            return True
+        return restriction != RoadSignRestriction.NONE
 
     @staticmethod
     def _get_confident_status(status: List[TrafficSignalState], confidence: List[float]) -> TrafficSignalState:

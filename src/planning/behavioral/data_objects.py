@@ -48,9 +48,9 @@ class RoadSignRestriction(Enum):
     The restriction imposed by the road sign
     """
     NONE = 0
-    STOP = 1
+    PROCEED_CONDITIONALLY = 1  # e.g: a flashing green light means we can proceed if we can pass it on time
     YIELD = 2
-    PROCEED_CONDITIONALLY = 3  # e.g: a flashing green light means we can proceed if we can pass it on time
+    STOP = 3
 
 class ActionRecipe:
     def __init__(self, relative_lane: RelativeLane, action_type: ActionType, aggressiveness: AggressivenessLevel):

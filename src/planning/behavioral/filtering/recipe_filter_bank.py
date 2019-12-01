@@ -7,6 +7,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, D
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe, \
     RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
+from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
 
@@ -43,7 +44,9 @@ class FilterOvertakeActions(RecipeFilter):
 
 class FilterActionsTowardsCellsWithoutStopSignsOrStopBars(RecipeFilter):
     def filter(self, recipes: List[RoadSignActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [StaticTrafficFlowControlFilter.get_closest_stop_bar(recipe.relative_lane, behavioral_state, 0) is not None
+        return [MapUtils.get_closest_stop_bar(
+            behavioral_state.extended_lane_frames[recipe.relative_lane],
+            behavioral_state.projected_ego_fstates[recipe.relative_lane][FS_SX], 0) is not None
                 if ((recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames))
                 else False for recipe in recipes]
 
