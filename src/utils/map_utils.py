@@ -570,9 +570,9 @@ class MapUtils:
         dynamic_tcds_info = {dynamic_tcd.object_id:
                              DynamicTrafficControlDeviceInfo(
                                  id=dynamic_tcd.object_id, sign_type=dynamic_tcd.e_e_traffic_control_device_type,
-                                 status=[status for status in tcds_status[dynamic_tcd.object_id].a_e_status]
+                                 status=tcds_status[dynamic_tcd.object_id].a_e_status
                                  if dynamic_tcd.object_id in tcds_status else [],
-                                 confidence=[confidence for confidence in tcds_status[dynamic_tcd.object_id].a_Pct_status_confidence]
+                                 confidence=tcds_status[dynamic_tcd.object_id].a_Pct_status_confidence
                                  if dynamic_tcd.object_id in tcds_status else [])
                              for dynamic_tcd in scene_static.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device}
 
