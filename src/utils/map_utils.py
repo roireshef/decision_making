@@ -575,27 +575,32 @@ class MapUtils:
         :param active_dynamic_tcds: List of active dynamic TCDs to consider
         :return: A single restriction imposed by the TCDs
         """
-        restriction = RoadSignRestriction.NONE
-        # TODO break cases below into finer cases when relevant
-        for active_static_tcd in active_static_tcds:
-            if active_static_tcd.sign_type in [StaticTrafficControlDeviceType.YIELD,
-                                               StaticTrafficControlDeviceType.STOP,
-                                               StaticTrafficControlDeviceType.CROSSWALK,
-                                               StaticTrafficControlDeviceType.MOVABLE_BARRIER]:
-                restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
-        for active_dynamic_tcd in active_dynamic_tcds:
-            status = MapUtils._get_confident_status(active_dynamic_tcd.status, active_dynamic_tcd.confidence)
-            if active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
-                if status != TrafficSignalState.GREEN:
-                    restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
-            elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
-                if status != TrafficSignalState.RAILROAD_CROSSING_CLEAR:
-                    restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
-            elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.SCHOOL_ZONE:
-                # TODO: Need to understand how to get the information on days + hours at which this is in effect.
-                #   Currently, always stop in this situation
-                restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
-        return restriction
+        if len(active_dynamic_tcds) == 0:
+            static_restriction = RoadSignRestriction.NONE
+            # TODO break cases below into finer cases when relevant,
+            #  e.g when there is a traffic light with flashing yellow + stop sign, we should stop
+            for active_static_tcd in active_static_tcds:
+                if active_static_tcd.sign_type in [StaticTrafficControlDeviceType.YIELD,
+                                                   StaticTrafficControlDeviceType.STOP,
+                                                   StaticTrafficControlDeviceType.CROSSWALK,
+                                                   StaticTrafficControlDeviceType.MOVABLE_BARRIER]:
+                    static_restriction = MapUtils.add_restriction(static_restriction, RoadSignRestriction.STOP)
+            return static_restriction
+        else:
+            dynamic_restriction = RoadSignRestriction.NONE
+            for active_dynamic_tcd in active_dynamic_tcds:
+                status = MapUtils._get_confident_status(active_dynamic_tcd.status, active_dynamic_tcd.confidence)
+                if active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
+                    if status != TrafficSignalState.GREEN:
+                        dynamic_restriction = MapUtils.add_restriction(dynamic_restriction, RoadSignRestriction.STOP)
+                elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
+                    if status != TrafficSignalState.RAILROAD_CROSSING_CLEAR:
+                        dynamic_restriction = MapUtils.add_restriction(dynamic_restriction, RoadSignRestriction.STOP)
+                elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.SCHOOL_ZONE:
+                    # TODO: Need to understand how to get the information on days + hours at which this is in effect.
+                    #   Currently, always stop in this situation
+                    dynamic_restriction = MapUtils.add_restriction(dynamic_restriction, RoadSignRestriction.STOP)
+            return dynamic_restriction
 
     @staticmethod
     def add_restriction(restriction1: RoadSignRestriction, restriction2: RoadSignRestriction) -> RoadSignRestriction:
