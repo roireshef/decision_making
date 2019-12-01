@@ -486,6 +486,35 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
+    def get_closest_stop_bar_on_lane(lane_segment: FrenetSubSegment, ego_location: float,
+                                     offset_to_ego: float) -> Optional[TrafficControlBarInfo]:
+        """
+        Returns the s value of the closest Stop Bar or Stop sign.
+        If both types exist, prefer stop bar, if close enough to stop sign.
+        No existence checks necessary, as it was already tested by FilterActionsTowardsCellsWithoutRoadSigns
+        :param lane_segment: lane segment
+        :param ego_location: on GFF
+        :param offset_to_ego the offset relative to the ego location from which to start looking for a stop bar
+        :return: distance to closest stop bar
+        """
+        for traffic_control_bar in MapUtils.get_lane(lane_segment.e_i_SegmentID).as_traffic_control_bar:
+            tcb_ids.append(traffic_control_bar.e_i_traffic_control_bar_id)
+            tcb_s_on_lane_segments.append(traffic_control_bar.e_l_station)
+            tcb_static_tcd_ids.append(list(traffic_control_bar.e_i_static_traffic_control_device_id))
+            tcb_dynamic_tcd_ids.append(list(traffic_control_bar.e_i_dynamic_traffic_control_device_id))
+        static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
+
+        # check for active stop bar from the closest to the farthest
+        for stop_bar in stop_bars:
+            # Only considers TCB is in front of (ego_location - DIM_MARGIN_TO_STOP_BAR)
+            active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
+            road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
+            should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
+            if should_stop:
+                return stop_bar
+        return None
+
+    @staticmethod
     def get_closest_stop_bar(target_lane_frenet: GeneralizedFrenetSerretFrame, ego_location: float,
                              offset_to_ego: float) -> Optional[TrafficControlBarInfo]:
         """
@@ -602,28 +631,32 @@ class MapUtils:
         :param active_dynamic_tcds: List of active dynamic TCDs to consider
         :return: A single restriction imposed by the TCDs
         """
-        restriction = RoadSignRestriction.NONE
-        # TODO break cases below into finer cases when relevant,
-        #  e.g when there is a stop sign + traffic light with green light, we can proceed
-        for active_static_tcd in active_static_tcds:
-            if active_static_tcd.sign_type in [StaticTrafficControlDeviceType.YIELD,
-                                               StaticTrafficControlDeviceType.STOP,
-                                               StaticTrafficControlDeviceType.CROSSWALK,
-                                               StaticTrafficControlDeviceType.MOVABLE_BARRIER]:
-                restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
-        for active_dynamic_tcd in active_dynamic_tcds:
-            status = MapUtils._get_confident_status(active_dynamic_tcd.status, active_dynamic_tcd.confidence)
-            if active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
-                if status != TrafficSignalState.GREEN:
-                    restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
-            elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
-                if status != TrafficSignalState.RAILROAD_CROSSING_CLEAR:
-                    restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
-            elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.SCHOOL_ZONE:
-                # TODO: Need to understand how to get the information on days + hours at which this is in effect.
-                #   Currently, always stop in this situation
-                restriction = MapUtils.add_restriction(restriction, RoadSignRestriction.STOP)
-        return restriction
+        if len(active_dynamic_tcds) == 0:
+            static_restriction = RoadSignRestriction.NONE
+            # TODO break cases below into finer cases when relevant,
+            #  e.g when there is a traffic light with flashing yellow + stop sign, we should stop
+            for active_static_tcd in active_static_tcds:
+                if active_static_tcd.sign_type in [StaticTrafficControlDeviceType.YIELD,
+                                                   StaticTrafficControlDeviceType.STOP,
+                                                   StaticTrafficControlDeviceType.CROSSWALK,
+                                                   StaticTrafficControlDeviceType.MOVABLE_BARRIER]:
+                    static_restriction = MapUtils.add_restriction(static_restriction, RoadSignRestriction.STOP)
+            return static_restriction
+        else:
+            dynamic_restriction = RoadSignRestriction.NONE
+            for active_dynamic_tcd in active_dynamic_tcds:
+                status = MapUtils._get_confident_status(active_dynamic_tcd.status, active_dynamic_tcd.confidence)
+                if active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
+                    if status != TrafficSignalState.GREEN:
+                        dynamic_restriction = MapUtils.add_restriction(dynamic_restriction, RoadSignRestriction.STOP)
+                elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
+                    if status != TrafficSignalState.RAILROAD_CROSSING_CLEAR:
+                        dynamic_restriction = MapUtils.add_restriction(dynamic_restriction, RoadSignRestriction.STOP)
+                elif active_dynamic_tcd.sign_type == DynamicTrafficControlDeviceType.SCHOOL_ZONE:
+                    # TODO: Need to understand how to get the information on days + hours at which this is in effect.
+                    #   Currently, always stop in this situation
+                    dynamic_restriction = MapUtils.add_restriction(dynamic_restriction, RoadSignRestriction.STOP)
+            return dynamic_restriction
 
     @staticmethod
     def add_restriction(restriction1: RoadSignRestriction, restriction2: RoadSignRestriction) -> RoadSignRestriction:
@@ -687,6 +720,7 @@ class MapUtils:
         # Find the merge point ahead
         cumulative_length = 0
         for segment in lane_subsegments:
+            # TODO should this if be after the check for merge in current segment?
             cumulative_length += segment.e_i_SEnd - segment.e_i_SStart
             if cumulative_length > lookahead_distance:
                 break
