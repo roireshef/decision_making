@@ -449,7 +449,7 @@ def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimitsWhenSlowing_
 
     filtering = RecipeFiltering(filters=[], logger=logger)
     # note: first lane segment speed limit is almost irrelevant because we start at the end of this segment
-    expected_filter_results = np.array([True, True, True,      # v_T=0 (Calm, Standard, Aggressive)  - All Pass (not arriving at [9])
+    expected_filter_results = np.array([False, False, True,    # v_T=0 (Calm, Standard, Aggressive)  - Aggressive Pass (not arriving at [9]). Calm & Standard fail to reach velocity limit within allowed violation time of 3 seconds
                                         False, False, False,   # v_T=6 - Fail  <<-- This was fixed by checking the final velocity is met
                                         False, False, False,   # v_T=12 - Fail
                                         False, False, False,   # v_T=18 - Fail
