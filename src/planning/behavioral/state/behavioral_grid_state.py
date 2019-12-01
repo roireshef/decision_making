@@ -1,3 +1,4 @@
+import itertools
 from collections import defaultdict
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
@@ -63,6 +64,7 @@ class BehavioralGridState:
         self.ego_state = ego_state
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
+        self.max_speed_limit = self._get_max_speed_limit()
 
     @property
     def ego_length(self) -> float:
@@ -235,6 +237,15 @@ class BehavioralGridState:
         """
         return BehavioralGridState._calculate_longitudinal_differences(
             self.extended_lane_frames, self.projected_ego_fstates, target_map_states)
+
+    def _get_max_speed_limit(self) -> float:
+        """
+        Iterates over all lanes in the state's GFFs and returns the maximal speed limit
+        :return: maximal speed limit in [m/s]
+        """
+        lane_id_by_gff = [gff.segment_ids.tolist() for gff in self.extended_lane_frames.values()]
+        unique_lane_ids = set(itertools.chain(*lane_id_by_gff))
+        return max([MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in unique_lane_ids])
 
     @staticmethod
     def _calculate_longitudinal_differences(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],

@@ -94,13 +94,14 @@ class FilterLaneChangingIfNotAugmented(RecipeFilter):
                 if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
                 else False for recipe in recipes]
 
+
 class FilterSpeedingOverDesiredVelocityStatic(RecipeFilter):
     """ This filter only compares the target lane speed with an absolute speed limit.
     Does NOT compare against the lane's speed limit, as it is not clear at this stage, which lane segments are relevant.
     This will be tested at the action spec filter FilterForLaneSpeedLimits
     """
     def filter(self, recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+        return [recipe.velocity <= behavioral_state.max_speed_limit
                 if recipe is not None else False for recipe in recipes]
 
 
@@ -111,7 +112,6 @@ class FilterSpeedingOverDesiredVelocityDynamic(RecipeFilter):
     """
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [behavioral_state.road_occupancy_grid
-                [(recipe.relative_lane, recipe.relative_lon)][0].dynamic_object.velocity
-                <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+                [(recipe.relative_lane, recipe.relative_lon)][0].dynamic_object.velocity <= behavioral_state.max_speed_limit
                 if recipe is not None else False for recipe in recipes]
 
