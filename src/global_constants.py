@@ -104,8 +104,10 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
+
 # Additional distance after stop bar, where vehicle still considers bar as active, until DIM is active
 DIM_MARGIN_TO_STOP_BAR = 10.0
+
 # A distance that is practically too far for the planner to react to
 TOO_FAR_TO_STOP = VELOCITY_LIMITS[1] * BP_ACTION_T_LIMITS[1] * 2
 
