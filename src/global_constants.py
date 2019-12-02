@@ -62,13 +62,6 @@ LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being ver
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
-# [m/sec] speed to plan towards by default in BP
-# original velocities in [mph] are converted into [m/s]
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 75/MPH_TO_MPS # TODO - get this value from the map
-
-# [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
-# we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
-TP_DESIRED_VELOCITY_DEVIATION = 1
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 # original velocities in [mph] are converted into [m/s]
