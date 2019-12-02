@@ -47,6 +47,18 @@ class NumpyUtils:
         return np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX])
 
     @staticmethod
+    def zip_is_in_limits(arr: np.array, limits: Limits):
+        """
+        tests if values of arr are in the limit [lb, ub]
+        :param arr: any tensor shape whose first axis correspond to the first axis in limits
+        :param limits: Limits object - any tensor shape whose last dimension is of size two [lower_bound, upper_bound]
+        :return: tensor of boolean values of the shape of <arr>
+        """
+        assert limits.shape[:-1]==arr.shape, "Can't use zip_is_in_limits since the shapes of <arr> (%s) " \
+                                             "and <limits> (%s) do not agree" % (arr.shape, limits.shape)
+        return np.logical_and(arr >= limits[..., LIMIT_MIN], arr <= limits[..., LIMIT_MAX])
+
+    @staticmethod
     def is_almost_in_limits(arr: np.array, limits: Limits):
         """
         tests if values of arr are in the limit [lb, ub] or very close to the limits

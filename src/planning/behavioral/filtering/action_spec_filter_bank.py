@@ -1,23 +1,25 @@
+from abc import ABCMeta, abstractmethod
+from logging import Logger
+from typing import List, Union, Any
+
 import numpy as np
 import rte.python.profiler as prof
 import six
-from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
-    FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+    VELOCITY_LIMITS, LON_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    SAFETY_HEADWAY, \
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
-from typing import List, Union, Any
 
 
 class FilterIfNone(ActionSpecFilter):
@@ -35,6 +37,9 @@ class FilterForSLimit(ActionSpecFilter):
 
 
 class FilterForKinematics(ActionSpecFilter):
+    def __init__(self, logger: Logger):
+        self._logger = logger
+
     @prof.ProfileFunction()
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         """
@@ -50,8 +55,26 @@ class FilterForKinematics(ActionSpecFilter):
         """
         _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
+        # for each point in the trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
+        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
+            ctrajectories[..., C_K], LAT_ACC_LIMITS_BY_K)
+
+        # multiply the nominal lateral acceleration limits by the TP constant (acceleration limits may differ between
+        # TP and BP), and duplicate the vector with negative sign to create boundaries for lateral acceleration
+        two_sided_lat_acc_limits = BP_LAT_ACC_STRICT_COEF * \
+                                   np.stack((-nominal_abs_lat_acc_limits, nominal_abs_lat_acc_limits), -1)
+
+        self._log_debug_message(action_specs, ctrajectories[..., C_K], two_sided_lat_acc_limits)
+
         return KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS)
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
+
+    def _log_debug_message(self, action_specs: List[ActionSpec], curvatures: np.ndarray, acc_limits: np.ndarray):
+        max_curvature_idxs = np.argmax(curvatures, axis=1)
+        self._logger.debug("FilterForKinematics is working on %s action_specs with max curvature of %s "
+                           "(acceleration limits %s)" % (len(action_specs),
+                                                         curvatures[np.arange(len(curvatures)), max_curvature_idxs],
+                                                         acc_limits[np.arange(len(acc_limits)), max_curvature_idxs]))
 
 
 class FilterForLaneSpeedLimits(ActionSpecFilter):
@@ -323,15 +346,23 @@ class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
         # get the worst case braking distance from spec.v to 0
         max_braking_distance = self.braking_distances[FILTER_V_0_GRID.get_index(action_spec.v), FILTER_V_T_GRID.get_index(0)]
         max_relevant_s = min(action_spec.s + max_braking_distance, frenet_frame.s_max)
+
         # get the Frenet point indices near spec.s and near the worst case braking distance beyond spec.s
         # beyond_spec_range[0] must be BEYOND spec.s because the actual distances from spec.s to the
         # selected points have to be positive.
         beyond_spec_range = frenet_frame.get_closest_index_on_frame(np.array([action_spec.s, max_relevant_s]))[0] + 1
+
         # get s for all points in the range
-        points_s = frenet_frame.get_s_from_index_on_frame(np.array(range(beyond_spec_range[0], beyond_spec_range[1])), 0)
-        # get velocity limits for all points in the range
-        curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[0]:beyond_spec_range[1], 0]), EPS)
-        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * LAT_ACC_LIMITS[1] / curvatures)
+        points_s = frenet_frame.get_s_from_index_on_frame(np.arange(beyond_spec_range[LIMIT_MIN], beyond_spec_range[LIMIT_MAX]), 0)
+
+        # get curvatures for all points in the range
+        curvatures = np.maximum(np.abs(frenet_frame.k[beyond_spec_range[LIMIT_MIN]:beyond_spec_range[LIMIT_MAX], 0]), EPS)
+
+        # for each point in the trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
+        lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(curvatures, LAT_ACC_LIMITS_BY_K)
+
+        points_velocity_limits = np.sqrt(BP_LAT_ACC_STRICT_COEF * lat_acc_limits / curvatures)
+
         return points_s, points_velocity_limits
 
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.array, np.array]:
