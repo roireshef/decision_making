@@ -438,7 +438,7 @@ def predictor():
 def turn_signal() -> TurnSignal:
     timestamp = Timestamp.from_seconds(5.0)
     header = Header(0, timestamp, 0)
-    data = DataTurnSignal(True, timestamp, timestamp, TurnSignalState(1), np.array([]))
+    data = DataTurnSignal(True, timestamp, timestamp, TurnSignalState.CeSYS_e_Off, np.array([]))
     turn_signal = TurnSignal(s_Header=header, s_Data=data)
 
     yield turn_signal

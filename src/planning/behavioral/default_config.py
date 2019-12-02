@@ -33,7 +33,7 @@ DEFAULT_ROAD_SIGN_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone
                                                      logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone(),
                                                              FilterForSLimit(),
-                                                             FilterForKinematics(),
+                                                             FilterForKinematics(logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)),
                                                              FilterForLaneSpeedLimits(),
                                                              FilterForSafetyTowardsTargetVehicle(),
                                                              # TODO The 2 filters below + FilterRoadSignActions make the planner disregard road signs altogether

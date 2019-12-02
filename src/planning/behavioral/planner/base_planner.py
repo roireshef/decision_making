@@ -280,6 +280,7 @@ class BasePlanner:
                                            lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
+                                           # TODO: deprecated - should be replaced or removed
                                            lat_acceleration_limits=lat_accel_limits,
                                            desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED +
                                                             TP_DESIRED_VELOCITY_DEVIATION)

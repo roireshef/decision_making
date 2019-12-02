@@ -3,6 +3,7 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 import numpy as np
 import pytest
 
+
 def test_div_divideByNonZero_sameAsNumpyDivide():
     x = np.random.randn(100)
     y = np.random.randn(100) + np.finfo(np.float32).eps
@@ -43,3 +44,32 @@ def test_getIndex_bonBoundaries_returnsCorrectIndices():
 
     for v, ind in zip(values, expected_indices):
         assert ind == grid.get_index(v)
+
+
+def test_zipIsInLimits_threeDimensionalArray_returnsExpecetedValuesWell():
+    limits = np.array([[[[0, 2], [0, 2], [0, 2]], [[5, 6], [5, 6], [5, 6]]],
+                       [[[0, 2], [0, 2], [0, 2]], [[5, 6], [5, 6], [5, 6]]]])
+    arr = np.array([[[1, 2, 3], [4, 5, 6]],
+                    [[10, 20, 30], [40, 50, 60]]])
+
+    expected = np.array([[[True, True, False],
+                          [False, True, True]],
+                         [[False, False, False],
+                          [False, False, False]]])
+    np.testing.assert_array_equal(NumpyUtils.zip_is_in_limits(arr, limits), expected)
+
+
+def test_zipIsInLimits_twoDimensionalArray_returnsExpecetedValuesWell():
+    limits = np.array([[[0, 2], [0, 2], [0, 2]], [[5, 6], [5, 6], [5, 6]]])
+    arr = np.array([[1, 2, 3], [4, 5, 6]])
+
+    expected = np.array([[True, True, False], [False, True, True]])
+    np.testing.assert_array_equal(NumpyUtils.zip_is_in_limits(arr, limits), expected)
+
+
+def test_zipIsInLimits_oneDimensionalArray_returnsExpecetedValuesWell():
+    limits = np.array([[0, 2], [5, 6]])
+    arr = np.array([1, 8])
+
+    expected = np.array([True, False])
+    np.testing.assert_array_equal(NumpyUtils.zip_is_in_limits(arr, limits), expected)
