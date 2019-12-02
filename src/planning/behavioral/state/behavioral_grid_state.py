@@ -7,8 +7,9 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
     RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
-    MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
+    MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID, DIM_MARGIN_TO_STOP_BAR
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
@@ -50,7 +51,8 @@ RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSem
 class BehavioralGridState:
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                 projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
+                 projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
+                 tcb_in_gff_and_their_distances: Dict[RelativeLane, Tuple[TrafficControlBar, float]], logger: Logger):
         """
         constructor of BehavioralGridState
         :param road_occupancy_grid: dictionary from grid cell to list of dynamic objects with semantics
@@ -58,11 +60,15 @@ class BehavioralGridState:
         :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
         :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
                 corresponding extended_lane_frame
+        :param tcb_in_gff_and_their_distances: closest TCB per GFF lane and its distance from ego
+        :param logger
         """
         self.road_occupancy_grid = road_occupancy_grid
         self.ego_state = ego_state
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
+        self.tcb_in_gff_and_their_distances = tcb_in_gff_and_their_distances
+        self.logger = logger
 
     @property
     def ego_length(self) -> float:
@@ -102,7 +108,11 @@ class BehavioralGridState:
 
         BehavioralGridState._log_grid_data(multi_object_grid, state.ego_state.timestamp_in_sec, logger)
 
-        return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
+        tcb_in_gff_and_their_distances = BehavioralGridState._get_closest_stop_bars(extended_lane_frames,
+                                                                                    projected_ego_fstates, logger)
+
+        return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates,
+                   tcb_in_gff_and_their_distances, logger)
 
     @staticmethod
     def _create_projected_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:
@@ -635,3 +645,30 @@ class BehavioralGridState:
             front_obj_dist = multi_object_grid[front_cell][0].longitudinal_distance
         logger.debug("%s: time %f, dist_from_front_object %f, front_object: %s" %
                      (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
+
+    def get_closest_stop_bar(self, relative_lane: RelativeLane) -> Tuple[TrafficControlBar, float]:
+        """
+        Returns the closest stop bar and its distance.
+        :param relative_lane: in the GFF
+        :return: tuple of (closest stop bar, its distance.)
+        """
+        return self.tcb_in_gff_and_their_distances[relative_lane]
+
+    @staticmethod
+    def _get_closest_stop_bars(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+                               projected_ego_fstates: Dict[RelativeLane, FrenetState2D], logger) \
+            -> Dict[RelativeLane, Tuple[TrafficControlBar, float]]:
+        """
+        at object construction, find the closest stop bars to the ego per BGS lane.
+        Life span is a BP cycle
+        :param extended_lane_frames: of the BGS
+        :param projected_ego_fstates: ego projection on frenet lanes
+        :param logger:
+        :return: dictionary of the closest stop bars to the ego per BGS lane
+        """
+        bars_per_lane = {}
+        for relative_lane, target_lane in extended_lane_frames.items():
+            ego_location = projected_ego_fstates[relative_lane][FS_SX]
+            bars_per_lane[relative_lane] = MapUtils.get_closest_stop_bar(extended_lane_frames[relative_lane],
+                                                                         ego_location, DIM_MARGIN_TO_STOP_BAR, logger)
+        return bars_per_lane

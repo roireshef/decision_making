@@ -1,7 +1,5 @@
 import numpy as np
 import sys
-from typing import NamedTuple, List
-from decision_making.src.messages.scene_static_enums import RoadObjectType, TrafficSignalState
 
 ## TIMESTAMPS ##
 GlobalTimeStamp = int                   # global timestamp in [nanosec] since given time
@@ -117,23 +115,3 @@ BoolArray = np.ndarray
 
 # array of ActionSpec
 ActionSpecArray = np.array
-
-
-class StaticTrafficControlDeviceInfo(NamedTuple):
-    id: int  # object_id of sign
-    sign_type: RoadObjectType  # type of road sign
-    confidence: float  # confidence in existence
-
-
-class DynamicTrafficControlDeviceInfo(NamedTuple):
-    id: int  # object_id of sign
-    sign_type: RoadObjectType  # type of road sign
-    status: List[TrafficSignalState]  # status of object
-    confidence: List[float]  # confidence in status
-
-
-class TrafficControlBarInfo(NamedTuple):
-    id: int  # object_id of sign
-    s: float  # distance from road sign
-    static_TCD_ids: List[int]  # list of ids of TCDs governing this TCB
-    dynamic_TCD_ids: List[int]  # list of ids of TCDs governing this TCB

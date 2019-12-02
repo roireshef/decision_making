@@ -19,7 +19,7 @@ from decision_making.src.exceptions import UpstreamLaneNotFound
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_on_left_and_right_left_first, \
-    route_plan_lane_splits_on_left_and_right_right_first
+    route_plan_lane_splits_on_left_and_right_right_first, behavioral_grid_state_with_stop_bar
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
@@ -75,10 +75,10 @@ def test_getTrafficControlBarsS_findsClosestStop(scene_static_pg_split,
 
     actual = MapUtils.get_traffic_control_bars_s(gff, 0)
     assert len(actual) == 3
-    assert actual[0].s == 10.0
-    assert actual[0].id == STOP_BAR_ID
-    assert actual[1].s == 11.0
-    assert actual[2].s == 12.0
+    assert actual[0][1] == 10.0
+    assert actual[0][0].e_i_traffic_control_bar_id == STOP_BAR_ID
+    assert actual[1][1] == 11.0
+    assert actual[2][1] == 12.0
 
 
 def test_getTrafficControlBarsS_IgnoresTcbsBehindStartOffset(scene_static_pg_split,
@@ -88,7 +88,7 @@ def test_getTrafficControlBarsS_IgnoresTcbsBehindStartOffset(scene_static_pg_spl
 
     actual = MapUtils.get_traffic_control_bars_s(gff, 11.5)
     assert len(actual) == 1
-    assert actual[0].s == 12.0
+    assert actual[0][1] == 12.0
 
 
 def test_getTrafficControlDevices_findsDevices(scene_static_pg_split,
@@ -111,20 +111,20 @@ def test_getTrafficControlDevices_findsDevices(scene_static_pg_split,
 
     static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
     assert len(static_tcds) == 1
-    assert static_tcds[STOP_SIGN_ID].id == 1
-    assert static_tcds[STOP_SIGN_ID].sign_type == StaticTrafficControlDeviceType.STOP
+    assert static_tcds[STOP_SIGN_ID].object_id == 1
+    assert static_tcds[STOP_SIGN_ID].e_e_traffic_control_device_type == StaticTrafficControlDeviceType.STOP
     assert len(dynamic_tcds) == 1
-    assert dynamic_tcds[TRAFFIC_LIGHT_ID].id == 2
-    assert dynamic_tcds[TRAFFIC_LIGHT_ID].sign_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT
-    assert dynamic_tcds[TRAFFIC_LIGHT_ID].status[0] == TrafficSignalState.GREEN
+    assert dynamic_tcds[TRAFFIC_LIGHT_ID][0].object_id == 2
+    assert dynamic_tcds[TRAFFIC_LIGHT_ID][0].e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT
+    assert dynamic_tcds[TRAFFIC_LIGHT_ID][1].a_e_status[0] == TrafficSignalState.GREEN
 
 
 def test_getTCDsForBar_findsStaticAndDynamicDevicesAndAssociatedRestrictions(scene_static_pg_split,
-                                                 behavioral_grid_state_with_objects_for_filtering_too_aggressive):
-    gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
+                                                 behavioral_grid_state_with_stop_bar):
+    gff = behavioral_grid_state_with_stop_bar.extended_lane_frames[RelativeLane.SAME_LANE]
     lane_id, segment_s = _setup_stop_bars_in_map(scene_static_pg_split, gff, [STOP_SIGN_ID], [TRAFFIC_LIGHT_ID])
 
-    actual = MapUtils.get_traffic_control_bars_s(gff, 0)
+    actual_bar, distance = MapUtils.get_traffic_control_bars_s(gff, 0)[0]
 
     stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID, e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
                                            e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=segment_s, e_l_north_y=0)
@@ -139,15 +139,15 @@ def test_getTCDsForBar_findsStaticAndDynamicDevicesAndAssociatedRestrictions(sce
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(traffic_control_devices_status=traffic_light_status)
     static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
-    active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(actual[0], static_tcds, dynamic_tcds)
+    active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(actual_bar, static_tcds, dynamic_tcds)
     assert len(active_static_tcds) == 1
     assert len(active_dynamic_tcds) == 1
 
-    road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
-    assert road_signs_restriction == RoadSignRestriction.STOP
+    road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds, None)
+    assert road_signs_restriction == RoadSignRestriction.NONE
 
     should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
-    assert should_stop
+    assert not should_stop
 
 
 def test_getTCDsForBar_findsStaticOnlyDevicesAndAssociatedRestrictions(scene_static_pg_split,
@@ -155,7 +155,7 @@ def test_getTCDsForBar_findsStaticOnlyDevicesAndAssociatedRestrictions(scene_sta
     gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
     lane_id, segment_s = _setup_stop_bars_in_map(scene_static_pg_split, gff, [STOP_SIGN_ID],[])
 
-    actual = MapUtils.get_traffic_control_bars_s(gff, 0)
+    actual_bar, distance = MapUtils.get_traffic_control_bars_s(gff, 0)[0]
 
     stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID, e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
                                            e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=0, e_l_north_y=0)
@@ -164,11 +164,11 @@ def test_getTCDsForBar_findsStaticOnlyDevicesAndAssociatedRestrictions(scene_sta
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(traffic_control_devices_status={})
     static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
-    active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(actual[0], static_tcds, dynamic_tcds)
+    active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(actual_bar, static_tcds, dynamic_tcds)
     assert len(active_static_tcds) == 1
     assert len(active_dynamic_tcds) == 0
 
-    road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
+    road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds, None)
     assert road_signs_restriction == RoadSignRestriction.STOP
 
     should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
@@ -180,7 +180,7 @@ def test_getTCDsForBar_findsDynamicOnlyDevicesAndAssociatedRestrictions(scene_st
     gff = behavioral_grid_state_with_objects_for_filtering_too_aggressive.extended_lane_frames[RelativeLane.SAME_LANE]
     lane_id, segment_s = _setup_stop_bars_in_map(scene_static_pg_split, gff, [], [TRAFFIC_LIGHT_ID])
 
-    actual = MapUtils.get_traffic_control_bars_s(gff, 0)
+    actual_bar, distance = MapUtils.get_traffic_control_bars_s(gff, 0)[0]
 
     traffic_light = DynamicTrafficControlDevice(object_id=TRAFFIC_LIGHT_ID, e_e_traffic_control_device_type=DynamicTrafficControlDeviceType.TRAFFIC_LIGHT,
                                                 e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=0, e_l_north_y=0)
@@ -193,11 +193,11 @@ def test_getTCDsForBar_findsDynamicOnlyDevicesAndAssociatedRestrictions(scene_st
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(traffic_control_devices_status=traffic_light_status)
     static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
-    active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(actual[0], static_tcds, dynamic_tcds)
+    active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(actual_bar, static_tcds, dynamic_tcds)
     assert len(active_static_tcds) == 0
     assert len(active_dynamic_tcds) == 1
 
-    road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds)
+    road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds, None)
     assert road_signs_restriction == RoadSignRestriction.NONE
 
     should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
