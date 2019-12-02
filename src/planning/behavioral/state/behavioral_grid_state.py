@@ -652,8 +652,7 @@ class BehavioralGridState:
     @staticmethod
     def _is_object_in_lane(dynamic_object: DynamicObject, gff: GeneralizedFrenetSerretFrame, logger: Logger) -> bool:
         """
-        Checks if any part of an object is inside another gff.
-        Takes the point of the object's bounding box or center of mass that is closest to the gff.
+        Checks if any corner of an object's bounding box or the object's center of mass is inside another gff.
         Checks if the distance from that point to the nominal path point of the lane is less than
         the nominal point's left/right offset.
         :param dynamic_object: object to be checked
@@ -681,31 +680,37 @@ class BehavioralGridState:
         # add center of vehicle to the list of points being considered
         bbox = np.vstack((bbox, [dynamic_object.x, dynamic_object.y]))
 
-        point_results = []
-        # project points onto other lane if possible. If not possible, skip checking the point
-        # A loop is used instead of the vectorized functions in order to skip points that throw OutOfSegment exceptions
+        # A loop is used to convert the cpoints to fpoints instead of the vectorized function to skip the OutOfSegment points
+        obj_gff_fstates = []
         for point in bbox:
             try:
-                # this conversion may throw OutOfSegment exceptions
                 obj_gff_fpoint = gff.cpoint_to_fpoint(point)
-                obj_gff_fstate = np.array([obj_gff_fpoint[FP_SX], 0, 0, obj_gff_fpoint[FP_DX], 0, 0])
-
-                # get lane_id and progress along that lane's frame for the projected point
-                gff_lane_id, gff_lane_fstate = gff.convert_to_segment_state(obj_gff_fstate)
-
-                # get border widths at the longitudes of the bbox points
-                borders_right, borders_left = MapUtils.get_dist_to_lane_borders(gff_lane_id, gff_lane_fstate[FS_SX])
-                border_width = borders_right if offset_side == RelativeLane.RIGHT_LANE else borders_left
-
-                point_results.append(np.abs(gff_lane_fstate[FS_DX]) < border_width)
-
-                logger.debug(f"Object {dynamic_object.obj_id} will be projected to lane {gff_lane_id}.")
-            except OutOfSegmentFront:
-                logger.debug(f"OutOfSegmentFront for object {dynamic_object.obj_id} when checking occupancy "
-                             f"at point {str(point)}. Point will be skipped")
+                obj_gff_fstates.append(np.array([obj_gff_fpoint[FP_SX], 0, 0, obj_gff_fpoint[FP_DX], 0, 0]))
             except OutOfSegmentBack:
                 logger.debug(f"OutOfSegmentBack for object {dynamic_object.obj_id} when checking occupancy "
                              f"at point {str(point)}. Point will be skipped")
+            except OutOfSegmentFront:
+                logger.debug(f"OutOfSegmentFront for object {dynamic_object.obj_id} when checking occupancy "
+                             f"at point {str(point)}. Point will be skipped")
 
-        # test if any bbox point intrudes in the target lane
-        return np.any(point_results)
+        gff_lane_ids, gff_lane_fstates = gff.convert_to_segment_states(np.array(obj_gff_fstates))
+        # check if the object spans across multiple lane segments
+        if len(set(gff_lane_ids)) > 1:
+            # if points belong to multiple lane_ids, group the calls by lane_id
+            gff_lane_ids = np.array(gff_lane_ids)
+            borders_right = []
+            borders_left = []
+
+            for id in set(gff_lane_ids):
+                id_indices = np.where(gff_lane_ids == id)
+                id_borders_right, id_borders_left = MapUtils.get_dists_to_lane_borders(id, np.squeeze(gff_lane_fstates[id_indices, FS_SX]))
+                borders_right.extend(id_borders_right)
+                borders_left.extend(id_borders_left)
+        else:
+            # if all points are in the same lane_id, only one call is needed
+            borders_right, borders_left = MapUtils.get_dists_to_lane_borders(gff_lane_ids[0], gff_lane_fstates[:, FS_SX])
+
+        borders_width = borders_right if offset_side == RelativeLane.RIGHT_LANE else borders_left
+
+        return np.any(np.abs(gff_lane_fstates[:, FS_DX]) < borders_width)
+
