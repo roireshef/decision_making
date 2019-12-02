@@ -1045,7 +1045,7 @@ def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State
                                   e_i_static_traffic_control_device_id=[11], e_i_dynamic_traffic_control_device_id=[])
     stop_sign = StaticTrafficControlDevice(object_id=11, e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
                                            e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id],
-                                           e_l_station=20, e_l_lateral_offset=0)
+                                           e_l_east_x=0, e_l_north_y=0)
     for lane_segment in scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments:
         lane_segment.as_traffic_control_bar = []
         if lane_segment.e_i_lane_segment_id == 211:
