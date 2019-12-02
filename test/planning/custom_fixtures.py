@@ -12,6 +12,7 @@ from decision_making.src.messages.scene_dynamic_message import SceneDynamic, Dat
 from decision_making.src.messages.scene_tcd_message import DataSceneTrafficControlDevices, SceneTrafficControlDevices
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
+from decision_making.src.messages.turn_signal_message import TurnSignal, DataTurnSignal, TurnSignalState
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -443,3 +444,13 @@ def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
 def predictor():
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     yield RoadFollowingPredictor(logger)
+
+
+@pytest.fixture(scope='function')
+def turn_signal() -> TurnSignal:
+    timestamp = Timestamp.from_seconds(5.0)
+    header = Header(0, timestamp, 0)
+    data = DataTurnSignal(True, timestamp, timestamp, TurnSignalState.CeSYS_e_Off, np.array([]))
+    turn_signal = TurnSignal(s_Header=header, s_Data=data)
+
+    yield turn_signal
