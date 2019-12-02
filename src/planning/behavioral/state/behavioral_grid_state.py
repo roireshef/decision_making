@@ -1,3 +1,4 @@
+import itertools
 from collections import defaultdict
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
@@ -9,14 +10,16 @@ from decision_making.src.exceptions import MappingException, OutOfSegmentBack, O
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID
 from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.scene_static_enums import LaneOverlapType, ManeuverType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FS_DX, FrenetState2D, FP_SX, C_X, C_Y, FP_DX
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
     FrenetSubSegment
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.messages.scene_static_enums import LaneOverlapType, ManeuverType
+
 
 class DynamicObjectWithRoadSemantics:
     """
@@ -46,7 +49,8 @@ RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSem
 
 class BehavioralGridState:
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
-                 extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame], projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
+                 extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+                 projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
         """
         constructor of BehavioralGridState
         :param road_occupancy_grid: dictionary from grid cell to list of dynamic objects with semantics
@@ -78,11 +82,12 @@ class BehavioralGridState:
          ego front).
         :return: created BehavioralGridState
         """
-        # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state.ego_state, route_plan, logger)
+        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state.ego_state, route_plan,
+                                                                                     logger)
 
-        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
-                                 for rel_lane in extended_lane_frames}
+        projected_ego_fstates = {
+            rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
+            for rel_lane in extended_lane_frames}
 
         # TODO: Make sure to account for all relevant actors on all upstream lanes. For example, there may be an actor outside of an
         #  upstream merge area that is moving quickly. If we predict that this actor will come close to the host, we have to consider
@@ -90,7 +95,8 @@ class BehavioralGridState:
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates, logger),
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames,
+                                                           projected_ego_fstates, logger),
                    key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
@@ -101,70 +107,63 @@ class BehavioralGridState:
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
-    def _create_projected_objects(dynamic_objects: List[DynamicObject], extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+    def _create_projected_objects(dynamic_objects: List[DynamicObject],
+                                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                                   logger: Logger) -> List[DynamicObject]:
         """
         Creates projected, "ghost" objects related to actual dynamic objects
 
         This function finds the dynamic objects that are in an area where it is desirable to create "ghost" objects in other
-        lanes and creates those objects. Projected objects have the following form:
-            obj_id: same as original dynamic object
-            timestamp: same as original dynamic object
-            cartesian_state: same as original dynamic object
-            map_state:
-                lane_fstate: original dynamic object's fstate in the overlapping lane
-                lane_id: overlapping lane ID
-            size: same as original dynamic object
-            confidence: same as original dynamic object
-            off_map: same as original dynamic object
+        lanes and creates those objects. Projected objects all fields unchanged except:
+            map_state.lane_fstate: projected fstate on the target (projection on overlap) lane
+            map_state.lane_id: the lane ID of the target (projection on overlap) lane
             is_ghost: True
 
         :param dynamic_objects: list of dynamic objects
         :param logger:
         :return: list of projected dynamic objects
         """
+        relevant_overlap_types = [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge, LaneOverlapType.CeSYS_e_LaneOverlapType_Split]
+
+        # create a map between RelativeLane and a list of all LaneOverlaps of the GFF for that RelativeLane
+        rel_lane_to_overlaps = {rel: list(itertools.chain(*[MapUtils.get_lane(lane_id).as_lane_overlaps
+                                                            for lane_id in gff.segment_ids]))
+                                for rel, gff in extended_lane_frames.items()}
+
+        # create a map between RelativeLane and a list of all relevant DynamicObjects to project onto that RelativeLane
+        # by crossing all dynamic objects with every RelativeLane's lane-overlaps
+        rel_lane_to_overlapping_objs = {rel: list(itertools.chain(*[[dyn_obj for dyn_obj in dynamic_objects
+                                                                     if dyn_obj.map_state.lane_id == overlap.e_i_other_lane_segment_id
+                                                                     and overlap in relevant_overlap_types
+                                                                     and (not dyn_obj.off_map)
+                                                                     and NumpyUtils.is_in_limits(
+                                                                         dyn_obj.map_state.lane_fstate[FS_SX],
+                                                                         overlap.a_l_other_lane_overlap_stations)
+                                                                     and BehavioralGridState._is_object_in_lane(
+                                                                         dyn_obj, extended_lane_frames[rel], logger)]
+                                                                    for overlap in overlaps]))
+                                        for rel, overlaps in rel_lane_to_overlaps.items()}
+
+        # Project all overlapping dynamic objects on the GFFs and return a list of projected objects
         projected_dynamic_objects = []
+        for rel, dyn_objs in rel_lane_to_overlapping_objs.items():
+            if len(dyn_objs) == 0:
+                continue
 
-        for dynamic_object in dynamic_objects:
-            map_state = dynamic_object.map_state
-            obj_lane_id = map_state.lane_id
-            if map_state.is_on_road():
-                obj_lane = MapUtils.get_lane(obj_lane_id)
-                # Only project if actor has overlapping lane
-                if obj_lane.e_Cnt_lane_overlap_count > 0:
-                    # Get overlapping lanes and create projected objects in those lanes
-                    # TODO: add logic for actor projection for lane_overlap CROSS types
-                    # TODO: add logic to also project actor outside the intersection  with their bounding box inside
-                    overlapping_lane_ids = [lane_overlap.e_i_other_lane_segment_id for lane_overlap in obj_lane.as_lane_overlaps
-                                            if (lane_overlap.a_l_source_lane_overlap_stations[0] <= map_state.lane_fstate[FS_SX]
-                                                <= lane_overlap.a_l_source_lane_overlap_stations[1])
-                                               and (lane_overlap.e_e_lane_overlap_type in [LaneOverlapType.CeSYS_e_LaneOverlapType_Merge,
-                                                                                           LaneOverlapType.CeSYS_e_LaneOverlapType_Split])]
-                    for lane_id in overlapping_lane_ids:
-                        # find GFF that contains the overlapping lane id
-                        gffs_with_overlapping_lane = [gff for gff in extended_lane_frames.values() if gff.has_segment_id(lane_id)]
-                        if len(gffs_with_overlapping_lane) > 0:
-                            gff_with_overlapping_lane = gffs_with_overlapping_lane[0]
-                        else:
-                            logger.debug(f"Lane {lane_id} not found within any GFF's while attempting to project object {dynamic_object.obj_id}.")
-                            return []
+            dyn_objs_cstates = np.array([dyn_obj.cartesian_state for dyn_obj in dyn_objs])
+            projected_dyn_objs_fstates = extended_lane_frames[rel].ctrajectory_to_ftrajectory(dyn_objs_cstates)
+            lane_ids, lane_fstates = extended_lane_frames[rel].convert_to_segment_states(projected_dyn_objs_fstates)
 
-                        if BehavioralGridState.is_object_in_gff(dynamic_object, gff_with_overlapping_lane, logger):
-                            try:
-                                projected_fstate = gff_with_overlapping_lane.cstate_to_fstate(dynamic_object.cartesian_state)
-                                lane_id, lane_fstate = gff_with_overlapping_lane.convert_to_segment_state(projected_fstate)
-                            except (OutOfSegmentBack, OutOfSegmentFront) as e:
-                                logger.debug(str(e))
-                                logger.debug(f"Object {dynamic_object.obj_id} is out of segment for the current GFF and will not be projected.")
+            for dynamic_object, lane_id, lane_fstate in zip(dyn_objs, lane_ids, lane_fstates):
+                projected_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id,
+                                                               timestamp=dynamic_object.timestamp,
+                                                               cartesian_state=dynamic_object.cartesian_state,
+                                                               map_state=MapState(lane_fstate, lane_id),
+                                                               size=dynamic_object.size,
+                                                               confidence=dynamic_object.confidence,
+                                                               off_map=dynamic_object.off_map,
+                                                               is_ghost=True))
 
-                            projected_dynamic_objects.append(DynamicObject(obj_id=dynamic_object.obj_id,
-                                                                           timestamp=dynamic_object.timestamp,
-                                                                           cartesian_state=dynamic_object.cartesian_state,
-                                                                           map_state=MapState(lane_fstate, lane_id),
-                                                                           size=dynamic_object.size,
-                                                                           confidence=dynamic_object.confidence,
-                                                                           off_map=dynamic_object.off_map,
-                                                                           is_ghost=True))
         return projected_dynamic_objects
 
     @staticmethod
@@ -188,7 +187,8 @@ class BehavioralGridState:
         on_map_dynamic_objects = [obj for obj in dynamic_objects if not obj.off_map]
 
         # Create projected objects as needed
-        projected_dynamic_objects = BehavioralGridState._create_projected_objects(on_map_dynamic_objects, extended_lane_frames, logger)
+        projected_dynamic_objects = BehavioralGridState._create_projected_objects(on_map_dynamic_objects,
+                                                                                  extended_lane_frames, logger)
 
         # Filter irrelevant objects
         relevant_objects, relevant_objects_relative_lanes = BehavioralGridState._filter_irrelevant_dynamic_objects(
@@ -234,7 +234,8 @@ class BehavioralGridState:
         relevant_objects = list(np.array(dynamic_objects)[is_relevant_object])
         relevant_objects_lane_matrix = objects_lane_matrix[:, is_relevant_object]
         relative_lane_keys = np.array(list(extended_lane_frames.keys()))
-        relevant_objects_relative_lanes = [list(relative_lane_keys[relevant_objects_lane_matrix[:, i]]) for i in range(len(relevant_objects))]
+        relevant_objects_relative_lanes = [list(relative_lane_keys[relevant_objects_lane_matrix[:, i]]) for i in
+                                           range(len(relevant_objects))]
 
         return relevant_objects, relevant_objects_relative_lanes
 
@@ -312,7 +313,8 @@ class BehavioralGridState:
                 route_plan=route_plan, logger=logger, can_augment=can_augment)
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE, stop processing this BP frame
-            raise AssertionError("Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
+            raise AssertionError(
+                "Trying to fetch data for %s, but data is unavailable. %s" % (RelativeLane.SAME_LANE, str(e)))
 
         # set the SAME_LANE first since it cannot be augmented
         extended_lane_frames[RelativeLane.SAME_LANE] = lane_gff_dict[RelativeLane.SAME_LANE]
@@ -334,7 +336,8 @@ class BehavioralGridState:
                 try:
                     # Find station in the relative lane that is adjacent to the host's station in the lane it is occupying
                     adjacent_lane_frenet_frame = MapUtils.get_lane_frenet_frame(closest_lanes_dict[relative_lane])
-                    host_station_in_adjacent_lane = adjacent_lane_frenet_frame.cpoint_to_fpoint(host_cartesian_point)[FP_SX]
+                    host_station_in_adjacent_lane = adjacent_lane_frenet_frame.cpoint_to_fpoint(host_cartesian_point)[
+                        FP_SX]
 
                 except OutOfSegmentBack:
                     # The host's position on the adjacent lane could not be found because the frame is ahead of the host. This may happen
@@ -357,7 +360,8 @@ class BehavioralGridState:
                 # If the left or right exists, do a lookahead from that lane instead of using the augmented lanes
                 try:
                     lane_gffs = BehavioralGridState._get_generalized_frenet_frames(
-                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane, route_plan=route_plan,
+                        lane_id=closest_lanes_dict[relative_lane], station=host_station_in_adjacent_lane,
+                        route_plan=route_plan,
                         logger=logger)
 
                     # Note that the RelativeLane keys that are in the returned dictionary from _get_lookahead_frenet_frames are
@@ -398,7 +402,8 @@ class BehavioralGridState:
             # the backward distance to the beginning of the lane (i.e. the station).
             starting_station = 0.0
             lookahead_distance = forward_horizon + station
-            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station, backward_horizon)
+            upstream_lane_subsegments = BehavioralGridState._get_upstream_lane_subsegments(lane_id, station,
+                                                                                           backward_horizon)
         else:
             # If the given station is far enough along the lane, then the backward horizon will not pass the beginning of the lane. In this
             # case, the starting station for the forward lookahead should be the end of the backward horizon, and the forward lookahead
@@ -410,9 +415,11 @@ class BehavioralGridState:
             lookahead_distance = forward_horizon + backward_horizon
             upstream_lane_subsegments = []
 
-        lane_subsegments_dict = BehavioralGridState._get_downstream_lane_subsegments(initial_lane_id=lane_id, initial_s=starting_station,
+        lane_subsegments_dict = BehavioralGridState._get_downstream_lane_subsegments(initial_lane_id=lane_id,
+                                                                                     initial_s=starting_station,
                                                                                      lookahead_distance=lookahead_distance,
-                                                                                     route_plan=route_plan, logger=logger,
+                                                                                     route_plan=route_plan,
+                                                                                     logger=logger,
                                                                                      can_augment=can_augment)
 
         gffs_dict = {}
@@ -429,13 +436,15 @@ class BehavioralGridState:
                              for lane_subsegment in concatenated_lane_subsegments]
 
             # Create GFF
-            gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, concatenated_lane_subsegments, gff_type)
+            gffs_dict[rel_lane] = GeneralizedFrenetSerretFrame.build(frenet_frames, concatenated_lane_subsegments,
+                                                                     gff_type)
 
         return gffs_dict
 
     @staticmethod
     @raises(UpstreamLaneNotFound, LaneNotFound)
-    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float) -> List[FrenetSubSegment]:
+    def _get_upstream_lane_subsegments(initial_lane_id: int, initial_station: float, backward_distance: float) -> List[
+        FrenetSubSegment]:
         """
         Return a list of lane subsegments that are upstream to the given lane and extending as far back as backward_distance
         :param initial_lane_id: ID of lane to start from
@@ -487,7 +496,8 @@ class BehavioralGridState:
     @staticmethod
     @raises(StraightConnectionNotFound, RoadNotFound, LaneNotFound)
     def _get_downstream_lane_subsegments(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                                         route_plan: RoutePlan, logger: Logger, can_augment: Optional[List[RelativeLane]] = None) -> \
+                                         route_plan: RoutePlan, logger: Logger,
+                                         can_augment: Optional[List[RelativeLane]] = None) -> \
             Dict[RelativeLane, Tuple[List[FrenetSubSegment], bool, bool, float]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
@@ -543,7 +553,7 @@ class BehavioralGridState:
                 # Get returned information. Note that the use of the RelativeLane.SAME_LANE key here is correct.
                 # Read the return value description above for more information.
                 augmented_lane_subsegments, is_augmented_partial, _, augmented_cumulative_distance = \
-                augmented_lane_dict[RelativeLane.SAME_LANE]
+                    augmented_lane_dict[RelativeLane.SAME_LANE]
 
                 # Assign information to dictionary accordingly
                 lane_subsegments_dict[rel_lane] = (lane_subsegments + augmented_lane_subsegments, is_augmented_partial,
@@ -564,7 +574,7 @@ class BehavioralGridState:
             for rel_lane, _ in straight_lane_dict.items():
                 # Get returned information.
                 straight_lane_subsegments, is_straight_partial, is_straight_augmented, straight_cumulative_distance = \
-                straight_lane_dict[rel_lane]
+                    straight_lane_dict[rel_lane]
 
                 # Concatenate and assign information to dictionary accordingly
                 lane_subsegments_dict[rel_lane] = (lane_subsegments + straight_lane_subsegments, is_straight_partial,
@@ -648,28 +658,30 @@ class BehavioralGridState:
         logger.debug("%s: time %f, dist_from_front_object %f, front_object: %s" %
                      (LOG_MSG_BEHAVIORAL_GRID, timestamp_in_sec, front_obj_dist, front_obj))
 
-
     @staticmethod
-    def is_object_in_gff(dynamic_object: DynamicObject, gff: GeneralizedFrenetSerretFrame, logger: Logger) -> bool:
+    def _is_object_in_lane(dynamic_object: DynamicObject, lane_gff: GeneralizedFrenetSerretFrame,
+                           logger: Logger) -> bool:
         """
         Checks if any part of an object is inside another gff.
         Takes the point of the object's bounding box or center of mass that is closest to the gff.
         Checks if the distance from that point to the nominal path point of the lane is less than
         the nominal point's left/right offset.
         :param dynamic_object: object to be checked
-        :param gff: gff of interest
+        :param lane_gff: gff of interest
         :param logger:
         :return: Bool representing if any bounding box corner or center of mass point is in the lane of interest
         """
-        # skip checks if object's assigned lane is in the gff
+        # skip checks if object's assigned lane is in the gff and it is not off map
         obj_lane_id = dynamic_object.map_state.lane_id
-        if gff.has_segment_id(obj_lane_id):
+        if lane_gff.has_segment_id(obj_lane_id) and not dynamic_object.off_map:
             return True
 
         # determine if object is to the right or left of GFF
         # (if object's adjacent left lane id is in a gff, the object is to the right of the gff)
-        in_right = np.any(gff.has_segment_ids(np.array(MapUtils.get_adjacent_lane_ids(obj_lane_id, RelativeLane.LEFT_LANE))))
-        in_left = np.any(gff.has_segment_ids(np.array(MapUtils.get_adjacent_lane_ids(obj_lane_id, RelativeLane.RIGHT_LANE))))
+        in_right = np.any(
+            lane_gff.has_segment_ids(np.array(MapUtils.get_adjacent_lane_ids(obj_lane_id, RelativeLane.LEFT_LANE))))
+        in_left = np.any(
+            lane_gff.has_segment_ids(np.array(MapUtils.get_adjacent_lane_ids(obj_lane_id, RelativeLane.RIGHT_LANE))))
         offset_side = RelativeLane.RIGHT_LANE if in_right else RelativeLane.LEFT_LANE
 
         # object can only overlap with adjacent lanes, and can't be in both left and right.
@@ -687,11 +699,11 @@ class BehavioralGridState:
         for point in bbox:
             try:
                 # this conversion may throw OutOfSegment exceptions
-                obj_gff_fpoint = gff.cpoint_to_fpoint(point)
+                obj_gff_fpoint = lane_gff.cpoint_to_fpoint(point)
                 obj_gff_fstate = np.array([obj_gff_fpoint[FP_SX], 0, 0, obj_gff_fpoint[FP_DX], 0, 0])
 
                 # get lane_id and progress along that lane's frame for the projected point
-                gff_lane_id, gff_lane_fstate = gff.convert_to_segment_state(obj_gff_fstate)
+                gff_lane_id, gff_lane_fstate = lane_gff.convert_to_segment_state(obj_gff_fstate)
 
                 # get border widths at the longitudes of the bbox points
                 borders_right, borders_left = MapUtils.get_dist_to_lane_borders(gff_lane_id, gff_lane_fstate[FS_SX])
@@ -706,6 +718,6 @@ class BehavioralGridState:
             except OutOfSegmentBack:
                 logger.debug(f"OutOfSegmentBack for object {dynamic_object.obj_id} when checking occupancy "
                              f"at point {str(point)}. Point will be skipped")
+
         # test if any bbox point intrudes in the target lane
         return np.any(point_results)
-

@@ -306,7 +306,7 @@ def test_createProjectedObjects_laneSplit_carNotInOverlap(behavioral_grid_state_
     # Create other car in lane 21 which does NOT overlap with any other lane
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1,1,0,0,0,0]), 21),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
-    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj], behavioral_grid_state_with_scene_short_testable, logger)
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj], behavioral_grid_state_with_scene_short_testable.extended_lane_frames, logger)
 
     assert not projected_dynamic_objects
 
@@ -720,10 +720,10 @@ def test_isObjectInLane_carOnLaneLine(behavioral_grid_state_with_scene_short_tes
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,-1.5,0,0]), 11),
                                                   size=ObjectSize(4,1.5,1), confidence=1, off_map=False)
 
-    assert BehavioralGridState.is_object_in_gff(dyn_obj,
-                                                bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
-    assert BehavioralGridState.is_object_in_gff(dyn_obj,
-                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
 
 def test_isObjectInLane_carInSingleLane(behavioral_grid_state_with_scene_short_testable):
     """
@@ -736,10 +736,10 @@ def test_isObjectInLane_carInSingleLane(behavioral_grid_state_with_scene_short_t
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,0,0,0]), 11),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
 
-    assert BehavioralGridState.is_object_in_gff(dyn_obj,
-                                                bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
-    assert BehavioralGridState.is_object_in_gff(dyn_obj,
-                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == False
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == False
 
 def test_isObjectInLane_laneSplit_carInOverlap(behavioral_grid_state_with_split_on_oval: BehavioralGridState):
     """
@@ -752,10 +752,10 @@ def test_isObjectInLane_laneSplit_carInOverlap(behavioral_grid_state_with_split_
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
                                                   map_state=MapState(np.array([1,0,0,2,0,0]), 19670532),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    assert BehavioralGridState.is_object_in_gff(dyn_obj,
-                                                bgs.extended_lane_frames[RelativeLane.RIGHT_LANE], logger) == True
-    assert BehavioralGridState.is_object_in_gff(dyn_obj,
-                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.RIGHT_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
 
 def test_isObjectInLane_laneMerge_carInOverlap(behavioral_grid_state_with_merge_on_oval: BehavioralGridState):
     """
@@ -768,10 +768,10 @@ def test_isObjectInLane_laneMerge_carInOverlap(behavioral_grid_state_with_merge_
                                                   map_state=MapState(np.array([1,0,0,-2,0,0]), 58375684),
                                                   size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
 
-    assert BehavioralGridState.is_object_in_gff(dyn_obj,
-                                                bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
-    assert BehavioralGridState.is_object_in_gff(dyn_obj,
-                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
 
 def test_isObjectInLane_moundRoadNorth_carIntrudingInLane(scene_static_mound_road_north, scene_dynamic_obj_intruding_in_lane_mound_road_north,
                                                           route_plan_for_mound_north_file):
@@ -780,10 +780,10 @@ def test_isObjectInLane_moundRoadNorth_carIntrudingInLane(scene_static_mound_roa
     state = State.create_state_from_scene_dynamic(scene_dynamic_obj_intruding_in_lane_mound_road_north, [], None)
     bgs = BehavioralGridState.create_from_state(state, route_plan_for_mound_north_file, logger)
 
-    assert BehavioralGridState.is_object_in_gff(state.dynamic_objects[0],
-                                                bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
-    assert BehavioralGridState.is_object_in_gff(state.dynamic_objects[0],
-                                                bgs.extended_lane_frames[RelativeLane.RIGHT_LANE], logger) == True
-    assert BehavioralGridState.is_object_in_gff(state.dynamic_objects[0],
-                                                bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == False
+    assert BehavioralGridState._is_object_in_lane(state.dynamic_objects[0],
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(state.dynamic_objects[0],
+                                                  bgs.extended_lane_frames[RelativeLane.RIGHT_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(state.dynamic_objects[0],
+                                                  bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == False
 
