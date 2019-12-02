@@ -83,3 +83,8 @@ class TurnSignal(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSTurnSignal):
         return cls(Header.deserialize(pubsubMsg.s_Header),
                    DataTurnSignal.deserialize(pubsubMsg.s_Data))
+
+DEFAULT_MSG = TurnSignal(s_Header=None, s_Data=DataTurnSignal(e_b_valid=False, s_RecvTimestamp=None,
+                                                              s_time_changed=None,
+                                                              e_e_turn_signal_state=TurnSignalState.CeSYS_e_Off,
+                                                              a_Reserved=None))

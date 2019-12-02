@@ -30,7 +30,7 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
-from decision_making.src.messages.turn_signal_message import TurnSignal
+from decision_making.src.messages.turn_signal_message import TurnSignal, DEFAULT_MSG as DEFAULT_TURN_SIGNAL_MSG
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
@@ -104,7 +104,11 @@ class BehavioralPlanningFacade(DmModule):
             self._get_current_pedal_position()
 
             # Turn signal (blinkers) is a signal used for Lane Change on Demand
-            turn_signal = self._get_current_turn_signal()
+            try:
+                turn_signal = self._get_current_turn_signal()
+            except MsgDeserializationError as e:
+                self.logger.warning("MsgDeserializationError was raised for turn signal. Overriding with default value")
+                turn_signal = DEFAULT_TURN_SIGNAL_MSG
 
             # Control status is a signal that is used as a proxy for vehicle's Engagement status
             # Logic is to keep planning in disengaged mode, but always "re-plan" (use actual localization)
