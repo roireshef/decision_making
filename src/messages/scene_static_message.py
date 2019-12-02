@@ -245,26 +245,26 @@ class StaticTrafficControlDevice(PUBSUB_MSG_IMPL):
     e_e_traffic_control_device_type = StaticTrafficControlDeviceType
     e_Pct_confidence = float
     e_i_controlled_lane_segment_id = List[int]
-    e_l_station = float
-    e_l_lateral_offset = float
+    e_l_east_x = float
+    e_l_north_y = float
 
     def __init__(self, object_id: int, e_e_traffic_control_device_type: StaticTrafficControlDeviceType, e_Pct_confidence: float,
-                 e_i_controlled_lane_segment_id: List[int], e_l_station: float, e_l_lateral_offset: float):
+                 e_i_controlled_lane_segment_id: List[int], e_l_east_x: float, e_l_north_y: float):
         """
         Static traffic-flow-control device, eg. Stop Signs (not relevant for M0)
         :param object_id:
         :param e_e_traffic_control_device_type:
         :param e_Pct_confidence:
         :param e_i_controlled_lane_segment_id
-        :param e_l_station:
-        :param e_l_lateral_offset:
+        :param e_l_east_x:
+        :param e_l_north_y:
         """
         self.object_id = object_id
         self.e_e_traffic_control_device_type = e_e_traffic_control_device_type
         self.e_Pct_confidence = e_Pct_confidence
         self.e_i_controlled_lane_segment_id = e_i_controlled_lane_segment_id
-        self.e_l_station = e_l_station
-        self.e_l_lateral_offset = e_l_lateral_offset
+        self.e_l_east_x = e_l_east_x
+        self.e_l_north_y = e_l_north_y
 
     def serialize(self) -> TsSYSStaticTrafficControlDevice:
         pubsub_msg = TsSYSStaticTrafficControlDevice()
@@ -275,8 +275,8 @@ class StaticTrafficControlDevice(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_controlled_lane_segments_count = len(self.e_i_controlled_lane_segment_id)
         for i in range(len(self.e_i_controlled_lane_segment_id)):
             pubsub_msg.e_i_controlled_lane_segment_id[i] = self.e_i_controlled_lane_segment_id[i]
-        pubsub_msg.e_l_station = self.e_l_station
-        pubsub_msg.e_l_lateral_offset = self.e_l_lateral_offset
+        pubsub_msg.e_l_east_x = self.e_l_east_x
+        pubsub_msg.e_l_north_y = self.e_l_north_y
 
         return pubsub_msg
 
@@ -288,31 +288,31 @@ class StaticTrafficControlDevice(PUBSUB_MSG_IMPL):
 
         return cls(pubsubMsg.e_i_static_traffic_control_device_id,
                    StaticTrafficControlDeviceType(pubsubMsg.e_e_traffic_control_device_type),
-                   pubsubMsg.e_Pct_confidence, e_i_controlled_lane_segment_id, pubsubMsg.e_l_station,
-                   pubsubMsg.e_l_lateral_offset)
+                   pubsubMsg.e_Pct_confidence, e_i_controlled_lane_segment_id, pubsubMsg.e_l_east_x,
+                   pubsubMsg.e_l_north_y)
 
 
 class DynamicTrafficControlDevice(PUBSUB_MSG_IMPL):
     object_id = int
     e_e_traffic_control_device_type = DynamicTrafficControlDeviceType
     e_i_controlled_lane_segment_id = List[int]
-    e_l_station = float
-    e_l_lateral_offset = float
+    e_l_east_x = float
+    e_l_north_y = float
 
     def __init__(self, object_id: int, e_e_traffic_control_device_type: DynamicTrafficControlDeviceType,
-                 e_i_controlled_lane_segment_id: List[int], e_l_station: float, e_l_lateral_offset: float):
+                 e_i_controlled_lane_segment_id: List[int], e_l_east_x: float, e_l_north_y: float):
         """
         Dynamic traffic-flow-control device, e.g. Traffic lights (not relevant for M0)
         :param object_id:
         :param e_e_traffic_control_device_type:
-        :param e_l_station:
-        :param e_l_lateral_offset:
+        :param e_l_east_x:
+        :param e_l_north_y:
         """
         self.object_id = object_id
         self.e_e_traffic_control_device_type = e_e_traffic_control_device_type
         self.e_i_controlled_lane_segment_id = e_i_controlled_lane_segment_id
-        self.e_l_station = e_l_station
-        self.e_l_lateral_offset = e_l_lateral_offset
+        self.e_l_east_x = e_l_east_x
+        self.e_l_north_y = e_l_north_y
 
     def serialize(self) -> TsSYSDynamicTrafficControlDevice:
         pubsub_msg = TsSYSDynamicTrafficControlDevice()
@@ -322,8 +322,8 @@ class DynamicTrafficControlDevice(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_controlled_lane_segments_count = len(self.e_i_controlled_lane_segment_id)
         for i in range(len(self.e_i_controlled_lane_segment_id)):
             pubsub_msg.e_i_controlled_lane_segment_id[i] = self.e_i_controlled_lane_segment_id[i]
-        pubsub_msg.e_l_station = self.e_l_station
-        pubsub_msg.e_l_lateral_offset = self.e_l_lateral_offset
+        pubsub_msg.e_l_east_x = self.e_l_east_x
+        pubsub_msg.e_l_north_y = self.e_l_north_y
 
         return pubsub_msg
 
@@ -336,7 +336,7 @@ class DynamicTrafficControlDevice(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_i_dynamic_traffic_control_device_id,
                    DynamicTrafficControlDeviceType(pubsubMsg.e_e_traffic_control_device_type),
                    e_i_controlled_lane_segment_id,
-                   pubsubMsg.e_l_station, pubsubMsg.e_l_lateral_offset)
+                   pubsubMsg.e_l_east_x, pubsubMsg.e_l_north_y)
 
 
 class SceneLaneSegmentGeometry(PUBSUB_MSG_IMPL):

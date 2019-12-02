@@ -98,10 +98,10 @@ def test_getTrafficControlDevices_findsDevices(scene_static_pg_split,
 
     MapUtils.get_traffic_control_bars_s(gff, 0)
 
-    stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID,e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
-                               e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id], e_l_station=segment_s, e_l_lateral_offset=0)
-    traffic_light = DynamicTrafficControlDevice(object_id=TRAFFIC_LIGHT_ID,e_e_traffic_control_device_type=DynamicTrafficControlDeviceType.TRAFFIC_LIGHT,
-                               e_i_controlled_lane_segment_id=[lane_id], e_l_station=segment_s, e_l_lateral_offset=0)
+    stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID, e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
+                                           e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=segment_s, e_l_north_y=0)
+    traffic_light = DynamicTrafficControlDevice(object_id=TRAFFIC_LIGHT_ID, e_e_traffic_control_device_type=DynamicTrafficControlDeviceType.TRAFFIC_LIGHT,
+                                                e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=0, e_l_north_y=0)
     _setup_tcds_in_map(scene_static=scene_static_pg_split, static_tcds=[stop_sign], dynamic_tcds=[traffic_light])
 
     traffic_light_status = {traffic_light.object_id: DynamicTrafficControlDeviceStatus(
@@ -126,10 +126,10 @@ def test_getTCDsForBar_findsStaticAndDynamicDevicesAndAssociatedRestrictions(sce
 
     actual = MapUtils.get_traffic_control_bars_s(gff, 0)
 
-    stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID,e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
-                               e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id], e_l_station=segment_s, e_l_lateral_offset=0)
-    traffic_light = DynamicTrafficControlDevice(object_id=TRAFFIC_LIGHT_ID,e_e_traffic_control_device_type=DynamicTrafficControlDeviceType.TRAFFIC_LIGHT,
-                               e_i_controlled_lane_segment_id=[lane_id], e_l_station=segment_s, e_l_lateral_offset=0)
+    stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID, e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
+                                           e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=segment_s, e_l_north_y=0)
+    traffic_light = DynamicTrafficControlDevice(object_id=TRAFFIC_LIGHT_ID, e_e_traffic_control_device_type=DynamicTrafficControlDeviceType.TRAFFIC_LIGHT,
+                                                e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=0, e_l_north_y=0)
     _setup_tcds_in_map(scene_static=scene_static_pg_split, static_tcds=[stop_sign], dynamic_tcds=[traffic_light])
 
     # dynamic TCDs status should be set before TCDs are retrieved
@@ -157,8 +157,8 @@ def test_getTCDsForBar_findsStaticOnlyDevicesAndAssociatedRestrictions(scene_sta
 
     actual = MapUtils.get_traffic_control_bars_s(gff, 0)
 
-    stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID,e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
-                               e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id], e_l_station=segment_s, e_l_lateral_offset=0)
+    stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID, e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
+                                           e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=0, e_l_north_y=0)
     _setup_tcds_in_map(scene_static=scene_static_pg_split, static_tcds=[stop_sign], dynamic_tcds=[])
 
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(traffic_control_devices_status={})
@@ -182,8 +182,8 @@ def test_getTCDsForBar_findsDynamicOnlyDevicesAndAssociatedRestrictions(scene_st
 
     actual = MapUtils.get_traffic_control_bars_s(gff, 0)
 
-    traffic_light = DynamicTrafficControlDevice(object_id=TRAFFIC_LIGHT_ID,e_e_traffic_control_device_type=DynamicTrafficControlDeviceType.TRAFFIC_LIGHT,
-                               e_i_controlled_lane_segment_id=[lane_id], e_l_station=segment_s, e_l_lateral_offset=0)
+    traffic_light = DynamicTrafficControlDevice(object_id=TRAFFIC_LIGHT_ID, e_e_traffic_control_device_type=DynamicTrafficControlDeviceType.TRAFFIC_LIGHT,
+                                                e_i_controlled_lane_segment_id=[lane_id], e_l_east_x=0, e_l_north_y=0)
     _setup_tcds_in_map(scene_static=scene_static_pg_split, static_tcds=[], dynamic_tcds=[traffic_light])
 
     # dynamic TCDs status should be set before TCDs are retrieved
