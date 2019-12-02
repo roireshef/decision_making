@@ -14,7 +14,7 @@ from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN, FrenetSt
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
-from gym.spaces.tuple_space import Tuple as GymTuple
+from gym.spaces.tuple import Tuple as GymTuple
 from typing import List, Dict
 
 

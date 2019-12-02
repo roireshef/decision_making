@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from gym.spaces.tuple_space import Tuple as GymTuple
+from gym.spaces.tuple import Tuple as GymTuple
 from ray.rllib.models.pytorch.model import TorchModel
 from torch import nn
 from typing import Dict, List

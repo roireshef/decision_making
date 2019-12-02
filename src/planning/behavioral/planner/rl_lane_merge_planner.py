@@ -116,8 +116,8 @@ class RL_LaneMergePlanner(BasePlanner):
         idx = np.argmax(probabilities * action_mask.astype(int))
         actors_s = np.array([actor.s_relative_to_ego for actor in lane_merge_state.actors_states])
         actors_s = np.sort(actors_s)
-        print('RL: chosen_spec=', action_specs[idx], 'probabilities: ', probabilities, 'value: ', values)
-        print('Rel_s', NumpyUtils.str_log(actors_s))
+        print('RL: chosen_spec(v,t)=', action_specs[idx].v, action_specs[idx].t, 'probabilities: ', probabilities, 'value: ', values)
+        print('Rel_s', NumpyUtils.str_log(actors_s), 'ego_state', lane_merge_state.ego_fstate_1d)
         print('Spaces beetween actors', NumpyUtils.str_log(np.diff(actors_s)))
 
         # mask filtered actions and return costs (1 - probability)
