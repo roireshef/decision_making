@@ -130,7 +130,7 @@ class BehavioralGridState:
         # by crossing all dynamic objects with every RelativeLane's lane-overlaps
         rel_lane_to_overlapping_objs = {rel: list(itertools.chain(*[[dyn_obj for dyn_obj in dynamic_objects
                                                                      if dyn_obj.map_state.lane_id == overlap.e_i_other_lane_segment_id
-                                                                     and overlap in relevant_overlap_types
+                                                                     and overlap.e_e_lane_overlap_type in relevant_overlap_types
                                                                      and (not dyn_obj.off_map)
                                                                      and NumpyUtils.is_in_limits(
                                                                          dyn_obj.map_state.lane_fstate[FS_SX],
@@ -146,8 +146,23 @@ class BehavioralGridState:
             if len(dyn_objs) == 0:
                 continue
 
-            dyn_objs_cstates = np.array([dyn_obj.cartesian_state for dyn_obj in dyn_objs])
-            projected_dyn_objs_fstates = extended_lane_frames[rel].ctrajectory_to_ftrajectory(dyn_objs_cstates)
+            # A loop is used instead of the vectorized function in order to skip points that are OutOfSegment
+            projected_dyn_objs_fstates = []
+            for dyn_obj in dyn_objs:
+                dyn_obj_cstate = dyn_obj.cartesian_state
+                try:
+                    dyn_obj_fstate = extended_lane_frames[rel].cstate_to_fstate(dyn_obj_cstate)
+                    projected_dyn_objs_fstates.append(dyn_obj_fstate)
+                except OutOfSegmentBack:
+                    logger.debug(f"OutOfSegmentBack for object {dyn_obj.obj_id} trying to project."
+                                 f"Object projection will be skipped.")
+                    continue
+                except OutOfSegmentFront:
+                    logger.debug(f"OutOfSegmentFront for object {dyn_obj.obj_id} trying to project."
+                                 f"Object projection will be skipped.")
+                    continue
+            projected_dyn_objs_fstates = np.array(projected_dyn_objs_fstates)
+
             lane_ids, lane_fstates = extended_lane_frames[rel].convert_to_segment_states(projected_dyn_objs_fstates)
 
             for dynamic_object, lane_id, lane_fstate in zip(dyn_objs, lane_ids, lane_fstates):

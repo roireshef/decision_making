@@ -780,6 +780,9 @@ def test_isObjectInLane_moundRoadNorth_carIntrudingInLane(scene_static_mound_roa
     state = State.create_state_from_scene_dynamic(scene_dynamic_obj_intruding_in_lane_mound_road_north, [], None)
     bgs = BehavioralGridState.create_from_state(state, route_plan_for_mound_north_file, logger)
 
+    # test that the object was successfully projected into the SAME_LANE
+    assert len(bgs.road_occupancy_grid[RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT]) == 1
+
     assert BehavioralGridState._is_object_in_lane(state.dynamic_objects[0],
                                                   bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
     assert BehavioralGridState._is_object_in_lane(state.dynamic_objects[0],
