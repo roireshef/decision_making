@@ -1,13 +1,13 @@
 from typing import List
 
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe, \
     RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
-from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):

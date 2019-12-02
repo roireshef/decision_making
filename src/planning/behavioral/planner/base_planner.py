@@ -14,7 +14,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, \
-    ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
+    ROAD_SHOULDERS_WIDTH
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
@@ -23,7 +23,7 @@ from decision_making.src.planning.behavioral.state.lane_change_state import Lane
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, ActionSpecArray
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, ActionSpecArray, LIMIT_MAX
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, State
@@ -278,7 +278,6 @@ class BasePlanner:
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            # TODO: deprecated - should be replaced or removed
                                            lat_acceleration_limits=LAT_ACC_LIMITS,
-                                           desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED +
-                                                            TP_DESIRED_VELOCITY_DEVIATION)
+                                           desired_velocity=VELOCITY_LIMITS[LIMIT_MAX])  # TODO: remove since not used
 
         return cost_params
