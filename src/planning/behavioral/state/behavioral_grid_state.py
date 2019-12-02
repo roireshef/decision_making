@@ -134,7 +134,8 @@ class BehavioralGridState:
                                                                      and (not dyn_obj.off_map)
                                                                      and NumpyUtils.is_in_limits(
                                                                          dyn_obj.map_state.lane_fstate[FS_SX],
-                                                                         overlap.a_l_other_lane_overlap_stations)
+                                                                         overlap.a_l_other_lane_overlap_stations +
+                                                                         [-dyn_obj.size.length/2 , dyn_obj.size.length/2])
                                                                      and BehavioralGridState._is_object_in_lane(
                                                                          dyn_obj, extended_lane_frames[rel], logger)]
                                                                     for overlap in overlaps]))
