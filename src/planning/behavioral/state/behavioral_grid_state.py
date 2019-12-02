@@ -143,26 +143,14 @@ class BehavioralGridState:
 
         # Project all overlapping dynamic objects on the GFFs and return a list of projected objects
         projected_dynamic_objects = []
+
         for rel, dyn_objs in rel_lane_to_overlapping_objs.items():
             if len(dyn_objs) == 0:
                 continue
 
-            # A loop is used instead of the vectorized function in order to skip points that are OutOfSegment
-            projected_dyn_objs_fstates = []
-            for dyn_obj in dyn_objs:
-                dyn_obj_cstate = dyn_obj.cartesian_state
-                try:
-                    dyn_obj_fstate = extended_lane_frames[rel].cstate_to_fstate(dyn_obj_cstate)
-                    projected_dyn_objs_fstates.append(dyn_obj_fstate)
-                except OutOfSegmentBack:
-                    logger.debug(f"OutOfSegmentBack for object {dyn_obj.obj_id} trying to project."
-                                 f"Object projection will be skipped.")
-                    continue
-                except OutOfSegmentFront:
-                    logger.debug(f"OutOfSegmentFront for object {dyn_obj.obj_id} trying to project."
-                                 f"Object projection will be skipped.")
-                    continue
-            projected_dyn_objs_fstates = np.array(projected_dyn_objs_fstates)
+            # A try/catch for OutOfSegment is not needed here since _is_object_in_lane will return False if the centerpoint is OutOfSegment
+            dyn_objs_cstates = np.array([dyn_obj.cartesian_state for dyn_obj in dyn_objs])
+            projected_dyn_objs_fstates = extended_lane_frames[rel].ctrajectory_to_ftrajectory(dyn_objs_cstates)
 
             lane_ids, lane_fstates = extended_lane_frames[rel].convert_to_segment_states(projected_dyn_objs_fstates)
 
@@ -693,11 +681,19 @@ class BehavioralGridState:
             return False
 
         bbox = dynamic_object.bounding_box()
-        # add center of vehicle to the list of points being considered
-        bbox = np.vstack((bbox, [dynamic_object.x, dynamic_object.y]))
+
+        obj_gff_fstates = []
+        # Try to project the center of the vehicle. If OutOfSegment, skip checking the rest of the points
+        try:
+            obj_center_fpoint = gff.cpoint_to_fpoint(np.array([dynamic_object.x, dynamic_object.y]))
+            obj_gff_fstates.append(np.array([obj_center_fpoint[FP_SX], 0, 0, obj_center_fpoint[FP_DX], 0, 0]))
+        except (OutOfSegmentBack, OutOfSegmentFront):
+            logger.debug(f"OutOfSegment for the centerpoint of object {dynamic_object.obj_id} when checking occupancy."
+                         f"Projection will not be done for this object.")
+            return False
+
 
         # A loop is used to convert the cpoints to fpoints instead of the vectorized function to skip the OutOfSegment points
-        obj_gff_fstates = []
         for point in bbox:
             try:
                 obj_gff_fpoint = gff.cpoint_to_fpoint(point)
