@@ -529,11 +529,8 @@ class MapUtils:
         # go over the lanes and aggregate the TCBs
         for lane_id in lane_frenet.segment_ids:
             lane_segment = MapUtils.get_lane(lane_id)
-            # TODO HACK
-            lane_ids += len(lane_segment.as_traffic_control_bar) * [lane_id if lane_id != 102915073 else 2568708]  # add same value multiple times
+            lane_ids += len(lane_segment.as_traffic_control_bar) * [lane_id]  # add same value multiple times
             tcbs.extend(lane_segment.as_traffic_control_bar)
-            if len(lane_segment.as_traffic_control_bar) > 0:
-                print("TCB for lane %s id %s" % (lane_id, [tcb.e_i_traffic_control_bar_id for tcb in lane_segment.as_traffic_control_bar]))
         # calculate the distance on the GFF
         frenet_states = np.zeros((len(tcbs), 6))
         frenet_states[:, FS_SX] = np.asarray([tcb.e_l_station for tcb in tcbs])
@@ -560,15 +557,11 @@ class MapUtils:
         # STATIC signs
         static_tcds = {static_tcd.object_id: static_tcd
                        for static_tcd in scene_static.s_Data.s_SceneStaticBase.as_static_traffic_control_device}
-        if len(static_tcds) > 0:
-            print("S-TCD id %s type %s" % (static_tcds.keys(), [tcd.e_e_traffic_control_device_type for tcd in static_tcds.values()]))
 
         # DYNAMIC signs
         dynamic_tcds_and_status = {dynamic_tcd.object_id: (dynamic_tcd, tcds_status[dynamic_tcd.object_id]
                                    if dynamic_tcd.object_id in tcds_status else None) for dynamic_tcd in
                                    scene_static.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device}
-        if len(dynamic_tcds_and_status) > 0:
-            print("D-TCD id %s type %s" % (dynamic_tcds_and_status.keys(), [tcd[0].e_e_traffic_control_device_type for tcd in dynamic_tcds_and_status.values()]))
 
         return static_tcds, dynamic_tcds_and_status
 
@@ -583,14 +576,6 @@ class MapUtils:
         :param dynamic_tcds: Dict of dynamic TCDs on the GFF
         :return: Lists of static / dynamic TCDs for the given TCB
         """
-        # TODO HACK
-        if stop_bar.e_i_traffic_control_bar_id == 8743262 and (not (8736095 in stop_bar.e_i_static_traffic_control_device_id)):  # STOP sign on Clinton and Plank
-            stop_bar.e_i_static_traffic_control_device_id.append(8736095)
-        if stop_bar.e_i_traffic_control_bar_id == 21320247 and (not (22476147 in stop_bar.e_i_dynamic_traffic_control_device_id)):  # TL on mound & 19
-            stop_bar.e_i_dynamic_traffic_control_device_id.append(22476147)
-        if stop_bar.e_i_traffic_control_bar_id == 21203381 and (not (22506644 in stop_bar.e_i_dynamic_traffic_control_device_id)):  # TL on mound & 19
-            stop_bar.e_i_dynamic_traffic_control_device_id.append(22506644)
-
         static_tcds_in_effect = [static_tcds[tcd_id] for tcd_id in stop_bar.e_i_static_traffic_control_device_id]
         dynamic_tcds_in_effect = [dynamic_tcds[tcd_id] for tcd_id in stop_bar.e_i_dynamic_traffic_control_device_id]
         return static_tcds_in_effect, dynamic_tcds_in_effect
@@ -626,7 +611,7 @@ class MapUtils:
                                active_dynamic_tcd.e_e_traffic_control_device_type + " is UNKNOWN. Will restrict to STOP")
             if active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
                 dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,
-                                             RoadSignRestriction.STOP if status != TrafficSignalState.GREEN  # or True - HACK
+                                             RoadSignRestriction.STOP if status != TrafficSignalState.GREEN
                                              else RoadSignRestriction.NONE))
             elif active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
                 dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,
