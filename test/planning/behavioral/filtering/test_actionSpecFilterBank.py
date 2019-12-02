@@ -3,7 +3,6 @@ from decision_making.src.messages.scene_static_enums import StaticTrafficControl
 from decision_making.src.messages.scene_static_message import TrafficControlBar, StaticTrafficControlDevice
 from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
 from decision_making.src.global_constants import LAT_ACC_LIMITS_BY_K, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
-from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
