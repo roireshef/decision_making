@@ -1,8 +1,7 @@
 from enum import Enum
-from typing import List, Dict
+from typing import List
 
 import numpy as np
-from decision_making.src.messages.scene_tcd_message import DynamicTrafficControlDeviceStatus
 
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from interface.Rte_Types.python.sub_structures.TsSYS_BoundingBoxSize import TsSYSBoundingBoxSize
@@ -323,7 +322,6 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         self.e_Cnt_num_objects = e_Cnt_num_objects
         self.as_object_localization = as_object_localization
         self.s_host_localization = s_host_localization
-        # self.as_dynamic_traffic_control_device_status = None  # status will be fused from UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES
 
     def serialize(self):
         # type: () -> TsSYSDataSceneDynamic

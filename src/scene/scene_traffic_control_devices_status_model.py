@@ -16,12 +16,12 @@ class SceneTrafficControlDevicesStatusModel:
         self._traffic_control_devices_status = None
 
     @classmethod
-    def get_instance(cls) -> None:
+    def get_instance(cls) -> 'SceneTrafficControlDevicesStatusModel':
         """
         :return: The instance of SceneTrafficControlDevicesStatusModel
         """
         if cls.__instance is None:
-            cls.__instance = SceneTrafficControlDevicesStatusModel()
+            cls.__instance = cls()
         return cls.__instance
 
     def set_traffic_control_devices_status(self, traffic_control_devices_status: Dict[int, DynamicTrafficControlDeviceStatus]) -> None:

@@ -108,9 +108,6 @@ LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 # Additional distance after stop bar, where vehicle still considers bar as active, until DIM is active
 DIM_MARGIN_TO_STOP_BAR = 10.0
 
-# A distance that is practically too far for the planner to react to
-TOO_FAR_TO_STOP = VELOCITY_LIMITS[1] * BP_ACTION_T_LIMITS[1] * 2
-
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
 
@@ -334,7 +331,6 @@ BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
-ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
 
 #### MetricLogger
