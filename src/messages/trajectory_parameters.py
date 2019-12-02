@@ -62,7 +62,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     lon_acceleration_limits = Limits
     lat_acceleration_limits = Limits
     desired_velocity = float
-    
+
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
                  lon_jerk_cost_weight, lat_jerk_cost_weight,
