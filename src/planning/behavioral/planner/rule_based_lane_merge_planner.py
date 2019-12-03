@@ -18,6 +18,7 @@ from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, QuinticPoly1D
 from decision_making.src.state.state import State
 from rte.python.logger.AV_logger import AV_Logger
+from sympy.matrices import *
 
 OUTPUT_TRAJECTORY_LENGTH = 10
 
@@ -51,6 +52,8 @@ class LaneMergeSequence:
 
 
 class RuleBasedLaneMergePlanner(BasePlanner):
+    TIME_GRID_RESOLUTION = 0.2
+    VEL_GRID_RESOLUTION = 5
 
     def __init__(self, logger: Logger):
         super().__init__(logger)
@@ -407,8 +410,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         actors_states = state.actors_states
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in actors_states]).T
-        actors_s, actors_v, actors_length = actors_s[:, np.newaxis, np.newaxis], actors_v[:, np.newaxis, np.newaxis], \
-                                            actors_length[:, np.newaxis, np.newaxis]
         margins = 0.5 * (actors_length + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 
         # calculate planning time bounds given target_s
@@ -421,59 +422,112 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             T_max = min(T_max, brake_time - np.sqrt(-2 * (brake_dist - target_s) / a_min))
         T_min = (np.sqrt(v_0*v_0 + 2*a_max*target_s) - v_0) / a_max  # time of passing target_s with constant a_max
 
-        v_min = min(v_0, np.min(actors_v))
+        v_min = max(v_0 + a_min * T_max, 0)
         # final velocity in case of passing target_s with constant a_max
         v_max = min(2 * target_s / T_min - v_0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + EPS)
-        dilute = 1
 
-        # T_avg = target_s / max(EPS, v_0)
-        #
-        # sh_v_min = (v_min - v_0) / 3  # braking is 3 times stronger than acceleration
-        # sh_v_max = v_max - v_0
-        # sh_v = lambda v: np.sinh(2. * v / T_avg)
-        # v_res = RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION
-        #
-        # sh_grid_pos = np.linspace(0, sh_v_max, int((v_max-v_0)//v_res))
-        # v_grid_pos = v_0 + sh_v(sh_grid_pos) * (v_max - v_0) / sh_v(sh_v_max)
-        # sh_grid_neg = np.linspace(sh_v_min, 0, int((v_0-v_min)//v_res) + 1)[:-1]
-        # v_grid_neg = v_0 + sh_v(sh_grid_neg) * (v_min - v_0) / sh_v(sh_v_min)
-        # v_grid = np.concatenate((v_grid_neg, v_grid_pos))
-        #
-        # sh_t = lambda T_inv: np.sinh(16. * (1 / T_avg - T_inv))
-        #
-        # T_inv_pos = np.arange(1./T_avg, 1./T_max, -0.02)
-        # T_grid_pos = T_avg + sh_t(T_inv_pos) * (T_max - T_avg) / sh_t(1./T_max)
-        # T_inv_neg = np.flip(np.arange(1./T_avg, 1./T_min, 0.02)[1:])
-        # T_grid_neg = T_avg + sh_t(T_inv_neg) * (T_min - T_avg) / sh_t(1./T_min)
-        # T_grid = np.concatenate((T_grid_neg, T_grid_pos))
+        T_res = min(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, (T_max - T_min) / 100.)
+        v_res = min(RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION, (v_max - v_min) / 10.)
 
-        while dilute >= 1:
+        print('v_0=', v_0, 'target_s=', target_s, 'T bounds=', [T_min, T_max, T_res], 'v_bounds=', [v_min, v_max, v_res])
 
-            T_res = min(RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION, (T_max - T_min) / 100.) * dilute
-            v_res = min(RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION, (v_max - v_min) / 50.) * dilute
+        # grid of possible planning times
+        t_grid = np.arange(T_min, T_max, T_res)
+        # grid of possible target ego velocities
+        v_grid = np.arange(v_min, v_max, v_res)
 
-            print('v_0=', v_0, 'target_s=', target_s, 'T bounds=', [T_min, T_max, T_res],
-                  'v_bounds=', [v_min, v_max, v_res], 'dilute=', dilute)
+        if len(actors_states) == 0:
+            meshgrid_v, meshgrid_t = np.meshgrid(v_grid, t_grid)
+            return meshgrid_v.flatten(), meshgrid_t.flatten()
 
-            # grid of possible planning times
-            T_avg = min(T_max, target_s / max(v_0, EPS))
-            t_grid = np.random.normal(loc=T_avg, scale=0.2*(T_max-T_min), size=100)
-            t_grid = t_grid[(t_grid >= T_min) & (t_grid <= T_max)]
-            # grid of possible target ego velocities
-            v_grid = np.random.normal(loc=v_0, scale=0.2*(v_max-v_min), size=50)
-            v_grid = v_grid[(v_grid >= v_min) & (v_grid <= v_max)]
+        # target ego velocity should be in different dimension than planning time
+        ego_v = v_grid[:, np.newaxis, np.newaxis]
+        ego_t = t_grid[:, np.newaxis]
 
-            if len(actors_states) == 0:
-                meshgrid_v, meshgrid_t = np.meshgrid(v_grid, t_grid)
-                return meshgrid_v.flatten(), meshgrid_t.flatten()
+        safety_bounds = RuleBasedLaneMergePlanner._caclulate_safety_bounds(actors_s, actors_v, margins, ego_v, ego_t)
 
-            ego_v = v_grid[:, np.newaxis]  # target ego velocity should be in different dimension than planning time
+        optimal_s = ego_t * (ego_t*a_0 + 6*v_0 + 6*ego_v) / 12
 
-            safety_dist = RuleBasedLaneMergePlanner._caclulate_RSS_distances(actors_s, actors_v, margins, ego_v, t_grid, target_s)
+        return
 
-            dilute = np.sqrt(np.sum(safety_dist > 0) / 2000)
-            if dilute < 1.2:
-                vi, ti = np.where(safety_dist > 0)
-                return v_grid[vi], t_grid[ti]
+    @staticmethod
+    def _caclulate_safety_bounds(actors_s: np.array, actors_v: np.array, margins: np.array,
+                                 target_v: np.array, target_t: np.array) -> np.array:
+        """
+        Given an actor on the main road and two grids of planning times and target velocities, create boolean matrix
+        of all possible actions that are longitudinally safe (RSS) at actions' end-points target_s.
+        :param actors_s: current s of actor relatively to the merge point (negative or positive)
+        :param actors_v: current actor's velocity
+        :param margins: half sum of cars' lengths + safety margin
+        :param target_t: array of planning times
+        :param target_v: array of target velocities
+        :return: tensor of shape: target_v x target_t x bounds_num.
+            In even indices are bounds behind an actor, in odd indices are bounds ahead of an actor
+        """
+        front_braking_time = np.minimum(actors_v / LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, target_t) \
+            if LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL > 0 else target_t
+        front_v = actors_v - front_braking_time * LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL  # target velocity of the front actor
+        front_s = actors_s + 0.5 * (actors_v + front_v) * front_braking_time
 
-        return None, None
+        back_accel_time = np.minimum((LANE_MERGE_ACTORS_MAX_VELOCITY - actors_v) / LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, target_t) \
+            if LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL > 0 else target_t
+        back_max_vel_time = target_t - back_accel_time  # time of moving with maximal velocity of the back actor
+        back_v = actors_v + back_accel_time * LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL  # target velocity of the back actor
+        back_s = actors_s + 0.5 * (actors_v + back_v) * back_accel_time + LANE_MERGE_ACTORS_MAX_VELOCITY * back_max_vel_time
+
+        # calculate target_s bounds according to the longitudinal RSS formula
+        front_bounds = front_s - margins - (np.maximum(0, target_v * target_v - front_v * front_v) /
+                                            (-2 * LON_ACC_LIMITS[0]) + SAFETY_HEADWAY * target_v)
+        back_bounds = back_s + margins + (np.maximum(0, back_v * back_v - target_v * target_v) /
+                                          (2 * LON_ACC_LIMITS[1]) + SAFETY_HEADWAY * back_v)
+        orig_shape = front_bounds.shape
+        front_bounds = front_bounds.ravel()
+        back_bounds = back_bounds.ravel()
+
+        # the safe regions are either behind front_bounds or ahead of back_bounds
+        bounds = np.vstack((np.c_[front_bounds, np.ones_like(front_bounds)], np.c_[back_bounds, -np.ones_like(back_bounds)]))
+        sorted_bounds = bounds[bounds[:, 0].argsort()]  # sort bounds by s
+        bounds_layer = np.cumsum(sorted_bounds[:, 1])  # for each bound calculate how many actors make it unsafe
+        # filter out bounds that don't affect the safety, i.e. bounds that are unsafe w.r.t. another actor
+        determinative_bounds = sorted_bounds[((sorted_bounds[:, 1] == 1) & (bounds_layer == 1)) |
+                                             ((sorted_bounds[:, 1] == -1) & (bounds_layer == 0)), 0]
+
+        # restore the original shape, except the bounds number replacing the actors dimension
+        bounds_shape = list(orig_shape[1:]) + [determinative_bounds.shape[0]]
+        return np.reshape(determinative_bounds, bounds_shape)
+
+    @staticmethod
+    def _sympy():
+        import sympy as sp
+        from sympy import symbols
+
+        v_0, a_0, s, v_T = symbols('v_0 a_0 s v_T')
+
+        T = symbols('T')
+        t = symbols('t')
+        A = Matrix([
+            [0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 2, 0, 0],
+            [T ** 5, T ** 4, T ** 3, T ** 2, T, 1],
+            [5 * T ** 4, 4 * T ** 3, 3 * T ** 2, 2 * T, 1, 0],
+            [20 * T ** 3, 12 * T ** 2, 6 * T, 2, 0, 0]]
+        )
+        [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([0, v_0, a_0, s, v_T, 0])
+        x_t = (c5 * t ** 5 + c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
+        v_t = sp.diff(x_t, t).simplify()
+        a_t = sp.diff(v_t, t).simplify()
+        j_t = sp.diff(a_t, t).simplify()
+        J = sp.integrate(j_t ** 2, (t, 0, T)).simplify()  # integrate by t
+        w_J, w_T = symbols('w_J w_T')
+        cost = (w_J * J + w_T * T).simplify()
+        cost_diff = sp.diff(cost, s).simplify()  # differentiate by s
+        s_opt = sp.solve(cost_diff, s)[0]
+        s_opt = T * (T*a_0 + 6*v_0 + 6*v_T) / 12
+        cost_opt = cost.subs(s, s_opt).simplify()
+        cost_opt = (T**4*w_T + 4*T**2*a_0**2*w_J + 12*T*a_0*v_0*w_J - 12*T*a_0*v_T*w_J + 12*v_0**2*w_J - 24*v_0*v_T*w_J + 12*v_T**2*w_J)/T**3
+
+    @staticmethod
+    def get_cost(w_J: float, w_T: float, v_0: float, a_0: float, v_T: float, T: float, s: float):
+        return (T**6*w_T + 3*w_J*(3*T**4*a_0**2 + 24*T**3*a_0*v_0 + 16*T**3*a_0*v_T - 40*T**2*a_0*s + 64*T**2*v_0**2 +
+                                  112*T**2*v_0*v_T + 64*T**2*v_T**2 - 240*T*s*v_0 - 240*T*s*v_T + 240*s**2))/T**5
