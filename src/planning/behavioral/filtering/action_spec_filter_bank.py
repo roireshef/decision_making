@@ -66,29 +66,36 @@ class FilterForKinematics(ActionSpecFilter):
 
         self._log_debug_message(action_specs, ctrajectories[..., C_K], two_sided_lat_acc_limits)
 
-        # if a LC is desired, relative lat accel limits need to be checked
-        lane_change_mask = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                            and behavioral_state.extended_lane_frames[spec.relative_lane].gff_type
-                            not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                            for spec in action_specs]
+        conforms_limits = KinematicUtils.filter_by_cartesian_limits(
+            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
 
-        if any(lane_change_mask):
-            # If any lane change recipes passed the filters, a lane change is desired.
+        # If a lane change is desired, relative lat. accel. limits need to be checked as well.
+        mask_for_lc_actions_toward_target_lane = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                                                  and behavioral_state.extended_lane_frames[spec.relative_lane].gff_type
+                                                  not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                                                  for spec in action_specs]
+
+        if any(mask_for_lc_actions_toward_target_lane):
+            # If we reach here, a lane change is desired, and the host is still in the source lane.
+            lane_change_mask = mask_for_lc_actions_toward_target_lane
+
+            # Here, we use the GFF associated with the first action to reach here as the target GFF. This assumes that all actions that
+            # reach here are associated with the same relative lane.
             target_lane = np.array(action_specs)[lane_change_mask][0].relative_lane
-
-            baseline_gff = behavioral_state.ego_state.lane_change_info.target_lane_gff or \
-                           behavioral_state.extended_lane_frames[target_lane]
+            target_gff = behavioral_state.extended_lane_frames[target_lane]
         elif behavioral_state.ego_state.lane_change_info.lane_change_active:
-            # No lane change recipes might have passed the filters but a lane change might still be currently active. This will happen when
-            # the host crosses into the target lane but has yet to complete the lane change.
-            baseline_gff = behavioral_state.ego_state.lane_change_info.target_lane_gff
+            # If we reach here, the host has crossed into the target lane but has yet to complete the lane change.
             lane_change_mask = [spec.relative_lane == RelativeLane.SAME_LANE for spec in action_specs]
+            target_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
         else:
-            baseline_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-            lane_change_mask = [False] * ctrajectories.shape[0]
+            lane_change_mask = target_gff = None
 
-        return KinematicUtils.filter_by_cartesian_limits(ftrajectories, ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS,
-                                                         two_sided_lat_acc_limits, REL_LAT_ACC_LIMITS, lane_change_mask, baseline_gff)
+        if lane_change_mask:
+            conforms_limits[lane_change_mask] = KinematicUtils.filter_by_relative_lateral_acceleration_limits(
+                ftrajectories[lane_change_mask], ctrajectories[lane_change_mask], nominal_abs_lat_acc_limits[lane_change_mask],
+                REL_LAT_ACC_LIMITS, target_gff)
+
+        return conforms_limits
 
     def _log_debug_message(self, action_specs: List[ActionSpec], curvatures: np.ndarray, acc_limits: np.ndarray):
         max_curvature_idxs = np.argmax(curvatures, axis=1)

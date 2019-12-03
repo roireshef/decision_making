@@ -107,12 +107,8 @@ LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
                                 (200, 275, 2.1, 2),
                                 (275, np.inf, 2, 2)])
 
-# TODO: Decrease these values to 0.6, which is the actual requirement, when we're able to handle not finding a more conservative trajectory
 # Relative Latitudinal Acceleration Limits [m/sec^2] for lane change
-REL_LAT_ACC_LIMITS = np.array([-1.0, 1.0])
-
-# Set to True if filtering trajectories by relative lat. accel. limits is desired; otherwise, False. Note that this has to be in a list.
-USE_REL_LAT_ACCEL_FILTER_IN_TP = [True]
+REL_LAT_ACC_LIMITS = np.array([-0.6, 0.6])
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 1.0

@@ -36,7 +36,6 @@ from rte.python.logger.AV_logger import AV_Logger
 @patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MAX', 0)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MIN', -1.6)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_OFFSET_MAX', 1.6)
-@patch('decision_making.src.planning.trajectory.werling_planner.USE_REL_LAT_ACCEL_FILTER_IN_TP', [False])
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))

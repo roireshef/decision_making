@@ -14,8 +14,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, \
-    ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION, \
-    REL_LAT_ACC_LIMITS
+    ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
@@ -23,8 +22,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Act
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, ActionSpecArray, Limits
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, ActionSpecArray
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, State
@@ -144,14 +142,8 @@ class BasePlanner:
 
         # calculate trajectory cost_params using original goal map_state (from the map)
         goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)
-        lat_accel_limits = REL_LAT_ACC_LIMITS if behavioral_state.ego_state.lane_change_info.lane_change_active \
-                                              or (action_spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                                                  and behavioral_state.extended_lane_frames[action_spec.relative_lane].gff_type
-                                                      not in [GFFType.Augmented, GFFType.AugmentedPartial]) \
-                                              else LAT_ACC_LIMITS
         cost_params = BasePlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
-                                                        ego_size=ego.size,
-                                                        lat_accel_limits=lat_accel_limits)
+                                                        ego_size=ego.size)
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
@@ -208,12 +200,11 @@ class BasePlanner:
                                           poly_d_coefs=poly_coefs_d)
 
     @staticmethod
-    def _generate_cost_params(map_state: MapState, ego_size: ObjectSize, lat_accel_limits: Limits) -> TrajectoryCostParams:
+    def _generate_cost_params(map_state: MapState, ego_size: ObjectSize) -> TrajectoryCostParams:
         """
         Generate cost specification for trajectory planner
         :param map_state: MapState of the goal
         :param ego_size: ego size used to extract margins (for dilation of other objects on road)
-        :param lat_accel_limits: lateral acceleration limits in [m/sec^2]
         :return: a TrajectoryCostParams instance that encodes all parameters for TP cost computation.
         """
 
@@ -281,7 +272,7 @@ class BasePlanner:
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            # TODO: deprecated - should be replaced or removed
-                                           lat_acceleration_limits=lat_accel_limits,
+                                           lat_acceleration_limits=LAT_ACC_LIMITS,
                                            desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED +
                                                             TP_DESIRED_VELOCITY_DEVIATION)
 
