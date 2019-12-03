@@ -72,7 +72,7 @@ class FilterForKinematics(ActionSpecFilter):
                             not in [GFFType.Augmented, GFFType.AugmentedPartial]
                             for spec in action_specs]
 
-        if np.any(lane_change_mask):
+        if any(lane_change_mask):
             # If any lane change recipes passed the filters, a lane change is desired.
             target_lane = np.array(action_specs)[lane_change_mask][0].relative_lane
 

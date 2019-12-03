@@ -105,7 +105,7 @@ class KinematicUtils:
 
         conforms_rel_limits = np.full(len(ctrajectories), True)
 
-        if np.any(relative_lat_acceleration_mask):
+        if any(relative_lat_acceleration_mask):
             ftrajectories_on_baseline = ftrajectories[relative_lat_acceleration_mask, :, :]
 
             # set DX, DV, DA to 0 to simulate traveling on the baseline GFF

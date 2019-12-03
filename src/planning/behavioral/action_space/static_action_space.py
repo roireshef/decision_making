@@ -86,7 +86,7 @@ class StaticActionSpace(ActionSpace):
                             if ~np.isnan(T[i]) else False
                             for i, recipe in enumerate(action_recipes)]
 
-        if np.any(lane_change_mask):
+        if any(lane_change_mask):
             # If any lane change recipes passed the filters, a lane change is desired. Override the goal time for only the lane change
             # actions.
             if not behavioral_state.ego_state.lane_change_info.lane_change_active:
