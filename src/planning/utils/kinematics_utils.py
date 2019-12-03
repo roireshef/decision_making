@@ -133,7 +133,7 @@ class KinematicUtils:
 
             for j, lane_segment_id in enumerate(lane_segment_ids):
                 curvature = max(TINY_CURVATURE, abs(ctrajectories_on_baseline[i, j, C_K]))
-                curve_speed_control_velocity = np.sqrt(max_lat_accelerations[j] / curvature)
+                curve_speed_control_velocity = np.sqrt(max_lat_accelerations[i, j] / curvature)
 
                 speed_limit = MapUtils.get_lane(lane_segment_id).e_v_nominal_speed
 
