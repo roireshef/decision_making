@@ -7,7 +7,7 @@ from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LAT_ACC_LIMITS_BY_K, TP_LAT_ACC_STRICT_COEF
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -128,12 +128,21 @@ class WerlingPlanner(TrajectoryPlanner):
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
 
+        # TODO: this takes ego vehicle's curvature rather than the road's curvature. They differ once we go off-GFF
+        # for each point in the trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
+        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
+            ctrajectories[..., C_K], LAT_ACC_LIMITS_BY_K)
+
+        # multiply the nominal lateral acceleration limits by the TP constant (acceleration limits may differ between
+        # TP and BP), and duplicate the vector with negative sign to create boundaries for lateral acceleration
+        two_sided_lat_acc_limits = TP_LAT_ACC_STRICT_COEF * np.stack((-nominal_abs_lat_acc_limits, nominal_abs_lat_acc_limits), -1)
+
         # TODO: desired velocity is dynamically changing when transitioning between road/lane segments
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
         cartesian_filter_results = KinematicUtils.filter_by_cartesian_limits(ctrajectories, cost_params.velocity_limits,
                                                                              cost_params.lon_acceleration_limits,
-                                                                             cost_params.lat_acceleration_limits)
+                                                                             two_sided_lat_acc_limits)
 
         cartesian_filtered_indices = np.argwhere(cartesian_filter_results).flatten()
 
