@@ -418,7 +418,7 @@ def state_with_objects_for_acceleration_towards_vehicle():
     scene_dynamic.dynamic_objects[0].off_map = False
     # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
     scene_dynamic.ego_state.cartesian_state[C_A] = 1
-    scene_dynamic.ego_state.lane_change_info = LaneChangeInfo(None, None, False, 0.0)
+    scene_dynamic.ego_state.lane_change_info = LaneChangeInfo(None, np.array([]), False, 0.0)
     yield scene_dynamic
 
 
@@ -440,7 +440,8 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False,
+                                               lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     # Generate objects at the following locations:
     next_sub_segments, _, _, _ = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 20, route_plan_20_30,
@@ -479,7 +480,8 @@ def state_with_objects_for_filtering_exact_tracking_mode():
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False,
+                                               lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     # Generate objects at the following locations:
     obj_lane_lon = ego_lane_lon + car_size.length + LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT + ego_vel * SPECIFICATION_HEADWAY
@@ -516,7 +518,8 @@ def state_with_objects_for_filtering_negative_sT(route_plan_20_30: RoutePlan):
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False,
+                                               lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     # Generate objects at the following locations:
     next_sub_segments, _, _ = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 3.8, route_plan_20_30)[RelativeLane.SAME_LANE]
@@ -559,7 +562,8 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False,
+                                               lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     # Generate objects at the following locations:
     next_sub_segments, _, _, _ = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 3.8, route_plan_20_30,
@@ -592,7 +596,7 @@ def state_with_left_lane_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -609,7 +613,7 @@ def state_with_right_lane_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -626,7 +630,7 @@ def state_with_same_lane_ending_no_left_lane():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -643,7 +647,7 @@ def state_with_same_lane_ending_no_right_lane():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -660,7 +664,7 @@ def state_with_lane_split_on_right():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -677,7 +681,7 @@ def state_with_lane_split_on_left():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -694,7 +698,7 @@ def state_with_lane_split_on_left_and_right():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -711,7 +715,7 @@ def state_with_lane_split_on_left_and_right_left_first():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -728,7 +732,7 @@ def state_with_lane_split_on_left_and_right_right_first():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -745,7 +749,7 @@ def state_with_lane_split_on_right_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -762,7 +766,7 @@ def state_with_lane_split_on_left_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -779,7 +783,7 @@ def state_with_lane_split_on_left_and_right_ending():
 
 
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1,
-                                               off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+                                               off_map=False, lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
 
@@ -803,7 +807,8 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
     mid_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
     ego_map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), mid_lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=ego_map_state, size=car_size, confidence=1, off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=ego_map_state, size=car_size, confidence=1, off_map=False,
+                                               lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     # Generate objects at the following locations:
     mid_next_sub_segments, _, _, _ = BehavioralGridState._get_downstream_lane_subsegments(mid_lane_id, ego_lane_lon, 58, route_plan_20_30,
@@ -854,7 +859,8 @@ def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan)
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, -0.1, 0, 0, 0]), lane_id)
-    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False, lane_change_info=LaneChangeInfo(None, None, False, 0.0))
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False,
+                                               lane_change_info=LaneChangeInfo(None, np.array([]), False, 0.0))
 
     # Generate objects at the following locations:
     next_sub_segments, _, _,_ = BehavioralGridState._get_downstream_lane_subsegments(lane_id, ego_lane_lon, 3.8, route_plan_20_30,

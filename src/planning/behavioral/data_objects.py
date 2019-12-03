@@ -150,17 +150,17 @@ class ActionSpec:
 
 
 class LaneChangeInfo:
-    def __init__(self, source_lane_gff: GeneralizedFrenetSerretFrame, target_lane_gff: GeneralizedFrenetSerretFrame,
+    def __init__(self, source_lane_gff: GeneralizedFrenetSerretFrame, target_lane_ids: np.ndarray,
                  lane_change_active: bool, lane_change_start_time: float):
         """
         Holds lane change information
         :param source_lane_gff: GFF that the host was in when a lane change was initiated
-        :param target_lane_gff: GFF that the host is targeting in a lane change
+        :param target_lane_ids: Lane IDs of the GFF that the host is targeting in a lane change
         :param lane_change_active: True when a lane change is active; otherwise, False
         :param lane_change_start_time: Time when a lane change began
         """
         self.source_lane_gff = source_lane_gff
-        self.target_lane_gff = target_lane_gff
+        self._target_lane_ids = target_lane_ids
         self.lane_change_active = lane_change_active
         self.lane_change_start_time = lane_change_start_time
 
@@ -170,7 +170,7 @@ class LaneChangeInfo:
 
     def _reset(self):
         self.source_lane_gff = None
-        self.target_lane_gff = None
+        self._target_lane_ids = np.array([])
         self.lane_change_active = False
         self.lane_change_start_time = 0.0
 
@@ -180,7 +180,7 @@ class LaneChangeInfo:
         :param gff:
         :return: Returns True if any lane IDs in the target GFF are in the given GFF
         """
-        return np.any(np.isin(self.target_lane_gff.segment_ids, gff.segment_ids))
+        return np.any(np.isin(self._target_lane_ids, gff.segment_ids))
 
     def update(self, behavioral_state: 'BehavioralGridState',  selected_action: ActionSpec):
         """
@@ -212,5 +212,5 @@ class LaneChangeInfo:
                     [GFFType.Augmented, GFFType.AugmentedPartial]):
                 self.lane_change_active = True
                 self.source_lane_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-                self.target_lane_gff = behavioral_state.extended_lane_frames[selected_action.relative_lane]
+                self._target_lane_ids = behavioral_state.extended_lane_frames[selected_action.relative_lane].segment_ids
                 self.lane_change_start_time = behavioral_state.ego_state.timestamp_in_sec
