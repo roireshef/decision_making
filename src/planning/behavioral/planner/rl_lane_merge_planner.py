@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import StaticActionRec
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.rl_models.dual_input_conv_model import DualInputConvModel
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.types import ActionSpecArray, FS_1D_LEN
+from decision_making.src.planning.types import ActionSpecArray, FS_1D_LEN, FS_SX, FS_SV, FS_SA
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
@@ -117,8 +117,11 @@ class RL_LaneMergePlanner(BasePlanner):
         actors_s = np.array([actor.s_relative_to_ego for actor in lane_merge_state.actors_states])
         actors_s = np.sort(actors_s)
         print('RL: chosen_spec(v,t)=', action_specs[idx].v, action_specs[idx].t, 'probabilities: ', probabilities, 'value: ', values)
-        print('Rel_s', NumpyUtils.str_log(actors_s), 'ego_state', lane_merge_state.ego_fstate_1d)
+        print('Rel_s', NumpyUtils.str_log(actors_s), 'ego_state',
+              [lane_merge_state.red_line_s_on_ego_gff - lane_merge_state.ego_fstate_1d[FS_SX],
+               lane_merge_state.ego_fstate_1d[FS_SV], lane_merge_state.ego_fstate_1d[FS_SA]])
         print('Spaces beetween actors', NumpyUtils.str_log(np.diff(actors_s)))
+        #print('Encoded State: host:', host_state, 'actors:', actors_state)
 
         # mask filtered actions and return costs (1 - probability)
         costs = 1 - probabilities * action_mask.astype(int)

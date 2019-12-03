@@ -30,7 +30,7 @@ class KinematicUtils:
         min_radius, max_radius, min_accels, max_accels = np.split(ranged_limits, 4, axis=1)
 
         # flatten and compute inverse of curvatures to get 1D array of radii
-        radii_1d = 1 / curvatures.ravel()
+        radii_1d = 1 / (curvatures.ravel() + EPS)
 
         # compute the lateral acceleration slope for each radius range (that is, for each range, compute a of ax+b)
         slopes = (max_accels - min_accels) / (max_radius - min_radius)
