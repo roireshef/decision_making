@@ -228,9 +228,9 @@ SPLINE_POINT_DEVIATION = 0.0001
 LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION = 4.5
 # [m] the horizon from ego in each side of the main road in occupancy grid of lane merge state
 LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH = 150
-# [m] maximum forward horizon from a lane merge on the ego road for engaging the lane-merge policy
+# [m] lane merge scenario lookahead; used also by host_state normalization since host_s is distance from red line
 LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
-# [m] how far from ego the actors are visible
+# [m] perception horizon (forward & backward)
 LANE_MERGE_ACTORS_RELATIVE_HORIZON = 800
 # [m] how far behind red line the actors are visible
 LANE_MERGE_STATIC_BACKWARD_HORIZON = 240

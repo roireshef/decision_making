@@ -308,7 +308,7 @@ class KinematicUtils:
         return T
 
     @staticmethod
-    def specify_quartic_actions(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array, a_0: np.array = None,
+    def specify_quartic_actions(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array, a_0: np.array = 0,
                                 action_horizon_limit: float = BP_ACTION_T_LIMITS[1],
                                 acc_limits: np.array = LON_ACC_LIMITS) -> [np.array, np.array]:
         """
@@ -326,13 +326,15 @@ class KinematicUtils:
         :return: two arrays: actions' distances and times; actions not meeting time or acceleration limits have
             infinite distance and time
         """
+        # return the biggest dimension out of weights and velocities
+        max_dimension = max(np.array([w_J]).shape[-1], np.array([v_T]).shape[-1])
+
         # convert weights, velocities and acceleration to arrays if they are scalars
-        w_J = KinematicUtils._convert_to_array(w_J, v_T)
-        w_T = KinematicUtils._convert_to_array(w_T, v_T)
-        v_0 = KinematicUtils._convert_to_array(v_0, w_J)
-        v_T = KinematicUtils._convert_to_array(v_T, w_J)
-        a_0 = a_0 or np.zeros_like(w_J)
-        a_0 = KinematicUtils._convert_to_array(a_0, w_J)
+        w_J = NumpyUtils.set_dimension(w_J, max_dimension)
+        w_T = NumpyUtils.set_dimension(w_T, max_dimension)
+        v_0 = NumpyUtils.set_dimension(v_0, max_dimension)
+        v_T = NumpyUtils.set_dimension(v_T, max_dimension)
+        a_0 = NumpyUtils.set_dimension(a_0, max_dimension)
 
         # calculate actions' planning time
         T = KinematicUtils.calc_T_s(w_T, w_J, v_0, a_0, v_T, action_horizon_limit)
@@ -363,10 +365,6 @@ class KinematicUtils:
             T[valid_non_zero] = positive_T
 
         return distances, T
-
-    @staticmethod
-    def _convert_to_array(value: [float, np.array], example: [float, np.array]) -> np.array:
-        return value if not np.isscalar(value) else np.array([value]) if np.isscalar(example) else np.full(example.shape, value)
 
 
 class BrakingDistances:
