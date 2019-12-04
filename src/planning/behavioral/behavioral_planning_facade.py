@@ -122,7 +122,7 @@ class BehavioralPlanningFacade(DmModule):
             try:
                 pedal_position = self._get_current_pedal_position()
             except MsgDeserializationError as e:
-                self.logger.warning("MsgDeserializationError was raised for turn signal. Overriding with default value")
+                self.logger.warning("MsgDeserializationError was raised for pedal position. Overriding with None")
                 pedal_position = None
             # update pedal press/release times according to the acceleration pedal position
             if pedal_position is not None:
