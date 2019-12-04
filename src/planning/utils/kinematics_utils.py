@@ -1,5 +1,3 @@
-from typing import Dict
-
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
@@ -30,7 +28,7 @@ class KinematicUtils:
         min_radius, max_radius, min_accels, max_accels = np.split(ranged_limits, 4, axis=1)
 
         # flatten and compute inverse of curvatures to get 1D array of radii
-        radii_1d = 1 / (curvatures.ravel() + EPS)
+        radii_1d = 1 / curvatures.ravel()
 
         # compute the lateral acceleration slope for each radius range (that is, for each range, compute a of ax+b)
         slopes = (max_accels - min_accels) / (max_radius - min_radius)
@@ -295,18 +293,18 @@ class KinematicUtils:
         """
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
-        non_zero = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
+        non_tracking = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
 
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
         time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
-            w_T[non_zero], w_J[non_zero], a_0[non_zero], v_0[non_zero], v_T[non_zero])
+            w_T[non_tracking], w_J[non_tracking], a_0[non_tracking], v_0[non_tracking], v_T[non_tracking])
 
         # Find roots of the polynomial in order to get extremum points
         cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, time_limit]))
 
         # return T as the minimal real root
         T = np.zeros_like(v_0)
-        T[non_zero] = np.fmin.reduce(cost_real_roots, axis=-1)
+        T[non_tracking] = np.fmin.reduce(cost_real_roots, axis=-1)
         return T
 
     @staticmethod
@@ -329,18 +327,12 @@ class KinematicUtils:
             infinite distance and time
         """
         # convert weights, velocities and acceleration to arrays if they are scalars
-        if np.isscalar(w_J):
-            if np.isscalar(v_T):
-                w_J, w_T = np.array([w_J]), np.array([w_T])
-            else:
-                w_J, w_T = np.full(v_T.shape, w_J), np.full(v_T.shape, w_T)
-
-        v_0 = np.full(w_J.shape, v_0) if np.isscalar(v_0) else v_0
-        v_T = np.full(w_J.shape, v_T) if np.isscalar(v_T) else v_T
-        if a_0 is None:
-            a_0 = np.zeros_like(w_J)
-        elif np.isscalar(a_0):
-            a_0 = np.full(w_J.shape, a_0)
+        w_J = KinematicUtils._convert_to_array(w_J, v_T)
+        w_T = KinematicUtils._convert_to_array(w_T, v_T)
+        v_0 = KinematicUtils._convert_to_array(v_0, w_J)
+        v_T = KinematicUtils._convert_to_array(v_T, w_J)
+        a_0 = a_0 or np.zeros_like(w_J)
+        a_0 = KinematicUtils._convert_to_array(a_0, w_J)
 
         # calculate actions' planning time
         T = KinematicUtils.calc_T_s(w_T, w_J, v_0, a_0, v_T, action_horizon_limit)
@@ -371,6 +363,10 @@ class KinematicUtils:
             T[valid_non_zero] = positive_T
 
         return distances, T
+
+    @staticmethod
+    def _convert_to_array(value: [float, np.array], example: [float, np.array]) -> np.array:
+        return value if not np.isscalar(value) else np.array([value]) if np.isscalar(example) else np.full(example.shape, value)
 
 
 class BrakingDistances:

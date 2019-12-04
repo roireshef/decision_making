@@ -252,6 +252,12 @@ def test_specifyQuarticActions_differentAggressivenessLevels_validActionsNumberI
     ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=np.array([20., 25.]), v_T=np.array([0., 0.]))
     assert np.sum(np.isfinite(T)) == 1
 
+    # both weights and velocities are arrays
+    w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+    ds, T = KinematicUtils.specify_quartic_actions(np.array([w_T, w_T]), np.array([w_J*0.9, w_J]),
+                                                   v_0=np.array([20., 25.]), v_T=np.array([0., 0.]))
+    assert np.sum(np.isfinite(T)) == 1
+
     # don't limit the time horizon
     w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
     ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0=np.array([20., 25.]), v_T=np.array([0., 0.]),

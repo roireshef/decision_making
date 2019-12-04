@@ -4,7 +4,8 @@ from decision_making.paths import Paths
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, \
     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION, \
-    LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL
+    LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
+    LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, ActionSpec, RelativeLane, \
@@ -42,12 +43,17 @@ class RL_LaneMergePlanner(BasePlanner):
         """
         model_state_dict = torch.load(model_path)
 
-        # TODO: create global constants for observation space initialization
         ego_box = Box(low=-np.inf, high=np.inf, shape=(1, FS_1D_LEN), dtype=np.float32)
-        actors_box = Box(low=-np.inf, high=np.inf, shape=(2, 68), dtype=np.float32)
+
+        # actors state is an occupancy grid containing the different vehicles' distance from merge and velocity
+        num_of_grid_cells = 2 * np.ceil(LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH /
+                                        LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION).astype(int)
+        actors_box = Box(low=-np.inf, high=np.inf, shape=(2, num_of_grid_cells), dtype=np.float32)
+
         obs_space = GymTuple((ego_box, actors_box))
         options = {"custom_options": {"hidden_size": 64}}
-        model = DualInputConvModel(obs_space=obs_space, num_outputs=6, options=options)
+        num_outputs = int(LANE_MERGE_ACTION_SPACE_MAX_VELOCITY / LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION) + 1
+        model = DualInputConvModel(obs_space=obs_space, num_outputs=num_outputs, options=options)
         model.load_state_dict(model_state_dict)
         return model
 

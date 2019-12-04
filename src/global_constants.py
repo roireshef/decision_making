@@ -230,7 +230,7 @@ LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION = 4.5
 LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH = 150
 # [m] maximum forward horizon from a lane merge on the ego road for engaging the lane-merge policy
 LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
-# [m] maximum horizon for actors relative s
+# [m] how far from ego the actors are visible
 LANE_MERGE_ACTORS_RELATIVE_HORIZON = 800
 # [m] how far behind red line the actors are visible
 LANE_MERGE_STATIC_BACKWARD_HORIZON = 240
