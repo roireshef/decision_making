@@ -105,8 +105,9 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", T_target_horizon)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
-            control_status = self._get_current_control_status()
-            is_engaged = control_status is not None and control_status.is_av_engaged()
+            # TODO: remove this hack which is temporary for running well with perfect control on simulation
+            # control_status = self._get_current_control_status()
+            is_engaged = True  # control_status is not None and control_status.is_av_engaged()
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
