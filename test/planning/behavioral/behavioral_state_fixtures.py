@@ -180,8 +180,8 @@ def route_plan_for_oval_track_file():
 
 @pytest.fixture(scope='session')
 def route_plan_for_mound_north_file():
-    nav_plan = [86585, 86586, 86587, 9001, 402001, 402002, 402003, 402004, 402005, 402006, 402007, 402008, 402009,
-                402009, 402010, 402011, 402012, 402013, 402014]
+    # this nav plan does NOT take the split to 19 mile rd
+    nav_plan = [11169, 10034, 10041, 2025, 10043, 10036, 10038, 9954, 9952]
 
     num_lane_segments = []
     route_plan_lane_segments = []
