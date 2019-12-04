@@ -188,10 +188,7 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :param behavioral_state: BehavioralGridState in context
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
-        # if driver initiated driving by pressing on acceleration pedal, ignore the stop bar
-        stop_bar_id_to_ignore = behavioral_state.ego_state.get_stop_bar_to_ignore()
-
-        closest_TCB_ant_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane, stop_bar_id_to_ignore)
+        closest_TCB_ant_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
         return closest_TCB_ant_its_distance is not None and closest_TCB_ant_its_distance[1] < action_spec.s
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
@@ -304,10 +301,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         :param action_spec: action specification
         :return: s of the next stop bar, target velocity (zero)
         """
-        # if driver initiated driving by pressing on acceleration pedal, ignore the stop bar
-        stop_bar_id_to_ignore = behavioral_state.ego_state.get_stop_bar_to_ignore()
-
-        closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane, stop_bar_id_to_ignore)
+        closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
         if closest_TCB_and_its_distance is None:  # no stop bars
             self._raise_true()
         return np.array([closest_TCB_and_its_distance[1]]), np.array([0])
