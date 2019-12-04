@@ -228,7 +228,7 @@ SPLINE_POINT_DEVIATION = 0.0001
 LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION = 4.5
 # [m] the horizon from ego in each side of the main road in occupancy grid of lane merge state
 LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH = 150
-# [m] lane merge scenario lookahead; used also by host_state normalization since host_s is distance from red line
+# [m] lane merge scenario lookahead; used also by host state normalization
 LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
 # [m] perception horizon (forward & backward)
 LANE_MERGE_ACTORS_RELATIVE_HORIZON = 800
