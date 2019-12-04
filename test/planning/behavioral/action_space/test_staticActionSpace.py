@@ -5,7 +5,7 @@ import numpy as np
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane, LaneChangeInfo
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.state.state import ObjectSize, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
@@ -40,7 +40,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split
     cstate = MapUtils.get_lane_frenet_frame(lane_id).fstate_to_cstate(np.array([ego_lon, ego_vel, 0, 0, 0, 0]))
 
     ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=cstate, size=size, confidence=0,
-                                               off_map=False, lane_change_info = LaneChangeInfo(None, np.array([]), False, 0.0))
+                                               off_map=False)
 
     state = State(False, None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20_30, logger)

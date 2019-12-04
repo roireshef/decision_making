@@ -139,8 +139,7 @@ class BehavioralPlanningFacade(DmModule):
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
                                                               logger=self.logger,
-                                                              turn_signal=turn_signal,
-                                                              lane_change_info=self._lane_change_info)
+                                                              turn_signal=turn_signal)
 
                 state.handle_negative_velocities(self.logger)
 

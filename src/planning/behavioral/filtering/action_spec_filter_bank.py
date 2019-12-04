@@ -83,7 +83,7 @@ class FilterForKinematics(ActionSpecFilter):
             # reach here are associated with the same relative lane.
             target_lane = np.array(action_specs)[lane_change_mask][0].relative_lane
             target_gff = behavioral_state.extended_lane_frames[target_lane]
-        elif behavioral_state.ego_state.lane_change_info.lane_change_active:
+        elif behavioral_state.lane_change_info.lane_change_active:
             # If we reach here, the host has crossed into the target lane but has yet to complete the lane change.
             lane_change_mask = [spec.relative_lane == RelativeLane.SAME_LANE for spec in action_specs]
             target_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]

@@ -10,7 +10,7 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_L
     MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID, DIM_MARGIN_TO_STOP_BAR
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_message import TrafficControlBar
-from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition, LaneChangeInfo
 from decision_making.src.planning.types import FS_SX, FrenetState2D, FP_SX, C_X, C_Y
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType, \
     FrenetSubSegment
@@ -52,7 +52,8 @@ class BehavioralGridState:
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                  projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
-                 tcb_in_gff_and_their_distances: Dict[RelativeLane, Tuple[TrafficControlBar, float]], logger: Logger):
+                 tcb_in_gff_and_their_distances: Dict[RelativeLane, Tuple[TrafficControlBar, float]], lane_change_info: LaneChangeInfo,
+                 logger: Logger):
         """
         constructor of BehavioralGridState
         :param road_occupancy_grid: dictionary from grid cell to list of dynamic objects with semantics
@@ -61,6 +62,7 @@ class BehavioralGridState:
         :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
                 corresponding extended_lane_frame
         :param tcb_in_gff_and_their_distances: closest TCB per GFF lane and its distance from ego
+        :param lane_change_info: lane change information
         :param logger
         """
         self.road_occupancy_grid = road_occupancy_grid
@@ -68,6 +70,7 @@ class BehavioralGridState:
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
         self.tcb_in_gff_and_their_distances = tcb_in_gff_and_their_distances
+        self.lane_change_info = lane_change_info
         self.logger = logger
 
     @property
@@ -76,7 +79,7 @@ class BehavioralGridState:
 
     @classmethod
     @prof.ProfileFunction()
-    def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
+    def create_from_state(cls, state: State, route_plan: RoutePlan, lane_change_info: LaneChangeInfo, logger: Logger):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -112,7 +115,7 @@ class BehavioralGridState:
                                                                                     projected_ego_fstates, logger)
 
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates,
-                   tcb_in_gff_and_their_distances, logger)
+                   tcb_in_gff_and_their_distances, lane_change_info, logger)
 
     @staticmethod
     def _create_projected_objects(dynamic_objects: List[DynamicObject]) -> List[DynamicObject]:

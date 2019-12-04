@@ -9,7 +9,6 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESO
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.messages.turn_signal_message import TurnSignal
-from decision_making.src.planning.behavioral.data_objects import LaneChangeInfo
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 from decision_making.src.planning.utils.math_utils import Math
@@ -126,6 +125,24 @@ class DynamicObject(PUBSUB_MSG_IMPL):
             self._cached_cartesian_state = lane_frenet.fstate_to_cstate(self.map_state.lane_fstate)
         return self._cached_cartesian_state
 
+    def bounding_box(self):
+        """
+        Gets the cartesian coordinates of the four corners of the object's bounding box
+        :return: [rear left, front left, front right, rear right]
+
+        [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]
+        """
+        width = self.size.width / 2.0
+        length = self.size.length / 2.0
+        cos, sin = np.cos(self.yaw), np.sin(self.yaw)
+
+        return np.array([self.x, self.y]) + np.dot(np.array([
+            [[-cos, -sin], [-sin, cos]],
+            [[cos, -sin], [sin, cos]],
+            [[cos, sin], [sin, -cos]],
+            [[-cos, sin], [-sin, -cos]]]),
+            np.array([length, width]))
+
     @property
     def map_state(self):
         # type: () -> MapState
@@ -188,12 +205,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
-    # this field prevents the logger from trying to serialize this field
-    left_out_fields = 'lane_change_info'
-
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, turn_signal = None,
-                 lane_change_info = None):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, bool, Optional[TurnSignal], Optional[LaneChangeInfo]) -> EgoState
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, turn_signal = None):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, bool, Optional[TurnSignal]) -> EgoState
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -206,63 +219,10 @@ class EgoState(DynamicObject):
         :param confidence: of object's existence
         :param off_map: indicates if the object is off map
         :param turn_signal: turn signal status
-        :param lane_change_info: information stored for a lane change maneuver
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map,
                                              turn_signal=turn_signal)
-        self.lane_change_info = lane_change_info
-
-    @classmethod
-    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map, turn_signal = None, lane_change_info = None):
-        # type: (int, int, CartesianExtendedState, ObjectSize, float, bool, Optional[TurnSignal], Optional[LaneChangeInfo]) -> EgoState
-        """
-        Constructor that gets only cartesian-state (without map-state)
-        :param obj_id: object id
-        :param timestamp: time of perception [nanosec.]
-        :param cartesian_state: localization relative to map's cartesian origin frame
-        :param size: class ObjectSize
-        :param confidence: of object's existence
-        :param off_map: indicates if the vehicle is off the map
-        :param turn_signal: blinker status
-        :param lane_change_info: lane change status
-        """
-        return cls(obj_id, timestamp, cartesian_state, None, size, confidence, off_map, turn_signal, lane_change_info)
-
-    @classmethod
-    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map, turn_signal = None, lane_change_info = None):
-        # type: (int, int, MapState, ObjectSize, float, bool, Optional[TurnSignal], Optional[LaneChangeInfo]) -> EgoState
-        """
-        Constructor that gets only map-state (without cartesian-state)
-        :param obj_id: object id
-        :param timestamp: time of perception [nanosec.]
-        :param map_state: localization in a map-object's frame (road,segment,lane)
-        :param size: class ObjectSize
-        :param confidence: of object's existence
-        :param off_map: is the vehicle is off the map
-        :param turn_signal: blinker status
-        :param lane_change_info: lane change status
-        """
-        return cls(obj_id, timestamp, None, map_state, size, confidence, off_map, turn_signal, lane_change_info)
-
-    def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
-        # type: (CartesianExtendedState, Optional[float]) -> EgoState
-        """ clones self while overriding cartesian_state and optionally timestamp
-            overridden method for EgoState
-        """
-        ego_state = super().clone_from_cartesian_state(cartesian_state, timestamp_in_sec)
-        ego_state.lane_change_info = self.lane_change_info
-        return ego_state
-
-
-    def clone_from_map_state(self, map_state, timestamp_in_sec=None):
-        # type: (MapState, Optional[float]) -> DynamicObject
-        """ clones self while overriding map_state and optionally timestamp
-            overridden method for EgoState
-        """
-        ego_state = super().clone_from_map_state(map_state, timestamp_in_sec)
-        ego_state.lane_change_info = self.lane_change_info
-        return ego_state
 
 T = TypeVar('T', bound='State')
 
@@ -357,8 +317,7 @@ class State(PUBSUB_MSG_IMPL):
                                         selected_gff_segment_ids: np.ndarray,
                                         logger: Logger,
                                         route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None,
-                                        turn_signal: Optional[TurnSignal] = None,
-                                        lane_change_info: Optional[LaneChangeInfo] = None):
+                                        turn_signal: Optional[TurnSignal] = None):
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic: scene dynamic data
@@ -370,7 +329,6 @@ class State(PUBSUB_MSG_IMPL):
                Note that it is an optional argument and is used only when the method is called from inside BP and the
                previous BP action is not available, e.g., at the beginning of the planning time.
         :param turn_signal: turn signal status
-        :param lane_change_info: lane change information
         :return: valid State class
         """
 
@@ -389,7 +347,7 @@ class State(PUBSUB_MSG_IMPL):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0, off_map=False, turn_signal=turn_signal, lane_change_info=lane_change_info)
+                             confidence=1.0, off_map=False, turn_signal=turn_signal)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,
