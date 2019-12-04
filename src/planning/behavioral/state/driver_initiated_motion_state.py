@@ -142,7 +142,7 @@ class DriverInitiatedMotionState:
         :param timestamp_in_sec: [sec] current timestamp
         :return: True if
         """
-        if self.state == DIM_States.CONFIRMED:
+        if self.state == DIM_States.CONFIRMED and closestTCB is not None:
             stop_bar_s = closestTCB[1]
             return stop_bar_s < ego_s or \
                 (not self.is_pedal_pressed and timestamp_in_sec - self.pedal_last_change_time > DRIVER_INITIATED_MOTION_TIMEOUT)
