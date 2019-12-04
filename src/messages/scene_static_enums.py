@@ -115,6 +115,21 @@ class RoadObjectType(Enum):
     Bike_Pedestrian = 25
 
 
+class StaticTrafficControlDeviceType(Enum):
+    UNKNOWN = 0          # Type of control not mapped
+    YIELD = 1            # Host must yield to conflicting traffic
+    STOP = 2             # Host must stop, then yield to conflicting traffic (e.g. side-road to main road intersection)
+    CROSSWALK = 3        # Point we should yield to vulnerable road users
+    MOVABLE_BARRIER = 4  # A gate or barrier may prevent passage at certain times?
+
+
+class DynamicTrafficControlDeviceType(Enum):
+    UNKNOWN = 0             # Type of control not mapped
+    TRAFFIC_LIGHT = 1       # Traffic light with no direction indicator for protected phase
+    RAILROAD_CROSSING = 2   # Slower speed if associated TCD light is active/flashing?
+    SCHOOL_ZONE = 3         # Slower speed if associated TCD light is active/flashing?
+
+
 class TrafficSignalState(Enum):
     NO_DETECTION = 0
     RED = 1

@@ -6,6 +6,8 @@ from typing import Optional
 import numpy as np
 from decision_making.src.messages.control_status_message import ControlStatus
 from decision_making.src.messages.pedal_position_message import PedalPosition
+from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
+from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -13,6 +15,9 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_CONTROL_STATUS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
+
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES
 from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
@@ -28,6 +33,7 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
+from decision_making.src.messages.turn_signal_message import TurnSignal, DEFAULT_MSG as DEFAULT_TURN_SIGNAL_MSG
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
@@ -73,15 +79,19 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_TURN_SIGNAL)
         self.pubsub.subscribe(UC_SYSTEM_PEDAL_POSITION)
         self.pubsub.subscribe(UC_SYSTEM_CONTROL_STATUS)
+        self.pubsub.subscribe(UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.unsubscribe(UC_SYSTEM_TURN_SIGNAL)
         self.pubsub.unsubscribe(UC_SYSTEM_PEDAL_POSITION)
         self.pubsub.unsubscribe(UC_SYSTEM_CONTROL_STATUS)
+        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -94,6 +104,22 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
 
+            # pedal position is a signal used for Driver Initiated Motion
+            # TODO: implement usage in DIM
+            self._get_current_pedal_position()
+
+            # Turn signal (blinkers) is a signal used for Lane Change on Demand
+            try:
+                turn_signal = self._get_current_turn_signal()
+            except MsgDeserializationError as e:
+                self.logger.warning("MsgDeserializationError was raised for turn signal. Overriding with default value")
+                turn_signal = DEFAULT_TURN_SIGNAL_MSG
+
+            # Control status is a signal that is used as a proxy for vehicle's Engagement status
+            # Logic is to keep planning in disengaged mode, but always "re-plan" (use actual localization)
+            control_status = self._get_current_control_status()
+            is_engaged = control_status is not None and control_status.is_av_engaged()
+
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
                 route_plan_dict = route_plan.to_costs_dict()
@@ -102,18 +128,18 @@ class BehavioralPlanningFacade(DmModule):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
+
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
+                SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(
+                    self._get_current_tcd_status().s_Data.as_dynamic_traffic_control_device_status)
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
-                                                              logger=self.logger)
+                                                              logger=self.logger,
+                                                              turn_signal=turn_signal)
 
                 state.handle_negative_velocities(self.logger)
-
-            self._get_current_pedal_position()
-            control_status = self._get_current_control_status()
-            is_engaged = control_status is not None and control_status.is_av_engaged()
 
             self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
@@ -314,6 +340,7 @@ class BehavioralPlanningFacade(DmModule):
         scene_dynamic = SceneDynamic.deserialize(serialized_scene_dynamic)
         if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count == 0:
             raise MsgDeserializationError("SceneDynamic was received without any host localization")
+
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_dynamic
 
@@ -330,6 +357,25 @@ class BehavioralPlanningFacade(DmModule):
             "%s: %f engaged %s" % (LOG_MSG_CONTROL_STATUS, control_status.s_Header.s_Timestamp.timestamp_in_seconds,
                                    control_status.s_Data.e_b_TTCEnabled))
         return control_status
+
+    def _get_current_turn_signal(self) -> TurnSignal:
+        is_success, serialized_turn_signal = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TURN_SIGNAL)
+        if serialized_turn_signal is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_TURN_SIGNAL)
+        turn_signal = TurnSignal.deserialize(serialized_turn_signal)
+        self.logger.debug("Received turn signal: %s" % turn_signal)
+        return turn_signal
+
+    def _get_current_tcd_status(self) -> SceneTrafficControlDevices:
+        is_success, serialized_tcd_status = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
+
+        if serialized_tcd_status is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
+        tcd_status = SceneTrafficControlDevices.deserialize(serialized_tcd_status)
+        # self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, tcd_status.s_Header.s_Timestamp.timestamp_in_seconds))
+        return tcd_status
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_PARAMS, trajectory_parameters.serialize())

@@ -2,9 +2,7 @@ from logging import Logger
 from typing import List, Type
 
 import numpy as np
-from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR, \
-    CLOSE_ENOUGH
-from decision_making.src.messages.scene_static_enums import RoadObjectType
+from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
@@ -13,7 +11,6 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, A
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.utils.map_utils import MapUtils
 from sklearn.utils.extmath import cartesian
 
 
@@ -50,10 +47,11 @@ class RoadSignActionSpace(TargetActionSpace):
         longitudinal_differences = np.array([self._get_closest_stop_bar_distance(action_recipe, behavioral_state)
                                              for action_recipe in action_recipes])
         self.logger.debug("STOP RoadSign distance: %1.2f" % longitudinal_differences[0])
-        assert not np.isnan(longitudinal_differences).any()
+        assert not np.isnan(longitudinal_differences).any(), "Distance to STOP BAR not found. Should not happen"
         return longitudinal_differences
 
-    def _get_closest_stop_bar_distance(self, action: RoadSignActionRecipe, behavioral_state: BehavioralGridState) -> float:
+    def _get_closest_stop_bar_distance(self, action: RoadSignActionRecipe, behavioral_state: BehavioralGridState) \
+            -> float:
         """
         Returns the s value of the closest Stop Bar or Stop sign.
         If both types exist, prefer stop bar, if close enough to stop sign.
@@ -62,24 +60,6 @@ class RoadSignActionSpace(TargetActionSpace):
         :param behavioral_state: BehavioralGridState in context
         :return: distance to closest stop bar
         """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action.relative_lane]  # the target GFF
-        stop_bar_and_stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
-        stop_signs = MapUtils.filter_flow_control_by_type(stop_bar_and_stop_signs, [RoadObjectType.StopSign])
-        stop_bars = MapUtils.filter_flow_control_by_type(stop_bar_and_stop_signs,
-                                                         [RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right])
-        # either stop BAR or SIGN are guaranteed to exist, but not necessarily both
-        if len(stop_bars) == 0:
-            # only stop SIGN exists
-            closest_sign = stop_signs[0]
-        elif len(stop_signs) == 0:
-            # only stop BAR exists
-            closest_sign = stop_bars[0]
-        # Both stop SIGN and BAR exist
-        elif stop_bars[0].s < stop_signs[0].s + CLOSE_ENOUGH:
-            # stop BAR close to SIGN or closer than stop SIGN, select it
-            closest_sign = stop_bars[0]
-        else:
-            # stop SIGN is closer
-            closest_sign = stop_signs[0]
-
-        return closest_sign.s - behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
+        ego_location = behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
+        closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action.relative_lane)
+        return closest_TCB_and_its_distance[1] - ego_location if closest_TCB_and_its_distance is not None else np.nan

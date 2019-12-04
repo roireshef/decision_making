@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
+from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -177,9 +177,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
 class StaticTrafficFlowControlFilter(ActionSpecFilter):
     """
-    Checks if there is a StaticTrafficFlowControl between ego and the goal
-    Currently treats every 'StaticTrafficFlowControl' as a stop event.
-
+    Checks if there is a StopBar between ego and the goal
+    If no bar is found, action is invalidated.
     """
     @staticmethod
     def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
@@ -189,12 +188,8 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :param behavioral_state: BehavioralGridState in context
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_locations = np.asarray([stop_sign.s for stop_sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
-        ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
-
-        return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any() \
-            if len(stop_bar_locations) > 0 else False
+        closest_TCB_ant_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
+        return closest_TCB_ant_its_distance is not None and closest_TCB_ant_its_distance[1] < action_spec.s
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
@@ -299,17 +294,6 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         #  start of the action, or 1 BP cycle later, instead of relative to the end of the action.
         super().__init__(aggresiveness_level=AggressivenessLevel.STANDARD)
 
-    def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> Union[float, None]:
-        """
-        Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
-        :param target_lane_frenet:
-        :param action_spec_s:
-        :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
-        """
-        stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
-        distances = [stop_sign.s for stop_sign in stop_signs if stop_sign.s >= action_spec_s]
-        return distances[0] if len(distances) > 0 else None
-
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
         """
         Checks if there are stop signs. Returns the `s` of the first (closest) stop-sign
@@ -317,11 +301,10 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         :param action_spec:
         :return: The index of the end point
         """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
-        if stop_bar_s is None:  # no stop bars
+        closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
+        if closest_TCB_and_its_distance is None:  # no stop bars
             self._raise_true()
-        return np.array([stop_bar_s]), np.array([0])
+        return np.array([closest_TCB_and_its_distance[1]]), np.array([0])
 
 
 class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):

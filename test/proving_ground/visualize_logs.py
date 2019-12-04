@@ -71,6 +71,9 @@ def plot_dynamics(log_file_path: str):
     vel_limit = []
     vel_limit_time = []
 
+    engaged = []
+    engaged_time = []
+
     while True:
         text = f.readline()
         if not text:
@@ -200,6 +203,14 @@ def plot_dynamics(log_file_path: str):
                     vel_limit.append(speed_limit_per_lane[ego_lane_id])
                     vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
 
+        if 'Received ControlStatus message' in text:
+            msg = text.split('Timestamp: :')[1]
+            parts = msg.split('engaged')
+            engaged.append(int(parts[1]))
+            # engaged_time.append(float(parts[0]))
+            engaged_time.append(time)  # using time since the timestamp attached to this message is in system time, not ego time
+
+
     f = plt.figure(1)
 
     ax1 = plt.subplot(5, 2, 1)
@@ -272,14 +283,15 @@ def plot_dynamics(log_file_path: str):
     bp_if_lat,  = plt.plot(bp_if_time, bp_if_lat_err, 'o--')
     tp_if_lon,  = plt.plot(tp_if_time, tp_if_lon_err, 'o-.')
     tp_if_lat,  = plt.plot(tp_if_time, tp_if_lat_err, 'o--')
+    engaged_plt, = plt.plot(engaged_time, engaged, 'o--')
 
     lon_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LON, linewidth=1, color='k', linestyle='-.')
     lat_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LAT, linewidth=1, color='k', linestyle='--')
 
     plt.xlabel('time[s]')
     plt.ylabel('loc/tracking errors')
-    plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th],
-               ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
+    plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th, engaged_plt],
+               ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold', 'engaged'])
     plt.grid(True)
 
     ax7 = plt.subplot(5, 2, 7, sharex=ax1)

@@ -1,9 +1,10 @@
 import pickle
 
 from decision_making.paths import Paths
-from decision_making.src.planning.types import FS_SA, C_A
+from decision_making.src.messages.scene_static_enums import StaticTrafficControlDeviceType
+from decision_making.src.planning.types import C_A
 
-from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
+from decision_making.src.messages.scene_static_message import TrafficControlBar, StaticTrafficControlDevice
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from typing import List, Dict, Tuple
@@ -18,6 +19,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
+from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
@@ -184,7 +186,13 @@ def route_plan_for_mound_north_file():
     num_lane_segments = []
     route_plan_lane_segments = []
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_mound_road_north())
+    scene_static_message = scene_static_mound_road_north()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
 
     for road_segment_id in nav_plan:
         road_segment = MapUtils.get_road_segment(road_segment_id)
@@ -263,7 +271,13 @@ def state_with_scene_static_short_testable():
 @pytest.fixture(scope='function')
 def state_with_surrounding_objects(route_plan_20_30: RoutePlan):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    scene_static_message = scene_static_pg_split()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
 
     road_segment_id = 20
 
@@ -407,7 +421,13 @@ def state_with_five_objects_on_oval_track():
 
 @pytest.fixture(scope='function')
 def state_with_ego_at_split_on_oval():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits())
+    scene_static_message = scene_static_oval_with_splits()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
@@ -423,7 +443,14 @@ def state_with_ego_at_split_on_oval():
 
 @pytest.fixture(scope='function')
 def state_with_ego_at_merge_on_oval():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits())
+    scene_static_message = scene_static_oval_with_splits()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
+
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
@@ -439,7 +466,13 @@ def state_with_ego_at_merge_on_oval():
 @pytest.fixture(scope='function')
 def state_with_surrounding_objects_and_off_map_objects(route_plan_20_30: RoutePlan):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    scene_static_message = scene_static_pg_split()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
 
     road_segment_id = 20
 
@@ -489,7 +522,12 @@ def state_with_surrounding_objects_and_off_map_objects(route_plan_20_30: RoutePl
 @pytest.fixture(scope='function')
 def state_with_objects_for_acceleration_towards_vehicle():
     # loads a scene dynamic where the vehicle is driving in its desired velocity towards another vehicle
-    SceneStaticModel.get_instance().set_scene_static(scene_static_accel_towards_vehicle())
+    scene_static_message = scene_static_accel_towards_vehicle()
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     scene_dynamic = scene_dynamic_accel_towards_vehicle()
     scene_dynamic.dynamic_objects[0].off_map = False
     # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
@@ -500,7 +538,13 @@ def state_with_objects_for_acceleration_towards_vehicle():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: RoutePlan):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    scene_static_message = scene_static_pg_split()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
 
     road_id = 20
 
@@ -539,7 +583,13 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_exact_tracking_mode():
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    scene_static_message = scene_static_pg_split()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
 
     road_id = 21
 
@@ -617,8 +667,11 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
     scene_static_with_traffic = scene_static_pg_split()
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
-    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_static_traffic_flow_control.append(stop_sign)
+    stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=20,
+                                  e_i_static_traffic_control_device_id=[], e_i_dynamic_traffic_control_device_id=[])
+    for lane_segment in scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar.append(stop_bar)
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
 
     road_id = 20
@@ -657,7 +710,13 @@ def state_with_traffic_control(route_plan_20_30: RoutePlan):
 
 @pytest.fixture(scope='function')
 def state_with_left_lane_ending():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_left_lane_ends())
+    scene_static_message = scene_static_left_lane_ends()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
     ego_vel = 10
@@ -674,7 +733,13 @@ def state_with_left_lane_ending():
 
 @pytest.fixture(scope='function')
 def state_with_right_lane_ending():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_right_lane_ends())
+    scene_static_message = scene_static_right_lane_ends()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
     ego_vel = 10
@@ -691,7 +756,13 @@ def state_with_right_lane_ending():
 
 @pytest.fixture(scope='function')
 def state_with_same_lane_ending_no_left_lane():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_left_lane_ends())
+    scene_static_message = scene_static_left_lane_ends()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
     ego_vel = 10
@@ -708,7 +779,13 @@ def state_with_same_lane_ending_no_left_lane():
 
 @pytest.fixture(scope='function')
 def state_with_same_lane_ending_no_right_lane():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_right_lane_ends())
+    scene_static_message = scene_static_right_lane_ends()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
     ego_vel = 10
@@ -725,7 +802,13 @@ def state_with_same_lane_ending_no_right_lane():
 
 @pytest.fixture(scope='function')
 def state_with_lane_split_on_right():
-    SceneStaticModel.get_instance().set_scene_static(right_lane_split_scene_static())
+    scene_static_message = right_lane_split_scene_static()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
     ego_vel = 10
@@ -742,7 +825,13 @@ def state_with_lane_split_on_right():
 
 @pytest.fixture(scope='function')
 def state_with_lane_split_on_left():
-    SceneStaticModel.get_instance().set_scene_static(left_lane_split_scene_static())
+    scene_static_message = left_lane_split_scene_static()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
     ego_vel = 10
@@ -759,7 +848,13 @@ def state_with_lane_split_on_left():
 
 @pytest.fixture(scope='function')
 def state_with_lane_split_on_left_and_right():
-    SceneStaticModel.get_instance().set_scene_static(left_right_lane_split_scene_static())
+    scene_static_message = left_right_lane_split_scene_static()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 700
     ego_vel = 10
@@ -776,7 +871,13 @@ def state_with_lane_split_on_left_and_right():
 
 @pytest.fixture(scope='function')
 def state_with_lane_split_on_left_and_right_left_first():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_left_first())
+    scene_static_message = scene_static_lane_splits_on_left_and_right_left_first()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
     ego_vel = 10
@@ -793,7 +894,13 @@ def state_with_lane_split_on_left_and_right_left_first():
 
 @pytest.fixture(scope='function')
 def state_with_lane_split_on_left_and_right_right_first():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_right_first())
+    scene_static_message = scene_static_lane_splits_on_left_and_right_right_first()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
     ego_vel = 10
@@ -810,7 +917,13 @@ def state_with_lane_split_on_left_and_right_right_first():
 
 @pytest.fixture(scope='function')
 def state_with_lane_split_on_right_ending():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split_on_right_ends())
+    scene_static_message = scene_static_lane_split_on_right_ends()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
     ego_vel = 10
@@ -827,7 +940,13 @@ def state_with_lane_split_on_right_ending():
 
 @pytest.fixture(scope='function')
 def state_with_lane_split_on_left_ending():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_split_on_left_ends())
+    scene_static_message = scene_static_lane_split_on_left_ends()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
     ego_vel = 10
@@ -844,7 +963,13 @@ def state_with_lane_split_on_left_ending():
 
 @pytest.fixture(scope='function')
 def state_with_lane_split_on_left_and_right_ending():
-    SceneStaticModel.get_instance().set_scene_static(scene_static_lane_splits_on_left_and_right_end())
+    scene_static_message = scene_static_lane_splits_on_left_and_right_end()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     ego_lane_lon = 100
     ego_vel = 10
@@ -862,7 +987,13 @@ def state_with_lane_split_on_left_and_right_ending():
 @pytest.fixture(scope='function')
 def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split())
+    scene_static_message = scene_static_pg_split()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
 
     road_id = 20
 
@@ -913,8 +1044,13 @@ def state_with_objects_for_filtering_too_aggressive(route_plan_20_30: RoutePlan)
 @pytest.fixture(scope='function')
 def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan):
 
-    scene_static_with_limits = scene_static_pg_split()
-    SceneStaticModel.get_instance().set_scene_static(scene_static_with_limits)
+    scene_static_message = scene_static_pg_split()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
 
 
     road_id = 20
@@ -995,13 +1131,30 @@ def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
                                                 route_plan_20_30, None)
 
 @pytest.fixture(scope='function')
+def behavioral_grid_state_with_stop_bar(
+        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
+    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
+                                                route_plan_20_30, None)
+
+@pytest.fixture(scope='function')
 def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
 
     scene_static_with_traffic = scene_static_pg_split()
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=20, e_Pct_confidence=1.0)
-    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_static_traffic_flow_control.append(stop_sign)
+    lane_id = 211
+    stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=20,
+                                  e_i_static_traffic_control_device_id=[11], e_i_dynamic_traffic_control_device_id=[])
+    stop_sign = StaticTrafficControlDevice(object_id=11, e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
+                                           e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id],
+                                           e_l_east_x=0, e_l_north_y=0)
+    for lane_segment in scene_static_with_traffic.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+        if lane_segment.e_i_lane_segment_id == 211:
+            lane_segment.as_traffic_control_bar = [stop_bar]
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_static_traffic_control_device = [stop_sign]
+    scene_static_with_traffic.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    MapUtils.get_lane(lane_id).as_traffic_control_bar.append(stop_bar)
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
-
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
                                                 route_plan_20_30, None)
 
