@@ -326,7 +326,7 @@ class KinematicUtils:
         :return: two arrays: actions' distances and times; actions not meeting time or acceleration limits have
             infinite distance and time
         """
-        # return the biggest dimension out of weights and velocities
+        # return the biggest dimension out of weights and velocities (1 if scalar, otherwise array length)
         max_dimension = max(np.array([w_J]).shape[-1], np.array([v_T]).shape[-1])
 
         # convert weights, velocities and acceleration to arrays if they are scalars
