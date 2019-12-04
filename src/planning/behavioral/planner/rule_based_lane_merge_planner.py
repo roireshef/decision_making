@@ -448,6 +448,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         optimal_s = ego_t * (ego_t*a_0 + 6*v_0 + 6*ego_v) / 12
 
+        optimal_s_idx = np.sum(safety_bounds < optimal_s[..., np.newaxis], axis=-1)
+
         return
 
     @staticmethod
