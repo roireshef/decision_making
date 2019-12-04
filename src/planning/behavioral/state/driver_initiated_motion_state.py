@@ -115,7 +115,7 @@ class DriverInitiatedMotionState:
             # find the next bar in the horizon
             if closestTCB is not None and closestTCB[0] is not None:
                 closest_tcb_distance = closestTCB[1]
-                if ego_s < closest_tcb_distance < stop_bar_horizon:
+                if ego_s < closest_tcb_distance < ego_s + stop_bar_horizon:
                     return True, closest_tcb_distance
 
         return False, None
