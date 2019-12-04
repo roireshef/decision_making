@@ -18,6 +18,12 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import r
 
 
 def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_pg_no_split, route_plan_20):
+    for lane_segment in scene_static_pg_no_split.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_pg_no_split.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_pg_no_split.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_pg_no_split.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_no_split)
 
     logger = Logger("test_specifyDynamicAction")

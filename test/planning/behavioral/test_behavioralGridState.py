@@ -2,6 +2,7 @@ from decision_making.src.global_constants import MAX_BACKWARD_HORIZON, MAX_FORWA
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLongitudinalPosition
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
+from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from rte.python.logger.AV_logger import AV_Logger
 from unittest.mock import patch
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
@@ -201,6 +202,7 @@ def test_createFromState_laneSplitOnRight_augmentedPartialGffOnRight(state_with_
     Host is in right lane of two-lane road, a lane split on the right is ahead, and the new lane ends shortly thereafter. The right GFF
     should be augmented partial, and the other two should be normal.
     """
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right_ending,
                                                                   route_plan_lane_split_on_right_ends, None)
     gffs = behavioral_grid_state.extended_lane_frames
