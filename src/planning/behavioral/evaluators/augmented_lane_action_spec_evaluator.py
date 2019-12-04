@@ -58,8 +58,8 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
 
         # If we're currently performing a lane change and in the target lane, override the previous lanes_to_try and prioritize actions
         # in the same lane in order to complete the maneuver.
-        if behavioral_state.lane_change_info.lane_change_active:
-            is_host_in_target_lane = behavioral_state.lane_change_info.are_target_lane_ids_in_gff(
+        if behavioral_state.lane_change_state.lane_change_active:
+            is_host_in_target_lane = behavioral_state.lane_change_state.are_target_lane_ids_in_gff(
                 behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE])
 
             if is_host_in_target_lane:

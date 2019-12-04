@@ -89,22 +89,22 @@ class StaticActionSpace(ActionSpace):
         if any(lane_change_mask):
             # If any lane change recipes passed the filters, a lane change is desired. Override the goal time for only the lane change
             # actions.
-            if not behavioral_state.lane_change_info.lane_change_active:
+            if not behavioral_state.lane_change_state.lane_change_active:
                 # This will be reached before a lane change has begun
                 T[lane_change_mask] = LANE_CHANGE_TIME_COMPLETION_TARGET
             else:
                 T[lane_change_mask] = max(MIN_LANE_CHANGE_ACTION_TIME,
                                           LANE_CHANGE_TIME_COMPLETION_TARGET
-                                          + behavioral_state.lane_change_info.lane_change_start_time
+                                          + behavioral_state.lane_change_state.lane_change_start_time
                                           - behavioral_state.ego_state.timestamp_in_sec)
-        elif behavioral_state.lane_change_info.lane_change_active:
+        elif behavioral_state.lane_change_state.lane_change_active:
             # If no lane change recipes passed the filters but a lane change is currently active, then override the goal time for the
             # same lane actions. These are the actions that will be used to complete a lane change.
             same_lane_mask = [recipe.relative_lane == RelativeLane.SAME_LANE if ~np.isnan(T[i]) else False
                               for i, recipe in enumerate(action_recipes)]
             T[same_lane_mask] = max(MIN_LANE_CHANGE_ACTION_TIME,
                                     LANE_CHANGE_TIME_COMPLETION_TARGET
-                                    + behavioral_state.lane_change_info.lane_change_start_time
+                                    + behavioral_state.lane_change_state.lane_change_start_time
                                     - behavioral_state.ego_state.timestamp_in_sec)
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution

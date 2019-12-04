@@ -104,9 +104,9 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
         time_since_turn_signal_changed = behavioral_state.ego_state.timestamp_in_sec - \
                                          behavioral_state.ego_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
         turn_signal_state = behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state
-        lane_change_active = behavioral_state.lane_change_info.lane_change_active
+        lane_change_active = behavioral_state.lane_change_state.lane_change_active
 
-        is_host_in_target_lane = behavioral_state.lane_change_info.are_target_lane_ids_in_gff(
+        is_host_in_target_lane = behavioral_state.lane_change_state.are_target_lane_ids_in_gff(
             behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]) if lane_change_active else False
 
         return [(recipe.relative_lane == RelativeLane.SAME_LANE

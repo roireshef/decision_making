@@ -36,9 +36,9 @@ from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.turn_signal_message import TurnSignal, DEFAULT_MSG as DEFAULT_TURN_SIGNAL_MSG
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.data_objects import LaneChangeInfo
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -65,7 +65,7 @@ class BehavioralPlanningFacade(DmModule):
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
-        self._lane_change_info = LaneChangeInfo(None, np.array([]), False, None)
+        self._lane_change_state = LaneChangeState(None, np.array([]), False, None)
 
     def _write_filters_to_log_if_required(self, now: float):
         """
@@ -166,8 +166,8 @@ class BehavioralPlanningFacade(DmModule):
                 # If a lane change is active and we're not localized to a lane in our last GFF, that means that we're targeting a
                 # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
                 # the target GFF. This will happen when we're performing a lane change.
-                target_gff = self._lane_change_info.source_lane_gff \
-                    if self._lane_change_info.lane_change_active and (state.ego_state.map_state.lane_id not in self._last_gff_segment_ids) \
+                target_gff = self._lane_change_state.source_lane_gff \
+                    if self._lane_change_state.lane_change_active and (state.ego_state.map_state.lane_id not in self._last_gff_segment_ids) \
                     else None
 
                 updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
@@ -189,7 +189,7 @@ class BehavioralPlanningFacade(DmModule):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message, behavioral_state, selected_action_spec = \
                     planner.plan(updated_state, route_plan)
 
-            self._lane_change_info.update(behavioral_state, selected_action_spec)
+            self._lane_change_state.update(behavioral_state, selected_action_spec)
 
             # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
             # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral

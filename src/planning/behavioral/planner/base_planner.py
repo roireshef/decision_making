@@ -18,7 +18,8 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane, LaneChangeInfo
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -38,7 +39,7 @@ class BasePlanner:
         self.logger = logger
 
     @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan, lane_change_info: LaneChangeInfo):
+    def plan(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState):
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
@@ -47,10 +48,10 @@ class BasePlanner:
         cost params and strategy.
         :param state: the current world state
         :param route_plan: a route plan message
-        :param lane_change_info: lane change information
+        :param lane_change_state: lane change state
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
-        behavioral_state = self._create_behavioral_state(state, route_plan, lane_change_info)
+        behavioral_state = self._create_behavioral_state(state, route_plan, lane_change_state)
         actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
@@ -70,7 +71,7 @@ class BasePlanner:
         return trajectory_parameters, baseline_trajectory, visualization_message, behavioral_state, selected_action_spec
 
     @abstractmethod
-    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_info: LaneChangeInfo) -> BehavioralGridState:
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) -> BehavioralGridState:
         """
         Create behavioral state relevant for specific scenario
         :return: array of action specifications of the same size as the action space

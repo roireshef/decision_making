@@ -7,8 +7,9 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_spec_evaluator import \
     AugmentedLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
-    ActionSpec, ActionRecipe, LaneChangeInfo
+    ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ACTION_SPEC_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
@@ -36,8 +37,8 @@ class SingleStepBehavioralPlanner(BasePlanner):
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
-    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_info: LaneChangeInfo) -> BehavioralGridState:
-        return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, lane_change_info=lane_change_info,
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) -> BehavioralGridState:
+        return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, lane_change_state=lane_change_state,
                                                      logger=self.logger)
 
     def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
