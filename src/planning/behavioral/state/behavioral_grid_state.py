@@ -74,10 +74,6 @@ class BehavioralGridState:
     def ego_length(self) -> float:
         return self.ego_state.size.length
 
-    @property
-    def ego_length(self) -> float:
-        return self.ego_state.size.length
-
     @classmethod
     @prof.ProfileFunction()
     def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
