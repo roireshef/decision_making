@@ -6,6 +6,7 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -27,7 +28,8 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
     DEFAULT_STATIC_RECIPE_FILTERING
 
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, \
-    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2, scene_dynamic
+    state, trajectory_params, behavioral_visualization_msg, route_planner_facade, route_plan_1_2, scene_dynamic, \
+    turn_signal
 from decision_making.test.messages.scene_static_fixture import scene_static_short_testable
 
 
@@ -80,7 +82,8 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub,
                                                                   route_planner_facade: RoutePlanningFacade,
                                                                   scene_static_short_testable,
-                                                                  scene_dynamic):
+                                                                  scene_dynamic,
+                                                                  turn_signal):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
 
@@ -90,6 +93,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     behavioral_publish_mock = MagicMock()
 
     pubsub.publish(UC_SYSTEM_SCENE_DYNAMIC, scene_dynamic.serialize())
+    pubsub.publish(UC_SYSTEM_TURN_SIGNAL, turn_signal.serialize())
     route_planner_facade.periodic_action()
 
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger)
