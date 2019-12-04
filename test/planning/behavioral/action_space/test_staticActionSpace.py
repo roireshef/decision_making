@@ -17,7 +17,14 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 # scene_static is a multi-segment map
 def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split, route_plan_20_30):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
+    scene_static_message = scene_static_pg_split
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
 
     logger = Logger("test_specifyStaticAction")
     road_segment_id = 21

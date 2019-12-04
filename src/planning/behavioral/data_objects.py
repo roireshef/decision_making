@@ -52,6 +52,24 @@ class RelativeLongitudinalPosition(Enum):
     FRONT = 1
 
 
+class RoadSignRestriction(Enum):
+    """
+    The restriction imposed by the road sign
+    """
+    NONE = 0
+    PROCEED_CONDITIONALLY = 1  # e.g: a flashing green light means we can proceed if we can pass it on time
+    YIELD = 2
+    STOP = 3
+
+    def __gt__(self, other):
+        assert isinstance(other, RoadSignRestriction), "other is not of type RoadSignRestriction at self.__gt__()"
+        return self.value > other.value
+
+    def __eq__(self, other):
+        assert isinstance(other, RoadSignRestriction), "other is not of type RoadSignRestriction at self.__eq__()"
+        return self.value == other.value
+
+
 class ActionRecipe:
     def __init__(self, relative_lane: RelativeLane, action_type: ActionType, aggressiveness: AggressivenessLevel):
         self.relative_lane = relative_lane
