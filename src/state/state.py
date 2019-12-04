@@ -7,10 +7,12 @@ from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoSt
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LANE_END_COST_IND
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.messages.scene_static_enums import ManeuverType
+from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
@@ -211,6 +213,15 @@ class EgoState(DynamicObject):
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map,
                                              turn_signal=turn_signal)
         self._dim_state = dim_state
+
+    def update_dim_state(self, ego_s: float, closestTCB: Tuple[TrafficControlBar, float]) -> None:
+        """
+        Update DIM state machine of ego
+        :param ego_s: s location of ego in GeneralizedFrenetSerretFrame
+        :param closestTCB: Tuple of TCB object and its s location in GeneralizedFrenetSerretFrame
+        """
+        if self._dim_state is not None:
+            self._dim_state.update_state(self.timestamp_in_sec, self._cached_map_state.lane_fstate, ego_s, closestTCB)
 
     def get_stop_bar_to_ignore(self):
         """

@@ -17,9 +17,9 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_CONTROL_STATUS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
-
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES
 from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
+
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises
@@ -63,7 +63,7 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
-        self._driver_initiated_motion_state = DriverInitiatedMotionState()
+        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
 
@@ -106,10 +106,6 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
 
-            # pedal position is a signal used for Driver Initiated Motion
-            # TODO: implement usage in DIM
-            self._get_current_pedal_position()
-
             # Turn signal (blinkers) is a signal used for Lane Change on Demand
             try:
                 turn_signal = self._get_current_turn_signal()
@@ -121,6 +117,16 @@ class BehavioralPlanningFacade(DmModule):
             # Logic is to keep planning in disengaged mode, but always "re-plan" (use actual localization)
             control_status = self._get_current_control_status()
             is_engaged = control_status is not None and control_status.is_av_engaged()
+
+            # read pedal position from pubsub and update DIM state accordingly
+            try:
+                pedal_position = self._get_current_pedal_position()
+            except MsgDeserializationError as e:
+                self.logger.warning("MsgDeserializationError was raised for turn signal. Overriding with default value")
+                pedal_position = None
+            # update pedal press/release times according to the acceleration pedal position
+            if pedal_position is not None:
+                self._driver_initiated_motion_state.update_pedal_times(pedal_position)
 
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
@@ -187,12 +193,6 @@ class BehavioralPlanningFacade(DmModule):
             self._last_trajectory = samplable_trajectory if is_engaged else None
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
-
-            # read pedal position from pubsub and update DIM state accordingly
-            pedal_position = self._get_current_pedal_position()
-            ego_map_state = updated_state.ego_state.map_state
-            self._driver_initiated_motion_state.update_state(
-                ego_map_state.lane_id, ego_map_state.lane_fstate, trajectory_params.reference_route, pedal_position)
 
             # Send plan to trajectory
             self._publish_results(trajectory_params)

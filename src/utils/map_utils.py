@@ -690,6 +690,7 @@ class MapUtils:
         Red line is s coordinate, from which host starts to interference laterally with the main road actors.
         We assume that there is a host's road segment starting from the red line and ending at the merge point.
         If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
+        If there is a stop bar/sign before the red line, then return None.
         :param initial_lane_id: current lane id of ego
         :param initial_s: s of ego on initial_lane_id
         :param lookahead_distance: maximal lookahead for the lane merge from ego location
@@ -708,6 +709,13 @@ class MapUtils:
             if cumulative_length > lookahead_distance:
                 break
             current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
+
+            # if there is a stop bar/sign before the red line, then return None
+            # TODO is this a good restriction ???
+            stop_bars = current_lane_segment.as_traffic_control_bar
+            if len(stop_bars) > 0:
+                break
+
             downstream_connectivity = current_lane_segment.as_downstream_lanes
 
             # Red line is s coordinate, from which host starts to interference laterally with the main road actors.

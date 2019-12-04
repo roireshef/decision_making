@@ -2,7 +2,7 @@ import numpy as np
 from decision_making.src.messages.pedal_position_message import PedalPosition, DataPedalPosition
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_enums import RoadObjectType
-from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl
+from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import FrenetSubSegment, \
     GeneralizedFrenetSerretFrame
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -17,8 +17,9 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     # add stop sign to scene_static
     SELECTED_STOP_LANE_ID = 200
     patched_lane = MapUtils.get_lane(lane_id=SELECTED_STOP_LANE_ID)
-    stop_bar = StaticTrafficFlowControl(RoadObjectType.StopSign, e_l_station=10., e_Pct_confidence=100)
-    patched_lane.as_static_traffic_flow_control.append(stop_bar)
+    stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=10., e_i_static_traffic_control_device_id=[],
+                                 e_i_dynamic_traffic_control_device_id=[])
+    patched_lane.as_traffic_control_bar.append(stop_bar)
 
     road_id = 20
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
@@ -33,6 +34,7 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
 
     # pedal pressed
     pedal_position = create_pedal_position(time_in_sec=0, pedal_pos=0.1)
+    dim_state.update_state(timestamp_in_sec=0, ego_lane_fstate=lane_fstate, ego_s=10, closestTCB=)
     dim_state.update_state(lane_id, lane_fstate, reference_route, pedal_position)
     assert dim_state.stop_bar_to_ignore() is None
 

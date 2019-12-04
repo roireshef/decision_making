@@ -74,6 +74,10 @@ class BehavioralGridState:
     def ego_length(self) -> float:
         return self.ego_state.size.length
 
+    @property
+    def ego_length(self) -> float:
+        return self.ego_state.size.length
+
     @classmethod
     @prof.ProfileFunction()
     def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
@@ -625,6 +629,16 @@ class BehavioralGridState:
             return RelativeLongitudinalPosition.REAR
         else:
             return RelativeLongitudinalPosition.PARALLEL
+
+    def update_dim_state(self) -> None:
+        """
+        Update DIM state machine of ego, using reference_route (current-lane GFF)
+        """
+        ego_lane_fstate = self.ego_state.map_state.lane_fstate
+        ego_lane_id = self.ego_state.map_state.lane_id
+        ego_s = self.extended_lane_frames[RelativeLane.SAME_LANE].convert_from_segment_state(ego_lane_fstate, ego_lane_id)[FS_SX]
+
+        self.ego_state.update_dim_state(ego_s, self.get_closest_stop_bar(RelativeLane.SAME_LANE))
 
     @staticmethod
     def _log_grid_data(multi_object_grid: Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]],
