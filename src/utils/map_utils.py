@@ -487,19 +487,21 @@ class MapUtils:
 
     @staticmethod
     def get_closest_stop_bar(target_lane_frenet: GeneralizedFrenetSerretFrame, ego_location: float,
-                             offset_to_ego: float, logger: Logger = None) -> Optional[Tuple[TrafficControlBar, float]]:
+                             offset_to_ego: float, stop_bar_id_to_ignore = None, logger: Logger = None) -> Optional[Tuple[TrafficControlBar, float]]:
         """
         Returns the closest stop bar and its distance.
         No existence checks necessary, as it was already tested by FilterActionsTowardsCellsWithoutRoadSigns
         :param target_lane_frenet:
         :param ego_location: on GFF
         :param offset_to_ego the offset relative to the ego location from which to start looking for a stop bar
+        :param stop_bar_id_to_ignore: id of stop sign/bar to ignore (used by driver initiated motion)
         :param logger:
         :return: tuple of (closest stop bar, distance to closest stop bar) or None if not found
         """
         # TODO Possibly apply the DIM_MARGIN_TO_STOP_BAR only if there is no other stop bar close in front,
         #  to handle case of 2 close stop bars say DIM_MARGIN_TO_STOP_BAR-1 apart
         stop_bars_and_distances = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - offset_to_ego)
+        stop_bar_id_to_ignore # TODO ############## IGNORE
         static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
         # check for active stop bar from the closest to the farthest

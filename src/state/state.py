@@ -4,11 +4,11 @@ from typing import List, Optional, Dict, Tuple, TypeVar
 
 import numpy as np
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoStateLaneIdNotValid
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
-    EGO_HEIGHT, LANE_END_COST_IND
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LANE_END_COST_IND
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.messages.turn_signal_message import TurnSignal
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 from decision_making.src.planning.utils.math_utils import Math
@@ -187,8 +187,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, turn_signal = None):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, bool, Optional[TurnSignal]) -> EgoState
+    def __init__(self, obj_id: int, timestamp: int, cartesian_state: CartesianExtendedState, map_state: MapState,
+                 size: ObjectSize, confidence: float, off_map: bool, turn_signal: Optional[TurnSignal] = None,
+                 dim_state: DriverInitiatedMotionState = None):
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -201,10 +202,20 @@ class EgoState(DynamicObject):
         :param confidence: of object's existence
         :param off_map: indicates if the object is off map
         :param turn_signal: turn signal status
+        :param dim_state: driver initiated motion state
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map,
                                              turn_signal=turn_signal)
+        self._dim_state = dim_state
+
+   def get_stop_bar_to_ignore(self):
+        """
+        Used by driver initiated motion: return stop bar id to ignore if acceleration pedal was pressed
+        :return: stop bar id that should be ignored
+        """
+        return self._dim_state.stop_bar_to_ignore() if self._dim_state is not None else None
+
 
 T = TypeVar('T', bound='State')
 
@@ -299,7 +310,8 @@ class State(PUBSUB_MSG_IMPL):
                                         selected_gff_segment_ids: np.ndarray,
                                         logger: Logger,
                                         route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None,
-                                        turn_signal: Optional[TurnSignal] = None):
+                                        turn_signal: Optional[TurnSignal] = None,
+                                        dim_state: DriverInitiatedMotionState = None):
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic: scene dynamic data
@@ -311,6 +323,7 @@ class State(PUBSUB_MSG_IMPL):
                Note that it is an optional argument and is used only when the method is called from inside BP and the
                previous BP action is not available, e.g., at the beginning of the planning time.
         :param turn_signal: turn signal status
+        :param dim_state: driver initiated motion state
         :return: valid State class
         """
 
@@ -329,7 +342,7 @@ class State(PUBSUB_MSG_IMPL):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0, off_map=False, turn_signal=turn_signal)
+                             confidence=1.0, off_map=False, turn_signal=turn_signal,  dim_state=dim_state)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,

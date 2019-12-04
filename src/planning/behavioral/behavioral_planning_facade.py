@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 from decision_making.src.messages.control_status_message import ControlStatus
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
@@ -62,6 +63,7 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
+        self._driver_initiated_motion_state = DriverInitiatedMotionState()
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
 
@@ -128,7 +130,6 @@ class BehavioralPlanningFacade(DmModule):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
                 SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(
@@ -137,7 +138,8 @@ class BehavioralPlanningFacade(DmModule):
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
                                                               logger=self.logger,
-                                                              turn_signal=turn_signal)
+                                                              turn_signal=turn_signal,
+                                                              dim_state=self._driver_initiated_motion_state)
 
                 state.handle_negative_velocities(self.logger)
 
@@ -185,6 +187,12 @@ class BehavioralPlanningFacade(DmModule):
             self._last_trajectory = samplable_trajectory if is_engaged else None
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
+
+            # read pedal position from pubsub and update DIM state accordingly
+            pedal_position = self._get_current_pedal_position()
+            ego_map_state = updated_state.ego_state.map_state
+            self._driver_initiated_motion_state.update_state(
+                ego_map_state.lane_id, ego_map_state.lane_fstate, trajectory_params.reference_route, pedal_position)
 
             # Send plan to trajectory
             self._publish_results(trajectory_params)
@@ -303,7 +311,7 @@ class BehavioralPlanningFacade(DmModule):
 
         return takeover_message
 
-    def _get_current_pedal_position(self) -> PedalPosition:
+    def _get_current_pedal_position(self) -> Optional[PedalPosition]:
         """
         Read last message of brake & acceleration pedals position
         :return: PedalPosition

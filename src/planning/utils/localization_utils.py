@@ -99,6 +99,8 @@ class LocalizationUtils:
         # create updated_state from the target ego state
         updated_ego_state = state.ego_state.clone_from_cartesian_state(sampled_cstate, state.ego_state.timestamp_in_sec)
         updated_ego_state._cached_map_state = MapState(lane_fstate, lane_id)
+        # TODO: solve the problem of DynamicObject.clone_from...: it can't be overwitten in EgoState since the arguments list should be the same
+        updated_ego_state._dim_state = state.ego_state._dim_state
         updated_state = state.clone_with(ego_state=updated_ego_state)
 
         # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
