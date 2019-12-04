@@ -2,8 +2,8 @@ from enum import Enum
 from typing import List
 import numpy as np
 
-from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, MIN_OFFSET_FOR_LANE_CHANGE_COMPLETE, \
-    MIN_REL_HEADING_FOR_LANE_CHANGE_COMPLETE
+from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE, \
+    MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE
 from decision_making.src.planning.types import FrenetState2D, FS_DX, FS_SX, C_YAW
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType, GeneralizedFrenetSerretFrame
 from decision_making.src.messages.turn_signal_message import TurnSignalState
@@ -201,8 +201,8 @@ class LaneChangeInfo:
                                    behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE].get_yaw(host_station_in_target_lane_gff)[0]
 
                 # If lane change completion requirements are met and the turn signal has been turned off, the lane change is complete.
-                if (abs(distance_to_target_lane_center) < MIN_OFFSET_FOR_LANE_CHANGE_COMPLETE
-                        and abs(relative_heading) < MIN_REL_HEADING_FOR_LANE_CHANGE_COMPLETE
+                if (abs(distance_to_target_lane_center) < MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE
+                        and abs(relative_heading) < MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE
                         and behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off):
                     self._reset()
         else:

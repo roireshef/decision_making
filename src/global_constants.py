@@ -175,11 +175,11 @@ LANE_CHANGE_TIME_COMPLETION_TARGET = 6.0
 # lane change.
 MIN_LANE_CHANGE_ACTION_TIME = 0.2
 
-# [m], Minimum distance from lane center to consider a lane change complete
-MIN_OFFSET_FOR_LANE_CHANGE_COMPLETE = 0.35
+# [m], Maximum distance from lane center to consider a lane change complete
+MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE = 0.35
 
-# [rad], Minimum relative heading to consider a lane change complete
-MIN_REL_HEADING_FOR_LANE_CHANGE_COMPLETE = 0.25
+# [rad], Maximum relative heading to consider a lane change complete
+MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE = 0.25
 
 # Trajectory Planner #
 

@@ -112,10 +112,10 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
                  or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]
                  or ((recipe.relative_lane == RelativeLane.LEFT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn)
                      and (time_since_turn_signal_changed > LANE_CHANGE_DELAY)
-                     and not (lane_change_active and is_host_in_target_lane))
+                     and not (is_host_in_target_lane))
                  or ((recipe.relative_lane == RelativeLane.RIGHT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn)
                      and (time_since_turn_signal_changed > LANE_CHANGE_DELAY)
-                     and not (lane_change_active and is_host_in_target_lane)))
+                     and not (is_host_in_target_lane)))
                 if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
                 else False for recipe in recipes]
 
