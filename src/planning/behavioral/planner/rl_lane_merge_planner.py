@@ -112,17 +112,6 @@ class RL_LaneMergePlanner(BasePlanner):
         torch_probabilities = torch.nn.functional.softmax(logits, dim=1)
         probabilities = torch_probabilities.detach().numpy()[0]
 
-        # TODO: remove this print
-        idx = np.argmax(probabilities * action_mask.astype(int))
-        actors_s = np.array([actor.s_relative_to_ego for actor in lane_merge_state.actors_states])
-        actors_s = np.sort(actors_s)
-        print('RL: chosen_spec(v,t)=', action_specs[idx].v, action_specs[idx].t, 'probabilities: ', probabilities, 'value: ', values)
-        print('Rel_s', NumpyUtils.str_log(actors_s), 'ego_state',
-              [lane_merge_state.red_line_s_on_ego_gff - lane_merge_state.ego_fstate_1d[FS_SX],
-               lane_merge_state.ego_fstate_1d[FS_SV], lane_merge_state.ego_fstate_1d[FS_SA]])
-        print('Spaces beetween actors', NumpyUtils.str_log(np.diff(actors_s)))
-        #print('Encoded State: host:', host_state, 'actors:', actors_state)
-
         # mask filtered actions and return costs (1 - probability)
         costs = 1 - probabilities * action_mask.astype(int)
         return costs

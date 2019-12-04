@@ -2,7 +2,8 @@ from logging import Logger
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, \
     LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
-    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, MAX_FORWARD_HORIZON, MAX_BACKWARD_HORIZON, LANE_MERGE_ACTORS_HORIZON
+    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, MAX_FORWARD_HORIZON, MAX_BACKWARD_HORIZON, LANE_MERGE_ACTORS_RELATIVE_HORIZON, \
+    LANE_MERGE_STATIC_BACKWARD_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState, \
@@ -123,8 +124,13 @@ class LaneMergeState(BehavioralGridState):
             actors_with_road_semantics = \
                 sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, all_gffs, projected_ego),
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
-            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state,
-                                                                               LANE_MERGE_ACTORS_HORIZON)
+            # filter actors behind static backward horizon
+            actors_in_static_horizon = list(filter(
+                lambda actor: ego_on_same_gff[FS_SX] + actor.longitudinal_distance > red_line_s - LANE_MERGE_STATIC_BACKWARD_HORIZON,
+                                                   actors_with_road_semantics))
+
+            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_in_static_horizon, ego_state,
+                                                                               LANE_MERGE_ACTORS_RELATIVE_HORIZON)
 
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego, red_line_s, target_rel_lane)
 
