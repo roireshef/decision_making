@@ -97,6 +97,9 @@ class FilterLaneChangingIfNotAugmented(RecipeFilter):
 
 
 class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
+    """
+    This filter denies actions towards the LEFT or RIGHT lanes unless the lane is an augmented lane or a lane change is desired
+    """
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         # the if statement in the ternary operator is executed first and will short circuit if False,
         # so a KeyError will not happen when accessing the extended_lane_frames dict
