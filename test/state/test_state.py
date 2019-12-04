@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.global_constants import VELOCITY_MINIMAL_THRESHOLD, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.state.state import ObjectSize, DynamicObject
+
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.state.state import DynamicObjectsData, State
@@ -159,3 +161,16 @@ def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(dynamic_o
     # Inserting a object that's not on the road
     dyn_obj_list = State.create_dyn_obj_list(dynamic_objects_not_on_road)
     assert len(dyn_obj_list) == 0   # check that object was not inserted
+
+def test_bounding_box_calculatedCorrectly():
+    """
+    Gets bounding box for a car with length=2 and width=1, center of mass on (1,1), rotated 90 degrees left (facing north)
+    :return:
+    """
+    size = ObjectSize(2, 1, 0)
+    dyn_obj = DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=5,
+                                                        cartesian_state=np.array([1, 1, 1.5708, 0.0, 0.0, 0]),
+                                                        size=size, confidence=0, off_map=False)
+    bbox = dyn_obj.bounding_box()
+    assert np.all(np.isclose(bbox, [[0.5, 0], [0.5, 2], [1.5, 2], [1.5, 0]], atol=1e-5))
+
