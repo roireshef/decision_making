@@ -108,8 +108,9 @@ class BehavioralGridState:
 
         BehavioralGridState._log_grid_data(multi_object_grid, state.ego_state.timestamp_in_sec, logger)
 
-        tcb_in_gff_and_their_distances = BehavioralGridState._get_closest_stop_bars(extended_lane_frames,
-                                                                                    projected_ego_fstates, logger)
+        tcb_in_gff_and_their_distances = \
+            BehavioralGridState._get_closest_stop_bars(extended_lane_frames, projected_ego_fstates,
+                                                       state.ego_state.get_stop_bar_to_ignore(), logger)
 
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates,
                    tcb_in_gff_and_their_distances, logger)
@@ -656,13 +657,15 @@ class BehavioralGridState:
 
     @staticmethod
     def _get_closest_stop_bars(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                               projected_ego_fstates: Dict[RelativeLane, FrenetState2D], logger) \
+                               projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
+                               stop_bar_id_to_ignore: int = None, logger: Logger = None) \
             -> Dict[RelativeLane, Tuple[TrafficControlBar, float]]:
         """
         at object construction, find the closest stop bars to the ego per BGS lane.
         Life span is a BP cycle
         :param extended_lane_frames: of the BGS
         :param projected_ego_fstates: ego projection on frenet lanes
+        :param stop_bar_to_ignore: id of stop bar that is ignored during DIM
         :param logger:
         :return: dictionary of the closest stop bars to the ego per BGS lane
         """
@@ -670,5 +673,6 @@ class BehavioralGridState:
         for relative_lane, target_lane in extended_lane_frames.items():
             ego_location = projected_ego_fstates[relative_lane][FS_SX]
             bars_per_lane[relative_lane] = MapUtils.get_closest_stop_bar(extended_lane_frames[relative_lane],
-                                                                         ego_location, DIM_MARGIN_TO_STOP_BAR, logger)
+                                                                         ego_location, DIM_MARGIN_TO_STOP_BAR,
+                                                                         stop_bar_id_to_ignore, logger)
         return bars_per_lane

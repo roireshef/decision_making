@@ -65,8 +65,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     is_ghost = bool
     turn_signal = TurnSignal
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, off_map, is_ghost = False, turn_signal = None):
-        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float, bool, Optional[bool], Optional[TurnSignal]) -> None
+    def __init__(self, obj_id: int, timestamp: int, cartesian_state: Optional[CartesianExtendedState],
+                 map_state: Optional[MapState], size: ObjectSize, confidence: float, off_map: bool,
+                 is_ghost: Optional[bool] = False, turn_signal: Optional[TurnSignal] = None):
         """
         Data object that hold
         :param obj_id: object id
@@ -187,6 +188,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
+    _dim_state = DriverInitiatedMotionState
+
     def __init__(self, obj_id: int, timestamp: int, cartesian_state: CartesianExtendedState, map_state: MapState,
                  size: ObjectSize, confidence: float, off_map: bool, turn_signal: Optional[TurnSignal] = None,
                  dim_state: DriverInitiatedMotionState = None):
@@ -209,7 +212,7 @@ class EgoState(DynamicObject):
                                              turn_signal=turn_signal)
         self._dim_state = dim_state
 
-   def get_stop_bar_to_ignore(self):
+    def get_stop_bar_to_ignore(self):
         """
         Used by driver initiated motion: return stop bar id to ignore if acceleration pedal was pressed
         :return: stop bar id that should be ignored
