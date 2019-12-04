@@ -117,8 +117,9 @@ class BehavioralPlanningFacade(DmModule):
 
             # Control status is a signal that is used as a proxy for vehicle's Engagement status
             # Logic is to keep planning in disengaged mode, but always "re-plan" (use actual localization)
-            control_status = self._get_current_control_status()
-            is_engaged = control_status is not None and control_status.is_av_engaged()
+            # TODO: remove this hack which is temporary for running well with perfect control on simulation
+            # control_status = self._get_current_control_status()
+            is_engaged = True # control_status is not None and control_status.is_av_engaged()
 
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
