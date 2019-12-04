@@ -107,10 +107,9 @@ class KinematicUtils:
                                                        max_lat_accelerations: np.ndarray, relative_lat_acceleration_limits: Limits,
                                                        reference_route: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
-        Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
-        longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity).
-        Also, for all trajectories that are not masked, the lateral acceleration relative to the provided reference route
-        will also be checked. The returned values are the intersection of these two checks.
+        Given a set of trajectories in Cartesian coordinate-frame, this filter checks to see if the lateral accelerations
+        at every point is within some range of the lateral accelerations that would have been experienced by following
+        the ftrajectories on the reference_route.
         :param ftrajectories: FrenetTrajectories2D object to use while checking relative lat. accel. limit
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param max_lat_accelerations: lateral acceleration limits to test for in cartesian frame [m/sec^2]
