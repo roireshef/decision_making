@@ -2,6 +2,7 @@ import pickle
 
 from decision_making.paths import Paths
 from decision_making.src.messages.scene_static_enums import StaticTrafficControlDeviceType
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.planning.types import C_A
 
 from decision_making.src.messages.scene_static_message import TrafficControlBar, StaticTrafficControlDevice
@@ -437,6 +438,8 @@ def state_with_objects_for_acceleration_towards_vehicle():
     scene_dynamic.dynamic_objects[0].off_map = False
     # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
     scene_dynamic.ego_state.cartesian_state[C_A] = 1
+    scene_dynamic.ego_state._dim_state = DriverInitiatedMotionState(None)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     yield scene_dynamic
 
 
