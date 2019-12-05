@@ -4,7 +4,7 @@ import numpy as np
 from decision_making.src.global_constants import DRIVER_INITIATED_MOTION_PEDAL_THRESH, \
     DRIVER_INITIATED_MOTION_PEDAL_TIME, DRIVER_INITIATED_MOTION_STOP_BAR_HORIZON, \
     DRIVER_INITIATED_MOTION_VELOCITY_LIMIT, DRIVER_INITIATED_MOTION_MAX_TIME_TO_STOP_BAR, \
-    DRIVER_INITIATED_MOTION_TIMEOUT
+    DRIVER_INITIATED_MOTION_TIMEOUT, PUBSUB_MSG_IMPL
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from enum import Enum
 from logging import Logger
@@ -17,12 +17,12 @@ class DIM_States(Enum):
     """
     States of Driver Initiated Motion mechanism
     """
-    DISABLED = 0,   # the state is disabled (no close stop bars, the velocity is too high)
-    PENDING = 1,    # there is a close stop bar, but the acceleration pedal was not pressed for enough time
+    DISABLED = 0    # the state is disabled (no close stop bars, the velocity is too high)
+    PENDING = 1     # there is a close stop bar, but the acceleration pedal was not pressed for enough time
     CONFIRMED = 2   # specific stop bar is ignored by filters
 
 
-class DriverInitiatedMotionState:
+class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
     """
     This class is an implementation of the state machine of DIM:
     0. Start with NORMAL state.
@@ -38,6 +38,9 @@ class DriverInitiatedMotionState:
     def __init__(self, logger: Logger):
         self.logger = logger
         self._reset()
+
+    def to_dict(self, left_out_fields=None):
+        return {k: self._serialize_element(v) for k, v in self.__dict__.items() if k != 'logger'}
 
     def update_state(self, timestamp_in_sec: float, ego_lane_fstate: FrenetState2D,
                      ego_s: float, closestTCB: Tuple[TrafficControlBar, float]) -> None:
