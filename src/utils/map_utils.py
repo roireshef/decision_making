@@ -2,7 +2,6 @@ from logging import Logger
 from typing import List, Dict, Tuple, Optional
 
 import numpy as np
-import rte.python.profiler as prof
 from decision_making.src.exceptions import raises, RoadNotFound, \
     UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
@@ -69,7 +68,6 @@ class MapUtils:
         return ds * (nominal_points.shape[0] - 1)
 
     @staticmethod
-    @prof.ProfileFunction()
     def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
         """
         get Frenet frame of the whole center-lane for the given lane
