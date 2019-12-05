@@ -44,28 +44,24 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         # the lane change lane over the minimum_cost_lane.
         lanes_to_try = []
 
-        # If a turn signal is on, prioritize actions towards that lanes by placing the respective relative lane first in the list.
-        if behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
+        # If lane change is desired, prioritize actions towards that lanes by placing the respective relative lane first in the list.
+        if behavioral_state.lane_change_state.lane_change_direction == RelativeLane.LEFT_LANE \
+                and behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
             lanes_to_try = [RelativeLane.LEFT_LANE]
-        elif behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn:
+        elif behavioral_state.lane_change_state.lane_change_direction == RelativeLane.RIGHT_LANE \
+                and behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
             lanes_to_try = [RelativeLane.RIGHT_LANE]
-
-        # Append SAME_LANE and minimum_cost_lane accordingly
-        if minimum_cost_lane != RelativeLane.SAME_LANE:
-            lanes_to_try.append(minimum_cost_lane)
-            lanes_to_try.append(RelativeLane.SAME_LANE)
+        elif behavioral_state.lane_change_state == LaneChangeStatus.LaneChangeActiveInTargetLane:
+            lanes_to_try = [RelativeLane.SAME_LANE]
         else:
-            lanes_to_try.append(RelativeLane.SAME_LANE)
+            # If no lane change is requested, drive according to route plan costs
+            # Append SAME_LANE and minimum_cost_lane accordingly
+            if minimum_cost_lane != RelativeLane.SAME_LANE:
+                lanes_to_try.append(minimum_cost_lane)
+                lanes_to_try.append(RelativeLane.SAME_LANE)
+            else:
+                lanes_to_try.append(RelativeLane.SAME_LANE)
 
-        # If we're currently performing a lane change and in the target lane, override the previous lanes_to_try and prioritize actions
-        # in the same lane in order to complete the maneuver.
-        if behavioral_state.lane_change_state.status in \
-            [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]:
-            is_host_in_target_lane = behavioral_state.lane_change_state.are_target_lane_ids_in_gff(
-                behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE])
-
-            if is_host_in_target_lane:
-                lanes_to_try = [RelativeLane.SAME_LANE]
 
         for target_lane in lanes_to_try:
             # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE

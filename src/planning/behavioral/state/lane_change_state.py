@@ -23,6 +23,7 @@ class LaneChangeStatus(Enum):
 class LaneChangeState:
     def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame] = None, target_lane_ids: Optional[np.ndarray] = None,
                  lane_change_active: Optional[bool] = False, lane_change_start_time: Optional[float] = None,
+                 lane_change_direction: Optional[RelativeLane] = None,
                  status: Optional[LaneChangeStatus] = LaneChangeStatus.LaneChangeRequestable):
         """
         Holds lane change state
@@ -36,6 +37,7 @@ class LaneChangeState:
         self._target_lane_ids = target_lane_ids or np.array([])
         self.lane_change_active = lane_change_active
         self.lane_change_start_time = lane_change_start_time
+        self.lane_change_direction = lane_change_direction
         self.status = status
 
     def __str__(self):
