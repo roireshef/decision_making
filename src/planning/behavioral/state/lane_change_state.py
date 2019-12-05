@@ -23,7 +23,7 @@ class LaneChangeStatus(Enum):
 class LaneChangeState:
     def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame] = None, target_lane_ids: Optional[np.ndarray] = None,
                  lane_change_active: Optional[bool] = False, lane_change_start_time: Optional[float] = None,
-                 lane_change_direction: Optional[RelativeLane] = None,
+                 target_relative_lane: Optional[RelativeLane] = None,
                  status: Optional[LaneChangeStatus] = LaneChangeStatus.LaneChangeRequestable):
         """
         Holds lane change state
@@ -31,13 +31,14 @@ class LaneChangeState:
         :param target_lane_ids: Lane IDs of the GFF that the host is targeting in a lane change
         :param lane_change_active: True when a lane change is active; otherwise, False
         :param lane_change_start_time: Time when a lane change began
+        :param target_relative_lane: Relative lane of the target lane during a lane change
         :param status: lane change status
         """
         self.source_lane_gff = source_lane_gff
         self._target_lane_ids = target_lane_ids or np.array([])
         self.lane_change_active = lane_change_active
         self.lane_change_start_time = lane_change_start_time
-        self.lane_change_direction = lane_change_direction
+        self.target_relative_lane = target_relative_lane
         self.status = status
 
     def __str__(self):
@@ -49,6 +50,8 @@ class LaneChangeState:
         self._target_lane_ids = np.array([])
         self.lane_change_active = False
         self.lane_change_start_time = None
+        self.target_relative_lane = None
+        self.status = LaneChangeStatus.LaneChangeRequestable
 
     def are_target_lane_ids_in_gff(self, gff: GeneralizedFrenetSerretFrame):
         """
