@@ -459,4 +459,4 @@ def turn_signal() -> TurnSignal:
 
 @pytest.fixture(scope='session')
 def lane_change_state() -> LaneChangeState:
-    yield LaneChangeState(None, np.array([]), False, None)
+    yield LaneChangeState()

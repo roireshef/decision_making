@@ -11,8 +11,8 @@ from decision_making.src.state.state import EgoState
 
 
 class LaneChangeState:
-    def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame], target_lane_ids: Optional[np.ndarray],
-                 lane_change_active: Optional[bool], lane_change_start_time: Optional[float]):
+    def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame] = None, target_lane_ids: Optional[np.ndarray] = None,
+                 lane_change_active: Optional[bool] = False, lane_change_start_time: Optional[float] = None):
         """
         Holds lane change state
         :param source_lane_gff: GFF that the host was in when a lane change was initiated
@@ -20,10 +20,10 @@ class LaneChangeState:
         :param lane_change_active: True when a lane change is active; otherwise, False
         :param lane_change_start_time: Time when a lane change began
         """
-        self.source_lane_gff = source_lane_gff or None
+        self.source_lane_gff = source_lane_gff
         self._target_lane_ids = target_lane_ids or np.array([])
-        self.lane_change_active = lane_change_active or False
-        self.lane_change_start_time = lane_change_start_time or None
+        self.lane_change_active = lane_change_active
+        self.lane_change_start_time = lane_change_start_time
 
     def __str__(self):
         # print as dict for logs
