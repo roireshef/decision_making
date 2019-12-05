@@ -122,13 +122,19 @@ class KinematicUtils:
 
         # calculate expected lat accelerations
         lane_segment_ids, _ = reference_route.convert_to_segment_states(ftrajectories)
-        baseline_curvatures = reference_route.ftrajectories_to_ctrajectories(ftrajectories)[:,:,C_K]
+
+        baseline_curvatures = reference_route.get_curvature(ftrajectories[:,:,FS_SX])
+
         baseline_speed_limits = np.vectorize(lane_speed_limits.get)(lane_segment_ids)
+        trajectory_speeds = ctrajectories[:,:,C_V]
         baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * baseline_curvatures
-        baseline_lat_accel = np.minimum(max_lat_accelerations, baseline_lat_accel_speed_limit)
+        baseline_lat_accel_trajectory_speeds = trajectory_speeds ** 2 * baseline_curvatures
+
+        baseline_lat_accel = np.nanmin(np.stack([max_lat_accelerations, baseline_lat_accel_speed_limit,
+                                                 baseline_lat_accel_trajectory_speeds]), axis = 0)
 
         # compare target lat accels to baseline lat accels
-        lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
+        lat_acceleration = trajectory_speeds ** 2 * ctrajectories[:, :, C_K]
         lat_accel_difference = lat_acceleration - baseline_lat_accel
 
         conforms_rel_lat_accel_limits = np.all(NumpyUtils.is_in_limits(lat_accel_difference, relative_lat_acceleration_limits), axis=1)
