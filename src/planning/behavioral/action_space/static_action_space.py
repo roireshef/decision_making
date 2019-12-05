@@ -80,27 +80,24 @@ class StaticActionSpace(ActionSpace):
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
 
-        # override goal time when a lane change is being performed or desired
-        lane_change_mask = [recipe.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                            and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type
-                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                            if ~np.isnan(T[i]) else False
-                            for i, recipe in enumerate(action_recipes)]
 
-        if any(lane_change_mask):
-            # If any lane change recipes passed the filters, a lane change is desired. Override the goal time for only the lane change
-            # actions.
-            if not (behavioral_state.lane_change_state.status in
-                    [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]):
+        # Override action times if a lane change is being performed
+        if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
+            lane_change_mask = [recipe.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                                and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type
+                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                                if ~np.isnan(T[i]) else False
+                                for i, recipe in enumerate(action_recipes)]
+            if behavioral_state.lane_change_state.status == LaneChangeStatus.AnalyzingSafety:
                 # This will be reached before a lane change has begun
                 T[lane_change_mask] = LANE_CHANGE_TIME_COMPLETION_TARGET
-            else:
+            elif behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
                 T[lane_change_mask] = max(MIN_LANE_CHANGE_ACTION_TIME,
                                           LANE_CHANGE_TIME_COMPLETION_TARGET
                                           + behavioral_state.lane_change_state.lane_change_start_time
                                           - behavioral_state.ego_state.timestamp_in_sec)
-        elif behavioral_state.lane_change_state.status in \
-            [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]:
+
+        elif behavioral_state.lane_change_state.status in [LaneChangeStatus.LaneChangeActiveInTargetLane]:
             # If no lane change recipes passed the filters but a lane change is currently active, then override the goal time for the
             # same lane actions. These are the actions that will be used to complete a lane change.
             same_lane_mask = [recipe.relative_lane == RelativeLane.SAME_LANE if ~np.isnan(T[i]) else False
