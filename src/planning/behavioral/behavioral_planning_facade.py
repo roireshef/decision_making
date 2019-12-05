@@ -178,6 +178,8 @@ class BehavioralPlanningFacade(DmModule):
             else:
                 updated_state = state
 
+            self._lane_change_state.update_pre_iteration(updated_state.ego_state)
+
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
 
@@ -192,8 +194,8 @@ class BehavioralPlanningFacade(DmModule):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message, behavioral_state, selected_action_spec = \
                     planner.plan(updated_state, route_plan, self._lane_change_state)
 
-            self._lane_change_state.update(behavioral_state.extended_lane_frames, behavioral_state.projected_ego_fstates,
-                                           behavioral_state.ego_state, selected_action_spec)
+            self._lane_change_state.update_post_iteration(behavioral_state.extended_lane_frames, behavioral_state.projected_ego_fstates,
+                                                          behavioral_state.ego_state, selected_action_spec)
 
             # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
             # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral
