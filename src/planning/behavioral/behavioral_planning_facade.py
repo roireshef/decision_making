@@ -159,7 +159,9 @@ class BehavioralPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if is_engaged and LocalizationUtils.is_actual_state_close_to_expected_state(
+            
+            # TODO: this check should include is_engaged with <and> *after* the LocalizationUtils check
+            if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
                                                                               self.logger, self.__class__.__name__)
@@ -182,7 +184,9 @@ class BehavioralPlanningFacade(DmModule):
             # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
             # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral
             # offsets up to even crossing lane boundaries
-            self._last_trajectory = samplable_trajectory if is_engaged else None
+
+            # TODO: this should be set with: if is_engaged else None
+            self._last_trajectory = samplable_trajectory
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
 
