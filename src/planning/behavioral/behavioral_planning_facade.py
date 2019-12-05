@@ -189,7 +189,8 @@ class BehavioralPlanningFacade(DmModule):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message, behavioral_state, selected_action_spec = \
                     planner.plan(updated_state, route_plan, self._lane_change_state)
 
-            self._lane_change_state.update(behavioral_state, selected_action_spec)
+            self._lane_change_state.update(behavioral_state.extended_lane_frames, behavioral_state.projected_ego_fstates,
+                                           behavioral_state.ego_state, selected_action_spec)
 
             # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
             # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral
