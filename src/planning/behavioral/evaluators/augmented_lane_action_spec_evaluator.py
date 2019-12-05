@@ -4,6 +4,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.lane_based_action_spec_evaluator import LaneBasedActionSpecEvaluator
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -58,7 +59,8 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
 
         # If we're currently performing a lane change and in the target lane, override the previous lanes_to_try and prioritize actions
         # in the same lane in order to complete the maneuver.
-        if behavioral_state.lane_change_state.lane_change_active:
+        if behavioral_state.lane_change_state.status in \
+            [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]:
             is_host_in_target_lane = behavioral_state.lane_change_state.are_target_lane_ids_in_gff(
                 behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE])
 

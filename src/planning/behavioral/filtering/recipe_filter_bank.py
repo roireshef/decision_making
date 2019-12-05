@@ -3,6 +3,7 @@ from typing import List
 
 from decision_making.src.messages.turn_signal_message import TurnSignalState
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe, \
     RoadSignActionRecipe
@@ -104,7 +105,8 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
         time_since_turn_signal_changed = behavioral_state.ego_state.timestamp_in_sec - \
                                          behavioral_state.ego_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
         turn_signal_state = behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state
-        lane_change_active = behavioral_state.lane_change_state.lane_change_active
+        lane_change_active = behavioral_state.lane_change_state.status in \
+                            [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]
 
         is_host_in_target_lane = behavioral_state.lane_change_state.are_target_lane_ids_in_gff(
             behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]) if lane_change_active else False

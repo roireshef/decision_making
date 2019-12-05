@@ -15,6 +15,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
@@ -102,7 +103,8 @@ n Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
             # reach here are associated with the same relative lane.
             target_lane = np.array(action_specs)[lane_change_mask][0].relative_lane
             target_gff = behavioral_state.extended_lane_frames[target_lane]
-        elif behavioral_state.lane_change_state.lane_change_active:
+        elif behavioral_state.lane_change_state.status in  \
+            [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]:
             # If we reach here, the host has crossed into the target lane but has yet to complete the lane change.
             lane_change_mask = [spec.relative_lane == RelativeLane.SAME_LANE for spec in action_specs]
             target_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]

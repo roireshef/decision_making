@@ -6,6 +6,7 @@ from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_J
 from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, StaticActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -89,7 +90,8 @@ class StaticActionSpace(ActionSpace):
         if any(lane_change_mask):
             # If any lane change recipes passed the filters, a lane change is desired. Override the goal time for only the lane change
             # actions.
-            if not behavioral_state.lane_change_state.lane_change_active:
+            if not (behavioral_state.lane_change_state.status in
+                    [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]):
                 # This will be reached before a lane change has begun
                 T[lane_change_mask] = LANE_CHANGE_TIME_COMPLETION_TARGET
             else:
@@ -97,7 +99,8 @@ class StaticActionSpace(ActionSpace):
                                           LANE_CHANGE_TIME_COMPLETION_TARGET
                                           + behavioral_state.lane_change_state.lane_change_start_time
                                           - behavioral_state.ego_state.timestamp_in_sec)
-        elif behavioral_state.lane_change_state.lane_change_active:
+        elif behavioral_state.lane_change_state.status in \
+            [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]:
             # If no lane change recipes passed the filters but a lane change is currently active, then override the goal time for the
             # same lane actions. These are the actions that will be used to complete a lane change.
             same_lane_mask = [recipe.relative_lane == RelativeLane.SAME_LANE if ~np.isnan(T[i]) else False

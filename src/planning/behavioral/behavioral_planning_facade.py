@@ -38,7 +38,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
-from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -167,7 +167,10 @@ class BehavioralPlanningFacade(DmModule):
                 # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
                 # the target GFF. This will happen when we're performing a lane change.
                 target_gff = self._lane_change_state.source_lane_gff \
-                    if self._lane_change_state.lane_change_active and (state.ego_state.map_state.lane_id not in self._last_gff_segment_ids) \
+                    if self._lane_change_state.status in \
+                            [LaneChangeStatus.LaneChangeActiveInSourceLane,
+                             LaneChangeStatus.LaneChangeActiveInTargetLane] \
+                        and (state.ego_state.map_state.lane_id not in self._last_gff_segment_ids) \
                     else None
 
                 updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
