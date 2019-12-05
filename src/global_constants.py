@@ -91,6 +91,8 @@ LON_ACC_LIMITS = np.array([-5.5, 3.0])  # taken from SuperCruise presentation
 # TODO: deprecated - should be replaced or removed as it is replaced by LAT_ACC_LIMITS_BY_K
 LAT_ACC_LIMITS = np.array([-2, 2])
 
+LAT_ACC_LIMITS_LANE_CHANGE = np.array([-3, 3])
+
 # Latitudinal Acceleration Limits [m/sec^2] by radius. This table represents a piecewise linear function that maps
 # radius of turn to the corresponding lateral acceleration limit to test against. Each tuple in the table consists of
 # the following ("from" radius, "to" radius, ...) to represent the radius range,

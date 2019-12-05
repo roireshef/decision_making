@@ -45,13 +45,14 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         lanes_to_try = []
 
         # If lane change is desired, prioritize actions towards that lanes by placing the respective relative lane first in the list.
-        if behavioral_state.lane_change_state.lane_change_direction == RelativeLane.LEFT_LANE \
+        if behavioral_state.lane_change_state.target_relative_lane == RelativeLane.LEFT_LANE \
                 and behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
             lanes_to_try = [RelativeLane.LEFT_LANE]
-        elif behavioral_state.lane_change_state.lane_change_direction == RelativeLane.RIGHT_LANE \
+        elif behavioral_state.lane_change_state.target_relative_lane == RelativeLane.RIGHT_LANE \
                 and behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
             lanes_to_try = [RelativeLane.RIGHT_LANE]
         elif behavioral_state.lane_change_state == LaneChangeStatus.LaneChangeActiveInTargetLane:
+            # Force host to stay in the lane change target lane until lane change is complete
             lanes_to_try = [RelativeLane.SAME_LANE]
         else:
             # If no lane change is requested, drive according to route plan costs
