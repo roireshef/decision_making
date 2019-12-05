@@ -1,3 +1,4 @@
+from enum import Enum
 import numpy as np
 from typing import Optional, Dict
 
@@ -10,20 +11,32 @@ from decision_making.src.state.state import EgoState
 
 
 
+class LaneChangeStatus(Enum):
+    LaneChangeRequestable = 0   # TODO: Find a better name so that it's not confused with LaneChangeRequested?
+    LaneChangeRequested = 1
+    AnalyzingSafety = 2
+    LaneChangeActiveInSourceLane = 3
+    LaneChangeActiveInTargetLane = 4
+    LaneChangeCompleteWaitingForReset = 5
+
+
 class LaneChangeState:
     def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame] = None, target_lane_ids: Optional[np.ndarray] = None,
-                 lane_change_active: Optional[bool] = False, lane_change_start_time: Optional[float] = None):
+                 lane_change_active: Optional[bool] = False, lane_change_start_time: Optional[float] = None,
+                 status: Optional[LaneChangeStatus] = LaneChangeStatus.LaneChangeRequestable):
         """
         Holds lane change state
         :param source_lane_gff: GFF that the host was in when a lane change was initiated
         :param target_lane_ids: Lane IDs of the GFF that the host is targeting in a lane change
         :param lane_change_active: True when a lane change is active; otherwise, False
         :param lane_change_start_time: Time when a lane change began
+        :param status: lane change status
         """
         self.source_lane_gff = source_lane_gff
         self._target_lane_ids = target_lane_ids or np.array([])
         self.lane_change_active = lane_change_active
         self.lane_change_start_time = lane_change_start_time
+        self.status = status
 
     def __str__(self):
         # print as dict for logs
