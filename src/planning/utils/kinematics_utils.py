@@ -5,7 +5,7 @@ from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRI
     SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, TINY_CURVATURE
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX, FS_DV, FS_DA, Limits2D, RangedLimits2D, FrenetTrajectories2D
+    FS_DX, FS_DV, FS_DA, Limits2D, RangedLimits2D, FrenetTrajectories2D, FP_SX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math_utils import Math
@@ -107,10 +107,9 @@ class KinematicUtils:
                                                        max_lat_accelerations: np.ndarray, relative_lat_acceleration_limits: Limits,
                                                        reference_route: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
-        Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
-        longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity).
-        Also, for all trajectories that are not masked, the lateral acceleration relative to the provided reference route
-        will also be checked. The returned values are the intersection of these two checks.
+        Given a set of trajectories in Cartesian coordinate-frame, this filter checks to see if the lateral accelerations
+        at every point is within some range of the lateral accelerations that would have been experienced by following
+        the ftrajectories on the reference_route.
         :param ftrajectories: FrenetTrajectories2D object to use while checking relative lat. accel. limit
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param max_lat_accelerations: lateral acceleration limits to test for in cartesian frame [m/sec^2]
@@ -118,29 +117,17 @@ class KinematicUtils:
         :param reference_route: GFF used for calculating baseline lat. accel.
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
-        # set DX, DV, DA to 0 to simulate traveling on the reference route
-        ftrajectories[:,:, [FS_DX, FS_DV, FS_DA]] = 0.0
 
-        # Convert back to ctrajectories to get curvature
-        ctrajectories_on_baseline = reference_route.ftrajectories_to_ctrajectories(ftrajectories)
+        lane_speed_limits = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in reference_route.segment_ids}
 
-        # Determine velocity to use for calculating baseline lat. accel.
-        num_trajectories, num_points_per_trajectory, _ = ftrajectories.shape
-        baseline_velocities = np.zeros((num_trajectories, num_points_per_trajectory))
+        # calculate expected lat accelerations
+        lane_segment_ids, _ = reference_route.convert_to_segment_states(ftrajectories)
+        baseline_curvatures = reference_route.ftrajectories_to_ctrajectories(ftrajectories)[:,:,C_K]
+        baseline_speed_limits = np.vectorize(lane_speed_limits.get)(lane_segment_ids)
+        baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * baseline_curvatures
+        baseline_lat_accel = np.minimum(max_lat_accelerations, baseline_lat_accel_speed_limit)
 
-        for i, ftrajectory in enumerate(ftrajectories):
-            lane_segment_ids, _ = reference_route.convert_to_segment_states(ftrajectory)
-
-            for j, lane_segment_id in enumerate(lane_segment_ids):
-                curvature = max(TINY_CURVATURE, abs(ctrajectories_on_baseline[i, j, C_K]))
-                curve_speed_control_velocity = np.sqrt(max_lat_accelerations[i, j] / curvature)
-
-                speed_limit = MapUtils.get_lane(lane_segment_id).e_v_nominal_speed
-
-                baseline_velocities[i, j] = min(speed_limit, curve_speed_control_velocity)
-
-        # Calculate lat. accel. difference relative to reference route
-        baseline_lat_accel = (baseline_velocities ** 2) * ctrajectories_on_baseline[:, :, C_K]
+        # compare target lat accels to baseline lat accels
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lat_accel_difference = lat_acceleration - baseline_lat_accel
 

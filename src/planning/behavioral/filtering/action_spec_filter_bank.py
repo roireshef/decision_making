@@ -47,7 +47,8 @@ class FilterForKinematics(ActionSpecFilter):
             - max longitudinal position (available in the reference frame)
             - longitudinal velocity limits - both in Frenet (analytical) and Cartesian (by sampling)
             - longitudinal acceleration limits - both in Frenet (analytical) and Cartesian (by sampling)
-            - lateral acceleration limits - in Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
+            - lateral acceleration limits - i        conforms_limits = self._filter_relative_if_lane_change(conforms_limits, action_specs, behavioral_state,
+n Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
             conceptually "straightens" the road's shape.
         :param action_specs: list of action specs
         :param behavioral_state:
@@ -68,6 +69,24 @@ class FilterForKinematics(ActionSpecFilter):
 
         conforms_limits = KinematicUtils.filter_by_cartesian_limits(
             ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
+
+        conforms_limits = self._filter_relative_if_lane_change(conforms_limits, action_specs, behavioral_state,
+                                                               ftrajectories, ctrajectories, nominal_abs_lat_acc_limits)
+        return conforms_limits
+
+    def _filter_relative_if_lane_change(self, conforms_limits, action_specs, behavioral_state,
+                                        ftrajectories, ctrajectories, nominal_abs_lat_acc_limits):
+        """
+        Imposes a relative acceleration limit if a lane change is being performed
+        The lane change trajectory must not exceed the accelerations expected in the baseline trajectory by REL_LAT_ACC_LIMITS
+        :param conforms_limits:
+        :param action_specs:
+        :param behavioral_state:
+        :param ftrajectories:
+        :param ctrajectories:
+        :param nominal_abs_lat_acc_limits:
+        :return:
+        """
 
         # If a lane change is desired, relative lat. accel. limits need to be checked as well.
         mask_for_lc_actions_toward_target_lane = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
@@ -91,9 +110,11 @@ class FilterForKinematics(ActionSpecFilter):
             lane_change_mask = target_gff = None
 
         if lane_change_mask:
-            conforms_limits[lane_change_mask] = KinematicUtils.filter_by_relative_lateral_acceleration_limits(
-                ftrajectories[lane_change_mask], ctrajectories[lane_change_mask], nominal_abs_lat_acc_limits[lane_change_mask],
-                REL_LAT_ACC_LIMITS, target_gff)
+            conforms_limits[lane_change_mask] = np.logical_and(conforms_limits[lane_change_mask],
+                                                KinematicUtils.filter_by_relative_lateral_acceleration_limits(
+                                                ftrajectories[lane_change_mask], ctrajectories[lane_change_mask],
+                                                nominal_abs_lat_acc_limits[lane_change_mask],
+                                                REL_LAT_ACC_LIMITS, target_gff))
 
         return conforms_limits
 
