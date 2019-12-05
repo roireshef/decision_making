@@ -39,7 +39,8 @@ class BasePlanner:
         self.logger = logger
 
     @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState):
+    def plan(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) \
+        -> [TrajectoryParams, SamplableTrajectory, BehavioralVisualizationMsg, BehavioralGridState, ActionSpec]:
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
