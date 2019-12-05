@@ -4,7 +4,6 @@ from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
 import numpy as np
-import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
     RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
@@ -75,7 +74,6 @@ class BehavioralGridState:
         return self.ego_state.size.length
 
     @classmethod
-    @prof.ProfileFunction()
     def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
         """
         Occupy the occupancy grid.
@@ -177,7 +175,7 @@ class BehavioralGridState:
         return projected_dynamic_objects
 
     @staticmethod
-    @prof.ProfileFunction()
+    
     def _add_road_semantics(dynamic_objects: List[DynamicObject],
                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                             projected_ego_fstates: Dict[RelativeLane, FrenetState2D], logger: Logger) -> \
@@ -295,7 +293,7 @@ class BehavioralGridState:
         return longitudinal_differences
 
     @staticmethod
-    @prof.ProfileFunction()
+    
     def _create_generalized_frenet_frames(ego_state: EgoState, route_plan: RoutePlan, logger: Logger) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
@@ -384,7 +382,7 @@ class BehavioralGridState:
 
     @staticmethod
     @raises(LaneNotFound, RoadNotFound, UpstreamLaneNotFound, StraightConnectionNotFound)
-    @prof.ProfileFunction()
+    
     def _get_generalized_frenet_frames(lane_id: int, station: float, route_plan: RoutePlan, logger: Logger,
                                        forward_horizon: float = MAX_FORWARD_HORIZON,
                                        backward_horizon: float = MAX_BACKWARD_HORIZON,
@@ -591,7 +589,7 @@ class BehavioralGridState:
         return lane_subsegments_dict
 
     @staticmethod
-    @prof.ProfileFunction()
+    
     def _project_objects_on_grid(objects: List[DynamicObjectWithRoadSemantics], ego_state: EgoState) -> \
             Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]:
         """
@@ -620,7 +618,7 @@ class BehavioralGridState:
         return grid
 
     @staticmethod
-    @prof.ProfileFunction()
+    
     def _get_longitudinal_grid_cell(obj: DynamicObjectWithRoadSemantics, ego_state: EgoState):
         """
         Given a dynamic object representation and ego state, calculate what is the proper longitudinal
