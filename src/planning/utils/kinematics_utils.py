@@ -130,8 +130,14 @@ class KinematicUtils:
         baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * baseline_curvatures
         baseline_lat_accel_trajectory_speeds = trajectory_speeds ** 2 * baseline_curvatures
 
-        baseline_lat_accel = np.nanmin(np.stack([max_lat_accelerations, baseline_lat_accel_speed_limit,
-                                                 baseline_lat_accel_trajectory_speeds]), axis = 0)
+        baseline_lat_accels_stack = np.stack([max_lat_accelerations, baseline_lat_accel_speed_limit,
+                                                 baseline_lat_accel_trajectory_speeds])
+
+        # This returns the indices of the points with the minimal absolute value
+        baseline_lat_accels_min_indices = np.nanargmin(np.abs(baseline_lat_accels_stack), axis = 0)
+
+        # Index the original baseline_lat_accels_stack to get the signs back
+        baseline_lat_accel = np.choose(baseline_lat_accels_min_indices, baseline_lat_accels_stack)
 
         # compare target lat accels to baseline lat accels
         lat_acceleration = trajectory_speeds ** 2 * ctrajectories[:, :, C_K]
