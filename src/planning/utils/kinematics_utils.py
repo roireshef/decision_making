@@ -104,7 +104,7 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_relative_lateral_acceleration_limits(ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories,
-                                                       max_lat_accelerations: np.ndarray, relative_lat_acceleration_limits: Limits,
+                                                       relative_lat_acceleration_limits: Limits,
                                                        reference_route: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, this filter checks to see if the lateral accelerations
@@ -130,7 +130,7 @@ class KinematicUtils:
         baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * baseline_curvatures
         baseline_lat_accel_trajectory_speeds = trajectory_speeds ** 2 * baseline_curvatures
 
-        baseline_lat_accels_stack = np.stack([max_lat_accelerations, baseline_lat_accel_speed_limit,
+        baseline_lat_accels_stack = np.stack([baseline_lat_accel_speed_limit,
                                                  baseline_lat_accel_trajectory_speeds])
 
         # This returns the indices of the points with the minimal absolute value
