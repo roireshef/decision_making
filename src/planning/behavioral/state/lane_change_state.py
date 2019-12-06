@@ -23,6 +23,10 @@ class LaneChangeStatus(Enum):
 
 
 class LaneChangeState:
+    # This is a class variable and shared by all instances of LaneChangeState
+    expected_turn_signal_state = {RelativeLane.LEFT_LANE: TurnSignalState.CeSYS_e_LeftTurnSignalOn,
+                                  RelativeLane.RIGHT_LANE: TurnSignalState.CeSYS_e_RightTurnSignalOn}
+
     def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame] = None, target_lane_ids: Optional[np.ndarray] = None,
                  lane_change_active: Optional[bool] = False, lane_change_start_time: Optional[float] = None,
                  target_relative_lane: Optional[RelativeLane] = None,
@@ -94,12 +98,12 @@ class LaneChangeState:
         elif self.status == LaneChangeStatus.LaneChangeRequested:
             time_since_lane_change_requested = ego_state.timestamp_in_sec - ego_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
 
-            if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
+            if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
                 self._reset()
             elif time_since_lane_change_requested > LANE_CHANGE_DELAY:
                 self.status = LaneChangeStatus.AnalyzingSafety
         elif self.status == LaneChangeStatus.AnalyzingSafety:
-            if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
+            if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
                 self._reset()
         elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
             # This assumes that if the host has been localized in the target lane, it is definitely over the abort threshold 
@@ -123,13 +127,14 @@ class LaneChangeState:
                     # We should never get here
                     lane_change_percent_complete = 0.0
 
-                if (ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off
+                if (ego_state.turn_signal.s_Data.e_e_turn_signal_state
+                        != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]
                         and lane_change_percent_complete <= LANE_CHANGE_ABORT_THRESHOLD):
                     self._reset()
         elif self.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
             pass
         elif self.status == LaneChangeStatus.LaneChangeCompleteWaitingForReset:
-            if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
+            if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
                 self._reset()
 
     def update_post_iteration(self, extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
