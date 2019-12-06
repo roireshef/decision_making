@@ -103,7 +103,7 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
 
         turn_signal_state = behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state
 
-        lane_change_available = behavioral_state.lane_change_state in \
+        lane_change_available = behavioral_state.lane_change_state.status in \
                                 [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]
 
         return [recipe.relative_lane == RelativeLane.SAME_LANE

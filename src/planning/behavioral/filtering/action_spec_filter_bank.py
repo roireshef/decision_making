@@ -72,8 +72,15 @@ n Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
         conforms_limits, lane_change_mask = self._filter_relative_if_lane_change(action_specs, behavioral_state,
                                                                ftrajectories, ctrajectories, nominal_abs_lat_acc_limits)
 
-        conforms_limits[~lane_change_mask] = KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories[~lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
+        if lane_change_mask:
+            lane_change_mask_inverse = [not i for i in lane_change_mask]
+
+            conforms_limits[lane_change_mask_inverse] = KinematicUtils.filter_by_cartesian_limits(
+                ctrajectories[lane_change_mask_inverse], VELOCITY_LIMITS, LON_ACC_LIMITS,
+                two_sided_lat_acc_limits[lane_change_mask_inverse])
+        else:
+            conforms_limits = KinematicUtils.filter_by_cartesian_limits(
+                ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
 
         return conforms_limits
 
@@ -94,10 +101,10 @@ n Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
         conforms_limits = np.array([True for _ in action_specs])
 
         # If a lane change is desired, relative lat. accel. limits need to be checked as well.
-        mask_for_lc_actions_toward_target_lane = np.array([spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+        mask_for_lc_actions_toward_target_lane = [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
                                                   and behavioral_state.extended_lane_frames[spec.relative_lane].gff_type
                                                   not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                                                  for spec in action_specs])
+                                                  for spec in action_specs]
 
         if any(mask_for_lc_actions_toward_target_lane):
             # If we reach here, a lane change is desired, and the host is still in the source lane.
@@ -107,8 +114,7 @@ n Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
             # reach here are associated with the same relative lane.
             target_lane = np.array(action_specs)[lane_change_mask][0].relative_lane
             target_gff = behavioral_state.extended_lane_frames[target_lane]
-        elif behavioral_state.lane_change_state.status in  \
-            [LaneChangeStatus.LaneChangeActiveInSourceLane, LaneChangeStatus.LaneChangeActiveInTargetLane]:
+        elif behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
             # If we reach here, the host has crossed into the target lane but has yet to complete the lane change.
             lane_change_mask = [spec.relative_lane == RelativeLane.SAME_LANE for spec in action_specs]
             target_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
@@ -117,10 +123,15 @@ n Cartesian (by sampling) - this isn't tested in Frenet, because Frenet frame
 
         if lane_change_mask:
             # lane change maneuvers are allowed a higher max lat accel
-            lane_change_max_lat_accel = np.array([LAT_ACC_LIMITS_LANE_CHANGE for _ in action_specs[lane_change_mask]])
+            num_trajectories, num_points, _ = ctrajectories[lane_change_mask].shape
+            lane_change_max_lat_accel = np.array([[LAT_ACC_LIMITS_LANE_CHANGE for _ in range(num_points)] for _ in range(num_trajectories)])
+            # lane_change_max_lat_accel = np.array([LAT_ACC_LIMITS_LANE_CHANGE for _ in np.array(action_specs)[lane_change_mask]])
+
+            # TODO: Determine if nominal_abs_lat_acc_limits below is correct for LC trajectories. This may be wrong if it's using the
+            #  curvature along the trajectory and not the lane.
             conforms_limits[lane_change_mask] = np.logical_and(
                 KinematicUtils.filter_by_cartesian_limits(
-                ctrajectories[~lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, lane_change_max_lat_accel),
+                ctrajectories[lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, lane_change_max_lat_accel),
                 KinematicUtils.filter_by_relative_lateral_acceleration_limits(
                                                     ftrajectories[lane_change_mask], ctrajectories[lane_change_mask],
                                                     nominal_abs_lat_acc_limits[lane_change_mask],

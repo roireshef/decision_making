@@ -74,19 +74,22 @@ class LaneChangeState:
 
     def update_pre_iteration(self, ego_state: EgoState):
         if self.status == LaneChangeStatus.LaneChangeRequestable:
-            if ego_state.turn_signal.s_Data.e_e_turn_signal_state in [TurnSignalState.CeSYS_e_LeftTurnSignalOn,
-                                                                      TurnSignalState.CeSYS_e_RightTurnSignalOn]:
+            if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
+                self.target_relative_lane = RelativeLane.LEFT_LANE
+                self.status = LaneChangeStatus.LaneChangeRequested
+            elif ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn:
+                self.target_relative_lane = RelativeLane.RIGHT_LANE
                 self.status = LaneChangeStatus.LaneChangeRequested
         elif self.status == LaneChangeStatus.LaneChangeRequested:
             time_since_lane_change_requested = ego_state.timestamp_in_sec - ego_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
 
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
-                self.status = LaneChangeStatus.LaneChangeRequestable
+                self._reset()
             elif time_since_lane_change_requested > LANE_CHANGE_DELAY:
                 self.status = LaneChangeStatus.AnalyzingSafety
         elif self.status == LaneChangeStatus.AnalyzingSafety:
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
-                self.status = LaneChangeStatus.LaneChangeRequestable
+                self._reset()
         elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
             dist_to_right_border_in_source_lane, dist_to_left_border_in_source_lane = MapUtils.get_dist_to_lane_borders(
                 ego_state.map_state.lane_id, ego_state.map_state.lane_fstate[FS_SX])
