@@ -76,16 +76,17 @@ class LaneChangeState:
         """
         return lane_id in self._target_lane_ids
 
-    def get_lane_change_mask(self, action_specs: List[ActionSpec], extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]):
+    def get_lane_change_mask(self, relative_lanes: List[RelativeLane],
+                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> List[bool]:
         """
         TODO
-        :param action_specs:
+        :param relative_lanes:
         :param extended_lane_frames:
         :return:
         """
-        return [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                and extended_lane_frames[spec.relative_lane].gff_type not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                for spec in action_specs]
+        return [relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                and extended_lane_frames[relative_lane].gff_type not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                for relative_lane in relative_lanes]
 
     def update_pre_iteration(self, ego_state: EgoState):
         if self.status == LaneChangeStatus.LaneChangeRequestable:
