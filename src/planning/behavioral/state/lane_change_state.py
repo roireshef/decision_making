@@ -1,6 +1,6 @@
 from enum import Enum
 import numpy as np
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from decision_making.src.global_constants import MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE, MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE, \
     LANE_CHANGE_DELAY, LANE_CHANGE_ABORT_THRESHOLD
@@ -71,6 +71,17 @@ class LaneChangeState:
         :return:
         """
         return lane_id in self._target_lane_ids
+
+    def get_lane_change_mask(self, action_specs: List[ActionSpec], extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]):
+        """
+        TODO
+        :param action_specs:
+        :param extended_lane_frames:
+        :return:
+        """
+        return [spec.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
+                and extended_lane_frames[spec.relative_lane].gff_type not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                for spec in action_specs]
 
     def update_pre_iteration(self, ego_state: EgoState):
         if self.status == LaneChangeStatus.LaneChangeRequestable:
