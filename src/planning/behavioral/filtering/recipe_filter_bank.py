@@ -1,7 +1,6 @@
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, LANE_CHANGE_DELAY
 from typing import List
 
-from decision_making.src.messages.turn_signal_message import TurnSignalState
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
@@ -100,18 +99,12 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
     This filter denies actions towards the LEFT or RIGHT lanes unless the lane is an augmented lane or a lane change is desired
     """
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-
-        turn_signal_state = behavioral_state.ego_state.turn_signal.s_Data.e_e_turn_signal_state
-
-        lane_change_available = behavioral_state.lane_change_state.status in \
-                                [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]
+        lane_change_desired = behavioral_state.lane_change_state.status in \
+                              [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]
 
         return [recipe.relative_lane == RelativeLane.SAME_LANE
                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]
-                or ((recipe.relative_lane == RelativeLane.LEFT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn)
-                    and lane_change_available)
-                or ((recipe.relative_lane == RelativeLane.RIGHT_LANE) and (turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn)
-                    and lane_change_available)
+                or (lane_change_desired and recipe.relative_lane == behavioral_state.lane_change_state.target_relative_lane)
                 if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
                 else False for recipe in recipes]
 
