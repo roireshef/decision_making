@@ -91,28 +91,30 @@ class LaneChangeState:
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off:
                 self._reset()
         elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
-            dist_to_right_border_in_source_lane, dist_to_left_border_in_source_lane = MapUtils.get_dist_to_lane_borders(
-                ego_state.map_state.lane_id, ego_state.map_state.lane_fstate[FS_SX])
-
-            target_lane_id = MapUtils.get_adjacent_lane_ids(ego_state.map_state.lane_id, self.target_relative_lane)[0]
-            dist_to_right_border_in_target_lane, dist_to_left_border_in_target_lane = MapUtils.get_dist_to_lane_borders(
-                    target_lane_id, ego_state.map_state.lane_fstate[FS_SX])
-
-            if self.target_relative_lane == RelativeLane.LEFT_LANE:
-                dist_between_lane_centers = dist_to_left_border_in_source_lane + dist_to_right_border_in_target_lane
-                lane_change_percent_complete = max(0.0, -ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
-            elif self.target_relative_lane == RelativeLane.RIGHT_LANE:
-                dist_between_lane_centers = dist_to_right_border_in_source_lane + dist_to_left_border_in_target_lane
-                lane_change_percent_complete = max(0.0, ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
-            else:
-                # We should never get here
-                lane_change_percent_complete = 0.0
-
-            if (ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off
-                    and lane_change_percent_complete <= LANE_CHANGE_ABORT_THRESHOLD):
-                self._reset()
-            elif self._is_lane_id_in_target_lane_ids(ego_state.map_state.lane_id):  # check to see if host has crossed into target lane
+            # This assumes that if the host has been localized in the target lane, it is definitely over the abort threshold 
+            if self._is_lane_id_in_target_lane_ids(ego_state.map_state.lane_id):  # check to see if host has crossed into target lane
                 self.status = LaneChangeStatus.LaneChangeActiveInTargetLane
+            else:
+                dist_to_right_border_in_source_lane, dist_to_left_border_in_source_lane = MapUtils.get_dist_to_lane_borders(
+                    ego_state.map_state.lane_id, ego_state.map_state.lane_fstate[FS_SX])
+
+                target_lane_id = MapUtils.get_adjacent_lane_ids(ego_state.map_state.lane_id, self.target_relative_lane)[0]
+                dist_to_right_border_in_target_lane, dist_to_left_border_in_target_lane = MapUtils.get_dist_to_lane_borders(
+                        target_lane_id, ego_state.map_state.lane_fstate[FS_SX])
+
+                if self.target_relative_lane == RelativeLane.LEFT_LANE:
+                    dist_between_lane_centers = dist_to_left_border_in_source_lane + dist_to_right_border_in_target_lane
+                    lane_change_percent_complete = max(0.0, -ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
+                elif self.target_relative_lane == RelativeLane.RIGHT_LANE:
+                    dist_between_lane_centers = dist_to_right_border_in_source_lane + dist_to_left_border_in_target_lane
+                    lane_change_percent_complete = max(0.0, ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
+                else:
+                    # We should never get here
+                    lane_change_percent_complete = 0.0
+
+                if (ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_Off
+                        and lane_change_percent_complete <= LANE_CHANGE_ABORT_THRESHOLD):
+                    self._reset()
         elif self.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
             pass
         elif self.status == LaneChangeStatus.LaneChangeCompleteWaitingForReset:
