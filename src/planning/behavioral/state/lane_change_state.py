@@ -68,6 +68,22 @@ class LaneChangeState:
         """
         return np.any(np.isin(self._target_lane_ids, gff.segment_ids))
 
+    def get_target_lane_gff(self, extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> GeneralizedFrenetSerretFrame:
+        """
+        Given a set of extended_lane_frames from a BehavioralGridState, this chooses the GFF that represents the
+        lane change target lane.
+        :param extended_lane_frames:
+        :return:
+        """
+        if self.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
+            target_gff = extended_lane_frames[self.target_relative_lane]
+        elif self.status in [LaneChangeStatus.LaneChangeActiveInTargetLane]:
+            target_gff = extended_lane_frames[RelativeLane.SAME_LANE]
+        else:
+            target_gff = None
+
+        return target_gff
+
     def _is_lane_id_in_target_lane_ids(self, lane_id: int) -> bool:
         """
         TODO
