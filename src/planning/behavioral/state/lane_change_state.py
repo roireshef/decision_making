@@ -154,9 +154,7 @@ class LaneChangeState:
         elif self.status == LaneChangeStatus.LaneChangeRequested:
             pass
         elif self.status == LaneChangeStatus.AnalyzingSafety:
-            if (selected_action.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                and extended_lane_frames[selected_action.relative_lane].gff_type not in
-                    [GFFType.Augmented, GFFType.AugmentedPartial]):
+            if self.get_lane_change_mask([selected_action.relative_lane], extended_lane_frames)[0]:
                 self.source_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE]
                 self._target_lane_ids = extended_lane_frames[selected_action.relative_lane].segment_ids
                 self.lane_change_active = True

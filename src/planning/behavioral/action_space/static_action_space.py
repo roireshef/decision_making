@@ -80,14 +80,15 @@ class StaticActionSpace(ActionSpace):
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
 
-
         # Override action times if a lane change is being performed
         if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
-            lane_change_mask = [recipe.relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                                and behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type
-                                not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                                if ~np.isnan(T[i]) else False
-                                for i, recipe in enumerate(action_recipes)]
+            action_recipe_relative_lanes = [recipe.relative_lane for recipe in action_recipes]
+            lane_change_mask = behavioral_state.lane_change_state.get_lane_change_mask(action_recipe_relative_lanes,
+                                                                                       behavioral_state.extended_lane_frames)
+
+            # Override mask values if T is nan for that recipe
+            lane_change_mask = [mask if ~np.isnan(T[i]) else False for i, mask in enumerate(lane_change_mask)]
+
             if behavioral_state.lane_change_state.status == LaneChangeStatus.AnalyzingSafety:
                 # This will be reached before a lane change has begun
                 T[lane_change_mask] = LANE_CHANGE_TIME_COMPLETION_TARGET
