@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, \
     LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
@@ -5,8 +7,7 @@ from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTA
 from decision_making.src.planning.behavioral.state.lane_merge_actor_state import LaneMergeActorState
 from decision_making.src.planning.types import FS_SX, FrenetState1D, FS_SV, \
     FS_SA
-from gym.spaces.tuple import Tuple as GymTuple
-from typing import List, Dict
+from gym.spaces import Tuple as GymTuple
 
 
 class LaneMergeStateEncoder:
