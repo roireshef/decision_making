@@ -8,7 +8,7 @@ from interface.Rte_Types.python.sub_structures.TsSYS_FrenetSubsegment import TsS
 from interface.Rte_Types.python.sub_structures.TsSYS_GeneralizedFrenetSerretFrame import TsSYSGeneralizedFrenetSerretFrame
 from decision_making.src.utils.serialization_utils import SerializationUtils
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.exceptions import OutOfSegmentFront

@@ -7,7 +7,7 @@ from decision_making.src.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, NEGLIGIBLE_VELOCITY
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL, NEGLIGIBLE_VELOCITY
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \

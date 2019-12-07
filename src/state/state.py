@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Tuple, TypeVar
 
 import numpy as np
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoStateLaneIdNotValid
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
     EGO_HEIGHT, LANE_END_COST_IND
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.messages.scene_static_enums import ManeuverType
