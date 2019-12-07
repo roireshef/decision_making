@@ -9,6 +9,7 @@ from decision_making.src.messages.scene_common_messages import Timestamp, Header
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
     HostHypothesis, ObjectLocalization, BoundingBoxSize, ObjectClassification, ObjectHypothesis, \
     ObjectTrackDynamicProperty
+from decision_making.src.messages.scene_tcd_message import DataSceneTrafficControlDevices, SceneTrafficControlDevices
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
 from decision_making.src.messages.turn_signal_message import TurnSignal, DataTurnSignal, TurnSignalState
@@ -249,6 +250,17 @@ def scene_dynamic(scene_static_short_testable) -> SceneDynamic:
     scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
 
     yield scene_dynamic
+
+
+@pytest.fixture(scope='function')
+def tcd_status() -> SceneTrafficControlDevices:
+
+    timestamp = Timestamp.from_seconds(5.0)
+    tcd_status_data = DataSceneTrafficControlDevices(s_RecvTimestamp=timestamp, s_ComputeTimestamp=timestamp, as_dynamic_traffic_control_device_status={})
+    header = Header(0, timestamp, 0)
+    tcd_status = SceneTrafficControlDevices(s_Header=header, s_Data=tcd_status_data)
+
+    yield tcd_status
 
 
 @pytest.fixture(scope='function')

@@ -44,7 +44,7 @@ class LaneMergeState(BehavioralGridState):
         If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
         :param target_rel_lane: RelativeLane of the merge target lane
         """
-        super().__init__(road_occupancy_grid, ego_state, extended_lane_frames, projected_ego_fstates)
+        super().__init__(road_occupancy_grid, ego_state, extended_lane_frames, projected_ego_fstates, {}, None)
         self.red_line_s_on_ego_gff = red_line_s_on_ego_gff
         self.target_rel_lane = target_rel_lane
 

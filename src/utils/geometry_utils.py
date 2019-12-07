@@ -41,10 +41,10 @@ class Euclidean:
         clipped_projections = segments_start[np.newaxis, :, :] + np.einsum('ij,jk->ijk', clipped_progress, segments_vec)
 
         # euclidean distance from each point [rows] to the corresponding clipped-projection on each segment [columns]
-        dinstances_to_clipped_projections = np.linalg.norm(points_matrix[..., np.newaxis, :] - clipped_projections, axis=-1)
+        distances_to_clipped_projections = np.linalg.norm(points_matrix[..., np.newaxis, :] - clipped_projections, axis=-1)
 
         # 1D for each point, hold the index of the closest segment
-        closest_segment_idxs = np.argmin(dinstances_to_clipped_projections, axis=-1)
+        closest_segment_idxs = np.argmin(distances_to_clipped_projections, axis=-1)
 
         # 1D for each point, hold the clipped-progress (in the range [0, 1]) on the closest segment
         closest_clipped_progress = clipped_progress[np.arange(len(points_matrix)), closest_segment_idxs]
