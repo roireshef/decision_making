@@ -298,10 +298,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         import time
         st_tot = time.time()
 
+        t_res = RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION
+        t_grid = np.arange(t_res, LANE_MERGE_ACTION_T_LIMITS[1] + EPS, t_res)
+        v_grid = np.arange(0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + EPS, RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)
+        target_v, target_t = np.meshgrid(v_grid, t_grid)
+        target_v, target_t = target_v.ravel(), target_t.ravel()
+
         st = time.time()
         ego_fstate = state.ego_fstate_1d
         # calculate the actions' distance (the same for all actions)
-        v_T, T, ds = RuleBasedLaneMergePlanner._calculate_safe_target_points(state)
+        v_T, T, ds = RuleBasedLaneMergePlanner._calculate_safe_target_points(state, target_v, target_t)
         if len(T) == 0:
             return []
 
@@ -314,7 +320,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         st = time.time()
         # create composite "max_velocity" actions, such that each sequence includes quartic + const_max_vel + quartic
-        max_vel_actions = RuleBasedLaneMergePlanner._create_max_vel_actions(state, v_T, T, ds)
+        max_vel_actions = RuleBasedLaneMergePlanner._create_max_vel_actions(state, v_grid, t_grid)
 
         # create composite "stop" actions, such that each sequence includes quartic + zero_vel + quartic
         # create stop actions only if there are no single-spec actions, since quintic actions have lower time
@@ -351,53 +357,60 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return actions
 
     @staticmethod
-    def _create_max_vel_actions(state: LaneMergeState, v_T: np.array, T: np.array) -> List[LaneMergeSequence]:
+    def _create_max_vel_actions(state: LaneMergeState, v_grid: np.array, t_grid: np.array) -> List[LaneMergeSequence]:
         """
         Given array of final velocities, create composite safe actions:
             1. quartic CALM acceleration to v_max,
             2. constant velocity with v_max,
             3. quartic STANDARD deceleration to v_T.
         :param state: lane merge state
-        :param v_T: array of final velocities in safe points
+        :param v_grid: array of final velocities
+        :param t_grid: array of planning times
         :return: list of safe composite actions
         """
+        s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
         v_max = LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
         ego_fstate = state.ego_fstate_1d
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
+
         w_J_calm, _, w_T_calm = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
         w_J_stand, _, w_T_stand = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
         s1, t1 = KinematicUtils.specify_quartic_actions(w_T_calm, w_J_calm, v_0, v_max, a_0)
-        S3, T3 = KinematicUtils.specify_quartic_actions(w_T_stand, w_J_stand, v_max, v_T)
-        S2 = ds - s1 - S3
-        T2 = T - t1 - T3
-        valid = (S2 > 0) & (T2 > 0) & (np.abs(T2 - S2 / v_max) < RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION)
+        S3_grid, T3_grid = KinematicUtils.specify_quartic_actions(w_T_stand, w_J_stand, v_max, v_grid)
+
+        target_v, target_t = np.meshgrid(v_grid, t_grid)
+        target_v, target_t = target_v.ravel(), target_t.ravel()
+        mesh_to_v_grid = np.tile(np.arange(len(v_grid)), len(t_grid))
+        S3 = S3_grid[mesh_to_v_grid]
+        T3 = T3_grid[mesh_to_v_grid]
+
+        T2 = target_t - t1 - T3
+        S2 = T2 * v_max
+        ds = s1 + S2 + S3
+        valid = (ds < s_max) & (T2 > 0)
         if not valid.any():
             return []
-        S2 = S2[valid]
-        T2 = T2[valid]
-        S3 = S3[valid]
-        T3 = T3[valid]
-        T2 = S2 / v_max
-        T_tot = t1 + T2 + T3
+        T2, S2, T3, S3, v_end, t_end, ds = T2[valid], S2[valid], T3[valid], S3[valid], target_v[valid], target_t[valid], ds[valid]
 
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in state.actors_states]).T
         margins = 0.5 * (actors_length + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
         safety_dist = RuleBasedLaneMergePlanner._caclulate_RSS_distances(
-            actors_s[:, np.newaxis], actors_v[:, np.newaxis], margins[:, np.newaxis], v_T[valid], T_tot, ds)
+            actors_s[:, np.newaxis], actors_v[:, np.newaxis], margins[:, np.newaxis], v_end, t_end, ds)
         is_safe = safety_dist > 0
 
         actions = []
-        for t2, s2, t3, s3 in zip(T2[is_safe], S2[is_safe], T3[is_safe], S3[is_safe]):
+        for t2, s2, t3, s3, v_t in zip(T2[is_safe], S2[is_safe], T3[is_safe], S3[is_safe], v_end[is_safe]):
             action1 = LaneMergeSpec(t1, v_0, a_0, v_max, s1, QuarticPoly1D.num_coefs())
             action2 = LaneMergeSpec(t2, v_max, 0, v_max, s2, poly_coefs_num=2)
-            action3 = LaneMergeSpec(t3, v_max, 0, v_T, s3, QuarticPoly1D.num_coefs())
+            action3 = LaneMergeSpec(t3, v_max, 0, v_t, s3, QuarticPoly1D.num_coefs())
             actions.append(LaneMergeSequence([action1, action2, action3]))
 
         return actions
 
     @staticmethod
-    def _calculate_safe_target_points(state: LaneMergeState) -> [np.array, np.array, np.array]:
+    def _calculate_safe_target_points(state: LaneMergeState, target_v: np.array, target_t: np.array) -> \
+            [np.array, np.array, np.array]:
         """
         Create boolean 2D matrix of actions that are longitudinally safe (RSS) between red line & merge point w.r.t.
         all actors.
@@ -414,11 +427,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         # calculate planning time bounds given target_s
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
-        t_res = RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION
-        t_grid = np.arange(t_res, LANE_MERGE_ACTION_T_LIMITS[1] + EPS, t_res)
-        v_grid = np.arange(0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + EPS, RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)
-        target_v, target_t = np.meshgrid(v_grid, t_grid)
-        target_v, target_t = target_v.ravel(), target_t.ravel()
         if len(actors_states) == 0:
             return target_v, target_t
 
