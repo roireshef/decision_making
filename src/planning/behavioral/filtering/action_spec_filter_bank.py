@@ -53,50 +53,51 @@ class FilterForKinematics(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean array per action spec: True if a spec passed the filter
         """
-        # Build trajectories that for each action
+        # Build trajectories for each action
         ftrajectories, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
-        num_trajectories, num_points, _ = ctrajectories.shape
-
-        # Initialize conforms_limits array
-        conforms_limits = np.array([[False for _ in range(num_points)] for _ in range(num_trajectories)])
 
         # Determine which actions are lane change actions
         action_spec_rel_lanes = [spec.relative_lane for spec in action_specs]
-        lane_change_mask = behavioral_state.lane_change_state.get_lane_change_mask(action_spec_rel_lanes, behavioral_state.extended_lane_frames)
+        lane_change_mask = behavioral_state.lane_change_state.get_lane_change_mask(action_spec_rel_lanes,
+                                                                                   behavioral_state.extended_lane_frames)
         not_lane_change_mask = [not i for i in lane_change_mask]
 
-        # Get max lateral accel limits for normal actions
+        # for each point in the non-lane change trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
         nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
             ctrajectories[not_lane_change_mask,:,C_K], LAT_ACC_LIMITS_BY_K)
+
+        # multiply the nominal lateral acceleration limits by the TP constant (acceleration limits may differ between
+        # TP and BP), and duplicate the vector with negative sign to create boundaries for lateral acceleration
         two_sided_lat_acc_limits = BP_LAT_ACC_STRICT_COEF * \
                                    np.stack((-nominal_abs_lat_acc_limits, nominal_abs_lat_acc_limits), -1)
 
+        self._log_debug_message(np.array(action_specs)[not_lane_change_mask].tolist(), ctrajectories[not_lane_change_mask,:,C_K],
+                                two_sided_lat_acc_limits)
+
+        # Initialize conforms_limits array
+        conforms_limits = np.full(ftrajectories.shape[0], False)
+
         # Filter for absolute limits for actions that are NOT part of a lane change
-        conforms_limits[not_lane_change_mask,:] = KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories[not_lane_change_mask,:,:], VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
+        conforms_limits[not_lane_change_mask] = KinematicUtils.filter_by_cartesian_limits(
+            ctrajectories[not_lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
 
         # Deal with lane change actions if they exist
         if any(lane_change_mask):
-            num_lc_trajectories, num_lc_points, _ = ctrajectories[lane_change_mask].shape
-
             # Get the GFF that corresponds to the lane change's target (rel_lane depending on lane change state)
             target_gff = behavioral_state.lane_change_state.get_target_lane_gff(behavioral_state.extended_lane_frames)
 
             # Generate new limits based on lane change requirements
+            num_lc_trajectories, num_lc_points, _ = ctrajectories[lane_change_mask].shape
             lane_change_max_lat_accel_limits = np.array([[LAT_ACC_LIMITS_LANE_CHANGE for _ in range(num_lc_points)]
                                                          for _ in range(num_lc_trajectories)])
 
             # Filter for both relative and absolute limits for lane change actions
-            conforms_limits[lane_change_mask,:] = np.logical_and(
-                                                KinematicUtils.filter_by_relative_lateral_acceleration_limits(
-                                                    ftrajectories[lane_change_mask,:,:], ctrajectories[lane_change_mask,:,:],
-                                                    REL_LAT_ACC_LIMITS, target_gff),
-                                                KinematicUtils.filter_by_cartesian_limits(
-                                                    ctrajectories[lane_change_mask,:,:], VELOCITY_LIMITS, LON_ACC_LIMITS,
-                                                    lane_change_max_lat_accel_limits))
+            conforms_limits[lane_change_mask] = np.logical_and(
+                KinematicUtils.filter_by_relative_lateral_acceleration_limits(
+                    ftrajectories[lane_change_mask], ctrajectories[lane_change_mask], REL_LAT_ACC_LIMITS, target_gff),
+                KinematicUtils.filter_by_cartesian_limits(
+                    ctrajectories[lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, lane_change_max_lat_accel_limits))
 
-        self._log_debug_message([spec for i, spec in enumerate(action_specs) if not_lane_change_mask[i]],
-                                ctrajectories[not_lane_change_mask,:,C_K], two_sided_lat_acc_limits)
         return conforms_limits
 
 
