@@ -8,7 +8,6 @@ from decision_making.src.planning.behavioral.state.lane_change_state import Lane
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.lane_based_action_spec_evaluator import LaneBasedActionSpecEvaluator
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.turn_signal_message import TurnSignalState
 
 
 class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):

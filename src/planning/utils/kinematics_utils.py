@@ -1,11 +1,10 @@
-from typing import List
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
-    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, TINY_CURVATURE
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX, FS_DV, FS_DA, Limits2D, RangedLimits2D, FrenetTrajectories2D, FP_SX
+    FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math_utils import Math
@@ -117,7 +116,6 @@ class KinematicUtils:
         :param reference_route: GFF used for calculating baseline lat. accel.
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
-
         lane_speed_limits = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in reference_route.segment_ids}
 
         # calculate expected lat accelerations
@@ -127,11 +125,10 @@ class KinematicUtils:
 
         baseline_speed_limits = np.vectorize(lane_speed_limits.get)(lane_segment_ids)
         trajectory_speeds = ctrajectories[:,:,C_V]
+
         baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * baseline_curvatures
         baseline_lat_accel_trajectory_speeds = trajectory_speeds ** 2 * baseline_curvatures
-
-        baseline_lat_accels_stack = np.stack([baseline_lat_accel_speed_limit,
-                                                 baseline_lat_accel_trajectory_speeds])
+        baseline_lat_accels_stack = np.stack([baseline_lat_accel_speed_limit, baseline_lat_accel_trajectory_speeds])
 
         # This returns the indices of the points with the minimal absolute value
         baseline_lat_accels_min_indices = np.nanargmin(np.abs(baseline_lat_accels_stack), axis = 0)
