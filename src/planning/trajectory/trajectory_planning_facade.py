@@ -112,7 +112,9 @@ class TrajectoryPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if is_engaged and LocalizationUtils.is_actual_state_close_to_expected_state(
+
+            # TODO: this check should include is_engaged with <and> *after* the LocalizationUtils check
+            if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = LocalizationUtils.get_state_with_expected_ego(
                     state, self._last_trajectory, self.logger, self.__class__.__name__, params.reference_route)
@@ -176,7 +178,9 @@ class TrajectoryPlanningFacade(DmModule):
             np.linspace(start=0,
                         stop=(trajectory_num_points - 1) * TRAJECTORY_TIME_RESOLUTION,
                         num=trajectory_num_points) + timestamp)
-        self._last_trajectory = samplable_trajectory if is_engaged else None
+
+        # TODO: this should be set with: if is_engaged else None
+        self._last_trajectory = samplable_trajectory
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
