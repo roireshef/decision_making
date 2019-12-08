@@ -187,7 +187,7 @@ MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE = 0.35
 # [rad], Maximum relative heading to consider a lane change complete
 MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE = 0.25
 
-# [%], TODO
+# [%], Threshold at which a lane change will be aborted if the maneuver completion percentage is under this value
 LANE_CHANGE_ABORT_THRESHOLD = 20.0
 
 # Trajectory Planner #

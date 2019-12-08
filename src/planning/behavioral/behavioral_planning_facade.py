@@ -163,14 +163,12 @@ class BehavioralPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if is_engaged and LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                # If a lane change is active and we're not localized to a lane in our last GFF, that means that we're targeting a
+                # If a lane change is active and we're not localized to a lane in our last action's GFF, that means that we're targeting a
                 # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
                 # the target GFF. This will happen when we're performing a lane change.
                 target_gff = self._lane_change_state.source_lane_gff \
-                    if self._lane_change_state.status in \
-                            [LaneChangeStatus.LaneChangeActiveInSourceLane,
-                             LaneChangeStatus.LaneChangeActiveInTargetLane] \
-                        and (state.ego_state.map_state.lane_id not in self._last_gff_segment_ids) \
+                    if self._lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane \
+                        and state.ego_state.map_state.lane_id not in self._last_gff_segment_ids \
                     else None
 
                 updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
