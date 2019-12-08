@@ -13,9 +13,9 @@ from decision_making.src.planning.behavioral.data_objects import StaticActionRec
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.rl_models.dual_input_conv_model import DualInputConvModel
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.types import ActionSpecArray, FS_1D_LEN, FS_SX, FS_SV, FS_SA
+from decision_making.src.planning.behavioral.state.lane_merge_state_encoder import LaneMergeStateEncoder
+from decision_making.src.planning.types import ActionSpecArray, FS_1D_LEN
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
-from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.state.state import State
@@ -106,7 +106,7 @@ class RL_LaneMergePlanner(BasePlanner):
                                           lane_merge_state.ego_state.timestamp_in_sec)
 
         # encode the state
-        host_state, actors_state = LaneMergeState.encode_state(
+        host_state, actors_state = LaneMergeStateEncoder.encode_state(
             lane_merge_state.ego_fstate_1d, lane_merge_state.red_line_s_on_ego_gff, lane_merge_state.actors_states)
         encoded_state: GymTuple = (torch.from_numpy(host_state[np.newaxis, :]).float(),
                                    torch.from_numpy(actors_state[np.newaxis, :]).float())
