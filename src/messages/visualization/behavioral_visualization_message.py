@@ -1,6 +1,6 @@
 from interface.Rte_Types.python.sub_structures.TsSYS_BehavioralVisualizationMsg import TsSYSBehavioralVisualizationMsg
 from decision_making.src.utils.serialization_utils import SerializationUtils
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D
 
 

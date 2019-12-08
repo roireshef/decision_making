@@ -4,7 +4,7 @@ import numpy as np
 from interface.Rte_Types.python.sub_structures.TsSYS_TurnSignal import TsSYSTurnSignal
 from interface.Rte_Types.python.sub_structures.TsSYS_DataTurnSignal import TsSYSDataTurnSignal
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 
 

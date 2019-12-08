@@ -1,7 +1,7 @@
 from interface.Rte_Types.python.sub_structures.TsSYS_Header import TsSYSHeader
 from interface.Rte_Types.python.sub_structures.TsSYS_MapOrigin import TsSYSMapOrigin
 from interface.Rte_Types.python.sub_structures.TsSYS_Timestamp import TsSYSTimestamp
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 
 
 class Timestamp(PUBSUB_MSG_IMPL):

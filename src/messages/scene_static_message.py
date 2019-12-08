@@ -16,7 +16,7 @@ from interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import TsSY
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegment import TsSYSSceneRoadSegment
 from interface.Rte_Types.python.sub_structures.TsSYS_LaneOverlap import TsSYSLaneOverlap
 from interface.Rte_Types.python.sub_structures.TsSYS_TrafficControlBar import TsSYSTrafficControlBar
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, \
     LaneMappingStatusType, GMAuthorityType, LaneConstructionType, MapLaneDirection
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
