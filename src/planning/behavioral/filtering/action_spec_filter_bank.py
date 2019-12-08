@@ -8,7 +8,8 @@ import six
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K, \
+    STOP_BAR_DISTANCE_IND
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
@@ -189,7 +190,8 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
         closest_TCB_ant_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
-        return closest_TCB_ant_its_distance is not None and closest_TCB_ant_its_distance[1] < action_spec.s
+        return closest_TCB_ant_its_distance is not None and \
+               closest_TCB_ant_its_distance[STOP_BAR_DISTANCE_IND] < action_spec.s
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
@@ -304,7 +306,7 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
         if closest_TCB_and_its_distance is None:  # no stop bars
             self._raise_true()
-        return np.array([closest_TCB_and_its_distance[1]]), np.array([0])
+        return np.array([closest_TCB_and_its_distance[STOP_BAR_DISTANCE_IND]]), np.array([0])
 
 
 class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):

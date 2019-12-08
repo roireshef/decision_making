@@ -247,7 +247,8 @@ DRIVER_INITIATED_MOTION_PEDAL_THRESH = 0.05
 DRIVER_INITIATED_MOTION_PEDAL_TIME = 0.5
 # [sec] time period DIM is active after driver released the pedal
 DRIVER_INITIATED_MOTION_TIMEOUT = 10
-
+# indices of tuple
+STOP_BAR_IND, STOP_BAR_DISTANCE_IND = 0, 1
 
 # Werling Planner #
 

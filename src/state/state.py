@@ -214,14 +214,16 @@ class EgoState(DynamicObject):
                                              turn_signal=turn_signal)
         self._dim_state = dim_state
 
-    def update_dim_state(self, ego_s: float, closestTCB: Tuple[TrafficControlBar, float]) -> None:
+    def update_dim_state(self, ego_s: float, closestTCB: Tuple[TrafficControlBar, float], ignored_TCB_distance: float) -> None:
         """
         Update DIM state machine of ego
         :param ego_s: s location of ego in GeneralizedFrenetSerretFrame
         :param closestTCB: Tuple of TCB object and its s location in GeneralizedFrenetSerretFrame
+        :param ignored_TCB_distance: ignored s location
         """
         if self._dim_state is not None:
-            self._dim_state.update_state(self.timestamp_in_sec, self._cached_map_state.lane_fstate, ego_s, closestTCB)
+            self._dim_state.update_state(self.timestamp_in_sec, self._cached_map_state.lane_fstate, ego_s, closestTCB,
+                                         ignored_TCB_distance)
 
     def get_stop_bar_to_ignore(self):
         """
