@@ -56,3 +56,7 @@ class StrSerializable:
         :return: dict containing all the fields of the class
         """
         return str(self.to_dict())
+
+
+# PubSub message class implementation for all DM messages
+PUBSUB_MSG_IMPL = StrSerializable

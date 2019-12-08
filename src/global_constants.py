@@ -1,16 +1,10 @@
 import numpy as np
 
-from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
 MPH_TO_MPS = 2.23694
-
-# Communication Layer
-
-# PubSub message class implementation for all DM messages
-PUBSUB_MSG_IMPL = StrSerializable
 
 # Behavioral Planner
 

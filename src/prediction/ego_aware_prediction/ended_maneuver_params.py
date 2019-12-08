@@ -1,4 +1,4 @@
-from decision_making.src.messages.str_serializable import StrSerializable
+from decision_making.src.messages.serialization import StrSerializable
 
 
 class EndedManeuverParams(StrSerializable):
