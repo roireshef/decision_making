@@ -529,15 +529,15 @@ class MapUtils:
                 road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds,
                                                                                    logger)
                 should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
-                logger.debug("Stop bar check id %d at distance %f active S-TCD %s active D-TCD %s, ego at %f, stop? %s",
-                             stop_bar.e_i_traffic_control_bar_id, distance,
-                             [(active_static_tcd.object_id, active_static_tcd.e_e_traffic_control_device_type)
-                              for active_static_tcd in active_static_tcds],
-                             [(active_dynamic_tcd[0].object_id, active_dynamic_tcd[0].e_e_traffic_control_device_type,
-                               MapUtils._get_confident_status(active_dynamic_tcd[1]))
-                              for active_dynamic_tcd in active_dynamic_tcds],
-                             ego_location, should_stop
-                             )
+                if logger is not None:
+                    logger.debug("Stop bar check id %d at distance %f active S-TCD %s active D-TCD %s, ego at %f, stop? %s",
+                                 stop_bar.e_i_traffic_control_bar_id, distance,
+                                 [(active_static_tcd.object_id, active_static_tcd.e_e_traffic_control_device_type)
+                                  for active_static_tcd in active_static_tcds],
+                                 [(active_dynamic_tcd[0].object_id, active_dynamic_tcd[0].e_e_traffic_control_device_type,
+                                   MapUtils._get_confident_status(active_dynamic_tcd[1]))
+                                  for active_dynamic_tcd in active_dynamic_tcds],
+                                 ego_location, should_stop)
                 if should_stop:
                     return (stop_bar, distance), ignored_distance
             else:

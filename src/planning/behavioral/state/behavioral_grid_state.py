@@ -714,7 +714,8 @@ class BehavioralGridState:
         bars_per_lane = {}
         for relative_lane, target_lane in extended_lane_frames.items():
             ego_location = projected_ego_fstates[relative_lane][FS_SX]
-            logger.debug("Stop bar check for lane %s", relative_lane)  # more logger info inside get_closest_stop_bar
+            if logger is not None:
+                logger.debug("Stop bar check for lane %s", relative_lane)  # more logger info inside get_closest_stop_bar
             bars_per_lane[relative_lane] = MapUtils.get_closest_stop_bar(extended_lane_frames[relative_lane],
                                                                          ego_location, DIM_MARGIN_TO_STOP_BAR,
                                                                          stop_bar_id_to_ignore, logger)

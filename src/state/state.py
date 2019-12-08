@@ -4,9 +4,7 @@ from typing import List, Optional, Dict, Tuple, TypeVar
 
 import numpy as np
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoStateLaneIdNotValid
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LANE_END_COST_IND
-from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
-    EGO_HEIGHT, LANE_END_COST_IND
+from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LANE_END_COST_IND
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.messages.scene_static_message import TrafficControlBar
@@ -15,7 +13,6 @@ from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
