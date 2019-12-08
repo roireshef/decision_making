@@ -110,9 +110,8 @@ LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
 # [m/sec^2] lateral acceleration limits during lane change
 LAT_ACC_LIMITS_LANE_CHANGE = np.array([-3, 3])
 
-# TODO: This is above the 0.6 m/sec^2 requirement. Lower after we become more robust to failing this limit.
 # Relative Latitudinal Acceleration Limits [m/sec^2] for lane change
-REL_LAT_ACC_LIMITS = np.array([-1.0, 1.0])
+REL_LAT_ACC_LIMITS = np.array([-0.6, 0.6])
 
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 1.0
