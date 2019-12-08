@@ -53,7 +53,8 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         elif behavioral_state.lane_change_state.status in [LaneChangeStatus.LaneChangeRequested,
                                                            LaneChangeStatus.LaneChangeActiveInTargetLane,
                                                            LaneChangeStatus.LaneChangeCompleteWaitingForReset]:
-            # In order to remove any unexpected behavior, force the host to stay in lane during these lane change statuses.
+            # In order to remove any unexpected behavior, force the host to stay in lane during these lane change statuses. Note that
+            # staying in lane means staying in the lane change source or target lane, depending on the status.
             lanes_to_try.append(RelativeLane.SAME_LANE)
         else:
             # If no lane change is requested, drive according to route plan costs
