@@ -207,7 +207,6 @@ def plot_dynamics(log_file_path: str):
             msg = text.split('Timestamp: :')[1]
             parts = msg.split('engaged')
             try:
-                # engaged_time.append(float(parts[0]))
                 engaged_time.append(time)  # using time since the timestamp attached to this message is in system time, not ego time
                 engaged.append(int(parts[1]))
             except NameError:
