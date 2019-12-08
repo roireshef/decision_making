@@ -4,10 +4,11 @@ from typing import List, Optional, Dict, Tuple, TypeVar
 
 import numpy as np
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID, EgoStateLaneIdNotValid
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_LENGTH, EGO_WIDTH, \
+from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     EGO_HEIGHT, LANE_END_COST_IND
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.messages.scene_static_enums import ManeuverType
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
@@ -124,6 +125,24 @@ class DynamicObject(PUBSUB_MSG_IMPL):
             lane_frenet = MapUtils.get_lane_frenet_frame(self.map_state.lane_id)
             self._cached_cartesian_state = lane_frenet.fstate_to_cstate(self.map_state.lane_fstate)
         return self._cached_cartesian_state
+
+    def bounding_box(self):
+        """
+        Gets the cartesian coordinates of the four corners of the object's bounding box
+        :return: [rear left, front left, front right, rear right]
+
+        [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]
+        """
+        width = self.size.width / 2.0
+        length = self.size.length / 2.0
+        cos, sin = np.cos(self.yaw), np.sin(self.yaw)
+
+        return np.array([self.x, self.y]) + np.dot(np.array([
+            [[-cos, -sin], [-sin, cos]],
+            [[cos, -sin], [sin, cos]],
+            [[cos, sin], [sin, -cos]],
+            [[-cos, sin], [-sin, -cos]]]),
+            np.array([length, width]))
 
     @property
     def map_state(self):
