@@ -43,18 +43,17 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         # the lane change lane over the minimum_cost_lane.
         lanes_to_try = []
 
-        # If lane change is desired, prioritize actions towards that lanes by placing the respective relative lane first in the list.
         if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
+            # If lane change is desired, prioritize actions towards that lanes by placing the respective relative lane first in the list.
             lanes_to_try.append(behavioral_state.lane_change_state.target_relative_lane)
 
-            # Append SAME_LANE and minimum_cost_lane accordingly
-            if minimum_cost_lane != RelativeLane.SAME_LANE:
-                lanes_to_try.append(minimum_cost_lane)
-                lanes_to_try.append(RelativeLane.SAME_LANE)
-            else:
-                lanes_to_try.append(RelativeLane.SAME_LANE)
-        elif behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
-            # Force host to stay in the lane change target lane until lane change is complete
+            # Append SAME_LANE actions so that we continue driving in our lane in the case that an action towards the lane change target
+            # lane is not available.
+            lanes_to_try.append(RelativeLane.SAME_LANE)
+        elif behavioral_state.lane_change_state.status in [LaneChangeStatus.LaneChangeRequested,
+                                                           LaneChangeStatus.LaneChangeActiveInTargetLane,
+                                                           LaneChangeStatus.LaneChangeCompleteWaitingForReset]:
+            # In order to remove any unexpected behavior, force the host to stay in lane during these lane change statuses.
             lanes_to_try.append(RelativeLane.SAME_LANE)
         else:
             # If no lane change is requested, drive according to route plan costs
