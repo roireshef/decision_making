@@ -77,10 +77,8 @@ class LaneChangeState:
         """
         if self.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
             target_gff = extended_lane_frames[self.target_relative_lane]
-        elif self.status in [LaneChangeStatus.LaneChangeActiveInTargetLane]:
-            target_gff = extended_lane_frames[RelativeLane.SAME_LANE]
         else:
-            target_gff = None
+            target_gff = extended_lane_frames[RelativeLane.SAME_LANE]
 
         return target_gff
 
