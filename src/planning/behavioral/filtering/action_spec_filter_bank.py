@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
+from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K, FS_SX
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -62,9 +62,11 @@ class FilterForKinematics(ActionSpecFilter):
                                                                                    behavioral_state.extended_lane_frames)
         not_lane_change_mask = [not i for i in lane_change_mask]
 
-        # for each point in the non-lane change trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
-        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
-            ctrajectories[not_lane_change_mask,:,C_K], LAT_ACC_LIMITS_BY_K)
+        # for each point in the non-lane change trajectories,
+        # compute the corresponding lateral acceleration (per point-wise curvature)
+        baseline_curvatures = np.array([behavioral_state.extended_lane_frames[spec.relative_lane].get_curvature(ftrajectory[:, FS_SX])
+                                        for spec, ftrajectory in zip(action_specs, ftrajectories)])
+        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(baseline_curvatures, LAT_ACC_LIMITS_BY_K)
 
         # multiply the nominal lateral acceleration limits by the TP constant (acceleration limits may differ between
         # TP and BP), and duplicate the vector with negative sign to create boundaries for lateral acceleration
@@ -88,18 +90,19 @@ class FilterForKinematics(ActionSpecFilter):
 
             # Generate new limits based on lane change requirements
             num_lc_trajectories, num_lc_points, _ = ctrajectories[lane_change_mask].shape
-            lane_change_max_lat_accel_limits = np.array([[LAT_ACC_LIMITS_LANE_CHANGE for _ in range(num_lc_points)]
-                                                         for _ in range(num_lc_trajectories)])
+            lane_change_max_lat_accel_limits = np.full(shape=(num_lc_trajectories, num_lc_points),
+                                                       fill_value=LAT_ACC_LIMITS_LANE_CHANGE)
 
             # Filter for both relative and absolute limits for lane change actions
             conforms_limits[lane_change_mask] = np.logical_and(
-                KinematicUtils.filter_by_relative_lateral_acceleration_limits(
-                    ftrajectories[lane_change_mask], ctrajectories[lane_change_mask], REL_LAT_ACC_LIMITS, target_gff),
+                KinematicUtils.filter_by_relative_lateral_acceleration_limits(ftrajectories[lane_change_mask],
+                                                                              ctrajectories[lane_change_mask],
+                                                                              REL_LAT_ACC_LIMITS,
+                                                                              nominal_abs_lat_acc_limits, target_gff),
                 KinematicUtils.filter_by_cartesian_limits(
                     ctrajectories[lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, lane_change_max_lat_accel_limits))
 
         return conforms_limits
-
 
     def _log_debug_message(self, action_specs: List[ActionSpec], curvatures: np.ndarray, acc_limits: np.ndarray):
         max_curvature_idxs = np.argmax(curvatures, axis=1)

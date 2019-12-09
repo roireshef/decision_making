@@ -130,8 +130,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # TODO: this takes ego vehicle's curvature rather than the road's curvature. They differ once we go off-GFF
         # for each point in the trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
-        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
-            ctrajectories[..., C_K], LAT_ACC_LIMITS_BY_K)
+        baseline_curvatures = reference_route.get_curvature(ftrajectories[..., FS_SX])
+        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(baseline_curvatures, LAT_ACC_LIMITS_BY_K)
 
         # multiply the nominal lateral acceleration limits by the TP constant (acceleration limits may differ between
         # TP and BP), and duplicate the vector with negative sign to create boundaries for lateral acceleration

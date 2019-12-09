@@ -1,10 +1,10 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
-    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, LAT_ACC_LIMITS_BY_K
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D
+    FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math_utils import Math
@@ -104,6 +104,7 @@ class KinematicUtils:
     @staticmethod
     def filter_by_relative_lateral_acceleration_limits(ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories,
                                                        relative_lat_acceleration_limits: Limits,
+                                                       baseline_lat_accel_curve_control: np.array,
                                                        reference_route: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, this filter checks to see if the lateral accelerations
@@ -111,36 +112,42 @@ class KinematicUtils:
         the ftrajectories on the reference_route.
         :param ftrajectories: FrenetTrajectories2D object to use while checking relative lat. accel. limit
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
-        :param max_lat_accelerations: lateral acceleration limits to test for in cartesian frame [m/sec^2]
+        :param baseline_lat_accel_curve_control: lateral acceleration limits to test for in cartesian frame [m/sec^2]
+        given by road's curvature (if only doing curve speed control - those will be the effective accelerations)
         :param relative_lat_acceleration_limits: lat. accel. limits relative to baseline lat. accel. [m/sec^2]
         :param reference_route: GFF used for calculating baseline lat. accel.
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lane_speed_limits = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in reference_route.segment_ids}
 
-        # calculate expected lat accelerations
+        # get baseline lane's speed_limits for each trajectory point
         lane_segment_ids, _ = reference_route.convert_to_segment_states(ftrajectories)
-
-        baseline_curvatures = reference_route.get_curvature(ftrajectories[:,:,FS_SX])
-
         baseline_speed_limits = np.vectorize(lane_speed_limits.get)(lane_segment_ids)
-        trajectory_speeds = ctrajectories[:,:,C_V]
 
+        # get road-curvatures on the target GFF (baseline)
+        baseline_curvatures = reference_route.get_curvature(ftrajectories[:, :, FS_SX])
+
+        # calculate baseline lat acceleration (if driving on target GFF) and ONLY keeping speed limits
         baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * baseline_curvatures
-        baseline_lat_accel_trajectory_speeds = trajectory_speeds ** 2 * baseline_curvatures
-        baseline_lat_accels_stack = np.stack([baseline_lat_accel_speed_limit, baseline_lat_accel_trajectory_speeds])
 
-        # This returns the indices of the points with the minimal absolute value
-        baseline_lat_accels_min_indices = np.nanargmin(np.abs(baseline_lat_accels_stack), axis = 0)
-
-        # Index the original baseline_lat_accels_stack to get the signs back
-        baseline_lat_accel = np.choose(baseline_lat_accels_min_indices, baseline_lat_accels_stack)
+        # calculate baseline lat acceleration (if driving on target GFF) and doing
+        # BOTH curve speed control and keeping speed limits
+        baseline_lat_accel = np.minimum(baseline_lat_accel_speed_limit, baseline_lat_accel_curve_control)
 
         # compare target lat accels to baseline lat accels
-        lat_acceleration = trajectory_speeds ** 2 * ctrajectories[:, :, C_K]
-        lat_accel_difference = lat_acceleration - baseline_lat_accel
+        effective_lat_accel = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
 
-        conforms_rel_lat_accel_limits = np.all(NumpyUtils.is_in_limits(lat_accel_difference, relative_lat_acceleration_limits), axis=1)
+        # return true if effective and baseline accelerations are of the same sign and effective is at most MARGIN
+        # bigger (in absolute value) than baseline, or if they have different sign, than if effective acceleration is
+        # at most MARGIN
+        lat_accel_difference_same_sign = (np.sign(effective_lat_accel) == np.sign(baseline_lat_accel)) & \
+                                         (np.abs(effective_lat_accel) - np.abs(baseline_lat_accel) < relative_lat_acceleration_limits[LIMIT_MAX])
+
+        lat_accel_difference_diff_sign = (np.sign(effective_lat_accel) != np.sign(baseline_lat_accel)) & \
+                                         (np.abs(effective_lat_accel) < relative_lat_acceleration_limits[LIMIT_MAX])
+
+        conforms_rel_lat_accel_limits = np.all(np.logical_or(lat_accel_difference_same_sign,
+                                                             lat_accel_difference_diff_sign), axis=1)
 
         return conforms_rel_lat_accel_limits
 
