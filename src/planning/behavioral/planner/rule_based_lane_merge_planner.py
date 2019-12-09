@@ -5,7 +5,8 @@ from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS, EPS, TRAJECTORY_TIME_RESOLUTION, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_BACKWARD_HORIZON, \
     LANE_MERGE_ACTION_T_LIMITS, LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, \
-    LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL
+    LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, \
+    SPEEDING_SPEED_TH
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, StaticActionRecipe, \
     RelativeLane
@@ -119,9 +120,44 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         if not action_mask.any():
             raise NoActionsLeftForBPError("RB.evaluate_actions: No actions to evaluate. timestamp_in_sec: %f" %
                                           lane_merge_state.ego_state.timestamp_in_sec)
-        action_costs = np.full(len(action_specs), 1.)
-        most_calm_action_idx = np.argmax(action_mask)
-        action_costs[most_calm_action_idx] = 0
+        # calculate full actions' jerks and times
+        actions_jerks = np.zeros(len(action_specs))
+        actions_times = np.zeros(len(action_specs))
+        actions_dists = np.zeros(len(action_specs))
+        calm_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+        for poly1d in [QuinticPoly1D, QuarticPoly1D]:
+            specs_list = [[idx, spec.t, spec.v_0, spec.a_0, spec.v_T, spec.ds]
+                          for idx, action in enumerate(action_specs) if action is not None
+                          for spec in action.action_specs if spec.poly_coefs_num == poly1d.num_coefs() and spec.t > 0]
+            if len(specs_list) == 0:
+                continue
+
+            # calculate jerks for the specs
+            specs_matrix = np.array(list(filter(None, specs_list)))
+            action_idxs, T, v_0, a_0, v_T, ds = specs_matrix.T
+            poly_coefs = QuinticPoly1D.position_profile_coefficients(a_0, v_0, v_T, ds, T) \
+                if poly1d is QuinticPoly1D else QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_T, T)
+            spec_jerks = poly1d.cumulative_jerk(poly_coefs, T)
+
+            # calculate acceleration times from v_T to max velocity
+            accel_to_max_vel_s, accel_to_max_vel_T = KinematicUtils.specify_quartic_actions(
+                calm_weights[2], calm_weights[0], v_T, np.full(v_T.shape, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY),
+                action_horizon_limit=np.inf)
+
+            # collect actions jerks, times and distances
+            for action_idx, spec_jerk, spec_t, spec_v, spec_s, acc_t, acc_s in \
+                    zip(action_idxs.astype(int), spec_jerks, T, v_T, ds, accel_to_max_vel_T, accel_to_max_vel_s):
+                actions_jerks[action_idx] += spec_jerk
+                actions_times[action_idx] += spec_t + acc_t  # add acceleration time from v_T to max_vel
+                actions_dists[action_idx] += spec_s + acc_s
+
+        # calculate actions' costs according to the CALM jerk-time weights
+        standard_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
+        # assume that after acceleration to max_vel it will continue to max_dist with max_vel
+        max_dist = np.max(actions_dists)
+        full_times = actions_times + (max_dist - actions_dists) / LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
+        action_costs = standard_weights[0] * actions_jerks + standard_weights[2] * full_times
+        action_costs[action_specs == None] = np.inf
         return action_costs
 
     def _choose_action(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray, costs: np.array) -> \
@@ -347,12 +383,12 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
         if not valid_acc.any():
             return []
-        v_max = LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
+        v_max = LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH
         valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], np.array([0, v_max]))
         valid_idxs = np.where(valid_acc)[0][valid_vel]
 
-        actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, ds, QuinticPoly1D.num_coefs())])
-                   for t, vT in zip(T[valid_idxs], v_T[valid_idxs])]
+        actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())])
+                   for t, vT, s in zip(T[valid_idxs], v_T[valid_idxs], ds[valid_idxs])]
 
         return actions
 

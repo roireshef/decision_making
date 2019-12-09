@@ -59,4 +59,4 @@ class LaneMergeScenario(Scenario):
         """
         see base class
         """
-        return SingleStepBehavioralPlanner
+        return RuleBasedLaneMergePlanner

@@ -1,11 +1,9 @@
 from logging import Logger
-from typing import List, Dict
 
 import numpy as np
 from decision_making.src.exceptions import MappingException
-from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, \
-    LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
-    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, MAX_FORWARD_HORIZON, MAX_BACKWARD_HORIZON, LANE_MERGE_ACTORS_HORIZON
+from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, MAX_FORWARD_HORIZON, \
+    MAX_BACKWARD_HORIZON, LANE_MERGE_ACTORS_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
@@ -16,7 +14,6 @@ from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN, FrenetSt
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
-from gym.spaces.tuple import Tuple as GymTuple
 from typing import List, Dict
 
 
@@ -110,7 +107,7 @@ class LaneMergeState(BehavioralGridState):
 
             # create road_occupancy_grid by using the appropriate BehavioralGridState methods
             actors_with_road_semantics = \
-                sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, all_gffs, projected_ego),
+                sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, all_gffs, projected_ego, logger),
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
             road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state,
                                                                                LANE_MERGE_ACTORS_HORIZON)
