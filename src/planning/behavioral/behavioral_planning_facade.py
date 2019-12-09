@@ -48,14 +48,16 @@ from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
+from decision_making.src.planning.behavioral.state_machine_visualizations import DriverInitiatedMotionVisualizer, \
+    LaneChangeOnDemandVisualizer
+
 from queue import Queue
 
 
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
-    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None,
-                 state_machine_visualizer_queues: Dict[str, Queue] = None) -> None:
+    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
         :param logger:
@@ -70,7 +72,11 @@ class BehavioralPlanningFacade(DmModule):
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
         self._lane_change_state = LaneChangeState()
-        self._state_machine_visualizers = state_machine_visualizer_queues or {}
+
+        self.dim_visualizer_queue = Queue(10)
+        self.dim_visualizer = DriverInitiatedMotionVisualizer(self.dim_visualizer_queue)
+        self.lc_visualizer_queue = Queue(10)
+        self.lc_visualizer = LaneChangeOnDemandVisualizer(self.lc_visualizer_queue)
 
 
     def _write_filters_to_log_if_required(self, now: float):
@@ -225,11 +231,10 @@ class BehavioralPlanningFacade(DmModule):
             # Send visualization data
             self._publish_visualization(behavioral_visualization_message)
 
-            if DIM_VISUALIZER_NAME in self._state_machine_visualizers.keys():
-                self._state_machine_visualizers[DIM_VISUALIZER_NAME].put(self._driver_initiated_motion_state.state)
+            # update visualizer queues
+            self.dim_visualizer.update(self._driver_initiated_motion_state.state)
+            self.lc_visualizer.update(self._lane_change_state.status)
 
-            if LC_VISUALIZER_NAME in self._state_machine_visualizers.keys():
-                self._state_machine_visualizers[LC_VISUALIZER_NAME].put(self._lane_change_state.status)
 
             speed_limits = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in self._last_gff_segment_ids}
             self.logger.debug("Speed limits at time %f: %s" % (state.ego_state.timestamp_in_sec, speed_limits))
