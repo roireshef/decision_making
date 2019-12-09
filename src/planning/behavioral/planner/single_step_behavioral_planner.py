@@ -37,7 +37,15 @@ class SingleStepBehavioralPlanner(BasePlanner):
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
     def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
-        return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
+        """
+        Create behavioral state and update DIM state machine using same-lane GFF
+        :param state: current state
+        :param route_plan: route plan
+        :return:
+        """
+        behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
+        behavioral_state.update_dim_state()
+        return behavioral_state
 
     def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
         """

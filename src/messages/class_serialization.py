@@ -8,8 +8,8 @@ from typing import List, Type, Tuple
 import numpy as np
 
 from decision_making.src.exceptions import MsgDeserializationError
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.str_serializable import SERIALIZABLE_LEFT_OUT_FIELDS_KEY
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
+from decision_making.src.messages.serialization import SERIALIZABLE_LEFT_OUT_FIELDS_KEY
 
 MEMBERS_REMAPPING_KEY = 'members_remapping'
 

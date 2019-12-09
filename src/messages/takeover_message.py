@@ -1,7 +1,7 @@
 from interface.Rte_Types.python.sub_structures.TsSYS_Takeover import TsSYSTakeover
 from interface.Rte_Types.python.sub_structures.TsSYS_DataTakeover import TsSYSDataTakeover
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
 
 

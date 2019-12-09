@@ -4,7 +4,7 @@ from decision_making.src.messages.scene_static_enums import TrafficSignalState
 from interface.Rte_Types.python.sub_structures.TsSYS_DynamicTrafficControlDeviceStatus import TsSYSDynamicTrafficControlDeviceStatus
 from interface.Rte_Types.python.sub_structures.TsSYS_DataSceneTrafficControlDevices import TsSYSDataSceneTrafficControlDevices
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneTrafficControlDevices import TsSYSSceneTrafficControlDevices
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, Header
 
 

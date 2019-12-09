@@ -52,7 +52,9 @@ class BehavioralGridState:
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                  projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
-                 tcb_in_gff_and_their_distances: Dict[RelativeLane, Tuple[TrafficControlBar, float]], logger: Logger):
+                 tcb_in_gff_and_their_distances: Dict[RelativeLane, Tuple[TrafficControlBar, float]],
+                 ignored_tcb_distance_in_gff: Dict[RelativeLane, float],
+                 logger: Logger):
         """
         constructor of BehavioralGridState
         :param road_occupancy_grid: dictionary from grid cell to list of dynamic objects with semantics
@@ -61,6 +63,7 @@ class BehavioralGridState:
         :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
                 corresponding extended_lane_frame
         :param tcb_in_gff_and_their_distances: closest TCB per GFF lane and its distance from ego
+        :param ignored_tcb_distance_in_gff: distance to ignored
         :param logger
         """
         self.road_occupancy_grid = road_occupancy_grid
@@ -68,6 +71,7 @@ class BehavioralGridState:
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
         self.tcb_in_gff_and_their_distances = tcb_in_gff_and_their_distances
+        self.ignored_tcb_distance_in_gff = ignored_tcb_distance_in_gff
         self.logger = logger
 
     @property
@@ -107,11 +111,14 @@ class BehavioralGridState:
 
         BehavioralGridState._log_grid_data(multi_object_grid, state.ego_state.timestamp_in_sec, logger)
 
-        tcb_in_gff_and_their_distances = BehavioralGridState._get_closest_stop_bars(extended_lane_frames,
-                                                                                    projected_ego_fstates, logger)
+        tcb_and_ignored_tcbs_in_gff_and_their_distances = \
+            BehavioralGridState._get_closest_stop_bars(extended_lane_frames, projected_ego_fstates,
+                                                       state.ego_state.get_stop_bar_to_ignore(), logger)
+        tcb_in_gff_and_their_distances = {k: v[0] for k, v in tcb_and_ignored_tcbs_in_gff_and_their_distances.items()}
+        ignored_tcb_distance_in_gff = {k: v[1] for k, v in tcb_and_ignored_tcbs_in_gff_and_their_distances.items()}
 
         return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates,
-                   tcb_in_gff_and_their_distances, logger)
+                   tcb_in_gff_and_their_distances, ignored_tcb_distance_in_gff, logger)
 
     @staticmethod
     def _create_projected_objects(dynamic_objects: List[DynamicObject],
@@ -642,6 +649,17 @@ class BehavioralGridState:
         else:
             return RelativeLongitudinalPosition.PARALLEL
 
+    def update_dim_state(self) -> None:
+        """
+        Update DIM state machine of ego, using reference_route (current-lane GFF)
+        """
+        ego_lane_fstate = self.ego_state.map_state.lane_fstate
+        ego_lane_id = self.ego_state.map_state.lane_id
+        ego_s = self.extended_lane_frames[RelativeLane.SAME_LANE].convert_from_segment_state(ego_lane_fstate, ego_lane_id)[FS_SX]
+
+        self.ego_state.update_dim_state(ego_s, self.get_closest_stop_bar(RelativeLane.SAME_LANE),
+                                        self.get_ignored_stop_bar_distance(RelativeLane.SAME_LANE))
+
     @staticmethod
     def _log_grid_data(multi_object_grid: Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]],
                        timestamp_in_sec: float, logger: Logger):
@@ -671,23 +689,36 @@ class BehavioralGridState:
         """
         return self.tcb_in_gff_and_their_distances[relative_lane]
 
+    def get_ignored_stop_bar_distance(self, relative_lane: RelativeLane) -> float:
+        """
+        Returns ignored stop bar distance.
+        :param relative_lane: in the GFF
+        :return: ignored stop bar distance
+        """
+        return self.ignored_tcb_distance_in_gff[relative_lane]
+
     @staticmethod
     def _get_closest_stop_bars(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                               projected_ego_fstates: Dict[RelativeLane, FrenetState2D], logger) \
-            -> Dict[RelativeLane, Tuple[TrafficControlBar, float]]:
+                               projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
+                               stop_bar_id_to_ignore: int = None, logger: Logger = None) \
+            -> Dict[RelativeLane, Tuple[Tuple[TrafficControlBar, float], float]]:
         """
         at object construction, find the closest stop bars to the ego per BGS lane.
         Life span is a BP cycle
         :param extended_lane_frames: of the BGS
         :param projected_ego_fstates: ego projection on frenet lanes
+        :param stop_bar_to_ignore: id of stop bar that is ignored during DIM
         :param logger:
-        :return: dictionary of the closest stop bars to the ego per BGS lane
+        :return: dictionary of the closest stop bars with its s-distance to the ego, plus the ignored TCB distance per BGS lane
         """
         bars_per_lane = {}
         for relative_lane, target_lane in extended_lane_frames.items():
             ego_location = projected_ego_fstates[relative_lane][FS_SX]
+            if logger is not None:
+                logger.debug("Stop bar check for lane %s", relative_lane)  # more logger info inside get_closest_stop_bar
             bars_per_lane[relative_lane] = MapUtils.get_closest_stop_bar(extended_lane_frames[relative_lane],
-                                                                         ego_location, DIM_MARGIN_TO_STOP_BAR, logger)
+                                                                         ego_location, DIM_MARGIN_TO_STOP_BAR,
+                                                                         stop_bar_id_to_ignore, logger)
         return bars_per_lane
 
     @staticmethod
