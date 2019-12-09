@@ -8,7 +8,8 @@ import six
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     SAFETY_HEADWAY, REL_LAT_ACC_LIMITS, LAT_ACC_LIMITS_LANE_CHANGE, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K, \
+    STOP_BAR_DISTANCE_IND, TIME_THRESHOLDS, SPEED_THRESHOLDS
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
@@ -226,7 +227,8 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
         closest_TCB_ant_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
-        return closest_TCB_ant_its_distance is not None and closest_TCB_ant_its_distance[1] < action_spec.s
+        return closest_TCB_ant_its_distance is not None and \
+               closest_TCB_ant_its_distance[STOP_BAR_DISTANCE_IND] < action_spec.s
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
@@ -334,14 +336,14 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
         """
         Checks if there are stop signs. Returns the `s` of the first (closest) stop-sign
-        :param behavioral_state:
-        :param action_spec:
-        :return: The index of the end point
+        :param behavioral_state: behavioral grid state
+        :param action_spec: action specification
+        :return: s of the next stop bar, target velocity (zero)
         """
         closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
         if closest_TCB_and_its_distance is None:  # no stop bars
             self._raise_true()
-        return np.array([closest_TCB_and_its_distance[1]]), np.array([0])
+        return np.array([closest_TCB_and_its_distance[STOP_BAR_DISTANCE_IND]]), np.array([0])
 
 
 class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
@@ -511,10 +513,6 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
 
 
 class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
-    # thresholds are defined by the system requirements
-    SPEED_THRESHOLDS = np.array([3, 6, 9, 12, 14, 100])  # in [m/s]
-    TIME_THRESHOLDS = np.array([7, 8, 10, 13, 15, 19.8])  # in [s]
-
     @staticmethod
     def _is_time_to_stop(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
         """
@@ -524,11 +522,11 @@ class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
         :param behavioral_state: state of the world
         :return: True if the action should start, False otherwise
         """
-        assert max(FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
+        assert max(TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
         ego_speed = behavioral_state.projected_ego_fstates[action_spec.recipe.relative_lane][FS_SV]
         # lookup maximal time threshold
-        indices = np.where(FilterStopActionIfTooSoonByTime.SPEED_THRESHOLDS > ego_speed)[0]
-        maximal_stop_time = FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS[indices[0]] \
+        indices = np.where(SPEED_THRESHOLDS > ego_speed)[0]
+        maximal_stop_time = TIME_THRESHOLDS[indices[0]] \
             if len(indices) > 0 else BP_ACTION_T_LIMITS[1]
 
         return action_spec.t < maximal_stop_time

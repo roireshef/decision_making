@@ -1,16 +1,10 @@
 import numpy as np
 
-from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
 MPH_TO_MPS = 2.23694
-
-# Communication Layer
-
-# PubSub message class implementation for all DM messages
-PUBSUB_MSG_IMPL = StrSerializable
 
 # Behavioral Planner
 
@@ -36,29 +30,29 @@ PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
 
 # Trajectory cost parameters
-OBSTACLE_SIGMOID_COST = 1.0 * 1e5  # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 9.0  # sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
+OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects on road
 
-DEVIATION_FROM_LANE_COST = 0.07  # cost of deviation from lane (sigmoid)
-LANE_SIGMOID_K_PARAM = 4  # sigmoid k (slope) param of going out-of-lane-center
+DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
+LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
-DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2  # cost of deviation to shoulders (sigmoid)
-SHOULDER_SIGMOID_K_PARAM = 8.0  # sigmoid k (slope) param of going out-of-shoulder
-SHOULDER_SIGMOID_OFFSET = 0.2  # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
+DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+SHOULDER_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of going out-of-shoulder
+SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
-DEVIATION_FROM_ROAD_COST = 1.0 * 1e3  # cost of deviation from road (sigmoid)
-ROAD_SIGMOID_K_PARAM = 20  # sigmoid k (slope) param of going out-of-road
+DEVIATION_FROM_ROAD_COST = 1.0 * 1e3        # cost of deviation from road (sigmoid)
+ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3  # ratio between lateral and longitudinal deviation costs from the goal
-DEVIATION_FROM_GOAL_COST = 2.5 * 1e2  # cost of longitudinal deviation from the goal
-GOAL_SIGMOID_K_PARAM = 0.5  # sigmoid k (slope) param of going out-of-goal
-GOAL_SIGMOID_OFFSET = 7  # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
+DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3       # ratio between lateral and longitudinal deviation costs from the goal
+DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation from the goal
+GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
+GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
-LARGE_DISTANCE_FROM_SHOULDER = 1e8  # a large value indicating being very far from road shoulders (so we don't
-# penalize on that).
+LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being very far from road shoulders (so we don't
+                                            # penalize on that).
 
-LON_JERK_COST_WEIGHT = 1.0  # cost of longitudinal jerk
-LAT_JERK_COST_WEIGHT = 1.0  # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 # original velocities in [mph] are converted into [m/s]
@@ -129,6 +123,10 @@ LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 
 # Additional distance after stop bar, where vehicle still considers bar as active, until DIM is active
 DIM_MARGIN_TO_STOP_BAR = 10.0
+
+# Deceleration thresholds as defined by the system requirements
+SPEED_THRESHOLDS = np.array([3, 6, 9, 12, 14, 100])  # in [m/s]
+TIME_THRESHOLDS = np.array([7, 8, 10, 13, 15, 19.8])  # in [s]
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
@@ -221,8 +219,8 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference th
 
 # limits for allowing tracking mode. During tracking we maintain a fixed speed trajectory with the speed the target.
 # May want to consider replacing with ego speed, so that speed is constant
-TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1  # in [m]
-TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1  # in [m/s]
+TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1       # in [m]
+TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1       # in [m/s]
 TRACKING_ACCELERATION_DISPOSITION_LIMIT = 0.05  # in [m/s^2]
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
@@ -259,6 +257,21 @@ LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
 LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
 # [m/sec] velocity resolution in action space
 LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
+
+# [m/sec] maximal velocity from which DIM may be performed
+DRIVER_INITIATED_MOTION_VELOCITY_LIMIT = 0.1
+# [sec] maximal time to reach the next stop bar (keeping current ego velocity)
+DRIVER_INITIATED_MOTION_MAX_TIME_TO_STOP_BAR = 5
+# [m] how far to look for the next stop bar to perform DIM
+DRIVER_INITIATED_MOTION_STOP_BAR_HORIZON = 5
+# acceleration pedal strength in [0..1]
+DRIVER_INITIATED_MOTION_PEDAL_THRESH = 0.05
+# [sec] time period of sufficient throttle pedal
+DRIVER_INITIATED_MOTION_PEDAL_TIME = 0.5
+# [sec] time period DIM is active after driver released the pedal
+DRIVER_INITIATED_MOTION_TIMEOUT = 10
+# indices of tuple
+STOP_BAR_IND, STOP_BAR_DISTANCE_IND = 0, 1
 
 # Werling Planner #
 
