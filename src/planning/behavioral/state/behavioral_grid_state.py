@@ -670,7 +670,8 @@ class BehavioralGridState:
         :param relative_lane: in the GFF
         :return: tuple of (closest stop bar, its distance.)
         """
-        return self.tcb_in_gff_and_their_distances[relative_lane]
+        return self.tcb_in_gff_and_their_distances[relative_lane] \
+            if relative_lane in self.tcb_in_gff_and_their_distances else None
 
     @staticmethod
     def _get_closest_stop_bars(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
