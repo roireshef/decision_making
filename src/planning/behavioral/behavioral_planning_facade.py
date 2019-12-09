@@ -1,7 +1,7 @@
 import time
 import traceback
 from logging import Logger
-from typing import Optional
+from typing import Optional, Dict, Tuple
 
 import numpy as np
 import multiprocessing as mp
@@ -11,6 +11,7 @@ from decision_making.src.messages.pedal_position_message import PedalPosition
 from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
 from decision_making.src.planning.behavioral.state_machine_visualizations import DriverInitiatedMotionVisualizer
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
+from decision_making.src.utils.state_machine_visualizer import StateMachineVisualizer
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
@@ -28,7 +29,7 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
     MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, MAX_COST, \
-    LOG_MSG_CONTROL_STATUS
+    LOG_MSG_CONTROL_STATUS, DIM_VISUALIZER_NAME
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -54,7 +55,8 @@ from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
-    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
+    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None,
+                 state_machine_visualizers: Dict[str, Tuple[StateMachineVisualizer, mp.Queue]] = None) -> None:
         """
         :param pubsub:
         :param logger:
@@ -68,8 +70,7 @@ class BehavioralPlanningFacade(DmModule):
         self.last_log_time = -1.0
 
         self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
-        self._dim_visualizer_queue = mp.Queue(10)
-        self._dim_visualizer = DriverInitiatedMotionVisualizer(self._dim_visualizer_queue)
+        self._state_machine_visualizers = state_machine_visualizers or {}
 
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
@@ -91,7 +92,6 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_PEDAL_POSITION)
         self.pubsub.subscribe(UC_SYSTEM_CONTROL_STATUS)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
-        self._dim_visualizer.start()
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
@@ -101,7 +101,6 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.unsubscribe(UC_SYSTEM_PEDAL_POSITION)
         self.pubsub.unsubscribe(UC_SYSTEM_CONTROL_STATUS)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
-        self._dim_visualizer.stop()
 
     def _periodic_action_impl(self) -> None:
         """
@@ -136,7 +135,8 @@ class BehavioralPlanningFacade(DmModule):
             if pedal_position is not None:
                 self._driver_initiated_motion_state.update_pedal_times(pedal_position)
 
-            self._dim_visualizer_queue.put(self._driver_initiated_motion_state)
+            if DIM_VISUALIZER_NAME in self._state_machine_visualizers.keys():
+                self._state_machine_visualizers[DIM_VISUALIZER_NAME][1].put(self._driver_initiated_motion_state)
 
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()

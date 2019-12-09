@@ -1,8 +1,10 @@
+from decision_making.src.planning.behavioral.state_machine_visualizations import DriverInitiatedMotionVisualizer
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, ROUTE_PLANNING_MODULE_PERIOD
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
+    ROUTE_PLANNING_MODULE_PERIOD, DIM_VISUALIZER_NAME
 from decision_making.paths import Paths
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
@@ -18,13 +20,17 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 import os
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
+import multiprocessing as mp
 
 AV_Logger.init_group("PLAN")
 
-DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
-
 
 class DmInitialization:
+    dim_visualizer_queue = mp.Queue(10)
+    state_machine_visualizers = {
+        DIM_VISUALIZER_NAME: (DriverInitiatedMotionVisualizer(dim_visualizer_queue), dim_visualizer_queue)
+    }
+
     """
     This class contains the module initializations
     """
@@ -45,7 +51,8 @@ class DmInitialization:
 
         pubsub = PubSub()
 
-        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None)
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None,
+                                                     state_machine_visualizers=DmInitialization.state_machine_visualizers)
         return behavioral_module
 
     @staticmethod
@@ -75,6 +82,10 @@ def main():
 
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
+
+    for name, vis in DmInitialization.state_machine_visualizers.items():
+        vis[0].start()
+        print('Initialized %s state machine visualizer' % name)
 
     modules_list = \
         [
