@@ -4,10 +4,12 @@ from logging import Logger
 from typing import Optional
 
 import numpy as np
+import multiprocessing as mp
 from decision_making.src.messages.control_status_message import ControlStatus
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
+from decision_making.src.planning.behavioral.state_machine_visualizations import DriverInitiatedMotionVisualizer
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
@@ -63,9 +65,13 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
-        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
-        MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
+
+        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
+        self._dim_visualizer_queue = mp.Queue(10)
+        self._dim_visualizer = DriverInitiatedMotionVisualizer(self._dim_visualizer_queue)
+
+        MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def _write_filters_to_log_if_required(self, now: float):
         """
@@ -85,6 +91,7 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_PEDAL_POSITION)
         self.pubsub.subscribe(UC_SYSTEM_CONTROL_STATUS)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
+        self._dim_visualizer.start()
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
@@ -94,6 +101,7 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.unsubscribe(UC_SYSTEM_PEDAL_POSITION)
         self.pubsub.unsubscribe(UC_SYSTEM_CONTROL_STATUS)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
+        self._dim_visualizer.stop()
 
     def _periodic_action_impl(self) -> None:
         """
@@ -127,6 +135,8 @@ class BehavioralPlanningFacade(DmModule):
             # update pedal press/release times according to the acceleration pedal position
             if pedal_position is not None:
                 self._driver_initiated_motion_state.update_pedal_times(pedal_position)
+
+            self._dim_visualizer_queue.put(self._driver_initiated_motion_state)
 
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
@@ -167,7 +177,7 @@ class BehavioralPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            
+
             # TODO: this check should include is_engaged with <and> *after* the LocalizationUtils check
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):

@@ -12,7 +12,7 @@ from typing import Any
 
 
 class StateMachineVisualizer(mp.Process):
-    def __init__(self, title: str, max_queue_len: int = 10):
+    def __init__(self, queue: mp.Queue, title: str):
         """
         A new process that opens a new visualization window and plots graphviz plots inside
         :param max_queue_len: max elements in the queue that is used for communicating with this visualizer
@@ -20,7 +20,7 @@ class StateMachineVisualizer(mp.Process):
         """
         super().__init__()
         self.title = title
-        self.queue = mp.Queue(max_queue_len)
+        self.queue = queue
         self.is_running = mp.Value('b', False)
 
     def run(self):

@@ -15,7 +15,7 @@ from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FS_SV, FrenetState2D
 
 
-class DIM_States(Enum):
+class DIMStates(Enum):
     """
     States of Driver Initiated Motion mechanism
     """
@@ -32,7 +32,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
     2. When the acceleration pedal was pressed for enough time, goto ACTIVE state.
     3. After crossing this stop bar or after timeout since the pedal was released, goto NORMAL state.
     """
-    state = DIM_States                  # the current state
+    state = DIMStates                  # the current state
     pedal_last_change_time = float      # when pedal state (pressed/released) was changed last time
     is_pedal_pressed = bool             # True if the pedal is currently pressed
     stop_bar_id = int                   # the closest stop bar id at the moment of pressing the pedal
@@ -45,28 +45,28 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         return {k: self._serialize_element(v) for k, v in self.__dict__.items() if k != 'logger'}
 
     def update_state(self, timestamp_in_sec: float, ego_lane_fstate: FrenetState2D,
-                     ego_s: float, closestTCB: Tuple[TrafficControlBar, float], ignored_TCB_distance: float) -> None:
+                     ego_s: float, closest_TCB: Tuple[TrafficControlBar, float], ignored_TCB_distance: float) -> None:
         """
         Update DriverInitiatedMotionState according to acceleration pedal strength and how much time it's held
         :param timestamp_in_sec: current timestamp
         :param ego_lane_fstate: lane Frenet state of ego (from MapState)
         :param ego_s: s location of ego in GFF
-        :param closestTCB: Tuple of TCB object and its s location in GFF
+        :param closest_TCB: Tuple of TCB object and its s location in GFF
         :param ignored_TCB_distance: ignored TCB s-location
         """
         # check if we can pass to PENDING state
-        can_pass_to_pending_state, stop_bar_s = self._can_pass_to_pending_state(ego_lane_fstate, ego_s, closestTCB)
+        can_pass_to_pending_state, stop_bar_s = self._can_pass_to_pending_state(ego_lane_fstate, ego_s, closest_TCB)
         if can_pass_to_pending_state:
-            self.stop_bar_id = closestTCB[STOP_BAR_IND].e_i_traffic_control_bar_id
-            self.state = DIM_States.PENDING
+            self.stop_bar_id = closest_TCB[STOP_BAR_IND].e_i_traffic_control_bar_id
+            self.state = DIMStates.PENDING
             self.logger.debug('DIM state: PENDING; stop_bar_id %s', self.stop_bar_id)
-        if self.state == DIM_States.DISABLED:
+        if self.state == DIMStates.DISABLED:
             self._reset()
             return
 
         # check if we can pass to CONFIRMED state
         if self._can_pass_to_confirmed_state(timestamp_in_sec):
-            self.state = DIM_States.CONFIRMED
+            self.state = DIMStates.CONFIRMED
             self.logger.debug('DIM state: CONFIRMED; stop_bar_id %s', self.stop_bar_id)
             # don't move to the "if _can_pass_to_disabled_state" since the ignored is not set properly yet.
             # Will be set in the next cycle
@@ -82,13 +82,13 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         Return stop bar id if the state is ACTIVE
         :return: stop bar id or None if not active
         """
-        return self.stop_bar_id if self.state == DIM_States.CONFIRMED else None
+        return self.stop_bar_id if self.state == DIMStates.CONFIRMED else None
 
     def _reset(self):
         """
         Reset the state to its default settings
         """
-        self.state = DIM_States.DISABLED
+        self.state = DIMStates.DISABLED
         self.pedal_last_change_time = np.inf
         self.is_pedal_pressed = False
         self.stop_bar_id = None
@@ -117,7 +117,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         """
         ego_velocity = ego_lane_fstate[FS_SV]
         # for passing to PENDING state ego velocity should be under a threshold
-        if self.state == DIM_States.DISABLED and ego_velocity <= DRIVER_INITIATED_MOTION_VELOCITY_LIMIT:
+        if self.state == DIMStates.DISABLED and ego_velocity <= DRIVER_INITIATED_MOTION_VELOCITY_LIMIT:
             # stop bar should be closer than a threshold in meters or in seconds
             stop_bar_horizon = max(DRIVER_INITIATED_MOTION_STOP_BAR_HORIZON,
                                    ego_velocity * DRIVER_INITIATED_MOTION_MAX_TIME_TO_STOP_BAR)
@@ -136,7 +136,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         :param timestamp_in_sec: current timestamp
         :return: True if we can pass to the state CONFIRMED
         """
-        if self.state == DIM_States.PENDING:
+        if self.state == DIMStates.PENDING:
             # if the pedal was pressed strongly enough and for enough time
             return self.is_pedal_pressed and timestamp_in_sec - self.pedal_last_change_time >= DRIVER_INITIATED_MOTION_PEDAL_TIME
 
@@ -150,7 +150,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         :param timestamp_in_sec: [sec] current timestamp
         :return: True if we can pass to the state DISABLED
         """
-        if self.state == DIM_States.CONFIRMED:
+        if self.state == DIMStates.CONFIRMED:
             # vehicle passed the stop bar by more than DIM_MARGIN_TO_STOP_BAR or
             # timed out
             return ignored_TCB_distance is None or \
