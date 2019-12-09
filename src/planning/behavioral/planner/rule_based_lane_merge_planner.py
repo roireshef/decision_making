@@ -2,23 +2,19 @@ from logging import Logger
 from typing import List
 import numpy as np
 from decision_making.src.exceptions import NoActionsLeftForBPError
-from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS, EPS, TRAJECTORY_TIME_RESOLUTION, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_BACKWARD_HORIZON, \
-    LANE_MERGE_ACTION_T_LIMITS, LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, \
-    LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, \
-    SPEEDING_SPEED_TH
+from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS, EPS, \
+    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, LANE_MERGE_ACTION_T_LIMITS, \
+    LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, \
+    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, SPEEDING_SPEED_TH
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, StaticActionRecipe, \
-    RelativeLane
-from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, RelativeLane, \
+    StaticActionRecipe
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
-from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState, LaneMergeActorState
-from decision_making.src.planning.types import ActionSpecArray, BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
+from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
+from decision_making.src.planning.types import BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
-from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, QuinticPoly1D
 from decision_making.src.state.state import State
-from rte.python.logger.AV_logger import AV_Logger
 from sympy.matrices import *
 
 OUTPUT_TRAJECTORY_LENGTH = 10
@@ -41,6 +37,9 @@ class LaneMergeSpec:
         self.v_T = v_T
         self.ds = ds
         self.poly_coefs_num = poly_coefs_num
+
+    def to_spec(self, s0: float):
+        return ActionSpec(self.t, self.v_T, s0 + self.ds, 0, StaticActionRecipe(RelativeLane.SAME_LANE, self.v_T, AggressivenessLevel.CALM))
 
     def __str__(self):
         return 't: ' + str(self.t) + ', v_0: ' + str(self.v_0) + ', a_0: ' + str(self.a_0) + \
@@ -184,7 +183,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :param costs: array of actions' costs
         :return: action specification with minimal cost
         """
-        return actions[np.argmin(costs)][0]
+        return actions[np.argmin(costs)].action_specs[0].to_spec(lane_merge_state.ego_fstate_1d[FS_SX])
 
     @staticmethod
     def _caclulate_RSS_distances(actors_s: np.array, actors_v: np.array, margins: np.array,

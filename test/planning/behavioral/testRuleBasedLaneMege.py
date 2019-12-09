@@ -15,5 +15,5 @@ def test_createSafeActions():
     state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, red_line_s)
     logger = AV_Logger.get_logger("test")
     planner = RuleBasedLaneMergePlanner(logger)
-    actions = planner.create_safe_actions(state)
+    actions = planner._create_action_specs(state)
     costs = planner._evaluate_actions(state, None, actions)
