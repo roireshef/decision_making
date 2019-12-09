@@ -118,6 +118,10 @@ LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 # Additional distance after stop bar, where vehicle still considers bar as active, until DIM is active
 DIM_MARGIN_TO_STOP_BAR = 10.0
 
+# Deceleration thresholds as defined by the system requirements
+SPEED_THRESHOLDS = np.array([3, 6, 9, 12, 14, 100])  # in [m/s]
+TIME_THRESHOLDS = np.array([7, 8, 10, 13, 15, 19.8])  # in [s]
+
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
 
