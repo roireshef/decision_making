@@ -127,12 +127,13 @@ class KinematicUtils:
         # get road-curvatures on the target GFF (baseline)
         baseline_curvatures = reference_route.get_curvature(ftrajectories[:, :, FS_SX])
 
-        # calculate baseline lat acceleration (if driving on target GFF) and ONLY keeping speed limits
-        baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * baseline_curvatures
+        # calculate baseline *absolute* lat acceleration (if driving on target GFF) and ONLY keeping speed limits
+        baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * np.abs(baseline_curvatures)
 
         # calculate baseline lat acceleration (if driving on target GFF) and doing
         # BOTH curve speed control and keeping speed limits
-        baseline_lat_accel = np.minimum(baseline_lat_accel_speed_limit, baseline_lat_accel_curve_control)
+        baseline_lat_accel = np.sign(baseline_curvatures) * np.minimum(baseline_lat_accel_speed_limit,
+                                                                       baseline_lat_accel_curve_control)
 
         # compare target lat accels to baseline lat accels
         effective_lat_accel = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
