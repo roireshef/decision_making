@@ -175,7 +175,6 @@ class LaneChangeState:
                 self.source_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE]
                 self._target_lane_ids = extended_lane_frames[selected_action.relative_lane].segment_ids
                 self.lane_change_start_time = ego_state.timestamp_in_sec
-                self.target_relative_lane = selected_action.relative_lane
                 self.status = LaneChangeStatus.LaneChangeActiveInSourceLane
         elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
             pass
