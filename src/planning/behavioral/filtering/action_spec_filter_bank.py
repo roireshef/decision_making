@@ -9,7 +9,7 @@ from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIA
     VELOCITY_LIMITS, LON_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K, \
-    STOP_BAR_DISTANCE_IND
+    STOP_BAR_DISTANCE_IND, TIME_THRESHOLDS, SPEED_THRESHOLDS
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
@@ -476,9 +476,6 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
 
 
 class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
-    # thresholds are defined by the system requirements
-    SPEED_THRESHOLDS = np.array([3, 6, 9, 12, 14, 100])  # in [m/s]
-    TIME_THRESHOLDS = np.array([7, 8, 10, 13, 15, 19.8])  # in [s]
 
     @staticmethod
     def _is_time_to_stop(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
@@ -489,11 +486,11 @@ class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
         :param behavioral_state: state of the world
         :return: True if the action should start, False otherwise
         """
-        assert max(FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
+        assert max(TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
         ego_speed = behavioral_state.projected_ego_fstates[action_spec.recipe.relative_lane][FS_SV]
         # lookup maximal time threshold
-        indices = np.where(FilterStopActionIfTooSoonByTime.SPEED_THRESHOLDS > ego_speed)[0]
-        maximal_stop_time = FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS[indices[0]] \
+        indices = np.where(SPEED_THRESHOLDS > ego_speed)[0]
+        maximal_stop_time = TIME_THRESHOLDS[indices[0]] \
             if len(indices) > 0 else BP_ACTION_T_LIMITS[1]
 
         return action_spec.t < maximal_stop_time
