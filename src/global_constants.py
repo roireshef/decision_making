@@ -62,7 +62,7 @@ LAT_JERK_COST_WEIGHT = 1.0  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 # original velocities in [mph] are converted into [m/s]
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 75 / MPH_TO_MPS  # TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 85/MPH_TO_MPS # TODO - get this value from the map
 
 # [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
 # we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
@@ -70,8 +70,8 @@ TP_DESIRED_VELOCITY_DEVIATION = 1
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 # original velocities in [mph] are converted into [m/s]
-VELOCITY_LIMITS = np.array([0.0, 80 / MPH_TO_MPS])
-VELOCITY_STEP = 5 / MPH_TO_MPS
+VELOCITY_LIMITS = np.array([0.0, 90/MPH_TO_MPS])
+VELOCITY_STEP = 5/MPH_TO_MPS
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
