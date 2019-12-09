@@ -104,6 +104,7 @@ class KinematicUtils:
     @staticmethod
     def filter_by_relative_lateral_acceleration_limits(ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories,
                                                        relative_lat_acceleration_limits: Limits,
+                                                       baseline_lat_accel_curve_control: np.array,
                                                        reference_route: GeneralizedFrenetSerretFrame) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, this filter checks to see if the lateral accelerations
@@ -111,14 +112,15 @@ class KinematicUtils:
         the ftrajectories on the reference_route.
         :param ftrajectories: FrenetTrajectories2D object to use while checking relative lat. accel. limit
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
-        :param max_lat_accelerations: lateral acceleration limits to test for in cartesian frame [m/sec^2]
+        :param baseline_lat_accel_curve_control: lateral acceleration limits to test for in cartesian frame [m/sec^2]
+        given by road's curvature (if only doing curve speed control - those will be the effective accelerations)
         :param relative_lat_acceleration_limits: lat. accel. limits relative to baseline lat. accel. [m/sec^2]
         :param reference_route: GFF used for calculating baseline lat. accel.
         :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
         """
         lane_speed_limits = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in reference_route.segment_ids}
 
-        # get lane_id for each point in ftrajectories
+        # get baseline lane's speed_limits for each trajectory point
         lane_segment_ids, _ = reference_route.convert_to_segment_states(ftrajectories)
         baseline_speed_limits = np.vectorize(lane_speed_limits.get)(lane_segment_ids)
 
@@ -127,10 +129,6 @@ class KinematicUtils:
 
         # calculate baseline lat acceleration (if driving on target GFF) and ONLY keeping speed limits
         baseline_lat_accel_speed_limit = baseline_speed_limits ** 2 * baseline_curvatures
-
-        # calculate baseline lat acceleration (if driving on target GFF) and ONLY doing curve speed control
-        baseline_lat_accel_curve_control = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
-            baseline_curvatures, LAT_ACC_LIMITS_BY_K)
 
         # calculate baseline lat acceleration (if driving on target GFF) and doing
         # BOTH curve speed control and keeping speed limits
@@ -142,11 +140,11 @@ class KinematicUtils:
         # return true if effective and baseline accelerations are of the same sign and effective is at most MARGIN
         # bigger (in absolute value) than baseline, or if they have different sign, than if effective acceleration is
         # at most MARGIN
-        lat_accel_difference_same_sign = np.sign(effective_lat_accel) == np.sign(baseline_lat_accel) and \
-                                         np.abs(effective_lat_accel) - np.abs(baseline_lat_accel) < relative_lat_acceleration_limits[LIMIT_MAX]
+        lat_accel_difference_same_sign = (np.sign(effective_lat_accel) == np.sign(baseline_lat_accel)) & \
+                                         (np.abs(effective_lat_accel) - np.abs(baseline_lat_accel) < relative_lat_acceleration_limits[LIMIT_MAX])
 
-        lat_accel_difference_diff_sign = np.sign(effective_lat_accel) != np.sign(baseline_lat_accel) and \
-                                         np.abs(effective_lat_accel) < relative_lat_acceleration_limits[LIMIT_MAX]
+        lat_accel_difference_diff_sign = (np.sign(effective_lat_accel) != np.sign(baseline_lat_accel)) & \
+                                         (np.abs(effective_lat_accel) < relative_lat_acceleration_limits[LIMIT_MAX])
 
         conforms_rel_lat_accel_limits = np.all(np.logical_or(lat_accel_difference_same_sign,
                                                              lat_accel_difference_diff_sign), axis=1)
