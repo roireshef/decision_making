@@ -73,15 +73,16 @@ class FilterForKinematics(ActionSpecFilter):
         two_sided_lat_acc_limits = BP_LAT_ACC_STRICT_COEF * \
                                    np.stack((-nominal_abs_lat_acc_limits, nominal_abs_lat_acc_limits), -1)
 
-        self._log_debug_message(np.array(action_specs)[not_lane_change_mask].tolist(), ctrajectories[not_lane_change_mask,:,C_K],
-                                two_sided_lat_acc_limits)
+        self._log_debug_message(np.array(action_specs)[not_lane_change_mask].tolist(),
+                                ctrajectories[not_lane_change_mask,:,C_K],
+                                two_sided_lat_acc_limits[not_lane_change_mask])
 
         # Initialize conforms_limits array
         conforms_limits = np.full(ftrajectories.shape[0], False)
 
         # Filter for absolute limits for actions that are NOT part of a lane change
         conforms_limits[not_lane_change_mask] = KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories[not_lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
+            ctrajectories[not_lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits[not_lane_change_mask])
 
         # Deal with lane change actions if they exist
         if any(lane_change_mask):
@@ -98,7 +99,8 @@ class FilterForKinematics(ActionSpecFilter):
                 KinematicUtils.filter_by_relative_lateral_acceleration_limits(ftrajectories[lane_change_mask],
                                                                               ctrajectories[lane_change_mask],
                                                                               REL_LAT_ACC_LIMITS,
-                                                                              nominal_abs_lat_acc_limits, target_gff),
+                                                                              nominal_abs_lat_acc_limits[lane_change_mask],
+                                                                              target_gff),
                 KinematicUtils.filter_by_cartesian_limits(
                     ctrajectories[lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, lane_change_max_lat_accel_limits))
 
