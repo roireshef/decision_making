@@ -22,15 +22,11 @@ from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
 import multiprocessing as mp
 
+
 AV_Logger.init_group("PLAN")
 
 
 class DmInitialization:
-    dim_visualizer_queue = mp.Queue(10)
-    state_machine_visualizers = {
-        DIM_VISUALIZER_NAME: (DriverInitiatedMotionVisualizer(dim_visualizer_queue), dim_visualizer_queue)
-    }
-
     """
     This class contains the module initializations
     """
@@ -51,8 +47,10 @@ class DmInitialization:
 
         pubsub = PubSub()
 
+        global dim_visualizer_queue
+
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None,
-                                                     state_machine_visualizers=DmInitialization.state_machine_visualizers)
+                                                     state_machine_visualizer_queues={DIM_VISUALIZER_NAME: dim_visualizer_queue})
         return behavioral_module
 
     @staticmethod
@@ -73,7 +71,7 @@ class DmInitialization:
         return trajectory_planning_module
 
 
-def main():
+if __name__ == '__main__':
     av_argument_parser.parse_arguments()
     # register termination signal handler
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
@@ -83,9 +81,9 @@ def main():
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
 
-    for name, vis in DmInitialization.state_machine_visualizers.items():
-        vis[0].start()
-        print('Initialized %s state machine visualizer' % name)
+    dim_visualizer_queue = mp.Queue(10)
+    dim_visualizer = DriverInitiatedMotionVisualizer(dim_visualizer_queue)
+    dim_visualizer.start()
 
     modules_list = \
         [
@@ -114,7 +112,3 @@ def main():
         pass
     finally:
         manager.stop_modules()
-
-
-if __name__ == '__main__':
-    main()

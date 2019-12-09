@@ -56,7 +56,7 @@ class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None,
-                 state_machine_visualizers: Dict[str, Tuple[StateMachineVisualizer, mp.Queue]] = None) -> None:
+                 state_machine_visualizer_queues: Dict[str, mp.Queue] = None) -> None:
         """
         :param pubsub:
         :param logger:
@@ -70,7 +70,7 @@ class BehavioralPlanningFacade(DmModule):
         self.last_log_time = -1.0
 
         self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
-        self._state_machine_visualizers = state_machine_visualizers or {}
+        self._state_machine_visualizers = state_machine_visualizer_queues or {}
 
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
@@ -136,7 +136,7 @@ class BehavioralPlanningFacade(DmModule):
                 self._driver_initiated_motion_state.update_pedal_times(pedal_position)
 
             if DIM_VISUALIZER_NAME in self._state_machine_visualizers.keys():
-                self._state_machine_visualizers[DIM_VISUALIZER_NAME][1].put(self._driver_initiated_motion_state)
+                self._state_machine_visualizers[DIM_VISUALIZER_NAME].put(self._driver_initiated_motion_state)
 
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
