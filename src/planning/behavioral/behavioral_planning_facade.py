@@ -136,7 +136,7 @@ class BehavioralPlanningFacade(DmModule):
                 self._driver_initiated_motion_state.update_pedal_times(pedal_position)
 
             if DIM_VISUALIZER_NAME in self._state_machine_visualizers.keys():
-                self._state_machine_visualizers[DIM_VISUALIZER_NAME].put(self._driver_initiated_motion_state)
+                self._state_machine_visualizers[DIM_VISUALIZER_NAME].put(self._driver_initiated_motion_state.state)
 
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()

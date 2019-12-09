@@ -10,9 +10,16 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState, \
     DIMStates
+import multiprocessing as mp
+
+from decision_making.src.planning.behavioral.state_machine_visualizations import DriverInitiatedMotionVisualizer
 
 
 def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg_split):
+    dim_visualizer_queue = mp.Queue(10)
+    dim_visualizer = DriverInitiatedMotionVisualizer(dim_visualizer_queue)
+    # dim_visualizer.start()
+
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
     for lane_segment in scene_static_pg_split.s_Data.s_SceneStaticBase.as_scene_lane_segments:
         lane_segment.as_traffic_control_bar = []
@@ -50,6 +57,8 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closest_TCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
     assert dim_state.stop_bar_to_ignore() is None and dim_state.state == DIMStates.DISABLED
+    dim_visualizer_queue.put(dim_state.state)
+    dim_visualizer.run()
 
     # pedal pressed for enough time
     pedal_position = create_pedal_position(time_in_sec=2, pedal_pos=0.1)
@@ -57,6 +66,8 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closest_TCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
     assert dim_state.stop_bar_to_ignore() is None and dim_state.state == DIMStates.DISABLED
+    dim_visualizer_queue.put(dim_state.state)
+    dim_visualizer.run()
 
     # near the stop sign
     lane_fstate = np.array([stop_bar.e_l_station - 2., 0, 0, 0, 0, 0])
@@ -68,6 +79,8 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closest_TCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
     assert dim_state.stop_bar_to_ignore() is None and dim_state.state == DIMStates.PENDING
+    dim_visualizer_queue.put(dim_state.state)
+    dim_visualizer.run()
 
     # pedal pressed for enough time
     pedal_position = create_pedal_position(time_in_sec=6, pedal_pos=0.1)
@@ -75,6 +88,8 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closest_TCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
     assert dim_state.stop_bar_to_ignore() is not None and dim_state.state == DIMStates.CONFIRMED
+    dim_visualizer_queue.put(dim_state.state)
+    dim_visualizer.run()
 
     # pedal released
     pedal_position = create_pedal_position(time_in_sec=7, pedal_pos=0.01)
@@ -82,6 +97,8 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closest_TCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
     assert dim_state.stop_bar_to_ignore() is not None and dim_state.state == DIMStates.CONFIRMED
+    dim_visualizer_queue.put(dim_state.state)
+    dim_visualizer.run()
 
     # crossed the stop sign
     lane_fstate = np.array([stop_bar.e_l_station + 15., 0, 0, 0, 0, 0])
@@ -92,6 +109,8 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closest_TCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s - ego_s)
     assert dim_state.stop_bar_to_ignore() is None and dim_state.state == DIMStates.DISABLED
+    dim_visualizer_queue.put(dim_state.state)
+    dim_visualizer.run()
 
     # timeout of the DIM state
     pedal_position = create_pedal_position(time_in_sec=33, pedal_pos=0.01)
@@ -99,6 +118,8 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closest_TCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s - ego_s)
     assert dim_state.stop_bar_to_ignore() is None and dim_state.state == DIMStates.DISABLED
+    dim_visualizer_queue.put(dim_state.state)
+    dim_visualizer.run()
 
 
 def create_pedal_position(time_in_sec: float, pedal_pos: float):

@@ -8,6 +8,7 @@ import pydotplus
 from io import BytesIO as StringIO
 import cv2
 import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 from typing import Any
 
 
@@ -22,22 +23,24 @@ class StateMachineVisualizer(mp.Process):
         self.title = title
         self.queue = queue
         self.is_running = mp.Value('b', False)
+        self.im = None
+        self.fig = None
 
     def run(self):
         self.is_running.value = True
         elem = None
 
-        while self.is_running.value:
+        # while self.is_running.value:
 
-            # TODO: This is hacky, should change to synchronized queue
-            while not self.queue.empty():
-                elem = self.queue.get()
+        # TODO: This is hacky, should change to synchronized queue
+        while not self.queue.empty():
+            elem = self.queue.get()
 
-            if elem is None:
-                time.sleep(0.01)
-                continue
+        if elem is None:
+            time.sleep(0.01)
+            # continue
 
-            self._view(self.transform(elem))
+        self._view(self.transform(elem))
 
     def stop(self):
         self.is_running.value = False
@@ -52,7 +55,6 @@ class StateMachineVisualizer(mp.Process):
         pass
 
     def _view(self, graph: Digraph):
-        image_obj = None
 
         # convert from networkx -> pydot
         dotgraph = pydotplus.graph_from_dot_data(graph.source)
@@ -72,6 +74,13 @@ class StateMachineVisualizer(mp.Process):
         new_height = int(new_width * ratio)
         img = cv2.resize(img, (new_width, new_height))
 
-        if image_obj is None:
-            cv2.imshow("Tree", img)
-            cv2.waitKey(1)
+        # initialize window used to plot images
+        if self.im is None:
+            self.fig, ax = plt.subplots(1,1)
+            self.im = ax.imshow(img)
+        else:
+            self.im.set_data(img)
+            self.fig.canvas.draw_idle()
+            plt.pause(1)
+
+
