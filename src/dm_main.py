@@ -19,10 +19,6 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 import os
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
-from queue import Queue
-
-from decision_making.src.planning.behavioral.state_machine_visualizations import DriverInitiatedMotionVisualizer, \
-    LaneChangeOnDemandVisualizer
 
 AV_Logger.init_group("PLAN")
 
@@ -50,14 +46,7 @@ class DmInitialization:
 
         pubsub = PubSub()
 
-        global dim_visualizer_queue
-        global lc_visualizer_queue
-
-        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None,
-                                                     state_machine_visualizer_queues={
-                                                         DIM_VISUALIZER_NAME: dim_visualizer_queue,
-                                                         LC_VISUALIZER_NAME: lc_visualizer_queue}
-                                                     )
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None)
         return behavioral_module
 
     @staticmethod
@@ -88,14 +77,6 @@ def main():
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
 
-    global dim_visualizer_queue
-    dim_visualizer_queue = Queue(10)
-    # dim_visualizer = DriverInitiatedMotionVisualizer(dim_visualizer_queue)
-    # dim_visualizer.start()
-    global lc_visualizer_queue
-    lc_visualizer_queue = Queue(10)
-    # lc_visualizer = LaneChangeOnDemandVisualizer(lc_visualizer_queue)
-    # lc_visualizer.start()
 
     modules_list = \
         [
