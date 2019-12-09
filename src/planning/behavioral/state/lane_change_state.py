@@ -89,6 +89,10 @@ class LaneChangeState:
                 and extended_lane_frames[relative_lane].gff_type not in [GFFType.Augmented, GFFType.AugmentedPartial]
                 for relative_lane in relative_lanes]
 
+    def is_safe_to_start_lane_change(self) -> bool:
+        # TODO when safety check is added, should return here the actual safety check result
+        return self.status == LaneChangeStatus.AnalyzingSafety
+
     def update_pre_iteration(self, ego_state: EgoState):
         """
         Updates the lane change status before an iteration
@@ -126,10 +130,10 @@ class LaneChangeState:
 
                 if self.target_relative_lane == RelativeLane.LEFT_LANE:
                     dist_between_lane_centers = dist_to_left_border_in_source_lane + dist_to_right_border_in_target_lane
-                    lane_change_percent_complete = max(0.0, -ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
+                    lane_change_percent_complete = 100 - max(0.0, -ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
                 elif self.target_relative_lane == RelativeLane.RIGHT_LANE:
                     dist_between_lane_centers = dist_to_right_border_in_source_lane + dist_to_left_border_in_target_lane
-                    lane_change_percent_complete = max(0.0, ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
+                    lane_change_percent_complete = 100 - max(0.0, ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
                 else:
                     # We should never get here
                     lane_change_percent_complete = 0.0
@@ -158,7 +162,9 @@ class LaneChangeState:
         if self.status == LaneChangeStatus.LaneChangeRequestable:
             pass
         elif self.status == LaneChangeStatus.LaneChangeRequested:
-            pass
+            # if lane doesn't exist, reset
+            if self.target_relative_lane not in extended_lane_frames.keys():
+                self._reset()
         elif self.status == LaneChangeStatus.AnalyzingSafety:
             if self.get_lane_change_mask([selected_action.relative_lane], extended_lane_frames)[0]:
                 self.source_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE]

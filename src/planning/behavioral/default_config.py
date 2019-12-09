@@ -8,7 +8,7 @@ from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import
     FilterActionsTowardsNonOccupiedCells, FilterActionsTowardBackAndParallelCells, FilterOvertakeActions, \
     FilterIfNoLane, FilterLaneChangingIfNotAugmented, FilterSpeedingOverDesiredVelocityDynamic, \
     FilterSpeedingOverDesiredVelocityStatic, FilterActionsTowardsCellsWithoutStopSignsOrStopBars, FilterRoadSignActions, \
-    FilterLaneChangingIfNotAugmentedOrLaneChangeDesired
+    FilterLaneChangingIfNotAugmentedOrLaneChangeDesired, FilterLaneChangingIfParallelLaneOccupied
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -16,7 +16,8 @@ from rte.python.logger.AV_logger import AV_Logger
 DEFAULT_STATIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                            FilterIfNoLane(),
                                                            FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(),
-                                                           FilterSpeedingOverDesiredVelocityStatic()
+                                                           FilterSpeedingOverDesiredVelocityStatic(),
+                                                           FilterLaneChangingIfParallelLaneOccupied()
                                                            ], logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[RecipeFilterIfNone(),
                                                             FilterActionsTowardsNonOccupiedCells(),

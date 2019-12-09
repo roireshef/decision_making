@@ -99,12 +99,23 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
     This filter denies actions towards the LEFT or RIGHT lanes unless the lane is an augmented lane or a lane change is desired
     """
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        lane_change_desired = behavioral_state.lane_change_state.status in \
-                              [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]
+        lane_change_desired = behavioral_state.lane_change_state.is_safe_to_start_lane_change() or \
+                              (behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane)
 
         return [recipe.relative_lane == RelativeLane.SAME_LANE
                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]
                 or (lane_change_desired and recipe.relative_lane == behavioral_state.lane_change_state.target_relative_lane)
+                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
+                else False for recipe in recipes]
+
+
+class FilterLaneChangingIfParallelLaneOccupied(RecipeFilter):
+    """
+    This filter denies actions towards the LEFT or RIGHT lanes if their PARALLEL grid is occupied
+    """
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.relative_lane == RelativeLane.SAME_LANE
+                or len(behavioral_state.road_occupancy_grid[(recipe.relative_lane, RelativeLongitudinalPosition.PARALLEL)]) == 0
                 if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
                 else False for recipe in recipes]
 
