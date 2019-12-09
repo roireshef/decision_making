@@ -91,8 +91,8 @@ class FilterForKinematics(ActionSpecFilter):
 
             # Generate new limits based on lane change requirements
             num_lc_trajectories, num_lc_points, _ = ctrajectories[lane_change_mask].shape
-            lane_change_max_lat_accel_limits = np.full(shape=(num_lc_trajectories, num_lc_points),
-                                                       fill_value=LAT_ACC_LIMITS_LANE_CHANGE)
+            lane_change_max_lat_accel_limits = np.tile(
+                LAT_ACC_LIMITS_LANE_CHANGE, reps=(num_lc_trajectories, num_lc_points)).reshape((num_lc_trajectories, num_lc_points, 2))
 
             # Filter for both relative and absolute limits for lane change actions
             conforms_limits[lane_change_mask] = np.logical_and(
