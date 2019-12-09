@@ -85,9 +85,14 @@ class LaneChangeState:
         :param extended_lane_frames:
         :return:
         """
-        return [relative_lane in [RelativeLane.LEFT_LANE, RelativeLane.RIGHT_LANE]
-                and extended_lane_frames[relative_lane].gff_type not in [GFFType.Augmented, GFFType.AugmentedPartial]
-                for relative_lane in relative_lanes]
+        if self.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
+            return [relative_lane == self.target_relative_lane
+                    and extended_lane_frames[relative_lane].gff_type not in [GFFType.Augmented, GFFType.AugmentedPartial]
+                    for relative_lane in relative_lanes]
+        elif self.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
+            return [relative_lane == RelativeLane.SAME_LANE for relative_lane in relative_lanes]
+        else:
+            return [False] * len(relative_lanes)
 
     def is_safe_to_start_lane_change(self) -> bool:
         # TODO when safety check is added, should return here the actual safety check result
