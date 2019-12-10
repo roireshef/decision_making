@@ -3,7 +3,7 @@ import multiprocessing as mp
 import time
 import traceback
 from logging import Logger
-from typing import Optional, Dict
+from typing import Optional
 
 import numpy as np
 from decision_making.src.messages.control_status_message import ControlStatus
@@ -28,7 +28,7 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
     MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, MAX_COST, \
-    LOG_MSG_CONTROL_STATUS, DIM_VISUALIZER_NAME, LC_VISUALIZER_NAME
+    LOG_MSG_CONTROL_STATUS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -50,17 +50,13 @@ from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
-from decision_making.src.planning.behavioral.state_machine_visualizations import DriverInitiatedMotionVisualizer, \
-    LaneChangeOnDemandVisualizer
-
-from queue import Queue
 
 
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None,
-                 visualizer_queues: Dict[str, mp.SimpleQueue] = None) -> None:
+                 visualizer_queue: mp.SimpleQueue = None) -> None:
         """
         :param pubsub:
         :param logger:
@@ -71,12 +67,10 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
-        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
+        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger, visualizer_queue)
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
-        self._lane_change_state = LaneChangeState()
-
-        self.visualizer_queues = visualizer_queues or {}
+        self._lane_change_state = LaneChangeState(visualizer_queue=visualizer_queue)
 
     @property
     def planner(self):
@@ -223,17 +217,6 @@ class BehavioralPlanningFacade(DmModule):
 
             # Send visualization data
             self._publish_visualization(behavioral_visualization_message)
-
-            # update visualizer queues
-            try:
-                self.visualizer_queues[DIM_VISUALIZER_NAME].put(self._driver_initiated_motion_state.state)
-            except Exception:
-                self.logger.warning("Tried to update window for DIM Visualizer but failed with %s" % traceback.format_exc())
-
-            try:
-                self.visualizer_queues[LC_VISUALIZER_NAME].put(self._lane_change_state.status)
-            except Exception:
-                self.logger.warning("Tried to update window for LCoD Visualizer but failed with %s" % traceback.format_exc())
 
             speed_limits = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in self._last_gff_segment_ids}
             self.logger.debug("Speed limits at time %f: %s" % (state.ego_state.timestamp_in_sec, speed_limits))

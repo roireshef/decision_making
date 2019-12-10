@@ -1,5 +1,4 @@
 import multiprocessing as mp
-import time
 from abc import abstractmethod
 
 from graphviz import Digraph
@@ -9,11 +8,11 @@ from io import BytesIO as StringIO
 import cv2
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
-from typing import Any
+from typing import Any, Tuple
 
 
 class StateMachineVisualizer(mp.Process):
-    def __init__(self, queue: mp.SimpleQueue, title: str):
+    def __init__(self, queue: mp.SimpleQueue, title: str, plot_num: int = 1):
         """
         A new process that opens a new visualization window and plots graphviz plots inside
         :param max_queue_len: max elements in the queue that is used for communicating with this visualizer
@@ -23,26 +22,25 @@ class StateMachineVisualizer(mp.Process):
         self.title = title
         self.queue = queue
         self.is_running = mp.Value('b', False)
-        self.im = None
-        self.fig = None
+        self.im = [None] * plot_num
+        self.fig = [None] * plot_num
+        self.plot_num = plot_num
 
     def run(self):
         self.is_running.value = True
 
         while self.is_running.value:
             elem = self.queue.get()
-
-            if elem is None:
-                time.sleep(0.2)
-                continue
-
             self._view(self.transform(elem))
 
     def stop(self):
         self.is_running.value = False
+        for fig in self.fig:
+            plt.close(fig)
+        self.kill()
 
     @abstractmethod
-    def transform(self, elem: Any) -> Digraph:
+    def transform(self, elem: Any) -> Tuple[int, Digraph]:
         """
         abstract class that user implements for custom transofmation from any object to Digraph for visualization
         :param elem: any obj that will be stored in <self.queue>
@@ -50,8 +48,10 @@ class StateMachineVisualizer(mp.Process):
         """
         pass
 
-    def _view(self, graph: Digraph):
+    def _view(self, sub_plot_graph: Tuple[int, Digraph]):
 
+        sub_plot_num = sub_plot_graph[0]-1
+        graph = sub_plot_graph[1]
         # convert from networkx -> pydot
         dotgraph = pydotplus.graph_from_dot_data(graph.source)
         png_str = dotgraph.create_png(prog='dot')
@@ -71,11 +71,11 @@ class StateMachineVisualizer(mp.Process):
         img = cv2.resize(img, (new_width, new_height))
 
         # initialize window used to plot images
-        if self.im is None:
-            self.fig, ax = plt.subplots(1,1)
-            self.im = ax.imshow(img)
+        if self.im[sub_plot_num] is None:
+            self.fig[sub_plot_num], ax = plt.subplots(1,1)
+            self.im[sub_plot_num] = ax.imshow(img)
         else:
-            self.im.set_data(img)
-            self.fig.canvas.draw_idle()
-            plt.pause(0.1)
+            self.im[sub_plot_num].set_data(img)
+        self.fig[sub_plot_num].canvas.draw_idle()
+        plt.pause(0.1)
 
