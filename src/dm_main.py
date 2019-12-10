@@ -77,7 +77,6 @@ def main():
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
 
-
     modules_list = \
         [
             DmProcess(lambda: DmInitialization.create_route_planner(),

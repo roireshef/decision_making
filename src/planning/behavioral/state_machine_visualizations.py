@@ -17,10 +17,12 @@ class DriverInitiatedMotionVisualizer(StateMachineVisualizer):
         states = {i: s for i, s in enumerate(DIM_States)}
 
         for i, s in states.items():
-            d.node(str(i), str(s), color='Green' if elem == s else 'Grey', style='filled', shape='ellipse')
+            d.node(str(i), str(s).split('.')[-1], color='Green' if elem == s else 'Grey', style='filled', shape='ellipse')
 
         for i in range(len(states)-1):
             d.edge(str(i), str(i+1))
+
+        d.edge(str(len(states)-1), str(0))
 
         return d
 
@@ -35,9 +37,11 @@ class LaneChangeOnDemandVisualizer(StateMachineVisualizer):
         states = {i: s for i, s in enumerate(LaneChangeStatus)}
 
         for i, s in states.items():
-            d.node(str(i), str(s), color='Green' if elem == s else 'Grey', style='filled', shape='ellipse')
+            d.node(str(i), str(s).split('.')[-1], color='Green' if elem == s else 'Grey', style='filled', shape='ellipse')
 
         for i in range(len(states)-1):
             d.edge(str(i), str(i+1))
+
+        d.edge(str(len(states)-1), str(0))
 
         return d
