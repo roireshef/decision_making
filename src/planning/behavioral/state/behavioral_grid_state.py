@@ -712,10 +712,10 @@ class BehavioralGridState:
         in_left = np.any(gff.has_segment_ids(np.array(MapUtils.get_adjacent_lane_ids(obj_lane_id, RelativeLane.RIGHT_LANE))))
         offset_side = RelativeLane.RIGHT_LANE if in_right else RelativeLane.LEFT_LANE
 
-        # object can only overlap with adjacent lanes, and can't be in both left and right.
-        # todo: is this assumption true?
+        # If an object is in both the left and right lane (based only on lane ID's), there may be an error in the map.
         if not (in_left ^ in_right):
-            return False
+            logger.info(f"Object {dynamic_object.obj_id}'s lane ({dynamic_object.map_state.lane_id}) was found in both "
+                        f"the left and right GFFs.")
 
         bbox = dynamic_object.bounding_box()
 
