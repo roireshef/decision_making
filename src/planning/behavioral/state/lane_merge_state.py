@@ -21,7 +21,7 @@ class LaneMergeState(BehavioralGridState):
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                  projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
-                 red_line_s_on_ego_gff: float, target_rel_lane: RelativeLane):
+                 merge_from_s_on_ego_gff: float, red_line_s_on_ego_gff: float, target_rel_lane: RelativeLane):
         """
         lane merge state
         :param red_line_s_on_ego_gff: s of the red line on SAME_LANE GFF
@@ -31,6 +31,7 @@ class LaneMergeState(BehavioralGridState):
         :param target_rel_lane: RelativeLane of the merge target lane
         """
         super().__init__(road_occupancy_grid, ego_state, extended_lane_frames, projected_ego_fstates, {}, None)
+        self.merge_from_s_on_ego_gff = merge_from_s_on_ego_gff
         self.red_line_s_on_ego_gff = red_line_s_on_ego_gff
         self.target_rel_lane = target_rel_lane
 
@@ -112,7 +113,9 @@ class LaneMergeState(BehavioralGridState):
             road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state,
                                                                                LANE_MERGE_ACTORS_HORIZON)
 
-            return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego, red_line_s, target_rel_lane)
+            return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego,
+                       merge_from_s_on_ego_gff=red_line_s - 10,
+                       red_line_s_on_ego_gff=red_line_s + 70, target_rel_lane=target_rel_lane)
 
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE or target lane GFF, stop processing this BP frame
@@ -120,7 +123,7 @@ class LaneMergeState(BehavioralGridState):
 
     @classmethod
     def create_thin_state(cls, ego_length: float, ego_fstate: FrenetState1D,
-                          actors_lane_merge_state: List[LaneMergeActorState], red_line_s: float):
+                          actors_lane_merge_state: List[LaneMergeActorState], merge_from_s: float, red_line_s: float):
         """
         This function may be used by RL training procedure, where ego & actors are created in a fast simple simulator,
         like SUMO, where scene_static (with Frenet frames) does not exist.
@@ -129,6 +132,7 @@ class LaneMergeState(BehavioralGridState):
         :param ego_length: [m] ego length
         :param ego_fstate: 1D ego Frenet state (only s dimension, s is relative to the virtual GFF's origin)
         :param actors_lane_merge_state: list of actors states, each of type LaneMergeActorState
+        :param merge_from_s: s of the point from which the merge is allowed (dashed line)
         :param red_line_s: [m] s of the red line (relative to the virtual GFF's origin)
         :return: LaneMergeState
         """
@@ -146,5 +150,6 @@ class LaneMergeState(BehavioralGridState):
                                 for i, actor in enumerate(actors_lane_merge_state)]}
 
         ego_fstate2D = np.concatenate((ego_fstate, np.zeros(FS_1D_LEN)))
-        return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D}, red_line_s, target_rel_lane)
+        return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D},
+                   merge_from_s, red_line_s, target_rel_lane)
 

@@ -300,7 +300,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :param state: lane merge state
         :return: two 1D arrays of v_T & T, where ego is safe at target_s relatively to all actors
         """
+        s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
         s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
+
         ego_length = state.ego_length
         ego_fstate = state.ego_fstate_1d
         actors_states = state.actors_states
@@ -347,7 +349,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         vts2 = np.c_[target_v[optimal_s_is_unsafe], target_t[optimal_s_is_unsafe], non_optimal_under_s]
         vts3 = np.c_[target_v[optimal_s_is_unsafe], target_t[optimal_s_is_unsafe], non_optimal_above_s]
         vts = np.concatenate((vts1, vts2, vts3), axis=0)
-        vts = vts[(vts[:, 2] >= 0) & (vts[:, 2] <= s_max)]
+        vts = vts[(vts[:, 2] >= s_min) & (vts[:, 2] <= s_max)]
         return vts.T
 
     @staticmethod
