@@ -110,8 +110,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         lane_merge_actions = single_actions + max_vel_actions
 
-        print('\ntime = %f: safety=%f quintic=%f(%d) quartic=%f(%d)' %
-              (time.time() - st_tot, time_safety, time_quintic, len(single_actions), time_quartic, len(max_vel_actions)))
+        # print('\ntime = %f: safety=%f quintic=%f(%d) quartic=%f(%d)' %
+        #       (time.time() - st_tot, time_safety, time_quintic, len(single_actions), time_quartic, len(max_vel_actions)))
         return np.array(lane_merge_actions)
 
     def _filter_actions(self, lane_merge_state: LaneMergeState, actions: np.array) -> np.array:
@@ -304,7 +304,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
         s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
-        print('s_min=', s_min, 's_max=', s_max, )
 
         ego_length = state.ego_length
         ego_fstate = state.ego_fstate_1d
@@ -312,6 +311,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in actors_states]).T
         margins = 0.5 * (actors_length + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+
+        actors_s.sort()
+        actor_i = np.sum(actors_s < 0)
+        print('s_min=', s_min, 's_max=', s_max, 'actors_rel_s=', actors_s[actor_i-1:actor_i+1])
 
         # calculate planning time bounds given target_s
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]

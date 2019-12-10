@@ -28,6 +28,7 @@ class Scenario:
                                       LANE_MERGE_STATE_FAR_AWAY_DISTANCE, route_plan, logger):
             return LaneMergeScenario
         else:
+            print('DefaultScenario')
             return DefaultScenario
 
     @staticmethod
