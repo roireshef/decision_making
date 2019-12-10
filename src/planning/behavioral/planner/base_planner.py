@@ -58,7 +58,7 @@ class BasePlanner:
         trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec, selected_action_recipe)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
-        timestamp_in_sec = behavioral_state.ego_state.timestamp_in_sec
+        timestamp_in_sec = state.ego_state.timestamp_in_sec
         baseline_trajectory = BasePlanner.generate_baseline_trajectory(
             timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
@@ -275,6 +275,7 @@ class BasePlanner:
                                            lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
+                                           # TODO: deprecated - should be replaced or removed
                                            lat_acceleration_limits=LAT_ACC_LIMITS,
                                            desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED +
                                                             TP_DESIRED_VELOCITY_DEVIATION)

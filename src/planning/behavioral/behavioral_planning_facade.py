@@ -1,20 +1,31 @@
 import time
 import traceback
 from logging import Logger
+from typing import Optional
 
 import numpy as np
+from decision_making.src.messages.control_status_message import ControlStatus
+from decision_making.src.messages.pedal_position_message import PedalPosition
+from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
+from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_CONTROL_STATUS
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
+
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES
+from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
-    RoutePlanningException, MappingException, raises, OutOfSegmentBack, OutOfSegmentFront
+    RoutePlanningException, MappingException, raises
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
-    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED
+    MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, MAX_COST, \
+    LOG_MSG_CONTROL_STATUS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -22,22 +33,24 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
+from decision_making.src.messages.turn_signal_message import TurnSignal, DEFAULT_MSG as DEFAULT_TURN_SIGNAL_MSG
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState
-from decision_making.src.planning.types import FS_SX, FS_SV, C_X, C_Y
+from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import State, EgoState, MapState
+from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
 class BehavioralPlanningFacade(DmModule):
+    last_log_time = float
+
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
@@ -50,17 +63,35 @@ class BehavioralPlanningFacade(DmModule):
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
-        self.logger.debug('ActionSpec Filters List: %s', [filter.__str__() for filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+        self.last_log_time = -1.0
+
+    def _write_filters_to_log_if_required(self, now: float):
+        """
+        Write list of applicable filters to log every 5 seconds.
+        :param now: time in seconds
+        """
+        if now - self.last_log_time > 5.0:
+            self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
+                                                              as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.last_log_time = now
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.subscribe(UC_SYSTEM_TURN_SIGNAL)
+        self.pubsub.subscribe(UC_SYSTEM_PEDAL_POSITION)
+        self.pubsub.subscribe(UC_SYSTEM_CONTROL_STATUS)
+        self.pubsub.subscribe(UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_DYNAMIC)
         self.pubsub.unsubscribe(UC_SYSTEM_SCENE_STATIC)
         self.pubsub.unsubscribe(UC_SYSTEM_ROUTE_PLAN)
+        self.pubsub.unsubscribe(UC_SYSTEM_TURN_SIGNAL)
+        self.pubsub.unsubscribe(UC_SYSTEM_PEDAL_POSITION)
+        self.pubsub.unsubscribe(UC_SYSTEM_CONTROL_STATUS)
+        self.pubsub.unsubscribe(UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
 
     def _periodic_action_impl(self) -> None:
         """
@@ -73,6 +104,22 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
 
+            # pedal position is a signal used for Driver Initiated Motion
+            # TODO: implement usage in DIM
+            self._get_current_pedal_position()
+
+            # Turn signal (blinkers) is a signal used for Lane Change on Demand
+            try:
+                turn_signal = self._get_current_turn_signal()
+            except MsgDeserializationError as e:
+                self.logger.warning("MsgDeserializationError was raised for turn signal. Overriding with default value")
+                turn_signal = DEFAULT_TURN_SIGNAL_MSG
+
+            # Control status is a signal that is used as a proxy for vehicle's Engagement status
+            # Logic is to keep planning in disengaged mode, but always "re-plan" (use actual localization)
+            control_status = self._get_current_control_status()
+            is_engaged = control_status is not None and control_status.is_av_engaged()
+
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
                 route_plan_dict = route_plan.to_costs_dict()
@@ -81,15 +128,20 @@ class BehavioralPlanningFacade(DmModule):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
 
+
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
+                SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(
+                    self._get_current_tcd_status().s_Data.as_dynamic_traffic_control_device_status)
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
-                                                              logger=self.logger)
+                                                              logger=self.logger,
+                                                              turn_signal=turn_signal)
 
                 state.handle_negative_velocities(self.logger)
 
+            self._write_filters_to_log_if_required(state.ego_state.timestamp_in_sec)
             self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
 
             self.logger.debug("Scene Dynamic host localization published at timestamp: %f," +
@@ -107,11 +159,12 @@ class BehavioralPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
+            
+            # TODO: this check should include is_engaged with <and> *after* the LocalizationUtils check
             if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                updated_state = self._get_state_with_expected_ego(state)
-                self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
-                                  "according to previous plan.  %s", updated_state.ego_state)
+                updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
+                                                                              self.logger, self.__class__.__name__)
             else:
                 updated_state = state
 
@@ -121,13 +174,18 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_takeover(takeover_message)
 
             # choose scenario and planner
-            scenario = Scenario.identify_scenario(updated_state, route_plan)
+            scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
             planner_class = scenario.choose_planner(updated_state, route_plan, self.logger)
             planner = planner_class(self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan(updated_state, route_plan)
 
+            # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
+            # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral
+            # offsets up to even crossing lane boundaries
+
+            # TODO: this should be set with: if is_engaged else None
             self._last_trajectory = samplable_trajectory
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
@@ -182,7 +240,7 @@ class BehavioralPlanningFacade(DmModule):
         return route_plan
 
     @raises(EgoRoadSegmentNotFound, RepeatedRoadSegments, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect)
-    def _set_takeover_message(self, route_plan_data:DataRoutePlan, ego_state:EgoState) -> Takeover:
+    def _set_takeover_message(self, route_plan_data: DataRoutePlan, ego_state: EgoState) -> Takeover:
         """
         Calculate the takeover message based on the static route plan
         The takeover flag will be set to True if all lane end costs for a downstream road segment
@@ -238,7 +296,7 @@ class BehavioralPlanningFacade(DmModule):
                 # lane end costs are equal to 1, there is no where for the host to go. Set the takeover flag to True and break the loop.
                 lane_end_costs = np.array([route_lane.e_cst_lane_end_cost for route_lane in route_plan_data.as_route_plan_lane_segments[route_row_idx]])
 
-                if np.all(lane_end_costs == 1):
+                if np.all(lane_end_costs >= MAX_COST):
                     takeover_flag = True
                     break
 
@@ -248,6 +306,20 @@ class BehavioralPlanningFacade(DmModule):
                                     s_Data=DataTakeover(takeover_flag))
 
         return takeover_message
+
+    def _get_current_pedal_position(self) -> PedalPosition:
+        """
+        Read last message of brake & acceleration pedals position
+        :return: PedalPosition
+        """
+        is_success, serialized_pedal_position = self.pubsub.get_latest_sample(topic=UC_SYSTEM_PEDAL_POSITION)
+        if not is_success or serialized_pedal_position is None:
+            return None
+        pedal_position = PedalPosition.deserialize(serialized_pedal_position)
+        self.logger.debug("Pedal position received at time %f: %f" %
+                          (pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds,
+                           pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
+        return pedal_position
 
     def _get_current_scene_static(self) -> SceneStatic:
         with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):
@@ -272,60 +344,42 @@ class BehavioralPlanningFacade(DmModule):
         scene_dynamic = SceneDynamic.deserialize(serialized_scene_dynamic)
         if scene_dynamic.s_Data.s_host_localization.e_Cnt_host_hypothesis_count == 0:
             raise MsgDeserializationError("SceneDynamic was received without any host localization")
+
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, scene_dynamic.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_dynamic
 
-    def _get_state_with_expected_ego(self, state: State) -> State:
-        """
-        takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
-        timestamp according to the last trajectory cached in the facade's self._last_trajectory.
-        Note: lateral velocity is zeroed since we don't plan for drifts and lateral components are being reflected in
-        yaw and curvature.
-        :param state: the state to process
-        :return: a new state object with a new ego-vehicle localization
-        """
-        current_time = state.ego_state.timestamp_in_sec
-        expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
+    def _get_current_control_status(self) -> Optional[ControlStatus]:
+        is_success, serialized_control_status = self.pubsub.get_latest_sample(topic=UC_SYSTEM_CONTROL_STATUS)
 
-        updated_state = state.clone_with(ego_state=expected_ego_state)
+        if serialized_control_status is None:
+            # this is a warning and not an assert, since currently perfect_control does not publish the message
+            self.logger.warning("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                UC_SYSTEM_CONTROL_STATUS)
+            return None
+        control_status = ControlStatus.deserialize(serialized_control_status)
+        self.logger.debug(
+            "%s: %f engaged %s" % (LOG_MSG_CONTROL_STATUS, control_status.s_Header.s_Timestamp.timestamp_in_seconds,
+                                   control_status.s_Data.e_b_TTCEnabled))
+        return control_status
 
-        if updated_state.ego_state.map_state.lane_id != state.ego_state.map_state.lane_id:
-            # Since the ego lane ID for the updated_state can be different from the original state, specially for the
-            # case of multiple host hypotheses, we overwrite it with the selected ego lane ID from state here.
-            lane_frenet = MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id)
-            cartesian_state = expected_ego_state.cartesian_state
+    def _get_current_turn_signal(self) -> TurnSignal:
+        is_success, serialized_turn_signal = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TURN_SIGNAL)
+        if serialized_turn_signal is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_TURN_SIGNAL)
+        turn_signal = TurnSignal.deserialize(serialized_turn_signal)
+        self.logger.debug("Received turn signal: %s" % turn_signal)
+        return turn_signal
 
-            # Lambda function for calculating distance between two points
-            distance_between_points = lambda x, y: (((x[C_X] - y[C_X]) ** 2) + ((x[C_Y] - y[C_Y]) ** 2)) ** (1 / 2)
+    def _get_current_tcd_status(self) -> SceneTrafficControlDevices:
+        is_success, serialized_tcd_status = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
 
-            try:
-                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-
-            except OutOfSegmentBack:
-                self.logger.warning(f"OutOfSegmentBack was raised. Host is "
-                                    f"{distance_between_points(cartesian_state[[C_X, C_Y]], lane_frenet.points[0])}"
-                                    f"from first point in Frenet frame.")
-
-                # TODO: check distance to first point before overwriting cartesian position
-                cartesian_state[[C_X, C_Y]] = lane_frenet.points[0]
-                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-
-            except OutOfSegmentFront:
-                self.logger.warning(f"OutOfSegmentFront was raised. Host is "
-                                    f"{distance_between_points(cartesian_state[[C_X, C_Y]], lane_frenet.points[-1])}"
-                                    f"from last point in Frenet frame.")
-
-                # TODO: check distance to last point before overwriting cartesian position
-                cartesian_state[[C_X, C_Y]] = lane_frenet.points[-1]
-                lane_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-
-            updated_state.ego_state._cached_map_state = MapState(lane_fstate, state.ego_state.map_state.lane_id)
-
-        # mark this state as a state which has been sampled from a trajectory and wasn't received from state module
-        updated_state.is_sampled = True
-
-        return updated_state
+        if serialized_tcd_status is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)
+        tcd_status = SceneTrafficControlDevices.deserialize(serialized_tcd_status)
+        # self.logger.debug("%s: %f" % (LOG_MSG_SCENE_DYNAMIC_RECEIVED, tcd_status.s_Header.s_Timestamp.timestamp_in_seconds))
+        return tcd_status
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.pubsub.publish(UC_SYSTEM_TRAJECTORY_PARAMS, trajectory_parameters.serialize())

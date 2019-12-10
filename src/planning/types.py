@@ -1,7 +1,5 @@
 import numpy as np
 import sys
-from typing import NamedTuple
-from decision_making.src.messages.scene_static_enums import RoadObjectType
 
 ## TIMESTAMPS ##
 GlobalTimeStamp = int                   # global timestamp in [nanosec] since given time
@@ -103,6 +101,17 @@ Limits = np.ndarray
 LIMIT_MIN = 0
 LIMIT_MAX = 1
 
+# A 2D numpy array whose every row is of type Limits
+Limits2D = np.ndarray
+
+# A 2D numpy array whose every row is (RLIM_RANGE_MIN, RLIM_RANGE_MAX, RLIM_LIMIT_MIN, RLIM_LIMIT_MAX)
+# That is for every range defined by (min, max) there is some limit (min, max)
+RangedLimits2D = np.ndarray
+RLIM_RANGE_MIN = 0
+RLIM_RANGE_MAX = 1
+RLIM_LIMIT_MIN = 2
+RLIM_LIMIT_MAX = 3
+
 # BehavioralGridState cell tuple-indices
 LAT_CELL, LON_CELL = 0, 1
 
@@ -117,9 +126,3 @@ BoolArray = np.ndarray
 
 # array of ActionSpec
 ActionSpecArray = np.array
-
-
-class RoadSignInfo(NamedTuple):
-    # Info on road signs
-    sign_type: RoadObjectType  # type of road sign
-    s: float  # distance from road sign

@@ -1,16 +1,55 @@
+from typing import Dict
+
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
+    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX
+    FS_DX, Limits2D, RangedLimits2D
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 
 
 class KinematicUtils:
+    @staticmethod
+    def get_lateral_acceleration_limit_by_curvature(curvatures: np.ndarray, ranged_limits: RangedLimits2D):
+        """
+        takes a 1d array of curvature values and compares them against the acceleration limits table per curvature,
+        to get the lateral acceleration limit corresponding to those curvature values. The acceleration limits are given
+        by a table <ranged_limits> that represents a piecewise-linear function, so for each curvature value in
+        <curvatures> we look for the radius (inverse of curvature) range and within that range we interpolate linearly
+        given the acceleration limits on the boundaries of that range
+        :param curvatures: numpy array of curvature values (any shape)
+        :param ranged_limits: ranged limits (radius ranges -> acceleration limits at those ranges)
+        :return: 1d array of lateral acceleration limits
+        """
+        # extract column-vectors from the range_limits matrix
+        min_radius, max_radius, min_accels, max_accels = np.split(ranged_limits, 4, axis=1)
+
+        # flatten and compute inverse of curvatures to get 1D array of radii
+        radii_1d = 1 / curvatures.ravel()
+
+        # compute the lateral acceleration slope for each radius range (that is, for each range, compute a of ax+b)
+        slopes = (max_accels - min_accels) / (max_radius - min_radius)
+
+        # for each radius in <radii_1d>, get the index of the corresponding range in <ranged_limits>
+        row_idxs = np.argmin(max_radius <= radii_1d, axis=0)
+
+        # simple a*(X-x0) + value(x0) formula relative to the lower side of the relevant range
+        delta_radius = radii_1d[:, np.newaxis] - min_radius[row_idxs]
+        acceleration_limit = slopes[row_idxs] * delta_radius + min_accels[row_idxs]
+
+        # when taking radius_of_turn==inf, <delta_radius> is nan and therefor <acceleration_limit>. In this spacial case
+        # the acceleration limit at the upper side of the range is taken
+        is_inf = np.isinf(radii_1d[:, np.newaxis])
+        acceleration_limit[is_inf] = max_accels[row_idxs][is_inf]
+
+        # lookup the correct range for each radius in <radii_1d> and compute ax+b to get interpolated lateral acc limit
+        return np.reshape(acceleration_limit, curvatures.shape)
+
     @staticmethod
     def is_maintaining_distance(poly_host: np.array, poly_target: np.array, margin: float, headway: float, time_range: Limits):
         """
@@ -39,7 +78,7 @@ class KinematicUtils:
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,
-                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits) -> np.ndarray:
+                                   lon_acceleration_limits: Limits, lat_acceleration_limits: Limits2D) -> np.ndarray:
         """
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
@@ -58,7 +97,7 @@ class KinematicUtils:
         #       desired velocity limit, as long as they slowdown towards the desired velocity.
         conforms_limits = np.all(NumpyUtils.is_in_limits(lon_velocity, velocity_limits) &
                                  NumpyUtils.is_in_limits(lon_acceleration, lon_acceleration_limits) &
-                                 NumpyUtils.is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
+                                 NumpyUtils.zip_is_in_limits(lat_acceleration, lat_acceleration_limits), axis=1)
 
         return conforms_limits
 
@@ -71,6 +110,7 @@ class KinematicUtils:
             (initial jerk is calculated by subtracting the first two acceleration samples)
         (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
         (3) keeps the velocity under the desired velocity limit.
+        Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
         :param velocity_limits: 2D matrix [trajectories, timestamps] of nominal velocities to validate against
         :param T: array of target times for ctrajectories
@@ -87,13 +127,39 @@ class KinematicUtils:
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_velocity_limits = np.logical_and(
             end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
-            np.logical_or(
-                # either speed is below limit, or vehicle is slowing down when it doesn't
-                np.all(np.logical_or(lon_acceleration <= 0, lon_velocity <= velocity_limits + EPS), axis=1),
-                # negative initial jerk
-                lon_acceleration[:, 0] > lon_acceleration[:, 1]))
+            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits, T),
+                   axis=1))
 
         return conforms_velocity_limits
+
+    @staticmethod
+    def _speeding_within_allowed_limits(lon_velocity: np.array, lon_acceleration: np.array,
+                                        velocity_limits: np.ndarray, T: np.array) -> np.array:
+        """
+        speeding is within allowed limits if it does not violate the speed limit for more than VIOLATION_TIME_TH.
+        Furthermore it does so by no more than VIOLATION_SPEED_TH, unless starting velocity is above this value.
+        Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
+        :param lon_velocity: trajectories velocities
+        :param lon_acceleration: trajectories accelerations
+        :param T: array of target times for ctrajectories
+        :return:
+        """
+        # anywhere speed is below limit
+        speeding_is_within_limits = lon_velocity <= velocity_limits + EPS
+        # or violation is limited to first SPEEDING_VIOLATION_TIME_TH seconds,last_allowed_idx
+        last_allowed_idx = int(min(SPEEDING_VIOLATION_TIME_TH, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) /
+                           TRAJECTORY_TIME_RESOLUTION)
+        # and vehicle is slowing down when it doesn't,
+        is_decelerating = lon_acceleration[:, 0:last_allowed_idx] <= 0
+        # or speed limit is exceeded by no more than SPEEDING_SPEED_TH
+        is_within_allowed_speed_violation = lon_velocity[:, 0:last_allowed_idx] <= \
+            velocity_limits[:, 0:last_allowed_idx] + SPEEDING_SPEED_TH
+        # or we were above this value to start with, and jerk is negative
+        was_violating_and_jerk_negative = np.logical_and(lon_velocity[:, 0] > velocity_limits[:, 0] + SPEEDING_SPEED_TH,
+                                                         lon_acceleration[:, 0] > lon_acceleration[:, 1])[:, np.newaxis]
+        speeding_is_within_limits[:, 0:last_allowed_idx] |= \
+            is_decelerating | is_within_allowed_speed_violation | was_violating_and_jerk_negative
+        return speeding_is_within_limits
 
     @staticmethod
     def convert_padded_spec_time_to_index(T: np.array):
@@ -221,55 +287,54 @@ class BrakingDistances:
     Calculates braking distances
     """
     @staticmethod
-    def create_braking_distances(aggresiveness_level: AggressivenessLevel=AggressivenessLevel.CALM.value) -> np.array:
+    def create_braking_distances(aggressiveness_level: AggressivenessLevel) -> np.array:
         """
-        Creates distances of all follow_lane with the given aggressiveness_level, braking actions with a0 = 0
+        Creates distances of all follow_lane with the given aggressiveness_level.
         :return: the actions' distances
         """
         # create v0 & vT arrays for all braking actions
         v0, vT = np.meshgrid(FILTER_V_0_GRID.array, FILTER_V_T_GRID.array, indexing='ij')
         v0, vT = np.ravel(v0), np.ravel(vT)
         # calculate distances for braking actions
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggresiveness_level]
+        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness_level]
         distances = np.zeros_like(v0)
-        distances[v0 > vT] = BrakingDistances._calc_actions_distances_for_given_weights(w_T, w_J, v0[v0 > vT],
-                                                                                        vT[v0 > vT])
+        distances[v0 > vT], _ = BrakingDistances.calc_quartic_action_distances(w_T, w_J, v0[v0 > vT], vT[v0 > vT])
         return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
 
     @staticmethod
-    def _calc_actions_distances_for_given_weights(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
-                                                  poly: Poly1D = QuarticPoly1D) -> np.array:
+    def calc_quartic_action_distances(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
+                                      a_0: np.array = None) -> [np.array, np.array]:
         """
-        Calculate the distances for the given actions' weights and scenario params
+        Calculate the distances and times for the given actions' weights and scenario params.
+        Actions not meeting the acceleration limits have infinite distance and time.
         :param w_T: weight of Time component in time-jerk cost function
         :param w_J: weight of longitudinal jerk component in time-jerk cost function
         :param v_0: array of initial velocities [m/s]
         :param v_T: array of desired final velocities [m/s]
-        :param poly: The Poly1D (Quintic or Quartic) to use when checking the acceleration limits.
-         Currently supporting only QuarticPoly1D
-        :return: actions' distances; actions not meeting acceleration limits have infinite distance
+        :param a_0: array of initial accelerations [m/s^2]
+        :return: two arrays: actions' distances and times; actions not meeting acceleration limits have infinite distance
         """
         # calculate actions' planning time
-        a_0 = np.zeros_like(v_0)
+        if a_0 is None:
+            a_0 = np.zeros_like(v_0)
         T = BrakingDistances.calc_T_s(w_T, w_J, v_0, a_0, v_T)
+        non_zero = ~np.isclose(T, 0)
 
         # check acceleration limits
-        if poly is not QuarticPoly1D:
-            raise NotImplementedError('Currently function expects only QuarticPoly1Dsdf')
-        # TODO: Once Quintic might be used, pull `s_profile_coefficients` method up
-        poly_coefs = poly.position_profile_coefficients(a_0, v_0, v_T, T)
-        in_limits = poly.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0[non_zero], v_0[non_zero], v_T[non_zero], T[non_zero])
+        in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs, T[non_zero], LON_ACC_LIMITS)
 
-        # Calculate actions' distances, assuming a_0 = a_T = 0, and an average speed between v_0 an v_T.
-        # Since the velocity profile is symmetric around the midpoint then the average velocity is (v_0 + v_T)/2 - this holds for Quartic.
         # Distances for accelerations which are not in limits are defined as infinity. This implied that braking on
         # invalid accelerations would take infinite distance, which in turn filters out these (invalid) action specs.
-        distances = T * (v_0 + v_T) / 2
-        distances[np.logical_not(in_limits)] = np.inf
-        return distances
+        distances = np.zeros_like(T)
+        distances[non_zero] = Math.zip_polyval2d(s_profile_coefs, T[non_zero, np.newaxis])[:, 0]
+        distances[non_zero][~in_limits] = np.inf
+        T[non_zero][~in_limits] = np.inf
+
+        return distances, T
 
     @staticmethod
-    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, poly: Poly1D = QuarticPoly1D):
+    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
         """
         given initial & end constraints and time-jerk weights, calculate longitudinal planning time
         :param w_T: weight of Time component in time-jerk cost function
@@ -277,22 +342,17 @@ class BrakingDistances:
         :param v_0: array of initial velocities [m/s]
         :param a_0: array of initial accelerations [m/s^2]
         :param v_T: array of final velocities [m/s]
-        :param poly: The Poly1D (Quintic or Quartic) to use when checking the acceleration limits.
-         Currently supporting only QuarticPoly1D
         :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
         """
-        if poly is not QuarticPoly1D:
-            raise NotImplementedError('Currently function expects only QuarticPoly1D')
-
         # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
         # zero. This degenerate action is valid but can't be solved analytically.
-        non_zero_actions = np.logical_not(poly.is_tracking_mode(v_0, v_T, a_0))
+        non_zero_actions = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
 
         w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
         w_J_array = np.full(v_0[non_zero_actions].shape, w_J)
 
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
-        time_cost_derivative_poly_coefs = poly.time_cost_function_derivative_coefs(
+        time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
             w_T_array, w_J_array, a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions])
 
         # Find roots of the polynomial in order to get extremum points

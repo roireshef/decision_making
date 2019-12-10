@@ -2,7 +2,7 @@ from typing import Union, TypeVar
 
 import numpy as np
 
-from decision_making.src.global_constants import EXP_CLIP_TH
+from decision_making.src.global_constants import EXP_CLIP_TH, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.planning.types import Limits, BoolArray
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
@@ -126,6 +126,26 @@ class Math:
         return ceiled_val
 
     @staticmethod
+    def sec_to_ticks(time_in_seconds):
+        # type: (float) -> int
+        """
+        Convert seconds to ticks (nanoseconds)
+        :param time_in_seconds:
+        :return: time in ticks (nanoseconds)
+        """
+        return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
+
+    @staticmethod
+    def ticks_to_sec(time_in_nanoseconds):
+        # type: (int) -> float
+        """
+        Convert ticks (nanoseconds) to seconds
+        :param time_in_nanoseconds:
+        :return: time in seconds
+        """
+        return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
+
+    @staticmethod
     def roots(p):
         """
         Return the roots of polynomials with coefficients given in the rows of p.
@@ -166,7 +186,7 @@ class Math:
         :return: 2D numpy array [Nx(K-1)] or 1D array [K-1]
         """
         coef_matrix = polynomials if polynomials.ndim > 1 else polynomials[np.newaxis]
-        roots = np.full((coef_matrix.shape[0], coef_matrix.shape[1] - 1), np.nan, dtype=np.complex256)
+        roots = np.full((coef_matrix.shape[0], coef_matrix.shape[1] - 1), np.nan, dtype=np.complex128)
 
         for degree in range(coef_matrix.shape[1] - 1, 0, -1):
             is_of_degree = cls._are_polynomials_of_degree(coef_matrix, degree)

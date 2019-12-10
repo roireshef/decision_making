@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 import numpy as np
 from logging import Logger
-from typing import Optional, List, Type
+from typing import Optional, List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
@@ -109,7 +109,7 @@ class TargetActionSpace(ActionSpace):
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
         # irrelevant due to 0 velocity
         ds = longitudinal_differences + margin_sign * (
-                self.margin_to_keep_from_targets + behavioral_state.ego_state.size.length / 2 + target_lengths / 2)
+                self.margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]
@@ -158,7 +158,8 @@ class TargetActionSpace(ActionSpace):
 
         return action_specs
 
-    def _modify_target_speed_if_ego_is_faster_than_target(self, behavioral_state: BehavioralGridState, ds: np.ndarray, v_0: np.ndarray, v_T: np.ndarray):
+    def _modify_target_speed_if_ego_is_faster_than_target(self, behavioral_state: BehavioralGridState, ds: np.ndarray,
+                                                          v_0: np.ndarray, v_T: np.ndarray):
         """
         If the speed of the ego is higher than that of the leading vehicle, set the v_T to be lower than the real v_T.
         This will limit the ego's speed and help in case of sudden brake by the leading vehicle.

@@ -1,7 +1,10 @@
+from unittest.mock import patch
+
 import numpy as np
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, SAFETY_HEADWAY
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionSpecEvaluator
+from decision_making.src.planning.types import C_X, C_V, C_A, FS_SX, FS_SV, FS_SA, FS_2D_LEN
 
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D, Poly1D
@@ -142,12 +145,14 @@ def test_filterByVelocityLimit_velocityDecreasesTowardLimit_valid():
     initial velocity is above the limit and initial acceleration is positive;
     final velocity is NOT above the limit, so the trajectory is valid
     """
-    v0 = 20
+    v0 = 10.1
     vT = 10
-    velocity_limits = np.full(shape=[1, int(BP_ACTION_T_LIMITS[1] / TRAJECTORY_TIME_RESOLUTION)], fill_value=vT)
+    # limit value selected as value at 3 seconds. Values prior to it are a little higher, but should ne valid
+    velocity_limits = np.full(shape=[1, int(BP_ACTION_T_LIMITS[1] / TRAJECTORY_TIME_RESOLUTION)], fill_value=10.21)
 
-    constraints_s = np.array([0, v0, 1, vT, 0])  # initial acceleration is positive
-    T = np.array([10])
+    constraints_s = np.array([0, v0, 0.2, vT, 0])  # initial acceleration is positive
+    T = np.array([6])
+    last_idx = int(T/TRAJECTORY_TIME_RESOLUTION)
     A_inv = QuarticPoly1D.inverse_time_constraints_tensor(T)
 
     # create ftrajectories
@@ -155,9 +160,11 @@ def test_filterByVelocityLimit_velocityDecreasesTowardLimit_valid():
     time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
     ftrajectories_s = Poly1D.polyval_with_derivatives(poly_host_s, time_samples)
 
-    # create ctrajectories
-    zeros = np.zeros((ftrajectories_s.shape[0], ftrajectories_s.shape[1], 1))
-    ctrajectories = np.c_[ftrajectories_s[..., 0:1], zeros, zeros, ftrajectories_s[..., 1:2], ftrajectories_s[..., 2:3], zeros]
+    # create ctrajectories - make sure everything beyond T is set to 0.
+    ctrajectories = np.zeros((ftrajectories_s.shape[0], ftrajectories_s.shape[1], FS_2D_LEN))
+    ctrajectories[:, 0:last_idx, C_X] = ftrajectories_s[:, 0:last_idx, FS_SX]
+    ctrajectories[:, 0:last_idx, C_V] = ftrajectories_s[:, 0:last_idx, FS_SV]
+    ctrajectories[:, 0:last_idx, C_A] = ftrajectories_s[:, 0:last_idx, FS_SA]
 
     conforms = KinematicUtils.filter_by_velocity_limit(ctrajectories, velocity_limits, T)
     assert conforms[0]
@@ -212,3 +219,51 @@ def test_filterByVelocityLimit_velocityDecreasesAboveLimit_invalid():
 
     conforms = KinematicUtils.filter_by_velocity_limit(ctrajectories, velocity_limits, T)
     assert not conforms[0]
+
+
+def test_getLateralAccelerationLimitByCurvature_oneDimensionalArray_returnsExpecetedValuesWell():
+    curvatures = np.array([0.1, 0.05, 0.01, 0.005, 1./275, 0.001])
+
+    LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
+                                    (6, 25, 3, 2.8),
+                                    (25, 50, 2.8, 2.55),
+                                    (50, 75, 2.55, 2.4),
+                                    (75, 100, 2.4, 2.32),
+                                    (100, 150, 2.32, 2.2),
+                                    (150, 200, 2.2, 2.1),
+                                    (200, 275, 2.1, 2),
+                                    (275, np.inf, 2, 2)])
+
+    acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(curvatures, LAT_ACC_LIMITS_BY_K)
+
+    expected = np.array([(10 - 6)/(25-6)*(-0.2)+3,
+                         (20 - 6)/(25-6)*(-0.2)+3,
+                         2.32,
+                         2.1,
+                         2,
+                         2])
+    np.testing.assert_array_equal(acc_limits, expected)
+
+
+def test_getLateralAccelerationLimitByCurvature_multiDimensionalArray_returnsExpecetedValuesWell():
+    curvatures = np.array([[[0.1, 0.05]], [[0.01, 0.005]], [[1./275, 0.001]]])
+
+    LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
+                                    (6, 25, 3, 2.8),
+                                    (25, 50, 2.8, 2.55),
+                                    (50, 75, 2.55, 2.4),
+                                    (75, 100, 2.4, 2.32),
+                                    (100, 150, 2.32, 2.2),
+                                    (150, 200, 2.2, 2.1),
+                                    (200, 275, 2.1, 2),
+                                    (275, np.inf, 2, 2)])
+
+    acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(curvatures, LAT_ACC_LIMITS_BY_K)
+
+    expected = np.array([[[(10 - 6)/(25-6)*(-0.2)+3,
+                         (20 - 6)/(25-6)*(-0.2)+3]],
+                         [[2.32,
+                         2.1]],
+                         [[2,
+                         2]]])
+    np.testing.assert_array_equal(acc_limits, expected)

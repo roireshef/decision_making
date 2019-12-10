@@ -1,13 +1,13 @@
 import ast
+
 import matplotlib.pyplot as plt
 import numpy as np
-
 from decision_making.paths import Paths
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON
 from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y, FS_DX
-from decision_making.src.state.state import EgoState
+from decision_making.src.planning.utils.math_utils import Math
 
 
 def plot_dynamics(log_file_path: str):
@@ -71,6 +71,9 @@ def plot_dynamics(log_file_path: str):
     vel_limit = []
     vel_limit_time = []
 
+    engaged = []
+    engaged_time = []
+
     while True:
         text = f.readline()
         if not text:
@@ -93,7 +96,7 @@ def plot_dynamics(log_file_path: str):
                 ego_sv.append(0)
                 ego_sx.append(0)
                 ego_dx.append(0)
-            timestamp_in_sec.append(EgoState.ticks_to_sec(state_dict['ego_state']['timestamp']))
+            timestamp_in_sec.append(Math.ticks_to_sec(state_dict['ego_state']['timestamp']))
 
         if 'BehavioralGrid: time' in text:
             behavioral_grid_str = text.split('BehavioralGrid: time')[1]
@@ -196,8 +199,17 @@ def plot_dynamics(log_file_path: str):
         if 'Speed limits at time' in text:
             if ego_lane_id is not None:
                 speed_limit_per_lane = ast.literal_eval(text.split('Speed limits at time')[1].split(': ', maxsplit=1)[1])
-                vel_limit.append(speed_limit_per_lane[ego_lane_id])
-                vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
+                if ego_lane_id in list(speed_limit_per_lane):
+                    vel_limit.append(speed_limit_per_lane[ego_lane_id])
+                    vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
+
+        if 'Received ControlStatus message' in text:
+            msg = text.split('Timestamp: :')[1]
+            parts = msg.split('engaged')
+            engaged.append(int(parts[1]))
+            # engaged_time.append(float(parts[0]))
+            engaged_time.append(time)  # using time since the timestamp attached to this message is in system time, not ego time
+
 
     f = plt.figure(1)
 
@@ -271,14 +283,15 @@ def plot_dynamics(log_file_path: str):
     bp_if_lat,  = plt.plot(bp_if_time, bp_if_lat_err, 'o--')
     tp_if_lon,  = plt.plot(tp_if_time, tp_if_lon_err, 'o-.')
     tp_if_lat,  = plt.plot(tp_if_time, tp_if_lat_err, 'o--')
+    engaged_plt, = plt.plot(engaged_time, engaged, 'o--')
 
     lon_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LON, linewidth=1, color='k', linestyle='-.')
     lat_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LAT, linewidth=1, color='k', linestyle='--')
 
     plt.xlabel('time[s]')
     plt.ylabel('loc/tracking errors')
-    plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th],
-               ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
+    plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th, engaged_plt],
+               ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold', 'engaged'])
     plt.grid(True)
 
     ax7 = plt.subplot(5, 2, 7, sharex=ax1)
