@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 from decision_making.src.messages.control_status_message import ControlStatus
+from decision_making.src.messages.scene_static_enums import StaticTrafficControlDeviceType
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
@@ -22,17 +23,17 @@ from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYS
 
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
-    RoutePlanningException, MappingException, raises
+    RoutePlanningException, MappingException, raises, LaneNotFound
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
     MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, MAX_COST, \
-    LOG_MSG_CONTROL_STATUS
+    LOG_MSG_CONTROL_STATUS, LANE_TO_HACK, STOP_BAR_ID_HACK, STOP_SIGN_ID_HACK, STOP_LOCATION_BEFORE_LANE_END
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
-from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.messages.scene_static_message import SceneStatic, TrafficControlBar, StaticTrafficControlDevice
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.turn_signal_message import TurnSignal, DEFAULT_MSG as DEFAULT_TURN_SIGNAL_MSG
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -137,6 +138,32 @@ class BehavioralPlanningFacade(DmModule):
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
+            # TODO ADD STOP SIGN HACK - REMOVE
+            if LANE_TO_HACK > 0:
+                for relative in [-1, 0, 1]:  # do on up to 3 lanes SAME, RIGHT, LEFT
+                    try:
+                        if True:
+                            patched_lane = MapUtils.get_lane(lane_id=LANE_TO_HACK + relative)
+                            lane_length = patched_lane.e_l_length
+                            stop_sign = StaticTrafficControlDevice(object_id=STOP_SIGN_ID_HACK + relative,
+                                                                   e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
+                                                                   e_Pct_confidence=1.0,
+                                                                   e_i_controlled_lane_segment_id=[LANE_TO_HACK + relative],
+                                                                   e_l_east_x=0, e_l_north_y=0)
+                            # first remove all existing TCDs
+                            scene_static.s_Data.s_SceneStaticBase.as_static_traffic_control_device.clear()
+                            # then add required TCD
+                            scene_static.s_Data.s_SceneStaticBase.as_static_traffic_control_device.append(stop_sign)
+                            stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=STOP_BAR_ID_HACK + relative,
+                                                         e_l_station=lane_length-STOP_LOCATION_BEFORE_LANE_END,
+                                                         e_i_static_traffic_control_device_id=[stop_sign.object_id],
+                                                         e_i_dynamic_traffic_control_device_id=[])
+                            # first remove all existing bars
+                            patched_lane.as_traffic_control_bar.clear()
+                            # then add required STOP BAR
+                            patched_lane.as_traffic_control_bar.append(stop_bar)
+                    except LaneNotFound:
+                        pass
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
