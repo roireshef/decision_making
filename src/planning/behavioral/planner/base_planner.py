@@ -160,7 +160,9 @@ class BasePlanner:
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                                  trajectory_end_time=trajectory_end_time,
-                                                 bp_time=ego.timestamp)
+                                                 bp_time=ego.timestamp,
+                                                 target_lane=action_spec.relative_lane,
+                                                 action_type=action_spec.recipe.action_type)
         return trajectory_parameters
 
     @staticmethod

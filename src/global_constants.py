@@ -145,17 +145,17 @@ LON_MARGIN_FROM_EGO = 1
 
 # Uniform grids for BP Filters
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
-FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
-FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
+FILTER_V_0_GRID = UniformGrid(VELOCITY_LIMITS, 0.5)  # [m/sec]
+FILTER_V_T_GRID = UniformGrid(VELOCITY_LIMITS, 0.5)  # [m/sec]
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
 # Step size for indexes in beyond spec filters
 BEYOND_SPEC_INDEX_STEP = 4
 
 # Min distance threshold ahead to raise takeover flag
-MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
+MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 80
 # Time threshold to raise takeover flag
-TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
+TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 12
 
 # Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the speed reduction of the target for the action spec
 SLOW_DOWN_FACTOR = 0.5
