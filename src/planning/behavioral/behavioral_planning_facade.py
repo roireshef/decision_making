@@ -1,3 +1,5 @@
+import multiprocessing as mp
+
 import time
 import traceback
 from logging import Logger
@@ -57,7 +59,8 @@ from queue import Queue
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
-    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
+    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None,
+                 visualizer_queues: Dict[str, mp.SimpleQueue] = None) -> None:
         """
         :param pubsub:
         :param logger:
@@ -73,10 +76,7 @@ class BehavioralPlanningFacade(DmModule):
         self.last_log_time = -1.0
         self._lane_change_state = LaneChangeState()
 
-        self.dim_visualizer_queue = Queue(10)
-        self.dim_visualizer = DriverInitiatedMotionVisualizer(self.dim_visualizer_queue)
-        self.lc_visualizer_queue = Queue(10)
-        self.lc_visualizer = LaneChangeOnDemandVisualizer(self.lc_visualizer_queue)
+        self.visualizer_queues = visualizer_queues or {}
 
     @property
     def planner(self):
@@ -226,12 +226,12 @@ class BehavioralPlanningFacade(DmModule):
 
             # update visualizer queues
             try:
-                self.dim_visualizer.update(self._driver_initiated_motion_state.state)
+                self.visualizer_queues[DIM_VISUALIZER_NAME].put(self._driver_initiated_motion_state.state)
             except Exception:
                 self.logger.warning("Tried to update window for DIM Visualizer but failed with %s" % traceback.format_exc())
 
             try:
-                self.lc_visualizer.update(self._lane_change_state.status)
+                self.visualizer_queues[LC_VISUALIZER_NAME].put(self._lane_change_state.status)
             except Exception:
                 self.logger.warning("Tried to update window for LCoD Visualizer but failed with %s" % traceback.format_exc())
 

@@ -1,3 +1,7 @@
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
+from decision_making.src.planning.behavioral.state_machine_visualizations import DriverInitiatedMotionVisualizer, \
+    LaneChangeOnDemandVisualizer
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
@@ -20,6 +24,10 @@ import os
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
 
+import multiprocessing as mp
+
+from typing import Dict
+
 AV_Logger.init_group("PLAN")
 
 DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
@@ -41,12 +49,12 @@ class DmInitialization:
         return route_planning_module
 
     @staticmethod
-    def create_behavioral_planner() -> BehavioralPlanningFacade:
+    def create_behavioral_planner(visualizer_queues: Dict[str, mp.SimpleQueue]) -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
 
-        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None)
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None, visualizer_queues=visualizer_queues)
         return behavioral_module
 
     @staticmethod
@@ -77,6 +85,19 @@ def main():
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
 
+    dim_visualizer_queue = mp.SimpleQueue()
+    dim_visualizer_queue.put(DriverInitiatedMotionState.state.DISABLED)
+    dim_visualizer = DriverInitiatedMotionVisualizer(dim_visualizer_queue)
+    dim_visualizer.start()
+
+    lcod_visualizer_queue = mp.SimpleQueue()
+    lcod_visualizer_queue.put(LaneChangeStatus.Requestable)
+    lcod_visualizer = LaneChangeOnDemandVisualizer(lcod_visualizer_queue)
+    lcod_visualizer.start()
+
+    visualizer_queues = {LC_VISUALIZER_NAME: lcod_visualizer_queue,
+                         DIM_VISUALIZER_NAME: dim_visualizer_queue}
+
     modules_list = \
         [
             DmProcess(lambda: DmInitialization.create_route_planner(),
@@ -84,7 +105,7 @@ def main():
                       trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD},
                       name='RP'),
 
-            DmProcess(lambda: DmInitialization.create_behavioral_planner(),
+            DmProcess(lambda: DmInitialization.create_behavioral_planner(visualizer_queues),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
                       name='BP'),

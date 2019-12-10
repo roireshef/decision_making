@@ -1,3 +1,4 @@
+import multiprocessing as mp
 import time
 from abc import abstractmethod
 
@@ -9,11 +10,10 @@ import cv2
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from typing import Any
-from queue import Queue
 
 
-class StateMachineVisualizer():
-    def __init__(self, queue: Queue, title: str):
+class StateMachineVisualizer(mp.Process):
+    def __init__(self, queue: mp.SimpleQueue, title: str):
         """
         A new process that opens a new visualization window and plots graphviz plots inside
         :param max_queue_len: max elements in the queue that is used for communicating with this visualizer
@@ -21,12 +21,25 @@ class StateMachineVisualizer():
         """
         super().__init__()
         self.title = title
+        self.queue = queue
+        self.is_running = mp.Value('b', False)
         self.im = None
         self.fig = None
 
-    def update(self, elem):
-        graph = self.transform(elem)
-        self._view(graph)
+    def run(self):
+        self.is_running.value = True
+
+        while self.is_running.value:
+            elem = self.queue.get()
+
+            if elem is None:
+                time.sleep(0.2)
+                continue
+
+            self._view(self.transform(elem))
+
+    def stop(self):
+        self.is_running.value = False
 
     @abstractmethod
     def transform(self, elem: Any) -> Digraph:
@@ -64,6 +77,5 @@ class StateMachineVisualizer():
         else:
             self.im.set_data(img)
             self.fig.canvas.draw_idle()
-            plt.pause(0.001)
-
+            plt.pause(0.1)
 

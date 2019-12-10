@@ -1,14 +1,14 @@
+import multiprocessing as mp
 
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DIM_States
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 
 from decision_making.src.utils.state_machine_visualizer import StateMachineVisualizer
 from graphviz import Digraph
-from queue import Queue
 
 
 class DriverInitiatedMotionVisualizer(StateMachineVisualizer):
-    def __init__(self, queue: Queue):
+    def __init__(self, queue: mp.SimpleQueue):
         super().__init__(queue=queue, title='DriverInitiatedMotionVisualizer')
 
     def transform(self, elem: DIM_States) -> Digraph:
@@ -28,7 +28,7 @@ class DriverInitiatedMotionVisualizer(StateMachineVisualizer):
 
 
 class LaneChangeOnDemandVisualizer(StateMachineVisualizer):
-    def __init__(self, queue: Queue):
+    def __init__(self, queue: mp.SimpleQueue):
         super().__init__(queue=queue, title='LaneChangeOnDemandVisualizer')
 
     def transform(self, elem: LaneChangeStatus) -> Digraph:
