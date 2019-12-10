@@ -726,7 +726,7 @@ def test_getUpstreamLaneSubsegments_NoUpstreamLane_validateUpstreamLaneNotFound(
 
 def test_isObjectInLane_carOnLaneLine(behavioral_grid_state_with_scene_short_testable):
     """
-    Tests the method is_object_in_lane. Places a car in lane 11, shifted 1.5 meters left from lane 11's nominal points.
+    Tests the method is_object_in_lane. Places a car in lane 11, shifted 1.5 meters right from lane 11's nominal points.
     :param scene_static_short_testable:
     :return:
     """
@@ -734,7 +734,7 @@ def test_isObjectInLane_carOnLaneLine(behavioral_grid_state_with_scene_short_tes
     bgs = behavioral_grid_state_with_scene_short_testable
 
 
-    # Create car in lane 11 which is offset 1.5 meters to the left (s station is 120 since host is also at 120)
+    # Create car in lane 11 which is offset 1.5 meters to the right (s station is 120 since host is also at 120)
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,-1.5,0,0]), 11),
                                                   size=ObjectSize(4,1.5,1), confidence=1, off_map=False)
 
