@@ -251,7 +251,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :param t_grid: array of planning times
         :return: list of safe composite actions
         """
+        s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
         s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
+
         v_max = LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
         ego_fstate = state.ego_fstate_1d
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
@@ -270,7 +272,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         T2 = target_t - t1 - T3
         S2 = T2 * v_max
         ds = s1 + S2 + S3
-        valid = (ds < s_max) & (T2 > 0)
+        valid = (s_min < ds) & (ds < s_max) & (T2 > 0)
         if not valid.any():
             return []
         T2, S2, T3, S3, v_end, t_end, ds = T2[valid], S2[valid], T3[valid], S3[valid], target_v[valid], target_t[valid], ds[valid]
@@ -302,6 +304,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
         s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
+        print('s_min=', s_min, 's_max=', s_max, )
 
         ego_length = state.ego_length
         ego_fstate = state.ego_fstate_1d

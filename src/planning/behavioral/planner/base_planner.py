@@ -66,6 +66,10 @@ class BasePlanner:
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)", selected_action_spec, timestamp_in_sec)
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_spec.recipe, timestamp_in_sec)
 
+        print('ego_v', behavioral_state.ego_state.velocity,
+              'chosen spec (t,v,s):', selected_action_spec.t, selected_action_spec.v,
+              selected_action_spec.s - behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE][0])
+
         return trajectory_parameters, baseline_trajectory, visualization_message
 
     @abstractmethod
