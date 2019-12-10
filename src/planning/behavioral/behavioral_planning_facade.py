@@ -78,16 +78,9 @@ class BehavioralPlanningFacade(DmModule):
         self.lc_visualizer_queue = Queue(10)
         self.lc_visualizer = LaneChangeOnDemandVisualizer(self.lc_visualizer_queue)
 
-
-    def _write_filters_to_log_if_required(self, now: float):
-        """
-        Write list of applicable filters to log every 5 seconds.
-        :param now: time in seconds
-        """
-        if now - self.last_log_time > 5.0:
-            self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
-                                                              as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
-            self.last_log_time = now
+    @property
+    def planner(self):
+        return self._planner
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
@@ -188,7 +181,7 @@ class BehavioralPlanningFacade(DmModule):
                 # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
                 # the target GFF. This will happen when we're performing a lane change.
                 target_gff = self._lane_change_state.source_lane_gff \
-                    if self._lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane \
+                    if self._lane_change_state.status == LaneChangeStatus.ActiveInSourceLane \
                         and state.ego_state.map_state.lane_id not in self._last_gff_segment_ids \
                     else None
 
@@ -232,9 +225,15 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_visualization(behavioral_visualization_message)
 
             # update visualizer queues
-            self.dim_visualizer.update(self._driver_initiated_motion_state.state)
-            self.lc_visualizer.update(self._lane_change_state.status)
+            try:
+                self.dim_visualizer.update(self._driver_initiated_motion_state.state)
+            except Exception:
+                self.logger.warning("Tried to update window for DIM Visualizer but failed with %s" % traceback.format_exc())
 
+            try:
+                self.lc_visualizer.update(self._lane_change_state.status)
+            except Exception:
+                self.logger.warning("Tried to update window for LCoD Visualizer but failed with %s" % traceback.format_exc())
 
             speed_limits = {lane_id: MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in self._last_gff_segment_ids}
             self.logger.debug("Speed limits at time %f: %s" % (state.ego_state.timestamp_in_sec, speed_limits))
@@ -431,6 +430,13 @@ class BehavioralPlanningFacade(DmModule):
     def _publish_takeover(self, takeover_message:Takeover) -> None :
         self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_message.serialize())
 
-    @property
-    def planner(self):
-        return self._planner
+    def _write_filters_to_log_if_required(self, now: float):
+        """
+        Write list of applicable filters to log every 5 seconds.
+        :param now: time in seconds
+        """
+        if now - self.last_log_time > 5.0:
+            self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
+                                                              as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.last_log_time = now
+

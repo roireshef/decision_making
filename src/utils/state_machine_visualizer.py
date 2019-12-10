@@ -64,6 +64,6 @@ class StateMachineVisualizer():
         else:
             self.im.set_data(img)
             self.fig.canvas.draw_idle()
-            plt.pause(0.05)
+            plt.pause(0.001)
 
 
