@@ -718,7 +718,8 @@ def test_isObjectInLane_carOnLaneLine(behavioral_grid_state_with_scene_short_tes
     logger = AV_Logger.get_logger()
     bgs = behavioral_grid_state_with_scene_short_testable
 
-    # Create car in lane 11 which is offset 1.5 meters to the right (s station is 120 since host is also at 120)
+
+    # Create car in lane 11 which is offset 1.5 meters to the left (s station is 120 since host is also at 120)
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,-1.5,0,0]), 11),
                                                   size=ObjectSize(4,1.5,1), confidence=1, off_map=False)
 
@@ -779,6 +780,7 @@ def test_isObjectInLane_moundRoadNorth_carIntrudingInLane(scene_static_mound_roa
                                                           route_plan_for_mound_north_file):
     logger = AV_Logger.get_logger()
     SceneStaticModel.get_instance().set_scene_static(scene_static_mound_road_north)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     state = State.create_state_from_scene_dynamic(scene_dynamic_obj_intruding_in_lane_mound_road_north, [], None)
     bgs = BehavioralGridState.create_from_state(state, route_plan_for_mound_north_file, logger)
 
