@@ -2,7 +2,8 @@ from logging import Logger
 from typing import List, Type
 
 import numpy as np
-from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR
+from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR, \
+    STOP_BAR_DISTANCE_IND
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
@@ -62,4 +63,5 @@ class RoadSignActionSpace(TargetActionSpace):
         """
         ego_location = behavioral_state.projected_ego_fstates[action.relative_lane][FS_SX]
         closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action.relative_lane)
-        return closest_TCB_and_its_distance[1] - ego_location if closest_TCB_and_its_distance is not None else np.nan
+        return closest_TCB_and_its_distance[STOP_BAR_DISTANCE_IND] - ego_location \
+            if closest_TCB_and_its_distance is not None else np.nan

@@ -15,6 +15,7 @@ from decision_making.src.messages.trajectory_parameters import SigmoidFunctionPa
 from decision_making.src.messages.turn_signal_message import TurnSignal, DataTurnSignal, TurnSignalState
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, ActionType
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
@@ -455,3 +456,8 @@ def turn_signal() -> TurnSignal:
     turn_signal = TurnSignal(s_Header=header, s_Data=data)
 
     yield turn_signal
+
+
+@pytest.fixture(scope='session')
+def lane_change_state() -> LaneChangeState:
+    yield LaneChangeState()
