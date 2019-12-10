@@ -130,10 +130,10 @@ class LaneChangeState:
 
                 if self.target_relative_lane == RelativeLane.LEFT_LANE:
                     dist_between_lane_centers = dist_to_left_border_in_source_lane + dist_to_right_border_in_target_lane
-                    lane_change_percent_complete = 100 - max(0.0, -ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
+                    lane_change_percent_complete = max(0.0, ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
                 elif self.target_relative_lane == RelativeLane.RIGHT_LANE:
                     dist_between_lane_centers = dist_to_right_border_in_source_lane + dist_to_left_border_in_target_lane
-                    lane_change_percent_complete = 100 - max(0.0, ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
+                    lane_change_percent_complete = max(0.0, -ego_state.map_state.lane_fstate[FS_DX] / dist_between_lane_centers * 100.0)
                 else:
                     # We should never get here
                     lane_change_percent_complete = 0.0
