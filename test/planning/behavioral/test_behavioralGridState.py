@@ -723,8 +723,10 @@ def test_isObjectInLane_carOnLaneLine(behavioral_grid_state_with_scene_short_tes
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,-1.5,0,0]), 11),
                                                   size=ObjectSize(4,1.5,1), confidence=1, off_map=False)
 
+    # LEFT_LANE is lane 11
     assert BehavioralGridState._is_object_in_lane(dyn_obj,
                                                   bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    # SAME_LANE is lane 10
     assert BehavioralGridState._is_object_in_lane(dyn_obj,
                                                   bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
 
@@ -739,8 +741,10 @@ def test_isObjectInLane_carInSingleLane(behavioral_grid_state_with_scene_short_t
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,0,0,0]), 11),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
 
+    # LEFT_LANE is lane 11
     assert BehavioralGridState._is_object_in_lane(dyn_obj,
                                                   bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    # SAME_LANE is lane 10
     assert BehavioralGridState._is_object_in_lane(dyn_obj,
                                                   bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == False
 
