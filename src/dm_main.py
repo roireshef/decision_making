@@ -14,7 +14,7 @@ from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DIM_States
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
-from decision_making.src.planning.behavioral.state_machine_visualizations import MultiVisualizer
+from decision_making.src.planning.behavioral.visualization.state_machine_visualizations import MultiVisualizer
 from decision_making.src.planning.route.backpropagating_route_planner import BackpropagatingRoutePlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
