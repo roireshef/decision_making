@@ -46,8 +46,8 @@ class LaneChangeState:
         self.lane_change_start_time = lane_change_start_time
         self.target_relative_lane = target_relative_lane
         self.status = status
-        self.last_status = self.status
         self.visualizer_queue = visualizer_queue
+        self.visualizer_queue.put(self.status)
 
     def __str__(self):
         # print as dict for logs
@@ -59,8 +59,6 @@ class LaneChangeState:
         self.lane_change_start_time = None
         self.target_relative_lane = None
         self.status = LaneChangeStatus.Requestable
-        self.last_status = self.status
-        self.visualizer_queue.put(self.status)
 
     def get_target_lane_gff(self, extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> GeneralizedFrenetSerretFrame:
         """
@@ -106,7 +104,6 @@ class LaneChangeState:
         :param ego_state: state of host
         :return:
         """
-        self.last_status = self.status
         if self.status == LaneChangeStatus.Requestable:
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
                 self.target_relative_lane = RelativeLane.LEFT_LANE
@@ -195,9 +192,4 @@ class LaneChangeState:
                 self.status = LaneChangeStatus.CompleteWaitingForReset
         elif self.status == LaneChangeStatus.CompleteWaitingForReset:
             pass
-        if self.status != self.last_status:
-            self.last_status = self.status
-            try:
-                self.visualizer_queue.put(self.status)
-            except Exception as e:
-                pass  # do not let visualizer fail operation code
+        self.visualizer_queue.put(self.status)
