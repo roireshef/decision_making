@@ -1,34 +1,35 @@
-from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
-from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
-from decision_making.src.planning.behavioral.state_machine_visualizations import MultiVisualizer
-from rte.python.logger.AV_logger import AV_Logger
+import multiprocessing as mp
+import os
+
+from decision_making.paths import Paths
 from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, ROUTE_PLANNING_MODULE_PERIOD
-from decision_making.paths import Paths
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
+    ROUTE_PLANNING_MODULE_PERIOD
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
-from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DIM_States
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
+from decision_making.src.planning.behavioral.state_machine_visualizations import MultiVisualizer
 from decision_making.src.planning.route.backpropagating_route_planner import BackpropagatingRoutePlanner
+from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-import os
+from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
-
-import multiprocessing as mp
-
-from typing import Dict
 
 AV_Logger.init_group("PLAN")
 
 DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
+
+RUN_STATE_MACHINE_VISUALIZER = True
 
 
 class DmInitialization:
@@ -47,12 +48,15 @@ class DmInitialization:
         return route_planning_module
 
     @staticmethod
-    def create_behavioral_planner(visualizer_queue: mp.SimpleQueue) -> BehavioralPlanningFacade:
+    def create_behavioral_planner() -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
 
-        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None, visualizer_queue=visualizer_queue)
+        global visualizer_queue
+
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None,
+                                                     visualizer_queue=visualizer_queue)
         return behavioral_module
 
     @staticmethod
@@ -73,7 +77,15 @@ class DmInitialization:
         return trajectory_planning_module
 
 
-def main():
+class DummyQueue:
+    def __init__(self):
+        pass
+
+    def put(self, obj):
+        pass
+
+
+if __name__ == '__main__':
     av_argument_parser.parse_arguments()
     # register termination signal handler
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
@@ -84,9 +96,15 @@ def main():
     os.environ['MKL_NUM_THREADS'] = '1'
 
     # MultiVisualizer
-    visualizer_queue = mp.SimpleQueue()
-    visualizer = MultiVisualizer(visualizer_queue)
-    visualizer.start()
+    if RUN_STATE_MACHINE_VISUALIZER:
+        visualizer_queue = mp.Queue(20)
+        visualizer = MultiVisualizer(visualizer_queue)
+        visualizer.start()
+
+        visualizer_queue.put(DIM_States.DISABLED)
+        visualizer_queue.put(LaneChangeStatus.Requestable)
+    else:
+        visualizer_queue = DummyQueue()
 
     modules_list = \
         [
@@ -95,7 +113,7 @@ def main():
                       trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD},
                       name='RP'),
 
-            DmProcess(lambda: DmInitialization.create_behavioral_planner(visualizer_queue),
+            DmProcess(lambda: DmInitialization.create_behavioral_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
                       name='BP'),
@@ -115,8 +133,5 @@ def main():
         pass
     finally:
         manager.stop_modules()
-        visualizer.stop()
-
-
-if __name__ == '__main__':
-    main()
+        if RUN_STATE_MACHINE_VISUALIZER:
+            visualizer.stop()
