@@ -7,10 +7,11 @@ from decision_making.src.planning.types import CartesianExtendedTrajectory, Fren
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.utils.frenet_prediction_utils import FrenetPredictionUtils
+from typing import Optional
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, T_extended: float, frenet_frame: FrenetSerret2DFrame,
+    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, T_extended: float, frenet_frame: Optional[FrenetSerret2DFrame],
                  poly_s_coefs: np.ndarray, poly_d_coefs: np.ndarray):
         """
         To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
@@ -21,7 +22,8 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         :param T_d: [sec] lateral trajectory duration (relative to self.timestamp).
         :param T_extended: [sec] lateral trajectory duration (relative to self.timestamp).
         :param frenet_frame: frenet frame of the curve which was used to create this samplable trajectory, used for
-                            transforming between frenet and cartesian coordinates.
+                            transforming between frenet and cartesian coordinates. Sampling frenet states
+                            (in contrast to cartesian) doesn't require a frenet frame.
         :param poly_s_coefs: coefficients of the longitudinal polynomial which is being sampled for getting the
                 longitudinal frenet states
         :param poly_d_coefs: coefficients of the lateral polynomial which is being sampled for getting the
@@ -46,6 +48,8 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         """See base method for API. In this specific representation of the trajectory, we sample from s-axis polynomial
         (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial
         (lateral) and extrapolate the rest of the states in d-axis to conform to the trajectory's total duration"""
+
+        assert self.frenet_frame, "frenet_frame is None, can't sample cartesian states"
 
         # Sample the trajectory in the desired points in time in Frenet coordinates
         fstates = self.sample_frenet(time_points=time_points)
