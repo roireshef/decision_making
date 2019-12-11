@@ -12,12 +12,13 @@ from decision_making.src.state.state import ObjectSize, State, EgoState, Dynamic
 
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_no_split
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import route_plan_20
+from decision_making.test.planning.custom_fixtures import lane_change_state
 
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
 
 
-def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_pg_no_split, route_plan_20):
+def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_pg_no_split, route_plan_20, lane_change_state):
     for lane_segment in scene_static_pg_no_split.s_Data.s_SceneStaticBase.as_scene_lane_segments:
         lane_segment.as_traffic_control_bar = []
     scene_static_pg_no_split.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
@@ -53,7 +54,7 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_pg_no_split,
                                                     confidence=0, off_map=False)
 
     state = State(False, None, [obj], ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20, lane_change_state, logger)
 
     action_recipes = action_space.recipes
     recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)

@@ -30,33 +30,33 @@ PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False
 # test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
 
 # Trajectory cost parameters
-OBSTACLE_SIGMOID_COST = 1.0 * 1e5  # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 9.0  # sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
+OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects on road
 
-DEVIATION_FROM_LANE_COST = 0.07  # cost of deviation from lane (sigmoid)
-LANE_SIGMOID_K_PARAM = 4  # sigmoid k (slope) param of going out-of-lane-center
+DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
+LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
-DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2  # cost of deviation to shoulders (sigmoid)
-SHOULDER_SIGMOID_K_PARAM = 8.0  # sigmoid k (slope) param of going out-of-shoulder
-SHOULDER_SIGMOID_OFFSET = 0.2  # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
+DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+SHOULDER_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of going out-of-shoulder
+SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
-DEVIATION_FROM_ROAD_COST = 1.0 * 1e3  # cost of deviation from road (sigmoid)
-ROAD_SIGMOID_K_PARAM = 20  # sigmoid k (slope) param of going out-of-road
+DEVIATION_FROM_ROAD_COST = 1.0 * 1e3        # cost of deviation from road (sigmoid)
+ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3  # ratio between lateral and longitudinal deviation costs from the goal
-DEVIATION_FROM_GOAL_COST = 2.5 * 1e2  # cost of longitudinal deviation from the goal
-GOAL_SIGMOID_K_PARAM = 0.5  # sigmoid k (slope) param of going out-of-goal
-GOAL_SIGMOID_OFFSET = 7  # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
+DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3       # ratio between lateral and longitudinal deviation costs from the goal
+DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation from the goal
+GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
+GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
-LARGE_DISTANCE_FROM_SHOULDER = 1e8  # a large value indicating being very far from road shoulders (so we don't
-# penalize on that).
+LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being very far from road shoulders (so we don't
+                                            # penalize on that).
 
-LON_JERK_COST_WEIGHT = 1.0  # cost of longitudinal jerk
-LAT_JERK_COST_WEIGHT = 1.0  # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 # original velocities in [mph] are converted into [m/s]
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 75 / MPH_TO_MPS  # TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 85/MPH_TO_MPS # TODO - get this value from the map
 
 # [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
 # we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
@@ -64,8 +64,8 @@ TP_DESIRED_VELOCITY_DEVIATION = 1
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 # original velocities in [mph] are converted into [m/s]
-VELOCITY_LIMITS = np.array([0.0, 80 / MPH_TO_MPS])
-VELOCITY_STEP = 5 / MPH_TO_MPS
+VELOCITY_LIMITS = np.array([0.0, 90/MPH_TO_MPS])
+VELOCITY_STEP = 5/MPH_TO_MPS
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
@@ -101,6 +101,12 @@ LAT_ACC_LIMITS_BY_K = np.array([(0, 6, 3, 3),
                                 (200, 275, 2.1, 2),
                                 (275, np.inf, 2, 2)])
 
+# [m/sec^2] lateral acceleration limits during lane change
+LAT_ACC_LIMITS_LANE_CHANGE = np.array([-3, 3])
+
+# Relative Latitudinal Acceleration Limits [m/sec^2] for lane change
+REL_LAT_ACC_LIMITS = np.array([-0.6, 0.6])
+
 # BP has more strict lateral acceleration limits than TP. BP_LAT_ACC_STRICT_COEF is the ratio between BP and TP limits
 BP_LAT_ACC_STRICT_COEF = 1.0
 TP_LAT_ACC_STRICT_COEF = 1.1
@@ -117,6 +123,10 @@ LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 
 # Additional distance after stop bar, where vehicle still considers bar as active, until DIM is active
 DIM_MARGIN_TO_STOP_BAR = 10.0
+
+# Deceleration thresholds as defined by the system requirements
+SPEED_THRESHOLDS = np.array([3, 6, 9, 12, 14, 100])  # in [m/s]
+TIME_THRESHOLDS = np.array([7, 8, 10, 13, 15, 19.8])  # in [s]
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
@@ -135,17 +145,17 @@ LON_MARGIN_FROM_EGO = 1
 
 # Uniform grids for BP Filters
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
-FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
-FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
+FILTER_V_0_GRID = UniformGrid(VELOCITY_LIMITS, 0.5)  # [m/sec]
+FILTER_V_T_GRID = UniformGrid(VELOCITY_LIMITS, 0.5)  # [m/sec]
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
 # Step size for indexes in beyond spec filters
 BEYOND_SPEC_INDEX_STEP = 4
 
 # Min distance threshold ahead to raise takeover flag
-MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 30
+MIN_DISTANCE_TO_SET_TAKEOVER_FLAG = 80
 # Time threshold to raise takeover flag
-TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 5
+TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG = 12
 
 # Used by TargetActionSpace.modify_target_speed_if_ego_is_faster_than_target() to calculate the speed reduction of the target for the action spec
 SLOW_DOWN_FACTOR = 0.5
@@ -158,6 +168,25 @@ REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION = 1.2
 
 SPEEDING_VIOLATION_TIME_TH = 3.0  # in [seconds]. Speeding violation allowed time from START of action.
 SPEEDING_SPEED_TH = 2.0 / 3.6  # in [m/s]. Allowed magnitude of speeding violation.
+
+# [sec], Time that has to pass after the turn signal is turned on before considering a lane change
+LANE_CHANGE_DELAY = 1.0
+
+# [sec], Time completion target for lane changes
+LANE_CHANGE_TIME_COMPLETION_TARGET = 6.0
+
+# [sec], Minimum time allowed for lane change actions. This time will override the lane change specification time towards the end of the
+# lane change.
+MIN_LANE_CHANGE_ACTION_TIME = 0.2
+
+# [m], Maximum distance from lane center to consider a lane change complete
+MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE = 0.35
+
+# [rad], Maximum relative heading to consider a lane change complete
+MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE = 0.25
+
+# [%], Threshold at which a lane change will be aborted if the maneuver completion percentage is under this value
+LANE_CHANGE_ABORT_THRESHOLD = 20.0
 
 # Trajectory Planner #
 
@@ -190,8 +219,8 @@ NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference th
 
 # limits for allowing tracking mode. During tracking we maintain a fixed speed trajectory with the speed the target.
 # May want to consider replacing with ego speed, so that speed is constant
-TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1  # in [m]
-TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1  # in [m/s]
+TRACKING_DISTANCE_DISPOSITION_LIMIT = 0.1       # in [m]
+TRACKING_VELOCITY_DISPOSITION_LIMIT = 0.1       # in [m/s]
 TRACKING_ACCELERATION_DISPOSITION_LIMIT = 0.05  # in [m/s^2]
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
@@ -240,6 +269,21 @@ LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL = 3.8
 LANE_MERGE_ACTORS_MAX_VELOCITY = 25.
 # [sec] time limits of RL actions
 LANE_MERGE_ACTION_T_LIMITS = np.array([0, 100])
+
+# [m/sec] maximal velocity from which DIM may be performed
+DRIVER_INITIATED_MOTION_VELOCITY_LIMIT = 0.1
+# [sec] maximal time to reach the next stop bar (keeping current ego velocity)
+DRIVER_INITIATED_MOTION_MAX_TIME_TO_STOP_BAR = 5
+# [m] how far to look for the next stop bar to perform DIM
+DRIVER_INITIATED_MOTION_STOP_BAR_HORIZON = 5
+# acceleration pedal strength in [0..1]
+DRIVER_INITIATED_MOTION_PEDAL_THRESH = 0.05
+# [sec] time period of sufficient throttle pedal
+DRIVER_INITIATED_MOTION_PEDAL_TIME = 0.5
+# [sec] time period DIM is active after driver released the pedal
+DRIVER_INITIATED_MOTION_TIMEOUT = 10
+# indices of tuple
+STOP_BAR_IND, STOP_BAR_DISTANCE_IND = 0, 1
 
 # Werling Planner #
 

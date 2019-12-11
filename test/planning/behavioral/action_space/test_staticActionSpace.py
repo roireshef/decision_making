@@ -11,11 +11,12 @@ from decision_making.src.state.state import ObjectSize, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split
+from decision_making.test.planning.custom_fixtures import lane_change_state
 
 
 # test Specify, when ego starts with velocity very close to the target velocity
 # scene_static is a multi-segment map
-def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split, route_plan_20_30):
+def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split, route_plan_20_30, lane_change_state):
 
     scene_static_message = scene_static_pg_split
     for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
@@ -43,7 +44,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_pg_split
                                                off_map=False)
 
     state = State(False, None, [], ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20_30, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state, route_plan_20_30, lane_change_state, logger)
     # ego is located on the rightest lane, so filter recipes to the right
     filtered_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane != RelativeLane.RIGHT_LANE]
 

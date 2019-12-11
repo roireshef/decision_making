@@ -2,6 +2,7 @@ import pickle
 
 from decision_making.paths import Paths
 from decision_making.src.messages.scene_static_enums import StaticTrafficControlDeviceType
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.planning.types import C_A
 
 from decision_making.src.messages.scene_static_message import TrafficControlBar, StaticTrafficControlDevice
@@ -19,6 +20,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
@@ -30,7 +32,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
     scene_static_lane_splits_on_left_and_right_left_first, scene_static_lane_splits_on_left_and_right_right_first, \
     scene_static_merge_right, scene_static_merge_left_right_to_center, scene_static_oval_with_splits, scene_static_short_testable
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
-from decision_making.test.planning.custom_fixtures import route_plan_1_2
+from decision_making.test.planning.custom_fixtures import route_plan_1_2, lane_change_state
 from decision_making.test.messages.scene_static_fixture import testable_scene_static_mock, scene_static_mound_road_north
 
 
@@ -532,6 +534,8 @@ def state_with_objects_for_acceleration_towards_vehicle():
     scene_dynamic.dynamic_objects[0].off_map = False
     # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
     scene_dynamic.ego_state.cartesian_state[C_A] = 1
+    scene_dynamic.ego_state._dim_state = DriverInitiatedMotionState(None)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     yield scene_dynamic
 
 
@@ -1087,57 +1091,58 @@ def state_for_testing_lanes_speed_limits_violations(route_plan_20_30: RoutePlan)
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state(state_with_surrounding_objects: State, route_plan_20_30: RoutePlan):
+def behavioral_grid_state(state_with_surrounding_objects: State, route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_with_surrounding_objects,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_scene_short_testable(state_with_scene_static_short_testable: State,
-                                                    route_plan_1_2: RoutePlan):
+                                                    route_plan_1_2: RoutePlan, lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_with_scene_static_short_testable,
-                                                route_plan_1_2, None)
+                                                route_plan_1_2, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_acceleration_towards_vehicle(
-        state_with_objects_for_acceleration_towards_vehicle, route_plan_for_oval_track_file: RoutePlan):
+        state_with_objects_for_acceleration_towards_vehicle, route_plan_for_oval_track_file: RoutePlan, lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_with_objects_for_acceleration_towards_vehicle,
-                                                route_plan_for_oval_track_file, None)
+                                                route_plan_for_oval_track_file, lane_change_state, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
-        state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan):
+        state_with_objects_for_filtering_almost_tracking_mode: State, route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, lane_change_state, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
-        state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan):
+        state_with_objects_for_filtering_exact_tracking_mode: State, route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_exact_tracking_mode,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, lane_change_state, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_objects_for_filtering_negative_sT: State,
-                                                                 route_plan_20_30: RoutePlan):
+                                                                 route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
-        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
+        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_stop_bar(
-        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan):
+        state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, lane_change_state, None)
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan):
+def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State, route_plan_20_30: RoutePlan,
+                                               lane_change_state: LaneChangeState):
 
     scene_static_with_traffic = scene_static_pg_split()
     lane_id = 211
@@ -1156,24 +1161,25 @@ def behavioral_grid_state_with_traffic_control(state_with_traffic_control: State
     SceneStaticModel.get_instance().set_scene_static(scene_static_with_traffic)
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     yield BehavioralGridState.create_from_state(state_with_traffic_control,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, lane_change_state, None)
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_segments_limits(state_for_testing_lanes_speed_limits_violations, route_plan_20_30: RoutePlan):
+def behavioral_grid_state_with_segments_limits(state_for_testing_lanes_speed_limits_violations, route_plan_20_30: RoutePlan,
+                                               lane_change_state: LaneChangeState):
     yield BehavioralGridState.create_from_state(state_for_testing_lanes_speed_limits_violations,
-                                                route_plan_20_30, None)
+                                                route_plan_20_30, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_left_lane_ending(state_with_left_lane_ending, route_plan_1_2):
-    yield BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_1_2, None)
+    yield BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_1_2, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_split_on_oval(state_with_ego_at_split_on_oval, route_plan_for_oval_track_file):
-    yield BehavioralGridState.create_from_state(state_with_ego_at_split_on_oval, route_plan_for_oval_track_file, None)
+    yield BehavioralGridState.create_from_state(state_with_ego_at_split_on_oval, route_plan_for_oval_track_file, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_merge_on_oval(state_with_ego_at_merge_on_oval, route_plan_for_oval_track_file):
-    yield BehavioralGridState.create_from_state(state_with_ego_at_merge_on_oval, route_plan_for_oval_track_file, None)
+    yield BehavioralGridState.create_from_state(state_with_ego_at_merge_on_oval, route_plan_for_oval_track_file, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def follow_vehicle_recipes_towards_front_cells():

@@ -1,4 +1,6 @@
 import numpy as np
+from decision_making.src.planning.behavioral.data_objects import ActionType
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from interface.Rte_Types.python.sub_structures.TsSYS_SigmoidFunctionParams import \
     TsSYSSigmoidFunctionParams
 from interface.Rte_Types.python.sub_structures.TsSYS_TrajectoryCostParams import \
@@ -163,8 +165,9 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     target_time = float
     bp_time = int
 
-    def __init__(self, strategy, reference_route, target_state, cost_params, target_time, trajectory_end_time, bp_time):
-        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float, float, int)->None
+    def __init__(self, strategy, reference_route, target_state, cost_params, target_time, trajectory_end_time, bp_time,
+                 target_lane, action_type):
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float, float, int, RelativeLane, ActionType)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)
@@ -177,6 +180,8 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         done in TP, which is a consequence of Control's requirement to have a long enough trajectory, i.e. according to
         MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
         :param bp_time: absolute time of the state that BP planned on.
+        :param target_lane: the target lane relative to the lane the host vehicle is on - for debug/monitoring purposes
+        :param action_type: the BP semantic action type - for debug/monitoring purposes
         """
         self.reference_route = reference_route
         self.target_state = target_state
@@ -185,6 +190,8 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         self.target_time = target_time
         self.trajectory_end_time = trajectory_end_time
         self.bp_time = bp_time
+        self.target_lane = target_lane
+        self.action_type = action_type
 
     def __str__(self):
         return str(self.to_dict(left_out_fields=['reference_route']))
@@ -198,6 +205,11 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSTrajectoryParameters()
 
         pubsub_msg.e_e_Strategy = self.strategy.value
+
+        # translates RelativeLane enum values (-1, 0, 1) for (right, same, left) to TeSYS_BehavioralIntentTargetLane
+        # enum values (0, 1, 2) accordingly"""
+        pubsub_msg.e_e_target_lane = self.target_lane.value + 1
+        pubsub_msg.e_e_action_type = self.action_type.value
 
         pubsub_msg.s_ReferenceRoute = self.reference_route.serialize()
 
@@ -219,4 +231,6 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
                    , TrajectoryCostParams.deserialize(pubsubMsg.s_CostParams)
                    , pubsubMsg.e_t_TargetTime
                    , pubsubMsg.e_t_TrajectoryEndTime
-                   , pubsubMsg.e_Cnt_BPTime)
+                   , pubsubMsg.e_Cnt_BPTime
+                   , RelativeLane(pubsubMsg.e_e_target_lane - 1)  # translates back indices (see serialize method)
+                   , ActionType(pubsubMsg.e_e_action_type))
