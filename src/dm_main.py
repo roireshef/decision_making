@@ -54,6 +54,7 @@ class DmInitialization:
 
         pubsub = PubSub()
 
+        # since it is sent to process from outside, the queue must be defined as a global variable
         global visualizer_queue
 
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None,
@@ -78,14 +79,6 @@ class DmInitialization:
         return trajectory_planning_module
 
 
-class DummyQueue:
-    def __init__(self):
-        pass
-
-    def put(self, obj):
-        pass
-
-
 if __name__ == '__main__':
     av_argument_parser.parse_arguments()
     # register termination signal handler
@@ -105,7 +98,7 @@ if __name__ == '__main__':
         visualizer_queue.put(DIM_States.DISABLED)
         visualizer_queue.put(LaneChangeStatus.Requestable)
     else:
-        visualizer_queue = DummyQueue()
+        visualizer_queue = None
 
     modules_list = \
         [
