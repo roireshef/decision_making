@@ -6,7 +6,7 @@ from decision_making.src.planning.types import CartesianExtendedTrajectory, Fren
     FrenetTrajectory1D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.utils.frenet_prediction_utils import FrenetPredictionUtils
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
@@ -103,11 +103,10 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         if len(extrapolated_time_points) > 0:
             # time points will trigger extrapolating the last sampled point from the polynomial using a constant
             # velocity predictor
-            road_following_predictor = RoadFollowingPredictor(None)
             fstate_in_T_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), np.array([self.T_s]))[
                 0]
             extrapolated_fstates_s = \
-            road_following_predictor.predict_1d_frenet_states(fstate_in_T_s, extrapolated_time_points - self.T_s)[0]
+            FrenetPredictionUtils.predict_1d_frenet_states(fstate_in_T_s, extrapolated_time_points - self.T_s)[0]
             fstates_s = np.vstack((fstates_s, extrapolated_fstates_s))
 
         return fstates_s
