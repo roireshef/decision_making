@@ -1,20 +1,17 @@
 import multiprocessing as mp
 from abc import abstractmethod
-
-from graphviz import Digraph
-import pydotplus
-
 from io import BytesIO as StringIO
+from typing import Any
+
 import cv2
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
-from typing import Any
+import pydotplus
+from graphviz import Digraph
 
 
 class StateMachineVisualizer(mp.Process):
-    TICK_TO_PLOT = 10
-
-    def __init__(self, queue: mp.SimpleQueue, title: str, plot_num: int = 1):
+    def __init__(self, queue: mp.Queue, title: str, plot_num: int = 1):
         """
         A new process that opens a new visualization window and plots graphviz plots inside
         :param max_queue_len: max elements in the queue that is used for communicating with this visualizer
@@ -24,16 +21,19 @@ class StateMachineVisualizer(mp.Process):
         self.title = title
         self.queue = queue
         self.is_running = mp.Value('b', False)
-        self.im = [None] * plot_num
-        self.fig = [None] * plot_num
         self.previous_elem = [None] * plot_num
         self.previous_img = [None] * plot_num
-        self.tick_from_previous_img = [0] * plot_num
         self.plot_num = plot_num
 
-    def run(self):
-        self.is_running.value = True
+        self.fig = None
+        self.ax = [None] * plot_num
+        self.im = [None] * plot_num
 
+    def run(self):
+        self.init_figure()
+        self.fig.show()
+
+        self.is_running.value = True
         while self.is_running.value:
             try:
                 elem = self.queue.get()
@@ -41,7 +41,7 @@ class StateMachineVisualizer(mp.Process):
                 if type_index >= 0:
                     keep_previous_fig = (self.previous_elem[type_index] is not None) and (elem.value == self.previous_elem[type_index].value)
                     self._view(self.transform(elem) if not keep_previous_fig else None, type_index)
-                self.previous_elem[type_index] = elem
+                    self.previous_elem[type_index] = elem
             except:
                 pass
 
@@ -50,6 +50,15 @@ class StateMachineVisualizer(mp.Process):
         for fig in self.fig:
             plt.close(fig)
         self.kill()
+
+    @abstractmethod
+    def init_figure(self):
+        """
+        abstract class that lets the user implement custom subplots figure.
+        Here <self.ax> (list of subplot axes) and <self.fig> (matplotlib figure) must be initialized !
+        :return: Nothing
+        """
+        pass
 
     @abstractmethod
     def type_to_index(self, elem: Any) -> int:
@@ -95,21 +104,15 @@ class StateMachineVisualizer(mp.Process):
             new_height = int(new_width * ratio)
             img = cv2.resize(img, (new_width, new_height))
 
-            if self.im[sub_plot_num] is None:
+            if self.previous_img[sub_plot_num] is None:
                 # initialize window used to plot images
-                self.fig[sub_plot_num], ax = plt.subplots(1, 1)
-                self.im[sub_plot_num] = ax.imshow(img)
+                self.im[sub_plot_num] = self.ax[sub_plot_num].imshow(img)
             else:
                 self.im[sub_plot_num].set_data(img)
+
             self.previous_img[sub_plot_num] = img
-            self.tick_from_previous_img[sub_plot_num] = 0
-        else:
-            # if graph is None then use previous figure
-            if self.tick_from_previous_img[sub_plot_num] > self.TICK_TO_PLOT:
-                self.tick_from_previous_img[sub_plot_num] = 0
-                self.im[sub_plot_num].set_data(self.previous_img[sub_plot_num])
-            else:
-                self.tick_from_previous_img[sub_plot_num] += 1
-                return
-        self.fig[sub_plot_num].canvas.draw_idle()
-        plt.pause(0.1)
+
+            self.fig.canvas.draw()
+
+        self.fig.canvas.flush_events()
+
