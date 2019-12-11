@@ -1,3 +1,5 @@
+import multiprocessing as mp
+
 import time
 import traceback
 from logging import Logger
@@ -50,10 +52,19 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
+class DummyQueue:
+    def __init__(self):
+        pass
+
+    def put(self, obj):
+        pass
+
+
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
-    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
+    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None,
+                 visualizer_queue: mp.SimpleQueue = None) -> None:
         """
         :param pubsub:
         :param logger:
@@ -64,20 +75,14 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
-        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
+        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger, visualizer_queue or DummyQueue())
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
-        self._lane_change_state = LaneChangeState()
+        self._lane_change_state = LaneChangeState(visualizer_queue=visualizer_queue or DummyQueue())
 
-    def _write_filters_to_log_if_required(self, now: float):
-        """
-        Write list of applicable filters to log every 5 seconds.
-        :param now: time in seconds
-        """
-        if now - self.last_log_time > 5.0:
-            self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
-                                                              as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
-            self.last_log_time = now
+    @property
+    def planner(self):
+        return self._planner
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
@@ -130,6 +135,7 @@ class BehavioralPlanningFacade(DmModule):
             if pedal_position is not None:
                 self._driver_initiated_motion_state.update_pedal_times(pedal_position)
 
+
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
                 route_plan_dict = route_plan.to_costs_dict()
@@ -177,7 +183,7 @@ class BehavioralPlanningFacade(DmModule):
                 # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
                 # the target GFF. This will happen when we're performing a lane change.
                 target_gff = self._lane_change_state.source_lane_gff \
-                    if self._lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane \
+                    if self._lane_change_state.status == LaneChangeStatus.ActiveInSourceLane \
                         and state.ego_state.map_state.lane_id not in self._last_gff_segment_ids \
                     else None
 
@@ -415,6 +421,13 @@ class BehavioralPlanningFacade(DmModule):
     def _publish_takeover(self, takeover_message:Takeover) -> None :
         self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_message.serialize())
 
-    @property
-    def planner(self):
-        return self._planner
+    def _write_filters_to_log_if_required(self, now: float):
+        """
+        Write list of applicable filters to log every 5 seconds.
+        :param now: time in seconds
+        """
+        if now - self.last_log_time > 5.0:
+            self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
+                                                              as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.last_log_time = now
+

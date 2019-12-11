@@ -1,3 +1,4 @@
+from multiprocessing import SimpleQueue
 from typing import Tuple
 
 import numpy as np
@@ -37,8 +38,9 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
     is_pedal_pressed = bool             # True if the pedal is currently pressed
     stop_bar_id = int                   # the closest stop bar id at the moment of pressing the pedal
 
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, visualizer_queue: SimpleQueue):
         self.logger = logger
+        self.visualizer_queue = visualizer_queue
         self._reset()
 
     def to_dict(self, left_out_fields=None):
@@ -60,13 +62,11 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
             self.stop_bar_id = closestTCB[STOP_BAR_IND].e_i_traffic_control_bar_id
             self.state = DIM_States.PENDING
             self.logger.debug('DIM state: PENDING; stop_bar_id %s', self.stop_bar_id)
-        if self.state == DIM_States.DISABLED:
-            self._reset()
-            return
 
         # check if we can pass to CONFIRMED state
         if self._can_pass_to_confirmed_state(timestamp_in_sec):
             self.state = DIM_States.CONFIRMED
+            self.visualizer_queue.put(self.state)
             self.logger.debug('DIM state: CONFIRMED; stop_bar_id %s', self.stop_bar_id)
             # don't move to the "if _can_pass_to_disabled_state" since the ignored is not set properly yet.
             # Will be set in the next cycle
@@ -76,6 +76,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         if self._can_pass_to_disabled_state(ego_s, ignored_TCB_distance, timestamp_in_sec):
             self._reset()  # set DISABLED state
             self.logger.debug('DIM state: DISABLED; ')
+        self.visualizer_queue.put(self.state)
 
     def stop_bar_to_ignore(self):
         """
@@ -92,6 +93,8 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         self.pedal_last_change_time = np.inf
         self.is_pedal_pressed = False
         self.stop_bar_id = None
+        self.logger.debug('DIM state: DISABLED; ')
+        self.visualizer_queue.put(self.state)
 
     def update_pedal_times(self, pedal_position: PedalPosition) -> None:
         """
