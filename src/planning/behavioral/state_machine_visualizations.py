@@ -39,7 +39,7 @@ class MultiVisualizer(StateMachineVisualizer):
         return d
 
     def init_figure(self):
-        self.fig = plt.figure(figsize=(12,8), num="Planning Agent State Machine Status")
+        self.fig = plt.figure(figsize=(10,8), num="Planning Agent State Machine Status")
         self.fig.suptitle('Agent\'s State-Machine Status', fontsize=16)
 
         lcod_ax = plt.subplot(1, 2, 1)
@@ -50,7 +50,7 @@ class MultiVisualizer(StateMachineVisualizer):
         dim_ax.set_title('Driver-initiated Motion')
         dim_ax.axis('off')
 
-        # self.fig.tight_layout()
+        self.fig.tight_layout()
         self.ax = [lcod_ax, dim_ax]
 
     def type_to_index(self, elem: Union[LaneChangeStatus, DIM_States]) -> int:
