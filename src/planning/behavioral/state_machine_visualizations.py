@@ -30,11 +30,11 @@ class MultiVisualizer(StateMachineVisualizer):
         for i in range(len(states)-1):
             d.edge(str(i), str(i+1))
 
-        d.edge(str(len(states)-1), str(0))
+        d.edge(str(len(states)-1), str(0), _attributes={"constraint": "false"})
 
         if isinstance(elem, LaneChangeStatus):
             for i in [1, 2, 3]:
-                d.edge(str(i), str(0), "Turn-signal\noff")
+                d.edge(str(i), str(0), "(abort)", _attributes={"constraint": "false"})
 
         return d
 
@@ -50,7 +50,7 @@ class MultiVisualizer(StateMachineVisualizer):
         dim_ax.set_title('Driver-initiated Motion')
         dim_ax.axis('off')
 
-        self.fig.tight_layout()
+        # self.fig.tight_layout()
         self.ax = [lcod_ax, dim_ax]
 
     def type_to_index(self, elem: Union[LaneChangeStatus, DIM_States]) -> int:
