@@ -1,11 +1,12 @@
-import numpy as np
 from logging import Logger
 from typing import List, Dict
 
+import numpy as np
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX, FrenetTrajectories2D, \
+from decision_making.src.planning.types import FrenetTrajectories2D, \
     FrenetStates2D, FrenetState1D, FrenetTrajectories1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.prediction.utils.frenet_prediction_utils import FrenetPredictionUtils
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, DynamicObject
 
@@ -104,30 +105,11 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         """
         See base class
         """
-        T = horizons.shape[0]
-        N = objects_fstates.shape[0]
-        if N == 0:
-            return []
-        zero_slice = np.zeros([N, T])
-
-        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons
-        v = np.tile(objects_fstates[:, np.newaxis, FS_SV], T)
-
-        return np.dstack((s, v, zero_slice))
+        return FrenetPredictionUtils.predict_1d_frenet_states(objects_fstates, horizons)
 
     def predict_2d_frenet_states(self, objects_fstates: FrenetStates2D, horizons: np.ndarray) -> FrenetTrajectories2D:
         """
         See base class
         """
 
-        T = horizons.shape[0]
-        N = objects_fstates.shape[0]
-        if N == 0:
-            return []
-        zero_slice = np.zeros([N, T])
-
-        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons
-        v = np.tile(objects_fstates[:, np.newaxis, FS_SV], T)
-        d = np.tile(objects_fstates[:, np.newaxis, FS_DX], T)
-
-        return np.dstack((s, v, zero_slice, d, zero_slice, zero_slice))
+        return FrenetPredictionUtils.predict_2d_frenet_states(objects_fstates, horizons)

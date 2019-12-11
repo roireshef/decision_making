@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
 from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D, FS_1D_LEN, \
     FrenetTrajectory1D
