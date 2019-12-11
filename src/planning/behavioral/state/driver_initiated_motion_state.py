@@ -13,6 +13,7 @@ from logging import Logger
 
 from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
+from decision_making.src.planning.behavioral.visualization.dummy_queue import DummyQueue
 from decision_making.src.planning.types import FS_SV, FrenetState2D
 
 
@@ -38,9 +39,9 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
     is_pedal_pressed = bool             # True if the pedal is currently pressed
     stop_bar_id = int                   # the closest stop bar id at the moment of pressing the pedal
 
-    def __init__(self, logger: Logger, visualizer_queue: SimpleQueue):
+    def __init__(self, logger: Logger, visualizer_queue: SimpleQueue = None):
         self.logger = logger
-        self.visualizer_queue = visualizer_queue
+        self.visualizer_queue = visualizer_queue or DummyQueue()
         self._reset()
 
     def to_dict(self, left_out_fields=None):

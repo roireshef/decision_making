@@ -52,14 +52,6 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
-class DummyQueue:
-    def __init__(self):
-        pass
-
-    def put(self, obj):
-        pass
-
-
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
@@ -75,10 +67,10 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
-        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger, visualizer_queue or DummyQueue())
+        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger, visualizer_queue)
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
-        self._lane_change_state = LaneChangeState(visualizer_queue=visualizer_queue or DummyQueue())
+        self._lane_change_state = LaneChangeState(visualizer_queue=visualizer_queue)
 
     @property
     def planner(self):
