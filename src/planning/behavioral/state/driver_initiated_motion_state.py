@@ -61,7 +61,6 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         if can_pass_to_pending_state:
             self.stop_bar_id = closestTCB[STOP_BAR_IND].e_i_traffic_control_bar_id
             self.state = DIM_States.PENDING
-            self.visualizer_queue.put(self.state)
             self.logger.debug('DIM state: PENDING; stop_bar_id %s', self.stop_bar_id)
 
         # check if we can pass to CONFIRMED state
@@ -77,6 +76,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         if self._can_pass_to_disabled_state(ego_s, ignored_TCB_distance, timestamp_in_sec):
             self._reset()  # set DISABLED state
             self.logger.debug('DIM state: DISABLED; ')
+        self.visualizer_queue.put(self.state)
 
     def stop_bar_to_ignore(self):
         """
