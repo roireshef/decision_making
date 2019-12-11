@@ -114,8 +114,8 @@ class LaneMergeState(BehavioralGridState):
                                                                                LANE_MERGE_ACTORS_HORIZON)
 
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego,
-                       merge_from_s_on_ego_gff=red_line_s - 10,
-                       red_line_s_on_ego_gff=red_line_s + 50, target_rel_lane=target_rel_lane)
+                       merge_from_s_on_ego_gff=red_line_s,
+                       red_line_s_on_ego_gff=red_line_s + 40, target_rel_lane=target_rel_lane)
 
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE or target lane GFF, stop processing this BP frame

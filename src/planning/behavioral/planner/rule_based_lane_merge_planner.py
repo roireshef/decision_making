@@ -156,8 +156,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
             # calculate acceleration times from v_T to max velocity
             accel_to_max_vel_s, accel_to_max_vel_T = KinematicUtils.specify_quartic_actions(
-                calm_weights[2], calm_weights[0], v_T, np.full(v_T.shape, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY),
-                action_horizon_limit=np.inf)
+                calm_weights[2], calm_weights[0], v_T, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, action_horizon_limit=np.inf)
 
             # collect actions jerks, times and distances
             for action_idx, spec_jerk, spec_t, spec_v, spec_s, acc_t, acc_s in \
@@ -236,7 +235,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())])
                    for t, vT, s in zip(T[valid_idxs], v_T[valid_idxs], ds[valid_idxs])]
-
         return actions
 
     @staticmethod
@@ -326,34 +324,39 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             actors_s, actors_v, margins, target_v[:, np.newaxis], target_t[:, np.newaxis])
 
         # the safe regions are either behind front_bounds or ahead of back_bounds
-        bounds = np.concatenate((front_bounds, back_bounds), axis=1)
+        bounds_s = np.concatenate((front_bounds, back_bounds), axis=1)
 
         # for each target [v,t] sort its bounds by s
-        sorted_idxs = bounds.argsort(axis=1)
-        sorted_bounds = np.sort(bounds, axis=1)
-        sorted_bounds = sorted_bounds[..., np.newaxis]
+        sorted_idxs = bounds_s.argsort(axis=1)
+        important_bounds = np.sort(bounds_s, axis=1)
+        sorted_bounds = important_bounds[..., np.newaxis]
 
         # append column of 1 to the front bounds and -1 to the back bounds
         signs = -np.sign(sorted_idxs - len(actors_s) + 0.5)[..., np.newaxis]
         sorted_bounds = np.concatenate((sorted_bounds, np.ones_like(sorted_bounds) * signs), axis=-1)
         # for each bound calculate how many actors make it unsafe
-        safety_layer = np.concatenate((np.zeros_like(target_t)[:, np.newaxis], np.cumsum(sorted_bounds[..., 1], axis=-1)), axis=-1)
+        safety_layer = np.cumsum(sorted_bounds[..., 1], axis=-1)
 
         # calculate jerk-optimal target s according to the quartic distance formula
         optimal_s = target_t * (target_t * a_0 + 6 * v_0 + 6 * target_v) / 12
-        optimal_bound_idx = np.sum(sorted_bounds[..., 0] < optimal_s[:, np.newaxis], axis=-1)
 
-        # collect actions for which optimal_s is safe and for the rest actions collect 2 safe bound closest to optimal_s
-        optimal_s_is_safe = safety_layer[range(len(target_t)), optimal_bound_idx] == 0
-        optimal_s_is_unsafe = ~optimal_s_is_safe
-        unsafe_bound_idx = optimal_bound_idx[optimal_s_is_unsafe]
-        non_optimal_under_s = sorted_bounds[np.where(optimal_s_is_unsafe)[0], unsafe_bound_idx-1, 0]
-        non_optimal_above_s = sorted_bounds[np.where(optimal_s_is_unsafe)[0], unsafe_bound_idx, 0]
+        are_important_bounds = ((sorted_bounds[..., 1] == 1) & (safety_layer == 1)) | \
+                               ((sorted_bounds[..., 1] == -1) & (safety_layer == 0))
+        important_bounds = sorted_bounds[..., 0]
+        important_bounds[~are_important_bounds] = np.inf
+        important_bounds.sort(axis=1)
+
+        optimal_bound_idx = np.sum(important_bounds < optimal_s[:, np.newaxis], axis=-1)
+        optimal_s_is_safe = (optimal_bound_idx & 1) == 0
+        optimal_s_unsafe_idxs = np.where(~optimal_s_is_safe)[0]
+        closest_bound_idx = optimal_bound_idx[optimal_s_unsafe_idxs]
+        bounds_under_optimal = important_bounds[optimal_s_unsafe_idxs, closest_bound_idx-1]
+        bounds_above_optimal = important_bounds[optimal_s_unsafe_idxs, closest_bound_idx]
 
         # calculate all safe target points in the VTS 3D space (v_T, T, ds)
         vts1 = np.c_[target_v[optimal_s_is_safe], target_t[optimal_s_is_safe], optimal_s[optimal_s_is_safe]]
-        vts2 = np.c_[target_v[optimal_s_is_unsafe], target_t[optimal_s_is_unsafe], non_optimal_under_s]
-        vts3 = np.c_[target_v[optimal_s_is_unsafe], target_t[optimal_s_is_unsafe], non_optimal_above_s]
+        vts2 = np.c_[target_v[optimal_s_unsafe_idxs], target_t[optimal_s_unsafe_idxs], bounds_under_optimal]
+        vts3 = np.c_[target_v[optimal_s_unsafe_idxs], target_t[optimal_s_unsafe_idxs], bounds_above_optimal]
         vts = np.concatenate((vts1, vts2, vts3), axis=0)
         vts = vts[(vts[:, 2] >= s_min) & (vts[:, 2] <= s_max)]
         return vts.T

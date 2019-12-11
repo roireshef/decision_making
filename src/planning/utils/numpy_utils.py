@@ -18,6 +18,17 @@ class NumpyUtils:
                               axis=len(mat1.shape) - 1)
 
     @staticmethod
+    def set_dimension(value: [float, np.array], dimension: int):
+        """
+        if value is scalar, return 1D array of size dimension filled by the value;
+        otherwise return the array value as is
+        :param value: value to be converted to array
+        :param dimension: the target dimension of the array
+        :return: 1D array of size dimension filled by value, or the original array
+        """
+        return np.full(dimension, value) if np.isscalar(value) else value
+
+    @staticmethod
     def row_wise_normal(mat: np.ndarray):
         """
         Utility function that takes a 2D matrix of shape [N, 2] and computes a normal vector for each row, assuming
