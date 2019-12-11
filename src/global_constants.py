@@ -188,8 +188,8 @@ MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE = 0.25
 # [%], Threshold at which a lane change will be aborted if the maneuver completion percentage is under this value
 LANE_CHANGE_ABORT_THRESHOLD = 20.0
 
-# When comparing two RP costs, this is the margin that has to be exceeded in order to claim the two costs are different.
-SIMILAR_COST_MARGIN = 0.1
+# When comparing two RP costs, this is the margin that has to be exceeded in order to not prefer going straight
+PREFER_SPLIT_MARGIN = 0.1
 
 # Trajectory Planner #
 

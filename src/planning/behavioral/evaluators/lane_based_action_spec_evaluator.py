@@ -11,7 +11,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT, EPS, \
     TRAJECTORY_TIME_RESOLUTION, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, \
-    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION, SIMILAR_COST_MARGIN
+    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION, PREFER_SPLIT_MARGIN
 from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX, LAT_CELL, FS_SA, FS_SX, FS_SV, Limits
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
@@ -179,9 +179,9 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
 
                 # if minimum isn't unique, prefer same_lane if it is a minimum
                 # otherwise, choose between left and right based on global_constant
-                if lane_end_costs[RelativeLane.SAME_LANE] < lane_end_costs[minimum_cost_lane] + SIMILAR_COST_MARGIN:
+                if lane_end_costs[RelativeLane.SAME_LANE] < lane_end_costs[minimum_cost_lane] + PREFER_SPLIT_MARGIN:
                     minimum_cost_lane = RelativeLane.SAME_LANE
-                elif abs(lane_end_costs[RelativeLane.LEFT_LANE] - lane_end_costs[RelativeLane.RIGHT_LANE]) < SIMILAR_COST_MARGIN:
+                elif abs(lane_end_costs[RelativeLane.LEFT_LANE] - lane_end_costs[RelativeLane.RIGHT_LANE]) < PREFER_SPLIT_MARGIN:
                     # If the lane end cost for SAME_LANE is not equal to the minimum lane end cost, then either the left or right lane was returned
                     # above as the lane with the minimum lane end cost. Therefore, if the left and right lane end costs are equal, they are both
                     # minimums, and one of the lanes needs to be chosen.
@@ -193,25 +193,25 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
             # splits are at different places
             # left lane splits off first
             elif diverging_indices[RelativeLane.LEFT_LANE] < diverging_indices[RelativeLane.RIGHT_LANE]:
-                if cost_after_diverge(RelativeLane.LEFT_LANE, RelativeLane.LEFT_LANE) + SIMILAR_COST_MARGIN \
+                if cost_after_diverge(RelativeLane.LEFT_LANE, RelativeLane.LEFT_LANE) + PREFER_SPLIT_MARGIN \
                         < cost_after_diverge(RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE):
                     minimum_cost_lane = RelativeLane.LEFT_LANE
 
             # right lane splits off first
             else:
-                if cost_after_diverge(RelativeLane.RIGHT_LANE, RelativeLane.RIGHT_LANE) + SIMILAR_COST_MARGIN \
+                if cost_after_diverge(RelativeLane.RIGHT_LANE, RelativeLane.RIGHT_LANE) + PREFER_SPLIT_MARGIN \
                         < cost_after_diverge(RelativeLane.SAME_LANE, RelativeLane.RIGHT_LANE):
                     minimum_cost_lane = RelativeLane.RIGHT_LANE
 
         # only the left lane is augmented
         elif is_left_augmented and \
-                (cost_after_diverge(RelativeLane.LEFT_LANE, RelativeLane.LEFT_LANE) + SIMILAR_COST_MARGIN
+                (cost_after_diverge(RelativeLane.LEFT_LANE, RelativeLane.LEFT_LANE) + PREFER_SPLIT_MARGIN
                  < cost_after_diverge(RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE)):
             minimum_cost_lane = RelativeLane.LEFT_LANE
 
         # only the right lane is augmented
         elif is_right_augmented and \
-                (cost_after_diverge(RelativeLane.RIGHT_LANE, RelativeLane.RIGHT_LANE) + SIMILAR_COST_MARGIN
+                (cost_after_diverge(RelativeLane.RIGHT_LANE, RelativeLane.RIGHT_LANE) + PREFER_SPLIT_MARGIN
                  < cost_after_diverge(RelativeLane.SAME_LANE, RelativeLane.RIGHT_LANE)):
             minimum_cost_lane = RelativeLane.RIGHT_LANE
 
