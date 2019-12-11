@@ -13,6 +13,7 @@ from typing import Any
 
 class StateMachineVisualizer(mp.Process):
     TICK_TO_PLOT = 10
+
     def __init__(self, queue: mp.SimpleQueue, title: str, plot_num: int = 1):
         """
         A new process that opens a new visualization window and plots graphviz plots inside
@@ -96,7 +97,7 @@ class StateMachineVisualizer(mp.Process):
 
             if self.im[sub_plot_num] is None:
                 # initialize window used to plot images
-                self.fig[sub_plot_num], ax = plt.subplots(1,1)
+                self.fig[sub_plot_num], ax = plt.subplots(1, 1)
                 self.im[sub_plot_num] = ax.imshow(img)
             else:
                 self.im[sub_plot_num].set_data(img)

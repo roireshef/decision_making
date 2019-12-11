@@ -30,6 +30,10 @@ class MultiVisualizer(StateMachineVisualizer):
 
         d.edge(str(len(states)-1), str(0))
 
+        if isinstance(elem, LaneChangeStatus):
+            for i in [1, 2, 3]:
+                d.edge(str(i), str(0), "Turn signal off")
+
         return d
 
     def type_to_index(self, elem: Union[LaneChangeStatus, DIM_States]) -> int:
