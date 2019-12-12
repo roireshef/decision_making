@@ -10,13 +10,14 @@ from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIA
     SAFETY_HEADWAY, \
     BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
+    RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
+from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K, FS_2D_LEN
 from decision_making.src.planning.types import LAT_CELL
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
@@ -159,6 +160,87 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             # minimal margin used in addition to headway (center-to-center of both objects)
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
                      behavioral_state.ego_length / 2 + target.dynamic_object.size.length / 2
+
+            # validate distance keeping (on frenet longitudinal axis)
+            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                                                             np.array([0, spec.t]))
+
+            # for short actions check safety also beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
+            if is_safe and spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON and spec.v > target_fstate[FS_SV]:
+                # build ego polynomial with constant velocity spec.v, such that at time spec.t it will be in spec.s
+                linear_ego_poly_s = np.array([0, 0, 0, 0, spec.v, spec.s - spec.v * spec.t])
+                is_safe = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                                                                 np.array([spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON]))
+            are_valid.append(is_safe)
+
+        return np.array(are_valid)
+
+
+class FilterForSafetyTowardsVehicleOnSameLaneDuringLaneChange(ActionSpecFilter):
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
+        """ This is a temporary filter that replaces a more comprehensive test suite for safety w.r.t the target vehicle
+         of a dynamic action or towards a leading vehicle in a static action. The condition under inspection is of
+         maintaining the required safety-headway + constant safety-margin. Also used for action FOLLOW_ROAD_SIGN to
+         verify ego maintains enough safety towards closest vehicle"""
+        # Extract the grid cell relevant for that action (for static actions it takes the front cell's actor,
+        # so this filter is actually applied to static actions as well). Then query the cell for the target vehicle
+
+        vehicles_in_front = behavioral_state.road_occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]
+        # If there is no vehicle in front of us, nothing to do
+        if len(vehicles_in_front) == 0:
+            return np.full(shape=len(action_specs), fill_value=True)
+
+        relative_cells = [(spec.recipe.relative_lane,
+                           spec.recipe.relative_lon if isinstance(spec.recipe, DynamicActionRecipe) else
+                           RelativeLongitudinalPosition.FRONT)
+                          for spec in action_specs]
+
+        if ((RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT) not in relative_cells) and \
+                ((RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT) not in relative_cells):
+            # if there are no lane changes, nothing to do. Covered by FilterForSafetyTowardsTargetVehicle,
+            return np.full(shape=len(action_specs), fill_value=True)
+
+        # get the closest car for safety check - calculate once for all recipes, always SAME LANE
+        front_vehicle = vehicles_in_front[0]
+        target_fstate = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE].convert_from_segment_state(
+            front_vehicle.dynamic_object.map_state.lane_fstate, front_vehicle.dynamic_object.map_state.lane_id)
+        target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
+
+        T = np.array([spec.t for spec in action_specs])
+
+        # represent initial and terminal boundary conditions (for s axis) - on the SOURCE lane
+        initial_fstates = np.full([len(action_specs), FS_2D_LEN], behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE])
+        terminal_fstates_in_target_lane = np.array([spec.as_fstate() for spec in action_specs])
+        to_cartesians = [behavioral_state.extended_lane_frames[relative_cell[LAT_CELL]].fstate_to_cstate(terminal_fstate)
+                         for relative_cell, terminal_fstate in zip(relative_cells, terminal_fstates_in_target_lane)]
+        terminal_fstates_in_source_lane = np.array([
+            behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE].cstate_to_fstate(to_cartesian)
+            for to_cartesian in to_cartesians])
+
+        # create boolean arrays indicating whether the specs are in tracking mode
+        padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
+
+        # Note: this is an approximation. I calculate the trajectory on the source GFF, and simply convert the terminal
+        # fstate from the target lane to the source lane. The resulting trajectory may be a little different than the
+        # one computed on the target GFF, but it is close enough for the rough safety check.
+        # The accurate option will require calculating the waypoints on the target GFF, convert them to the source GFF
+        # through the cartesian and calculate the headway point by poit, instead  of using the polynomials. Way harder.
+        poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates[:, :FS_DX],
+                                                         terminal_fstates_in_source_lane[:, :FS_DX], padding_mode)
+
+        are_valid = []
+        for poly_s, cell, spec in zip(poly_coefs_s, relative_cells, action_specs):
+            # Check only actions towards RIGHT/LEFT LANE
+            # TODO what about the case that we are still during LCOD but already passed to target lane?
+            #  We will not check safety relative to the source lane.
+            #  This is also true for regular SAME_LANE actions that have lateral offset.
+            if cell[LAT_CELL] == RelativeLane.SAME_LANE:
+                are_valid.append(True)
+                continue
+
+            # minimal margin used in addition to headway (center-to-center of both objects)
+            margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
+                     behavioral_state.ego_length / 2 + front_vehicle.dynamic_object.size.length / 2
 
             # validate distance keeping (on frenet longitudinal axis)
             is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,

@@ -2,7 +2,7 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LO
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone as ASpecFilterIfNone, \
     FilterForKinematics, FilterForSafetyTowardsTargetVehicle, BeyondSpecCurvatureFilter, FilterForLaneSpeedLimits, \
     BeyondSpecPartialGffFilter, BeyondSpecSpeedLimitFilter, FilterStopActionIfTooSoonByTime, FilterForSLimit, \
-    StaticTrafficFlowControlFilter, BeyondSpecStaticTrafficFlowControlFilter
+    StaticTrafficFlowControlFilter, BeyondSpecStaticTrafficFlowControlFilter, FilterForSafetyTowardsVehicleOnSameLaneDuringLaneChange
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterIfNone as RecipeFilterIfNone, \
     FilterActionsTowardsNonOccupiedCells, FilterActionsTowardBackAndParallelCells, FilterOvertakeActions, \
@@ -36,6 +36,7 @@ DEFAULT_ACTION_SPEC_FILTERING = ActionSpecFiltering(filters=[ASpecFilterIfNone()
                                                              FilterForKinematics(logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)),
                                                              FilterForLaneSpeedLimits(),
                                                              FilterForSafetyTowardsTargetVehicle(),
+                                                             FilterForSafetyTowardsVehicleOnSameLaneDuringLaneChange(),
                                                              # TODO The 2 filters below + FilterRoadSignActions make the planner disregard road signs altogether
                                                              StaticTrafficFlowControlFilter(),
                                                              BeyondSpecStaticTrafficFlowControlFilter(),

@@ -554,6 +554,7 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
     scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
     scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
     SceneStaticModel.get_instance().set_scene_static(scene_static_message)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
 
     road_id = 20
 
@@ -1188,6 +1189,15 @@ def behavioral_grid_state_with_merge_on_oval(state_with_ego_at_merge_on_oval, ro
 def follow_vehicle_recipes_towards_front_cells():
     yield [DynamicActionRecipe(lane, RelativeLongitudinalPosition.FRONT, ActionType.FOLLOW_VEHICLE, agg)
            for lane in RelativeLane
+           for agg in AggressivenessLevel]
+
+
+@pytest.fixture(scope='function')
+def follow_2_lanes_recipes():
+    velocity_grid = np.arange(0, 30 + EPS, 6)
+    yield [StaticActionRecipe(lane, velocity, agg)
+           for lane in [RelativeLane.SAME_LANE, RelativeLane.RIGHT_LANE]
+           for velocity in velocity_grid
            for agg in AggressivenessLevel]
 
 
