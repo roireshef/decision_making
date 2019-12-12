@@ -282,7 +282,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             return target_v, target_t
 
         # 2D matrix with 3 columns of safe actions: target velocities, planning times and distances
-        front_bounds, back_bounds = RuleBasedLaneMergePlanner._caclulate_safety_bounds(
+        front_bounds, back_bounds = RuleBasedLaneMergePlanner._caclulate_RSS_bounds(
             actors_s, actors_v, margins, target_v[:, np.newaxis], target_t[:, np.newaxis])
 
         # concatenate s_min & s_max to front and back bounds
@@ -342,8 +342,30 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return vts.T
 
     @staticmethod
-    def _caclulate_safety_bounds(actors_s: np.array, actors_v: np.array, margins: np.array,
-                                 target_v: np.array, target_t: np.array) -> [np.array, np.array]:
+    def _caclulate_RSS_distances(actors_s: np.array, actors_v: np.array, margins: np.array,
+                                 target_v: np.array, target_t: np.array, target_s: np.array) -> BoolArray:
+        """
+        Given an actor on the main road and two grids of planning times and target velocities, create boolean matrix
+        of all possible actions that are longitudinally safe (RSS) at actions' end-points target_s.
+        :param actors_s: current s of actor relatively to the merge point (negative or positive)
+        :param actors_v: current actor's velocity
+        :param margins: half sum of cars' lengths + safety margin
+        :param target_t: array of planning times
+        :param target_v: array of target velocities
+        :param target_s: array of target s
+        :return: shape like of target_(v/s/t): difference between actual distances and safe distances
+        """
+        front_bounds, back_bounds = RuleBasedLaneMergePlanner._caclulate_RSS_bounds(actors_s, actors_v, margins, target_v, target_t)
+
+        # calculate if ego is safe according to the longitudinal RSS formula
+        front_safety_dist = front_bounds - target_s
+        back_safety_dist = target_s - back_bounds
+        safety_dist = np.maximum(front_safety_dist, back_safety_dist)
+        return np.min(safety_dist, axis=0)  # AND on actors
+
+    @staticmethod
+    def _caclulate_RSS_bounds(actors_s: np.array, actors_v: np.array, margins: np.array,
+                              target_v: np.array, target_t: np.array) -> [np.array, np.array]:
         """
         Given an actor on the main road and two grids of planning times and target velocities, create boolean matrix
         of all possible actions that are longitudinally safe (RSS) at actions' end-points target_s.
@@ -372,39 +394,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         back_bounds = back_s + margins + (np.maximum(0, back_v * back_v - target_v * target_v) /
                                           (2 * LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL) + SAFETY_HEADWAY * back_v)
         return front_bounds, back_bounds
-
-    @staticmethod
-    def _caclulate_RSS_distances(actors_s: np.array, actors_v: np.array, margins: np.array,
-                                 target_v: np.array, target_t: np.array, target_s: np.array) -> BoolArray:
-        """
-        Given an actor on the main road and two grids of planning times and target velocities, create boolean matrix
-        of all possible actions that are longitudinally safe (RSS) at actions' end-points target_s.
-        :param actors_s: current s of actor relatively to the merge point (negative or positive)
-        :param actors_v: current actor's velocity
-        :param margins: half sum of cars' lengths + safety margin
-        :param target_t: array of planning times
-        :param target_v: array of target velocities
-        :param target_s: array of target s
-        :return: shape like of target_(v/s/t): difference between actual distances and safe distances
-        """
-        front_braking_time = np.minimum(actors_v / LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, target_t) \
-            if LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL > 0 else target_t
-        front_v = actors_v - front_braking_time * LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL  # target velocity of the front actor
-        front_s = actors_s + 0.5 * (actors_v + front_v) * front_braking_time
-
-        back_accel_time = np.minimum((LANE_MERGE_ACTORS_MAX_VELOCITY - actors_v) / LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, target_t) \
-            if LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL > 0 else target_t
-        back_max_vel_time = target_t - back_accel_time  # time of moving with maximal velocity of the back actor
-        back_v = actors_v + back_accel_time * LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL  # target velocity of the back actor
-        back_s = actors_s + 0.5 * (actors_v + back_v) * back_accel_time + LANE_MERGE_ACTORS_MAX_VELOCITY * back_max_vel_time
-
-        # calculate if ego is safe according to the longitudinal RSS formula
-        front_safety_dist = front_s - target_s - margins - (np.maximum(0, target_v * target_v - front_v * front_v) /
-                                                            (-2 * LON_ACC_LIMITS[0]) + SAFETY_HEADWAY * target_v)
-        back_safety_dist = target_s - back_s - margins - (np.maximum(0, back_v * back_v - target_v * target_v) /
-                                                (2 * LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL) + SAFETY_HEADWAY * back_v)
-        safety_dist = np.maximum(front_safety_dist, back_safety_dist)
-        return np.min(safety_dist, axis=0)  # AND on actors
 
     @staticmethod
     def _sympy():
