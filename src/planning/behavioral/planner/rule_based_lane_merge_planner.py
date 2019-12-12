@@ -345,15 +345,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     def _caclulate_RSS_distances(actors_s: np.array, actors_v: np.array, margins: np.array,
                                  target_v: np.array, target_t: np.array, target_s: np.array) -> BoolArray:
         """
-        Given an actor on the main road and two grids of planning times and target velocities, create boolean matrix
-        of all possible actions that are longitudinally safe (RSS) at actions' end-points target_s.
+        Given actors on the main road and actions (planning times, target velocities and target distances),
+        create matrix of differences between predicted distances from the actors and minimal safe distances at
+        actions' end-points target_s.
         :param actors_s: current s of actor relatively to the merge point (negative or positive)
         :param actors_v: current actor's velocity
         :param margins: half sum of cars' lengths + safety margin
         :param target_t: array of planning times
         :param target_v: array of target velocities
         :param target_s: array of target s
-        :return: shape like of target_(v/s/t): difference between actual distances and safe distances
+        :return: shape like of target_(v/s/t): difference between predicted distances and safe distances
         """
         front_bounds, back_bounds = RuleBasedLaneMergePlanner._caclulate_RSS_bounds(actors_s, actors_v, margins, target_v, target_t)
 
@@ -367,15 +368,18 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     def _caclulate_RSS_bounds(actors_s: np.array, actors_v: np.array, margins: np.array,
                               target_v: np.array, target_t: np.array) -> [np.array, np.array]:
         """
-        Given an actor on the main road and two grids of planning times and target velocities, create boolean matrix
-        of all possible actions that are longitudinally safe (RSS) at actions' end-points target_s.
+        Given actors on the main road and actions (planning times and target velocities), create two 2D matrices
+        of front and back bounds per actor and per action (target_v & target_t).
+        A front bound means that some target s is safe w.r.t. the actor if it's behind the bound for the given actor
+        and the given action.
+        A back bound means that some target s is safe w.r.t. the actor if it's ahead the bound for the given actor
+        and the given action.
         :param actors_s: current s of actor relatively to the merge point (negative or positive)
         :param actors_v: current actor's velocity
         :param margins: half sum of cars' lengths + safety margin
         :param target_t: array of planning times
-        :param target_v: array of target velocities
-        :return: tensor of shape: target_v x target_t x bounds_num.
-            In even indices are bounds behind an actor, in odd indices are bounds ahead of an actor
+        :param target_v: array of target velocities, of the same shape as target_t
+        :return: two 2D matrices of shape: actions_num x actors_num.
         """
         front_braking_time = np.minimum(actors_v / LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, target_t) \
             if LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL > 0 else target_t
