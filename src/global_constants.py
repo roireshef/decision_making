@@ -21,7 +21,7 @@ MAX_BACKWARD_HORIZON = 100.0
 PARTIAL_GFF_END_PADDING = 5.0
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
-LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
+LATERAL_SAFETY_MARGIN_FROM_OBJECT_FOR_TP_COST = 0.0
 
 # Prefer left or right split when the costs are the same
 PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False
@@ -114,6 +114,7 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
+LATERAL_SAFETY_MARGIN_FROM_OBJECT = 1.0
 
 # Additional distance after stop bar, where vehicle still considers bar as active, until DIM is active
 DIM_MARGIN_TO_STOP_BAR = 10.0

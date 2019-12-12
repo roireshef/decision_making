@@ -8,7 +8,8 @@ import six
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K, \
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
@@ -17,11 +18,9 @@ from decision_making.src.planning.behavioral.filtering.constraint_spec_filter im
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K, FS_2D_LEN
 from decision_making.src.planning.types import LAT_CELL
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
-
 
 class FilterIfNone(ActionSpecFilter):
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
@@ -162,14 +161,14 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                      behavioral_state.ego_length / 2 + target.dynamic_object.size.length / 2
 
             # validate distance keeping (on frenet longitudinal axis)
-            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+            is_safe, _ = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
                                                              np.array([0, spec.t]))
 
             # for short actions check safety also beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
             if is_safe and spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON and spec.v > target_fstate[FS_SV]:
                 # build ego polynomial with constant velocity spec.v, such that at time spec.t it will be in spec.s
                 linear_ego_poly_s = np.array([0, 0, 0, 0, spec.v, spec.s - spec.v * spec.t])
-                is_safe = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                is_safe, _ = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin, SAFETY_HEADWAY,
                                                                  np.array([spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON]))
             are_valid.append(is_safe)
 
@@ -204,7 +203,16 @@ class FilterForSafetyTowardsVehicleOnSameLaneDuringLaneChange(ActionSpecFilter):
         front_vehicle = vehicles_in_front[0]
         target_fstate = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE].convert_from_segment_state(
             front_vehicle.dynamic_object.map_state.lane_fstate, front_vehicle.dynamic_object.map_state.lane_id)
-        target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
+        # create a fixed velocity trajectory for the front vehicle at center of lane with fixed velocity
+        target_poly_s, target_poly_d = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
+        # on RIGHT_LANE maneuver d becomes negative. If front actor is with negative DX, use its true d instead of 0
+        # on LEFT_LANE maneuver d becomes positive. If front actor is positive DX, use its true d instead of 0
+        right_lane_poly_d = np.array(target_poly_d)
+        right_lane_poly_d[-1] = min(0, target_fstate[FS_DX])
+        left_lane_poly_d = np.array(target_poly_d)
+        left_lane_poly_d[-1] = max(0, target_fstate[FS_DX])
+
+        target_poly_d_per_lane = {RelativeLane.RIGHT_LANE: right_lane_poly_d, RelativeLane.LEFT_LANE: left_lane_poly_d}
 
         T = np.array([spec.t for spec in action_specs])
 
@@ -225,11 +233,17 @@ class FilterForSafetyTowardsVehicleOnSameLaneDuringLaneChange(ActionSpecFilter):
         # one computed on the target GFF, but it is close enough for the rough safety check.
         # The accurate option will require calculating the waypoints on the target GFF, convert them to the source GFF
         # through the cartesian and calculate the headway point by poit, instead  of using the polynomials. Way harder.
-        poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates[:, :FS_DX],
-                                                         terminal_fstates_in_source_lane[:, :FS_DX], padding_mode)
+        poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(T, initial_fstates, terminal_fstates_in_source_lane,
+                                                                    padding_mode)
+
+        # minimal margin used in addition to headway (center-to-center of both objects)
+        margin_s = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
+            behavioral_state.ego_length / 2 + front_vehicle.dynamic_object.size.length / 2
+        margin_d = LATERAL_SAFETY_MARGIN_FROM_OBJECT + \
+            behavioral_state.ego_width / 2 + front_vehicle.dynamic_object.size.width / 2
 
         are_valid = []
-        for poly_s, cell, spec in zip(poly_coefs_s, relative_cells, action_specs):
+        for poly_s, poly_d, cell, spec in zip(poly_coefs_s, poly_coefs_d, relative_cells, action_specs):
             # Check only actions towards RIGHT/LEFT LANE
             # TODO what about the case that we are still during LCOD but already passed to target lane?
             #  We will not check safety relative to the source lane.
@@ -238,20 +252,26 @@ class FilterForSafetyTowardsVehicleOnSameLaneDuringLaneChange(ActionSpecFilter):
                 are_valid.append(True)
                 continue
 
-            # minimal margin used in addition to headway (center-to-center of both objects)
-            margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                     behavioral_state.ego_length / 2 + front_vehicle.dynamic_object.size.length / 2
-
             # validate distance keeping (on frenet longitudinal axis)
-            is_safe = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin, SAFETY_HEADWAY,
-                                                             np.array([0, spec.t]))
+            is_safe_s, roots_s = KinematicUtils.is_maintaining_distance(poly_s, target_poly_s, margin_s, SAFETY_HEADWAY,
+                                                               np.array([0, spec.t]))
+            is_safe_d, roots_d = KinematicUtils.is_maintaining_distance(poly_d, target_poly_d_per_lane[cell[LAT_CELL]],
+                                                                        margin_d, 0, np.array([0, spec.t]))
 
             # for short actions check safety also beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-            if is_safe and spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON and spec.v > target_fstate[FS_SV]:
+            if is_safe_s and spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON and spec.v > target_fstate[FS_SV]:
                 # build ego polynomial with constant velocity spec.v, such that at time spec.t it will be in spec.s
                 linear_ego_poly_s = np.array([0, 0, 0, 0, spec.v, spec.s - spec.v * spec.t])
-                is_safe = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin, SAFETY_HEADWAY,
+                is_safe_s, _ = KinematicUtils.is_maintaining_distance(linear_ego_poly_s, target_poly_s, margin_s, SAFETY_HEADWAY,
                                                                  np.array([spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON]))
+
+            # composite safety rules:
+            # 1. action is safe in s or d or both throughout the action.
+            # 2. both actions aren't safe, but roots_d[0] < roots_s[0] which means we become safe laterally,
+            # before becoming unsafe longitudinally.
+            s_root = np.fmin.reduce(roots_s, axis=-1)
+            d_root = np.fmin.reduce(roots_d, axis=-1)
+            is_safe = (is_safe_s or is_safe_d) or (d_root < s_root)
             are_valid.append(is_safe)
 
         return np.array(are_valid)

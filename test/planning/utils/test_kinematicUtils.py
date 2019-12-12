@@ -29,7 +29,7 @@ def test_isMaintainingDistance_safeSettings_returnsTrue():
     poly_host_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
     poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
 
-    assert KinematicUtils.is_maintaining_distance(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T]))
+    assert KinematicUtils.is_maintaining_distance(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T]))[0]
     assert SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T])) > SAFETY_HEADWAY
 
 
@@ -52,7 +52,7 @@ def test_isMaintainingDistance_unsafeSettings_returnsFalse():
     poly_host_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
     poly_target_s = np.array([0, 0, 0, 0, vT, delta_s_init])
 
-    assert not KinematicUtils.is_maintaining_distance(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T]))
+    assert not KinematicUtils.is_maintaining_distance(poly_host_s, poly_target_s, safe_margin, headway_safe, np.array([0, T]))[0]
     assert SingleLaneActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_host_s, poly_target_s, safe_margin, np.array([0, T])) < SAFETY_HEADWAY + 0.1
 
 

@@ -369,9 +369,9 @@ def test_filter_staticActionsWithLeadingVehicle2LanesActions_filterResultsMatchE
 
     filtering = RecipeFiltering(filters=[], logger=logger)
 
-    expected_filter_results = np.array([True, True, True, True, True, True, False, True, True,
+    expected_filter_results = np.array([True, True, True, True, True, True, False, True, True,  # SAME
                                         False, False, False, False, False, False, False, False, False,
-                                        True, True, True, True, True, True, False, False, False,
+                                        True, True, True, True, True, True, True, True, True,   # RIGHT
                                         False, False, False, False, False, False, False, False, False
                                         ], dtype=bool)
     static_action_space = StaticActionSpace(logger, filtering=filtering)

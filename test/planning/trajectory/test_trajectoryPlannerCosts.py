@@ -5,7 +5,7 @@ from logging import Logger
 import numpy as np
 
 from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT_FOR_TP_COST, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -88,7 +88,7 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore(scene_static_pg
     objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                            offset=LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
     objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
-                                           offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
+                                           offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT_FOR_TP_COST)  # Very high (inf) cost
     cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x, obstacle_cost_y=objects_cost_y,
                                        left_lane_cost=None, right_lane_cost=None, left_shoulder_cost=None,
                                        right_shoulder_cost=None, left_road_cost=None, right_road_cost=None,

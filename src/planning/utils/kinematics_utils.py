@@ -74,7 +74,7 @@ class KinematicUtils:
 
         roots = Math.find_real_roots_in_limits(poly_diff, time_range)
 
-        return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots))
+        return np.all(np.greater(np.polyval(poly_diff, time_range), 0)) and np.all(np.isnan(roots)), roots
 
     @staticmethod
     def filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories, velocity_limits: Limits,

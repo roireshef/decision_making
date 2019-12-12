@@ -13,7 +13,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, \
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT_FOR_TP_COST, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, \
     ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -252,7 +252,7 @@ class BasePlanner:
         objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                                offset=LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
         objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
-                                               offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
+                                               offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT_FOR_TP_COST)  # Very high (inf) cost
         dist_from_goal_cost = SigmoidFunctionParams(w=DEVIATION_FROM_GOAL_COST, k=GOAL_SIGMOID_K_PARAM,
                                                     offset=GOAL_SIGMOID_OFFSET)
         dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_LON_RATIO
