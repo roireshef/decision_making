@@ -10,6 +10,7 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, RelativeLane, \
     StaticActionRecipe
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.types import BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -58,14 +59,15 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) -> LaneMergeState:
         """
         Create LaneMergeState (which inherits from BehavioralGridState) from the given state
         :param state: state from scene dynamic
         :param route_plan: the route plan
+        :param lane_change_state: not in use in this class
         :return: LaneMergeState
         """
-        return LaneMergeState.create_from_state(state, route_plan, self.logger)
+        return LaneMergeState.create_from_state(state, route_plan, lane_change_state, self.logger)
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> np.array:
         """
@@ -218,7 +220,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         w_J_calm, _, w_T_calm = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
         w_J_stand, _, w_T_stand = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
-        s1, t1 = KinematicUtils.specify_quartic_actions(w_T_calm, w_J_calm, v_0, v_max, a_0)
+        s1, t1 = KinematicUtils.specify_quartic_action(w_T_calm, w_J_calm, v_0, v_max, a_0)
         S3_grid, T3_grid = KinematicUtils.specify_quartic_actions(w_T_stand, w_J_stand, v_max, v_grid)
 
         target_v, target_t = np.meshgrid(v_grid, t_grid)

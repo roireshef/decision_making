@@ -9,6 +9,7 @@ from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState, \
     RoadSemanticOccupancyGrid, DynamicObjectWithRoadSemantics
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.behavioral.state.lane_merge_actor_state import LaneMergeActorState
 from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN, FrenetState1D, FS_1D_LEN, FrenetState2D, FS_SV
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
@@ -16,12 +17,15 @@ from decision_making.src.state.state import State, EgoState, DynamicObject, Obje
 from decision_making.src.utils.map_utils import MapUtils
 from typing import List, Dict
 
+from rte.python.logger.AV_logger import AV_Logger
+
 
 class LaneMergeState(BehavioralGridState):
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                  projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
-                 merge_from_s_on_ego_gff: float, red_line_s_on_ego_gff: float, target_rel_lane: RelativeLane):
+                 merge_from_s_on_ego_gff: float, red_line_s_on_ego_gff: float, target_rel_lane: RelativeLane,
+                 logger: Logger):
         """
         lane merge state
         :param red_line_s_on_ego_gff: s of the red line on SAME_LANE GFF
@@ -30,7 +34,7 @@ class LaneMergeState(BehavioralGridState):
         If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
         :param target_rel_lane: RelativeLane of the merge target lane
         """
-        super().__init__(road_occupancy_grid, ego_state, extended_lane_frames, projected_ego_fstates, {}, None)
+        super().__init__(road_occupancy_grid, ego_state, extended_lane_frames, projected_ego_fstates, {}, None, {}, logger)
         self.merge_from_s_on_ego_gff = merge_from_s_on_ego_gff
         self.red_line_s_on_ego_gff = red_line_s_on_ego_gff
         self.target_rel_lane = target_rel_lane
@@ -52,13 +56,14 @@ class LaneMergeState(BehavioralGridState):
         return f'EGO: {self.ego_fstate_1d} + \r\nACTORS:{[[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in self.actors_states]}'
 
     @classmethod
-    def create_from_state(cls, state: State, route_plan: RoutePlan, logger: Logger):
+    def create_from_state(cls, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState, logger: Logger):
         """
         Create LaneMergeState from a given State.
         The output state has two GFFs: for same lane and for the target lane.
         Actors's longitudinal distances from ego are aligned to the merge point that is common to both GFFs.
         :param state: current state from scene_dynamic
         :param route_plan: route plan
+        :param lane_change_state: not in use
         :param logger:
         :return: LaneMergeState
         """
@@ -115,7 +120,8 @@ class LaneMergeState(BehavioralGridState):
 
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego,
                        merge_from_s_on_ego_gff=red_line_s,
-                       red_line_s_on_ego_gff=red_line_s + 40, target_rel_lane=target_rel_lane)
+                       red_line_s_on_ego_gff=red_line_s + 40, target_rel_lane=target_rel_lane,
+                       logger=logger)
 
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE or target lane GFF, stop processing this BP frame
@@ -151,5 +157,5 @@ class LaneMergeState(BehavioralGridState):
 
         ego_fstate2D = np.concatenate((ego_fstate, np.zeros(FS_1D_LEN)))
         return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D},
-                   merge_from_s, red_line_s, target_rel_lane)
+                   merge_from_s, red_line_s, target_rel_lane, AV_Logger.get_logger())
 
