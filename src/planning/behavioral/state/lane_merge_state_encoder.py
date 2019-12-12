@@ -28,7 +28,6 @@ class LaneMergeStateEncoder:
                        np.array([1, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY])[..., np.newaxis]
         return host_state, actors_state
 
-
     @staticmethod
     def _encode_host_state(ego_fstate_1d: FrenetState1D, red_line_s_on_ego_gff: float) -> np.array:
         """
@@ -40,7 +39,6 @@ class LaneMergeStateEncoder:
         # encode host: replace the host station coordinate with its distance to red line
         host_state = np.array([red_line_s_on_ego_gff - ego_fstate_1d[FS_SX], ego_fstate_1d[FS_SV], ego_fstate_1d[FS_SA]])
         return host_state[np.newaxis, :]
-
 
     @staticmethod
     def _encode_actors_state(actors_states: List[LaneMergeActorState]) -> np.array:
@@ -59,7 +57,7 @@ class LaneMergeStateEncoder:
 
         # init for empty grid cells
         actors_exist_default = np.zeros(shape=(1, num_of_grid_cells))
-        actors_vel_default = -LANE_MERGE_ACTION_SPACE_MAX_VELOCITY * np.ones(shape=(1, num_of_grid_cells))
+        actors_vel_default = np.zeros(shape=(1, num_of_grid_cells))
         encoded_actors_states = np.vstack((actors_exist_default, actors_vel_default))
 
         for actor in actors_states:
