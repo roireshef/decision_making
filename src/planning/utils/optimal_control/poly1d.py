@@ -529,16 +529,17 @@ class QuinticPoly1D(Poly1D):
         :param a_br: [m/sec^2] maximal deceleration of ego & actor (RSS)
         :return: coefficient matrix for all possibilities
         """
+        zeros = np.zeros_like(v_T + v_f)
         vsd = 2 * np.maximum(0, v_T**2 - v_f**2)
         ds_tmvt = a_br * (rel_s - T_m * v_T)
-        return np.c_[w_T,
-                     np.zeros(w_T.shape[0]),
-                     -9.0 * w_J * a_0 ** 2 * a_br ** 2,
-                     48.0 * w_J * a_0 * a_br ** 2 * (5 * v_f - 2 * v_T - 3 * v_0),
-                     w_J * a_br * (144.0 * a_br * (-4 * (v_0 + v_T) ** 2 + 15 * v_f * (v_0 + v_T - v_f) + v_0 * v_T) +
-                                   90.0 * a_0 * (4 * ds_tmvt - vsd)),
-                     720.0 * w_J * a_br * (v_0 + v_T - 2*v_f) * (4 * ds_tmvt - vsd),
-                     -225.0 * w_J * (8 * ds_tmvt * (2 * ds_tmvt - vsd) + vsd ** 2)]
+        return np.stack([w_T + zeros,
+                         zeros,
+                         -9.0 * w_J * a_0 ** 2 * a_br ** 2 + zeros,
+                         48.0 * w_J * a_0 * a_br ** 2 * (5 * v_f - 2 * v_T - 3 * v_0),
+                         w_J * a_br * (144.0 * a_br * (-4 * (v_0 + v_T) ** 2 + 15 * v_f * (v_0 + v_T - v_f) + v_0 * v_T) +
+                                       90.0 * a_0 * (4 * ds_tmvt - vsd)),
+                         720.0 * w_J * a_br * (v_0 + v_T - 2*v_f) * (4 * ds_tmvt - vsd),
+                         -225.0 * w_J * (8 * ds_tmvt * (2 * ds_tmvt - vsd) + vsd ** 2)], axis=-1)
 
     @staticmethod
     def time_cost_function_derivative_coefs_back_rss(w_T: np.array, w_J: np.array, a_0: np.array, v_0: np.array,
@@ -562,18 +563,19 @@ class QuinticPoly1D(Poly1D):
         :param a_br: [m/sec^2] maximal deceleration of ego & actor (RSS)
         :return: coefficient matrix for all possibilities
         """
+        zeros = np.zeros_like(v_T + v_b)
         sd = v_b*v_b - v_T*v_T
         asd = np.abs(sd)
         vsd = sd + asd  # 2 * np.maximum(0, sd)
         ds_tmvt = a_br * (rel_s + T_m * v_b)
-        return np.c_[w_T,
-                     np.zeros(w_T.shape[0]),
-                     -9.0 * w_J * a_0 ** 2 * a_br ** 2,
-                     48.0 * w_J * a_0 * a_br ** 2 * (5 * v_b - 2 * v_T - 3 * v_0),
-                     w_J * a_br * (144.0 * a_br * (-4 * (v_0 + v_T) ** 2 + 15 * v_b * (v_0 + v_T - v_b) + v_0 * v_T)
-                                   + 90.0 * a_0 * (4 * ds_tmvt + vsd)),
-                     720.0 * w_J * a_br * (v_0 + v_T - 2 * v_b) * (4 * ds_tmvt + vsd),
-                     -225 * w_J * (8 * ds_tmvt * (2 * ds_tmvt + vsd) + 2 * asd * vsd)]
+        return np.stack([w_T + zeros,
+                         zeros,
+                         -9.0 * w_J * a_0 ** 2 * a_br ** 2 + zeros,
+                         48.0 * w_J * a_0 * a_br ** 2 * (5 * v_b - 2 * v_T - 3 * v_0),
+                         w_J * a_br * (144.0 * a_br * (-4 * (v_0 + v_T) ** 2 + 15 * v_b * (v_0 + v_T - v_b) + v_0 * v_T)
+                                       + 90.0 * a_0 * (4 * ds_tmvt + vsd)),
+                         720.0 * w_J * a_br * (v_0 + v_T - 2 * v_b) * (4 * ds_tmvt + vsd),
+                         -225 * w_J * (8 * ds_tmvt * (2 * ds_tmvt + vsd) + 2 * asd * vsd)], axis=-1)
 
     @staticmethod
     def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array):

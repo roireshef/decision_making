@@ -15,6 +15,7 @@ from decision_making.src.planning.behavioral.state.lane_change_state import Lane
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.types import BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, QuinticPoly1D
 from decision_making.src.state.state import State
 from sympy.matrices import *
@@ -196,7 +197,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         target_v, target_t = np.meshgrid(v_grid, t_grid)
         target_v, target_t = target_v.ravel(), target_t.ravel()
-        v_T, T, ds = RuleBasedLaneMergePlanner._calculate_safe_target_points(state, target_v, target_t)
+        v_T, T, ds = RuleBasedLaneMergePlanner._calculate_safe_target_points(state, v_grid)
         if len(T) == 0:
             return []
 
@@ -273,7 +274,59 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return actions
 
     @staticmethod
-    def _calculate_safe_target_points(state: LaneMergeState, target_v: np.array, target_t: np.array) -> \
+    def _calculate_safe_target_points(state: LaneMergeState, v_grid: np.array) -> [np.array, np.array, np.array]:
+        """
+        Create boolean 2D matrix of actions that are longitudinally safe (RSS) between red line & merge point w.r.t.
+        all actors.
+        :param state: lane merge state
+        :return: two 1D arrays of v_T & T, where ego is safe at target_s relatively to all actors
+        """
+        s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
+        s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
+
+        ego_length = state.ego_length
+        ego_fstate = state.ego_fstate_1d
+        actors_states = state.actors_states
+        actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
+                                                      for actor in actors_states]).T
+        margins = 0.5 * (actors_length + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + 1  # add extra margin
+
+        actors_s.sort()
+        actor_i = np.sum(actors_s < 0)
+        print('s_min=', s_min, 's_max=', s_max, 'actors_rel_s=', actors_s[actor_i-1:actor_i+1])
+
+        # calculate planning time bounds given target_s
+        w_J_calm, _, w_T_calm = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+        v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
+
+        target_v = np.repeat(v_grid, actors_v.shape[0])
+        actors_v = np.tile(actors_v, v_grid.shape[0])
+        actors_s = np.tile(actors_s, v_grid.shape[0])
+        margins = np.tile(margins, v_grid.shape[0])
+
+        front_cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_front_rss(
+            w_T_calm, w_J_calm, a_0, v_0, target_v, actors_v, actors_s - margins,
+            T_m=SAFETY_HEADWAY, a_br=-LON_ACC_LIMITS[0])
+        front_roots = Math.find_real_roots_in_limits(front_cost_coeffs_s, LANE_MERGE_ACTION_T_LIMITS)
+        front_t = np.fmin.reduce(front_roots, axis=-1)
+        front_target_s = actors_s - margins + actors_v * front_t - \
+                (np.maximum(0, target_v*target_v - actors_v*actors_v) / (-2*LON_ACC_LIMITS[0]) + SAFETY_HEADWAY * target_v)
+
+        back_cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_back_rss(
+            w_T_calm, w_J_calm, a_0, v_0, target_v, actors_v, actors_s + margins,
+            T_m=SAFETY_HEADWAY, a_br=LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL)
+        back_roots = Math.find_real_roots_in_limits(back_cost_coeffs_s, LANE_MERGE_ACTION_T_LIMITS)
+        back_t = np.fmin.reduce(back_roots, axis=-1)
+        back_target_s = actors_s + margins + actors_v * back_t + \
+                (np.maximum(0, actors_v*actors_v - target_v*target_v) / (2*LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL) +
+                 SAFETY_HEADWAY * actors_v)
+
+        target_t = np.concatenate((front_t, back_t), axis=-1)
+        target_s = np.concatenate((front_target_s, back_target_s), axis=-1)
+        return np.concatenate((target_v, target_t, target_s), axis=-1)
+
+    @staticmethod
+    def __calculate_safe_target_points(state: LaneMergeState, target_v: np.array, target_t: np.array) -> \
             [np.array, np.array, np.array]:
         """
         Create boolean 2D matrix of actions that are longitudinally safe (RSS) between red line & merge point w.r.t.
