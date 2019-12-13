@@ -2,8 +2,9 @@ from enum import Enum
 import numpy as np
 from typing import Optional, Dict, List
 
-from decision_making.src.global_constants import MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE, MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE, \
-    LANE_CHANGE_DELAY, LANE_CHANGE_ABORT_THRESHOLD
+from decision_making.src.global_constants import MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE, \
+    MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE, \
+    LANE_CHANGE_DELAY, LANE_CHANGE_ABORT_THRESHOLD, LANE_CHANGE_TIME_COMPLETION_TARGET
 from decision_making.src.messages.turn_signal_message import TurnSignalState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLane
 from decision_making.src.planning.types import FS_DX, FS_SX, C_YAW, FrenetState2D
@@ -29,7 +30,8 @@ class LaneChangeState:
 
     def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame] = None, target_lane_ids: Optional[np.ndarray] = None,
                  lane_change_start_time: Optional[float] = None, target_relative_lane: Optional[RelativeLane] = None,
-                 status: Optional[LaneChangeStatus] = LaneChangeStatus.LaneChangeRequestable):
+                 status: Optional[LaneChangeStatus] = LaneChangeStatus.LaneChangeRequestable,
+                 autonomous_mode: bool = False):
         """
         Holds lane change state
         :param source_lane_gff: GFF that the host was in when a lane change was initiated
@@ -37,12 +39,14 @@ class LaneChangeState:
         :param lane_change_start_time: Time when a lane change began
         :param target_relative_lane: Relative lane of the target lane during a lane change
         :param status: lane change status
+        :param autonomous_mode: if True, don't check turn signal
         """
         self.source_lane_gff = source_lane_gff
         self._target_lane_ids = target_lane_ids or np.array([])
         self.lane_change_start_time = lane_change_start_time
         self.target_relative_lane = target_relative_lane
         self.status = status
+        self.autonomous_mode = autonomous_mode
 
     def __str__(self):
         # print as dict for logs
@@ -54,6 +58,7 @@ class LaneChangeState:
         self.lane_change_start_time = None
         self.target_relative_lane = None
         self.status = LaneChangeStatus.LaneChangeRequestable
+        self.autonomous_mode = False
 
     def get_target_lane_gff(self, extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> GeneralizedFrenetSerretFrame:
         """
@@ -99,6 +104,8 @@ class LaneChangeState:
         :param ego_state: state of host
         :return:
         """
+        if self.autonomous_mode and ego_state.timestamp_in_sec - self.lane_change_start_time > LANE_CHANGE_TIME_COMPLETION_TARGET:
+            self.autonomous_mode = False
         if self.status == LaneChangeStatus.LaneChangeRequestable:
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
                 self.target_relative_lane = RelativeLane.LEFT_LANE
@@ -114,7 +121,8 @@ class LaneChangeState:
             elif time_since_lane_change_requested > LANE_CHANGE_DELAY:
                 self.status = LaneChangeStatus.AnalyzingSafety
         elif self.status == LaneChangeStatus.AnalyzingSafety:
-            if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
+            if not self.autonomous_mode and ego_state.turn_signal.s_Data.e_e_turn_signal_state != \
+                    LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
                 self._reset()
         elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
             # This assumes that if the host has been localized in the target lane, it is definitely over the abort threshold 
@@ -138,9 +146,9 @@ class LaneChangeState:
                     # We should never get here
                     lane_change_percent_complete = 0.0
 
-                if (ego_state.turn_signal.s_Data.e_e_turn_signal_state
-                        != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]
-                        and lane_change_percent_complete <= LANE_CHANGE_ABORT_THRESHOLD):
+                if not self.autonomous_mode and ego_state.turn_signal.s_Data.e_e_turn_signal_state != \
+                        LaneChangeState.expected_turn_signal_state[self.target_relative_lane] and \
+                        lane_change_percent_complete <= LANE_CHANGE_ABORT_THRESHOLD:
                     self._reset()
         elif self.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
             pass

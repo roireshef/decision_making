@@ -3,7 +3,7 @@ from logging import Logger
 import numpy as np
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, MAX_FORWARD_HORIZON, \
-    MAX_BACKWARD_HORIZON, LANE_MERGE_ACTORS_HORIZON
+    MAX_BACKWARD_HORIZON, LANE_MERGE_ACTORS_HORIZON, LANE_MERGE_RED_LINE_EXTENTION
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
@@ -25,7 +25,7 @@ class LaneMergeState(BehavioralGridState):
                  extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                  projected_ego_fstates: Dict[RelativeLane, FrenetState2D],
                  merge_from_s_on_ego_gff: float, red_line_s_on_ego_gff: float, target_rel_lane: RelativeLane,
-                 logger: Logger):
+                 lane_change_state: LaneChangeState, logger: Logger):
         """
         lane merge state
         :param red_line_s_on_ego_gff: s of the red line on SAME_LANE GFF
@@ -34,7 +34,8 @@ class LaneMergeState(BehavioralGridState):
         If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
         :param target_rel_lane: RelativeLane of the merge target lane
         """
-        super().__init__(road_occupancy_grid, ego_state, extended_lane_frames, projected_ego_fstates, {}, None, {}, logger)
+        super().__init__(road_occupancy_grid, ego_state, extended_lane_frames, projected_ego_fstates, {},
+                         lane_change_state, {}, logger)
         self.merge_from_s_on_ego_gff = merge_from_s_on_ego_gff
         self.red_line_s_on_ego_gff = red_line_s_on_ego_gff
         self.target_rel_lane = target_rel_lane
@@ -86,8 +87,8 @@ class LaneMergeState(BehavioralGridState):
             # project ego on its GFF
             ego_on_same_gff = ego_gff.convert_from_segment_state(ego_lane_fstate, ego_lane_id)
 
-            # set red line s to be the origin of merge_lane_id (the last lane segment before the merge point)
-            red_line_s = ego_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), merge_lane_id)[FS_SX]
+            # merge_lane_origin_s is the origin of merge_lane_id (the last lane segment before the merge point)
+            merge_lane_origin_s = ego_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), merge_lane_id)[FS_SX]
 
             # calculate merge point s relative to ego
             merge_point_on_ego_gff = ego_gff.convert_from_segment_state(np.zeros(FS_2D_LEN), common_lane_id)[FS_SX]
@@ -119,9 +120,9 @@ class LaneMergeState(BehavioralGridState):
                                                                                LANE_MERGE_ACTORS_HORIZON)
 
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego,
-                       merge_from_s_on_ego_gff=red_line_s,
-                       red_line_s_on_ego_gff=red_line_s + 40, target_rel_lane=target_rel_lane,
-                       logger=logger)
+                       merge_from_s_on_ego_gff=merge_lane_origin_s,  # TODO: change it when the map will be fixed
+                       red_line_s_on_ego_gff=merge_lane_origin_s + LANE_MERGE_RED_LINE_EXTENTION,
+                       target_rel_lane=target_rel_lane, lane_change_state=lane_change_state, logger=logger)
 
         except MappingException as e:
             # in case of failure to build GFF for SAME_LANE or target lane GFF, stop processing this BP frame
@@ -157,5 +158,5 @@ class LaneMergeState(BehavioralGridState):
 
         ego_fstate2D = np.concatenate((ego_fstate, np.zeros(FS_1D_LEN)))
         return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D},
-                   merge_from_s, red_line_s, target_rel_lane, AV_Logger.get_logger())
+                   merge_from_s, red_line_s, target_rel_lane, None, AV_Logger.get_logger())
 

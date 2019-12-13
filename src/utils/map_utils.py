@@ -5,7 +5,8 @@ import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import raises, RoadNotFound, \
     UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
-from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
+from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST, \
+    LANE_MERGE_RED_LINE_EXTENTION
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType, TrafficSignalState, \
     StaticTrafficControlDeviceType, DynamicTrafficControlDeviceType
@@ -733,14 +734,11 @@ class MapUtils:
         # Find the merge point ahead
         cumulative_length = 0
         for segment in lane_subsegments:
-            # TODO should this if be after the check for merge in current segment?
             cumulative_length += segment.e_i_SEnd - segment.e_i_SStart
-            if cumulative_length > lookahead_distance:
-                break
             current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
 
             # if there is a stop bar/sign before the red line, then return None
-            # TODO is this a good restriction ???
+            # TODO: is this a good restriction ???
             stop_bars = current_lane_segment.as_traffic_control_bar
             if len(stop_bars) > 0:
                 break
@@ -753,9 +751,10 @@ class MapUtils:
             lane_merge_ahead = len(downstream_connectivity) == 1 and \
                                (downstream_connectivity[0].e_e_maneuver_type == ManeuverType.LEFT_MERGE_CONNECTION or
                                 downstream_connectivity[0].e_e_maneuver_type == ManeuverType.RIGHT_MERGE_CONNECTION)
-            # if segment.e_i_SegmentID == initial_lane_id then host already passed the red line and the merge completed
-            if lane_merge_ahead and segment.e_i_SegmentID != initial_lane_id:
-                    return segment.e_i_SegmentID
+            if lane_merge_ahead and (segment.e_i_SegmentID != initial_lane_id or initial_s < LANE_MERGE_RED_LINE_EXTENTION):
+                return segment.e_i_SegmentID
+            if cumulative_length > lookahead_distance:
+                break
 
         # no merge connection was found
         return None
