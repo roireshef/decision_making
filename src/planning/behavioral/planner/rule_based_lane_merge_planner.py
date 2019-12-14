@@ -6,7 +6,7 @@ from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS,
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, LANE_MERGE_ACTION_T_LIMITS, \
     LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, \
     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, SPEEDING_SPEED_TH, \
-    LANE_CHANGE_TIME_COMPLETION_TARGET
+    LANE_CHANGE_TIME_COMPLETION_TARGET, VELOCITY_LIMITS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, RelativeLane, \
     StaticActionRecipe
@@ -15,7 +15,6 @@ from decision_making.src.planning.behavioral.state.lane_change_state import Lane
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.types import BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
-from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, QuinticPoly1D
 from decision_making.src.state.state import State
 from sympy.matrices import *
@@ -197,7 +196,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         target_v, target_t = np.meshgrid(v_grid, t_grid)
         target_v, target_t = target_v.ravel(), target_t.ravel()
-        v_T, T, ds = RuleBasedLaneMergePlanner._calculate_safe_target_points(state, v_grid)
+        v_T, T, ds = RuleBasedLaneMergePlanner._calculate_safe_target_points(state, target_v, target_t)
         if len(T) == 0:
             return []
 
@@ -211,8 +210,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
         if not valid_acc.any():
             return []
-        v_max = LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH
-        valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], np.array([0, v_max]))
+        valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], VELOCITY_LIMITS)
         valid_idxs = np.where(valid_acc)[0][valid_vel]
 
         actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())])
@@ -259,7 +257,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in state.actors_states]).T
-        margins = 0.5 * (actors_length + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + 1  # add extra margin
+        margins = 0.5 * (actors_length + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
         safety_dist = RuleBasedLaneMergePlanner._caclulate_RSS_distances(
             actors_s[:, np.newaxis], actors_v[:, np.newaxis], margins[:, np.newaxis], v_end, t_end, ds)
         is_safe = safety_dist > 0
@@ -274,59 +272,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return actions
 
     @staticmethod
-    def _calculate_safe_target_points(state: LaneMergeState, v_grid: np.array) -> [np.array, np.array, np.array]:
-        """
-        Create boolean 2D matrix of actions that are longitudinally safe (RSS) between red line & merge point w.r.t.
-        all actors.
-        :param state: lane merge state
-        :return: two 1D arrays of v_T & T, where ego is safe at target_s relatively to all actors
-        """
-        s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
-        s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
-
-        ego_length = state.ego_length
-        ego_fstate = state.ego_fstate_1d
-        actors_states = state.actors_states
-        actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
-                                                      for actor in actors_states]).T
-        margins = 0.5 * (actors_length + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + 1  # add extra margin
-
-        actors_s.sort()
-        actor_i = np.sum(actors_s < 0)
-        print('s_min=', s_min, 's_max=', s_max, 'actors_rel_s=', actors_s[actor_i-1:actor_i+1])
-
-        # calculate planning time bounds given target_s
-        w_J_calm, _, w_T_calm = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
-        v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
-
-        target_v = np.repeat(v_grid, actors_v.shape[0])
-        actors_v = np.tile(actors_v, v_grid.shape[0])
-        actors_s = np.tile(actors_s, v_grid.shape[0])
-        margins = np.tile(margins, v_grid.shape[0])
-
-        front_cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_front_rss(
-            w_T_calm, w_J_calm, a_0, v_0, target_v, actors_v, actors_s - margins,
-            T_m=SAFETY_HEADWAY, a_br=-LON_ACC_LIMITS[0])
-        front_roots = Math.find_real_roots_in_limits(front_cost_coeffs_s, LANE_MERGE_ACTION_T_LIMITS)
-        front_t = np.fmin.reduce(front_roots, axis=-1)
-        front_target_s = actors_s - margins + actors_v * front_t - \
-                (np.maximum(0, target_v*target_v - actors_v*actors_v) / (-2*LON_ACC_LIMITS[0]) + SAFETY_HEADWAY * target_v)
-
-        back_cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs_back_rss(
-            w_T_calm, w_J_calm, a_0, v_0, target_v, actors_v, actors_s + margins,
-            T_m=SAFETY_HEADWAY, a_br=LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL)
-        back_roots = Math.find_real_roots_in_limits(back_cost_coeffs_s, LANE_MERGE_ACTION_T_LIMITS)
-        back_t = np.fmin.reduce(back_roots, axis=-1)
-        back_target_s = actors_s + margins + actors_v * back_t + \
-                (np.maximum(0, actors_v*actors_v - target_v*target_v) / (2*LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL) +
-                 SAFETY_HEADWAY * actors_v)
-
-        target_t = np.concatenate((front_t, back_t), axis=-1)
-        target_s = np.concatenate((front_target_s, back_target_s), axis=-1)
-        return np.concatenate((target_v, target_t, target_s), axis=-1)
-
-    @staticmethod
-    def __calculate_safe_target_points(state: LaneMergeState, target_v: np.array, target_t: np.array) -> \
+    def _calculate_safe_target_points(state: LaneMergeState, target_v: np.array, target_t: np.array) -> \
             [np.array, np.array, np.array]:
         """
         Create boolean 2D matrix of actions that are longitudinally safe (RSS) between red line & merge point w.r.t.
@@ -342,7 +288,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         actors_states = state.actors_states
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in actors_states]).T
-        margins = 0.5 * (actors_length + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + 1  # add extra margin
+        # add extra margin for longer actions to enable comfort short actions and another extra margin for smooth
+        # switching with the single_step_planner
+        margins = 0.5 * (actors_length + ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
+                  1 + 1 * (target_t[:, np.newaxis] > 2)
 
         actors_s.sort()
         actor_i = np.sum(actors_s < 0)
@@ -375,7 +324,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # for each bound calculate how many actors make it unsafe
         safety_layer = np.cumsum(sorted_bounds[..., 1], axis=-1)
 
-        # calculate jerk-optimal target s according to the quartic distance formula
+        # calculate jerk-optimal target s according to the QUARTIC distance formula
         optimal_s = target_t * (target_t * a_0 + 6 * v_0 + 6 * target_v) / 12
 
         # a bound is defined important if it changes the safety:
@@ -388,30 +337,40 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         important_bounds.sort(axis=1)
 
         # find actions for which optimal_s is safe
-        optimal_bound_idx = np.sum(important_bounds < optimal_s[:, np.newaxis], axis=-1)
+        above_optimal_bound_idxs = np.sum(important_bounds < optimal_s[:, np.newaxis], axis=-1)
         # optimal_s is safe if number of important bounds under optimal_s is even
-        optimal_s_is_safe = (optimal_bound_idx & 1) == 0
+        optimal_s_is_safe = (above_optimal_bound_idxs & 1) == 0
 
         # calculate important bounds under & above optimal_s for actions with unsafe optimal_s
-        optimal_s_unsafe_idxs = np.where(~optimal_s_is_safe)[0]
-        closest_bound_idx = optimal_bound_idx[optimal_s_unsafe_idxs]
-        bounds_under_optimal = important_bounds[optimal_s_unsafe_idxs, closest_bound_idx-1]
-        bounds_above_optimal = important_bounds[optimal_s_unsafe_idxs, closest_bound_idx]
-        under_optimal_idxs = np.where(np.isfinite(bounds_under_optimal))[0]
-        above_optimal_idxs = np.where(np.isfinite(bounds_above_optimal))[0]
+        unsafe_optimal_s_idxs = np.where(~optimal_s_is_safe)[0]
+        target_v_unsafe_optimal, target_t_unsafe_optimal = target_v[unsafe_optimal_s_idxs], target_t[unsafe_optimal_s_idxs]
+        above_unsafe_optimal_bound_idxs = above_optimal_bound_idxs[unsafe_optimal_s_idxs]
 
-        # calculate all safe target points for optimal_s in the VTS 3D space (v_T, T, ds)
-        vts1 = np.c_[target_v[optimal_s_is_safe], target_t[optimal_s_is_safe], optimal_s[optimal_s_is_safe]]
+        # calculate all safe target points for optimal_s (quartic) in 3D space (v_T, T, ds)
+        vts_optimal = np.c_[target_v[optimal_s_is_safe], target_t[optimal_s_is_safe], optimal_s[optimal_s_is_safe]]
+        # calculate all safe points for a bound under optimal_s
+        vts_under_optimal = RuleBasedLaneMergePlanner._calculate_points_for_safe_bounds(
+            important_bounds[unsafe_optimal_s_idxs, above_unsafe_optimal_bound_idxs-1],
+            target_v_unsafe_optimal, target_t_unsafe_optimal)
+        # calculate all safe points for a bound above optimal_s
+        vts_above_optimal = RuleBasedLaneMergePlanner._calculate_points_for_safe_bounds(
+            important_bounds[unsafe_optimal_s_idxs, above_unsafe_optimal_bound_idxs],
+            target_v_unsafe_optimal, target_t_unsafe_optimal)
 
-        # calculate all safe
-        target_v_under_optimal = target_v[optimal_s_unsafe_idxs][under_optimal_idxs]
-        target_t_under_optimal = target_t[optimal_s_unsafe_idxs][under_optimal_idxs]
-        vts2 = np.c_[target_v_under_optimal, target_t_under_optimal, bounds_under_optimal[under_optimal_idxs]]
-        target_v_above_optimal = target_v[optimal_s_unsafe_idxs][above_optimal_idxs]
-        target_t_above_optimal = target_t[optimal_s_unsafe_idxs][above_optimal_idxs]
-        vts3 = np.c_[target_v_above_optimal, target_t_above_optimal, bounds_above_optimal[above_optimal_idxs]]
-        vts = np.concatenate((vts1, vts2, vts3), axis=0)
+        vts = np.concatenate((vts_optimal, vts_under_optimal, vts_above_optimal), axis=0)
         return vts.T
+
+    @staticmethod
+    def _calculate_points_for_safe_bounds(bounds: np.array, target_v: np.array, target_t: np.array):
+        """
+        given target times and velocities and safety bounds for these actions, create the appropriate actions (v_T, T, ds)
+        :param bounds: array of indices of bounds for each action
+        :param target_v: target velocities
+        :param target_t: target times
+        :return: 2D matrix of actions: (v_T, T, ds)
+        """
+        actions_with_valid_bounds = np.where(np.isfinite(bounds))[0]
+        return np.c_[target_v[actions_with_valid_bounds], target_t[actions_with_valid_bounds], bounds[actions_with_valid_bounds]]
 
     @staticmethod
     def _caclulate_RSS_distances(actors_s: np.array, actors_v: np.array, margins: np.array,
