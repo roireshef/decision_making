@@ -91,6 +91,27 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
             selected_follow_lane_idx = -1
         return selected_follow_lane_idx
 
+    def _get_lane_change_valid_action_idx(self, action_recipes: List[ActionRecipe], action_specs_mask: List[bool],
+                                          target_lane: RelativeLane, current_velocity: float) -> int:
+        """
+        Look for valid static action with the minimal aggressiveness level and fastest speed
+        :param action_recipes: action_recipes.
+        :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
+        :param target_lane: lane to choose actions from
+        :return: index of the chosen action_recipe within action_recipes. If there are no valid actions, -1 is returned
+        """
+        filtered_follow_lane_idxs = [i for i, recipe in enumerate(action_recipes)
+                                     if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                                     and recipe.relative_lane == target_lane]
+
+        if len(filtered_follow_lane_idxs) > 0:
+            velocities = np.array([action_recipes[idx].velocity for idx in filtered_follow_lane_idxs])
+            # find the lowest velocity above current_velocity
+            velocity_idx = min(len(filtered_follow_lane_idxs) - 1, np.sum(velocities < current_velocity))
+            selected_follow_lane_idx = filtered_follow_lane_idxs[velocity_idx]
+        else:
+            selected_follow_lane_idx = -1
+        return selected_follow_lane_idx
 
     def _is_static_action_preferred(self, action_recipes: List[ActionRecipe], road_sign_idx: int, follow_lane_idx: int):
         """

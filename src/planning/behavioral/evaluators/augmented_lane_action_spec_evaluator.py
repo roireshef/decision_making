@@ -80,9 +80,14 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
             selected_road_sign_idx = self._get_follow_road_sign_valid_action_idx(action_recipes, action_specs_mask,
                                                                                  target_lane)
 
-            # last, look for valid static action
-            selected_follow_lane_idx = self._get_follow_lane_valid_action_idx(action_recipes, action_specs_mask,
-                                                                              target_lane)
+            if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
+                # lowest velocity above current velocity
+                selected_follow_lane_idx = self._get_lane_change_valid_action_idx(action_recipes, action_specs_mask,
+                                                                                  target_lane, behavioral_state.ego_state.velocity)
+            else:
+                # last, look for valid static action
+                selected_follow_lane_idx = self._get_follow_lane_valid_action_idx(action_recipes, action_specs_mask,
+                                                                                  target_lane)
 
             # finally decide between the road sign and the static action
             if selected_road_sign_idx < 0 and selected_follow_lane_idx < 0:

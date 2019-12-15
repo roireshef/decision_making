@@ -12,7 +12,7 @@ def test_createSafeActions():
     actor3 = LaneMergeActorState(79.68407334, 25, ego_len)
     actors = [actor1, actor2, actor3]
     merge_from_s = 0
-    red_line_s = 183.748177641319444
+    red_line_s = 283.748177641319444
     state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, merge_from_s, red_line_s)
     logger = AV_Logger.get_logger("test")
     planner = RuleBasedLaneMergePlanner(logger)
