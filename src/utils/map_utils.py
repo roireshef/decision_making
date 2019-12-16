@@ -228,6 +228,9 @@ class MapUtils:
         """
         nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 
+        # if ss was array of size 1, it is squeezed to zero-dimensional array by the calling function
+        if ss.ndim == 0:
+            ss = np.array([ss])
         closest_s_idxs = np.array([np.argmin(np.abs(nominal_points[:,
                                          NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s)) for s in ss])
 
