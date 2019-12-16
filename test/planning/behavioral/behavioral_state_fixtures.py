@@ -253,7 +253,15 @@ def ego_state_for_takeover_message_default_scene():
 
 @pytest.fixture(scope='function')
 def state_with_scene_static_short_testable():
-    SceneStaticModel.get_instance().set_scene_static(testable_scene_static_mock())
+    scene_static_message = testable_scene_static_mock()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
+
     road_segment_id = 1
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
@@ -450,6 +458,7 @@ def state_with_ego_at_merge_on_oval():
     scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
     scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
     SceneStaticModel.get_instance().set_scene_static(scene_static_message)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
 
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
