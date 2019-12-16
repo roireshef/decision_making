@@ -6,7 +6,7 @@ from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS,
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, LANE_MERGE_ACTION_T_LIMITS, \
     LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, \
     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, SPEEDING_SPEED_TH, \
-    LANE_CHANGE_TIME_COMPLETION_TARGET, VELOCITY_LIMITS
+    LANE_CHANGE_TIME_COMPLETION_TARGET
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, RelativeLane, \
     StaticActionRecipe
@@ -100,10 +100,11 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # create composite "max_velocity" actions, such that each sequence includes quartic + const_max_vel + quartic
         max_vel_actions = RuleBasedLaneMergePlanner._create_max_vel_actions(lane_merge_state, v_grid, t_grid)
 
+        stop_actions = []
         # create composite "stop" actions, such that each sequence includes quartic + zero_vel + quartic
         # create stop actions only if there are no single-spec actions, since quintic actions have lower time
         # and lower jerk than composite stop action
-        stop_actions = RuleBasedLaneMergePlanner._create_braking_actions(lane_merge_state, vts_last)
+        # stop_actions = RuleBasedLaneMergePlanner._create_braking_actions(lane_merge_state, vts_last)
 
         lane_merge_actions = single_actions + max_vel_actions + stop_actions
 
@@ -209,7 +210,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
         if not valid_acc.any():
             return []
-        valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], VELOCITY_LIMITS)
+        velocity_limits = np.array([0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH])
+        valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], velocity_limits)
         valid_idxs = np.where(valid_acc)[0][valid_vel]
 
         actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())])
