@@ -3,7 +3,6 @@ from logging import Logger
 
 from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.state import State
