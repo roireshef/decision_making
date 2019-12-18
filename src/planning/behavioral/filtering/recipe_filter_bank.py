@@ -84,16 +84,6 @@ class FilterIfAggressive(RecipeFilter):
                 if recipe is not None else False for recipe in recipes]
 
 
-class FilterLaneChangingIfNotAugmented(RecipeFilter):
-    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        # the if statement in the ternary operator is executed first and will short circuit if False,
-        # so a KeyError will not happen when accessing the extended_lane_frames dict
-        return [(recipe.relative_lane == RelativeLane.SAME_LANE
-                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial])
-                if (recipe is not None) and (recipe.relative_lane in behavioral_state.extended_lane_frames)
-                else False for recipe in recipes]
-
-
 class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
     """
     This filter denies actions towards the LEFT or RIGHT lanes unless the lane is an augmented lane or a lane change is desired
