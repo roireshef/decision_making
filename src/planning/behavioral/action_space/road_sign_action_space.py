@@ -1,9 +1,9 @@
 from logging import Logger
-from typing import List, Type
+from typing import List, Type, Optional
 
 import numpy as np
 from decision_making.src.global_constants import ROAD_SIGN_LENGTH, LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR, \
-    STOP_BAR_DISTANCE_IND
+    STOP_BAR_DISTANCE_IND, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionType, RelativeLongitudinalPosition, \
@@ -16,7 +16,7 @@ from sklearn.utils.extmath import cartesian
 
 
 class RoadSignActionSpace(TargetActionSpace):
-    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, margin_to_keep_from_targets: float):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, margin_to_keep_from_targets: Optional[float] = None):
         super().__init__(logger,
                          predictor=predictor,
                          recipes=[RoadSignActionRecipe.from_args_list(comb)
@@ -26,7 +26,7 @@ class RoadSignActionSpace(TargetActionSpace):
                                                          AggressivenessLevel])
                                   ],
                          filtering=filtering,
-                         margin_to_keep_from_targets=margin_to_keep_from_targets)
+                         margin_to_keep_from_targets=margin_to_keep_from_targets or LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT)
 
     @property
     def recipe_classes(self) -> List[Type]:

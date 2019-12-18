@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import List, Type
+from typing import List, Type, Optional
 
 import numpy as np
 from decision_making.src.global_constants import LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
@@ -16,7 +16,7 @@ from sklearn.utils.extmath import cartesian
 
 
 class DynamicActionSpace(TargetActionSpace):
-    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, margin_to_keep_from_targets: float):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, margin_to_keep_from_targets: Optional[float] = None):
         super().__init__(logger,
                          predictor=predictor,
                          recipes=[DynamicActionRecipe.from_args_list(comb)
@@ -25,7 +25,7 @@ class DynamicActionSpace(TargetActionSpace):
                                                          [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE],
                                                          AggressivenessLevel])],
                          filtering=filtering,
-                         margin_to_keep_from_targets=margin_to_keep_from_targets)
+                         margin_to_keep_from_targets=margin_to_keep_from_targets or LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT)
 
     # TODO FOLLOW_VEHICLE for REAR vehicle isn't really supported for 2 reasons:
     #   1. We have no way to guarantee the trajectory we construct does not collide with the rear vehicle
