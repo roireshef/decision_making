@@ -20,6 +20,7 @@ class LaneChangeStatus(Enum):
     LaneChangeActiveInSourceLane = 3
     LaneChangeActiveInTargetLane = 4
     LaneChangeCompleteWaitingForReset = 5
+    LaneSplitDesired = 6
 
 
 class LaneChangeState:
@@ -94,6 +95,20 @@ class LaneChangeState:
         else:
             return [False] * len(relative_lanes)
 
+    def are_lane_split_actions_available(self, relative_lanes: List[RelativeLane],
+                                         extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> bool:
+        """
+        Returns True if the target relative lane is in the given list of relative lanes and the target GFF is augmented; otherwise, False
+        :param relative_lanes: a list of relative lanes from proposed action recipes or specs
+        :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
+        :return:
+        """
+        if (self.target_relative_lane in relative_lanes
+            and extended_lane_frames[self.target_relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]):
+            return True
+        else:
+            return False
+
     def is_safe_to_start_lane_change(self) -> bool:
         # TODO when safety check is added, should return here the actual safety check result
         return self.status == LaneChangeStatus.AnalyzingSafety
@@ -152,6 +167,15 @@ class LaneChangeState:
         elif self.status == LaneChangeStatus.LaneChangeCompleteWaitingForReset:
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
                 self._reset()
+        elif self.status == LaneChangeStatus.LaneSplitDesired:
+            if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
+                self._reset()
+            elif ego_state.map_state.lane_id in np.setdiff1d(self._target_lane_ids, self.source_lane_gff.segment_ids, assume_unique=True):
+                # If the host is localized to a lane that is in the target lane GFF but not the source lane GFF, we have entered the
+                # overlap area, and the split lane has become the SAME_LANE. We need to transition the status and wait for the turn
+                # signal to be turned off.
+                self.status = LaneChangeStatus.LaneChangeCompleteWaitingForReset
+
 
     def update_post_iteration(self, extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                               projected_ego_fstates: Dict[RelativeLane, FrenetState2D], ego_state: EgoState, selected_action: ActionSpec):
@@ -167,9 +191,12 @@ class LaneChangeState:
         if self.status == LaneChangeStatus.LaneChangeRequestable:
             pass
         elif self.status == LaneChangeStatus.LaneChangeRequested:
-            # if lane doesn't exist, reset
             if self.target_relative_lane not in extended_lane_frames.keys():
+                # if lane doesn't exist, reset
                 self._reset()
+            elif self.are_lane_split_actions_available([selected_action.relative_lane], extended_lane_frames):
+                # If an action towards a lane split was chosen, transition to the LaneSplitDesired status.
+                self.status = LaneChangeStatus.LaneSplitDesired
         elif self.status == LaneChangeStatus.AnalyzingSafety:
             if self.get_lane_change_mask([selected_action.relative_lane], extended_lane_frames)[0]:
                 self.source_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE]
@@ -190,4 +217,6 @@ class LaneChangeState:
                     and abs(relative_heading) < MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE):
                 self.status = LaneChangeStatus.LaneChangeCompleteWaitingForReset
         elif self.status == LaneChangeStatus.LaneChangeCompleteWaitingForReset:
+            pass
+        elif self.status == LaneChangeStatus.LaneSplitDesired:
             pass

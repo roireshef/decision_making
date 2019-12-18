@@ -43,18 +43,30 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         # the lane change lane over the minimum_cost_lane.
         lanes_to_try = []
 
-        if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
-            # If lane change is desired, prioritize actions towards that lanes by placing the respective relative lane first in the list.
+        if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety,
+                                                         LaneChangeStatus.LaneChangeActiveInSourceLane,
+                                                         LaneChangeStatus.LaneSplitDesired]:
+            # If lane change or taking a lane split is desired, prioritize actions towards that lane by placing the respective relative
+            # lane first in the list.
             lanes_to_try.append(behavioral_state.lane_change_state.target_relative_lane)
 
-            # Append SAME_LANE actions so that we continue driving in our lane in the case that an action towards the lane change target
-            # lane is not available.
+            # Append SAME_LANE actions so that we continue driving in our lane in the case that an action towards the target lane is not
+            # available.
             lanes_to_try.append(RelativeLane.SAME_LANE)
-        elif behavioral_state.lane_change_state.status in [LaneChangeStatus.LaneChangeRequested,
-                                                           LaneChangeStatus.LaneChangeActiveInTargetLane,
+        elif behavioral_state.lane_change_state.status in [LaneChangeStatus.LaneChangeActiveInTargetLane,
                                                            LaneChangeStatus.LaneChangeCompleteWaitingForReset]:
             # In order to remove any unexpected behavior, force the host to stay in lane during these lane change statuses. Note that
-            # staying in lane means staying in the lane change source or target lane, depending on the status.
+            # staying in lane means staying in the lane change target lane here.
+            lanes_to_try.append(RelativeLane.SAME_LANE)
+        elif behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeRequested:
+            # If a lane change has been requested towards the direction of a lane split, prioritize actions towards the split lane. If
+            # the target lane is not a lane split, force the host to stay in lane.
+            action_recipe_relative_lanes = [recipe.relative_lane for recipe in action_recipes]
+
+            if behavioral_state.lane_change_state.are_lane_split_actions_available(action_recipe_relative_lanes,
+                                                                                   behavioral_state.extended_lane_frames):
+                lanes_to_try.append(behavioral_state.lane_change_state.target_relative_lane)
+
             lanes_to_try.append(RelativeLane.SAME_LANE)
         else:
             # If no lane change is requested, drive according to route plan costs
