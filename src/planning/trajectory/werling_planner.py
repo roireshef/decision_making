@@ -7,8 +7,10 @@ from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LAT_ACC_LIMITS_BY_K, TP_LAT_ACC_STRICT_COEF
+    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LAT_ACC_LIMITS_BY_K, TP_LAT_ACC_STRICT_COEF, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
+    BP_ACTION_T_LIMITS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -93,11 +95,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # solve the optimization problem in frenet-frame from t=0 to t=T
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
-            # Lateral planning horizon(Td) lower bound, now approximated from x=a*t^2
-            lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, T_target_horizon, self.dt)
-
-            # create a grid on T_d (lateral movement time-grid)
-            T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_target_horizon, lower_bound_T_d)
+            # Lateral planning horizon(Td)
+            T_d_grid = self._get_lat_horizon_by_time_jerk_weights(fconstraints_t0, T_target_horizon)
 
             # solve problem in frenet-frame
             ftrajectories_optimization, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
@@ -231,33 +230,24 @@ class WerlingPlanner(TrajectoryPlanner):
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
-    # TODO: determine tighter lower bound according to physical constraints and ego control limitations
-    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
-                               T_s: float, dt: float) -> float:
+    def _get_lat_horizon_by_time_jerk_weights(self, fconstraints_t0: FrenetConstraints, T_s: float) -> np.array:
         """
-        Calculates the lower bound for the lateral time horizon based on the physical constraints.
+        Calculates grid of the lateral time horizons based on the given constraints and time-jerk weights
+        with different aggressiveness levels.
+        In the current implementation (no TP grid) choose standard aggressiveness level.
         :param fconstraints_t0: a set of constraints over the initial state
-        :param fconstraints_tT: a set of constraints over the terminal state
         :param T_s: longitudinal action time horizon
-        :param dt: [sec] basic time unit from constructor
-        :return: Low bound for lateral time horizon.
+        :return: Array of lateral time horizons of size TD_STEPS. Higher bound is T_s.
         """
-        min_lat_movement = np.min(np.abs(fconstraints_tT.get_grid_d()[:, 0] - fconstraints_t0.get_grid_d()[0, 0]))
-        low_bound_lat_plan_horizon = max(np.sqrt((2 * min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), dt)
-        return min(max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt), T_s)
+        # Choose a range of size TD_STEPS of aggressiveness levels according to the time-jerk weights.
+        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value:AggressivenessLevel.STANDARD.value+1]
 
-    @staticmethod
-    def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float) -> np.ndarray:
-        """
-        Receives the lower bound of the lateral time horizon T_d_low_bound and the longitudinal time horizon T_s
-        and returns a grid of possible lateral planning time values.
-        :param T_s: longitudinal trajectory duration (sec.), relative to ego.
-        :param T_d_low_bound: lower bound on lateral trajectory duration (sec.), relative to ego. Higher bound is Ts.
-        :return: numpy array (1D) of the possible lateral planning horizons
-        """
-        return np.flip(np.linspace(T_s, T_d_low_bound, TD_STEPS), axis=0)
-
-
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], dx=-fconstraints_t0._dx, a_0=fconstraints_t0._da,
+            v_0=fconstraints_t0._dv, v_T=0, T_m=0)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
+        T_d = np.fmin.reduce(roots_d, axis=-1)
+        return np.minimum(T_d, T_s)
 
     @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,
