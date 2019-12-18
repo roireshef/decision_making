@@ -156,3 +156,14 @@ class ActionSpec:
 
     def as_fstate(self) -> FrenetState2D:
         return np.array([self.s, self.v, 0, self.d, 0, 0])
+
+class PlannerUserOptions:
+    """
+    Holds the parameters that may be changed by the driver
+    """
+    def __init__(self, target_margin: float):
+        """
+        Planner parameters
+        :param target_margin: Distance to target (on top of headway requirements)
+        """
+        self.target_margin = target_margin

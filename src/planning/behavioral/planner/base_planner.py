@@ -18,7 +18,8 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane, \
+    PlannerUserOptions
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -32,10 +33,11 @@ from decision_making.src.utils.map_utils import MapUtils
 
 @six.add_metaclass(ABCMeta)
 class BasePlanner:
-    def __init__(self, logger: Logger):
+    def __init__(self, user_options: PlannerUserOptions, logger: Logger):
         """
         :param logger:
         """
+        self.user_options = user_options
         self.logger = logger
 
     @prof.ProfileFunction()

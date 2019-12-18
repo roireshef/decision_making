@@ -26,7 +26,7 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
     MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, MAX_COST, \
-    LOG_MSG_CONTROL_STATUS
+    LOG_MSG_CONTROL_STATUS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -47,6 +47,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.behavioral.data_objects import PlannerUserOptions
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
@@ -192,6 +193,10 @@ class BehavioralPlanningFacade(DmModule):
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
 
             self._publish_takeover(takeover_message)
+
+
+            # TODO: GET USER OPTION MESSAGE FROM VEHICLE
+            planner_user_options = PlannerUserOptions(target_margin=LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT)
 
             # choose scenario and planner
             scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
