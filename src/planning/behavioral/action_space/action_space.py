@@ -3,11 +3,14 @@ from collections import defaultdict
 
 from abc import abstractmethod
 from logging import Logger
+import numpy as np
 from typing import List, Optional, Type
 
 import rte.python.profiler as prof
 from decision_making.src.exceptions import raises
+from decision_making.src.global_constants import LANE_CHANGE_TIME_COMPLETION_TARGET, MIN_LANE_CHANGE_ACTION_TIME
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -75,6 +78,31 @@ class ActionSpace:
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         pass
+
+    def modify_lane_change_time(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState, T: np.ndarray) -> None:
+        """
+        Find the lane change actions and override the action spec. time for these actions so that we meet the lane change time
+        requirement. Note that the argument T is mutable so it's passed by reference here. When we modify it here, we're actually modifying
+        the object in the calling function. That means we do not have to return it.
+        :param action_recipes: list of action recipes
+        :param behavioral_state: current state of the world
+        :param T: action spec. times for every action recipe
+        :return:
+        """
+        action_recipe_relative_lanes = [recipe.relative_lane for recipe in action_recipes]
+        lane_change_mask = behavioral_state.lane_change_state.get_lane_change_mask(action_recipe_relative_lanes,
+                                                                                   behavioral_state.extended_lane_frames)
+
+        # Override mask values if T is nan for that recipe
+        lane_change_mask = [mask if ~np.isnan(T[i]) else False for i, mask in enumerate(lane_change_mask)]
+
+        if behavioral_state.lane_change_state.status == LaneChangeStatus.AnalyzingSafety:
+            # This will be reached before a lane change has begun
+            T[lane_change_mask] = LANE_CHANGE_TIME_COMPLETION_TARGET
+        else:
+            T[lane_change_mask] = max(MIN_LANE_CHANGE_ACTION_TIME, LANE_CHANGE_TIME_COMPLETION_TARGET
+                                                                   + behavioral_state.lane_change_state.lane_change_start_time
+                                                                   - behavioral_state.ego_state.timestamp_in_sec)
 
 
 class ActionSpaceContainer(ActionSpace):

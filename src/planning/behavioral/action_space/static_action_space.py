@@ -2,7 +2,7 @@ import numpy as np
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
-    EPS, LANE_CHANGE_TIME_COMPLETION_TARGET, MIN_LANE_CHANGE_ACTION_TIME
+    EPS
 from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
@@ -83,21 +83,7 @@ class StaticActionSpace(ActionSpace):
         if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety,
                                                          LaneChangeStatus.LaneChangeActiveInSourceLane,
                                                          LaneChangeStatus.LaneChangeActiveInTargetLane]:
-            action_recipe_relative_lanes = [recipe.relative_lane for recipe in action_recipes]
-            lane_change_mask = behavioral_state.lane_change_state.get_lane_change_mask(action_recipe_relative_lanes,
-                                                                                       behavioral_state.extended_lane_frames)
-
-            # Override mask values if T is nan for that recipe
-            lane_change_mask = [mask if ~np.isnan(T[i]) else False for i, mask in enumerate(lane_change_mask)]
-
-            if behavioral_state.lane_change_state.status == LaneChangeStatus.AnalyzingSafety:
-                # This will be reached before a lane change has begun
-                T[lane_change_mask] = LANE_CHANGE_TIME_COMPLETION_TARGET
-            else:
-                T[lane_change_mask] = max(MIN_LANE_CHANGE_ACTION_TIME,
-                                          LANE_CHANGE_TIME_COMPLETION_TARGET
-                                          + behavioral_state.lane_change_state.lane_change_start_time
-                                          - behavioral_state.ego_state.timestamp_in_sec)
+            self.modify_lane_change_time(action_recipes, behavioral_state, T)
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuarticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
