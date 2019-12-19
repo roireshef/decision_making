@@ -6,11 +6,10 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import CartesianLimitsViolated
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, \
-    CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LAT_ACC_LIMITS_BY_K, TP_LAT_ACC_STRICT_COEF, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    BP_ACTION_T_LIMITS
+    LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LAT_ACC_LIMITS_BY_K, \
+    TP_LAT_ACC_STRICT_COEF
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -95,8 +94,10 @@ class WerlingPlanner(TrajectoryPlanner):
         # solve the optimization problem in frenet-frame from t=0 to t=T
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
-            # Lateral planning horizon(Td)
-            T_d_grid = self._get_lat_horizon_by_time_jerk_weights(fconstraints_t0, T_target_horizon)
+            # Lateral planning horizon (Td)
+            T_d_grid = np.minimum(StaticActionSpace.specify_lateral_planning_time(
+                                                fconstraints_t0._da, fconstraints_t0._dv, -fconstraints_t0._dx),
+                                  T_target_horizon)
 
             # solve problem in frenet-frame
             ftrajectories_optimization, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0,
@@ -229,25 +230,6 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                          reference_route)
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
-
-    def _get_lat_horizon_by_time_jerk_weights(self, fconstraints_t0: FrenetConstraints, T_s: float) -> np.array:
-        """
-        Calculates grid of the lateral time horizons based on the given constraints and time-jerk weights
-        with different aggressiveness levels.
-        In the current implementation (no TP grid) choose standard aggressiveness level.
-        :param fconstraints_t0: a set of constraints over the initial state
-        :param T_s: longitudinal action time horizon
-        :return: Array of lateral time horizons of size TD_STEPS. Higher bound is T_s.
-        """
-        # Choose a range of size TD_STEPS of aggressiveness levels according to the time-jerk weights.
-        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value:AggressivenessLevel.STANDARD.value+1]
-
-        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1], dx=-fconstraints_t0._dx, a_0=fconstraints_t0._da,
-            v_0=fconstraints_t0._dv, v_T=0, T_m=0)
-        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
-        T_d = np.fmin.reduce(roots_d, axis=-1)
-        return np.minimum(T_d, T_s)
 
     @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,

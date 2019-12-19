@@ -69,11 +69,8 @@ class StaticActionSpace(ActionSpace):
         T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1], a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0,
-            dx=-projected_ego_fstates[:, FS_DX], T_m=0)
-        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
-        T_d = np.fmin.reduce(roots_d, axis=-1)
+        T_d = StaticActionSpace.specify_lateral_planning_time(
+            projected_ego_fstates[:, FS_DA], projected_ego_fstates[:, FS_DV], -projected_ego_fstates[:, FS_DX])
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
@@ -90,3 +87,20 @@ class StaticActionSpace(ActionSpace):
                         for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
 
         return action_specs
+
+    @staticmethod
+    def specify_lateral_planning_time(a_0: np.array, v_0: np.array, dx: np.array) -> np.array:
+        """
+        Calculate lateral planning times by time-jerk cost optimization. Here we choose the calmest aggressiveness level.
+        :param a_0: initial lateral acceleration in Frenet frame
+        :param v_0: initial lateral velocity in Frenet frame
+        :param dx: array or scalar lateral distance to the target in Frenet frame
+        :return: lateral planning times of the same size like dx or array of size 1 if dx is scalar.
+        """
+        # choose the calmest lateral aggressiveness level
+        weights = np.tile(BP_JERK_S_JERK_D_TIME_WEIGHTS[0], (1 if np.isscalar(dx) else dx.shape[0], 1))
+
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], a_0=a_0, v_0=v_0, v_T=0, dx=dx, T_m=0)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
+        return np.fmin.reduce(roots_d, axis=-1)
