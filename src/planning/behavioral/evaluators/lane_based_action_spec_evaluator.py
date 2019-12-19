@@ -90,46 +90,17 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
 
             # Among the minimal aggressiveness level recipes, choose the velocity based on whether actions are for a lane change or not.
             if behavioral_state.lane_change_state.get_lane_change_mask([target_lane], behavioral_state.extended_lane_frames)[0]:
-                selected_follow_lane_idx = self._get_action_idx_closest_to_desired_velocity(behavioral_state.ego_state.velocity,
-                                                                                            action_specs, follow_lane_valid_action_idxs)
+                # If we reach here, actions towards the provided target_lane are lane change actions. Choose the valid action that will
+                # maintain the host's velocity.
+                valid_action_velocities = np.array([action_specs[index].v for index in follow_lane_valid_action_idxs])
+                selected_valid_action_idx = np.argmin(abs(valid_action_velocities - behavioral_state.ego_state.velocity)).item()
+                selected_follow_lane_idx = follow_lane_valid_action_idxs[selected_valid_action_idx]
             else:
+                # If we're not doing a lane change, choose the valid action with the highest velocity.
                 selected_follow_lane_idx = follow_lane_valid_action_idxs[-1]
         else:
             selected_follow_lane_idx = -1
         return selected_follow_lane_idx
-
-    def _get_action_idx_closest_to_desired_velocity(self, desired_velocity: float, action_specs: List[ActionSpec],
-                                                    valid_action_indices: List[int]) -> int:
-        """
-        Get the valid action with a velocity that is closest to the desired velocity
-        :param desired_velocity: velocity that we want to find an action close to
-        :param action_specs: specifications of action_recipes
-        :param valid_action_indices: indices of action_specs that are considered here
-        :return: the index of the action with the closest velocity to the desired velocity
-        """
-        valid_action_velocities = [action_specs[index].v for index in valid_action_indices]
-
-        # Get the insertion point that would maintain order if desired_velocity were inserted into valid_action_velocities. In this form,
-        # the searchsorted function returns the first suitable location. In other words, the returned insertion point, i, will be
-        # valid_action_velocities[i-1] < desired_velocity <= valid_action_velocities[i].
-        insertion_point = np.searchsorted(valid_action_velocities, desired_velocity)
-
-        # If insertion_point is the beginning or end of valid_action_velocities, return the index accordingly; otherwise, check whether
-        # desired_velocity is closer to the higher or lower velocity and return that index.
-        if insertion_point == 0:
-            return valid_action_indices[insertion_point]
-        elif insertion_point == len(valid_action_velocities):
-            return valid_action_indices[insertion_point - 1]
-        else:
-            lower_bound_velocity_difference = desired_velocity - valid_action_velocities[insertion_point - 1]
-            upper_bound_velocity_difference = valid_action_velocities[insertion_point] - desired_velocity
-
-            # Return the action index with the specified velocity that is closer to desired_velocity. If desired_velocity is exactly in
-            # between two velocities, return the action with the lower velocity.
-            if lower_bound_velocity_difference <= upper_bound_velocity_difference:
-                return valid_action_indices[insertion_point - 1]
-            else:
-                return valid_action_indices[insertion_point]
 
     def _is_static_action_preferred(self, action_recipes: List[ActionRecipe], road_sign_idx: int, follow_lane_idx: int):
         """
