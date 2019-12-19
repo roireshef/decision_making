@@ -64,7 +64,7 @@ class ActionSpecFilter:
 
         # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
         for rel_lane, lane_specs in specs_by_rel_lane.items():
-            specs_t = np.array([spec.t for spec in lane_specs])
+            specs_t, specs_t_d = np.array([[spec.t, spec.t_d] for spec in lane_specs]).T
             pad_mode = np.array([spec.only_padding_mode for spec in lane_specs])
             goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
 
@@ -73,7 +73,7 @@ class ActionSpecFilter:
             ego_fstates = np.tile(ego_fstate, len(lane_specs)).reshape((len(lane_specs), -1))
 
             # calculate polynomials
-            poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(specs_t, ego_fstates, goal_fstates, pad_mode)
+            poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(specs_t, specs_t_d, ego_fstates, goal_fstates, pad_mode)
 
             # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
             ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_samples)
@@ -82,7 +82,7 @@ class ActionSpecFilter:
             # Pad (extrapolate) short trajectories from spec.t until minimal action time.
             # Beyond the maximum between spec.t and minimal action time the Frenet trajectories are set to zero.
             ftrajectories[indices_by_rel_lane[rel_lane]] = ActionSpecFilter._pad_trajectories_beyond_spec(
-                lane_specs, ftrajectories_s, ftrajectories_d, specs_t, pad_mode)
+                lane_specs, ftrajectories_s, ftrajectories_d, pad_mode)
 
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = lane_frenet.ftrajectories_to_ctrajectories(
@@ -92,7 +92,7 @@ class ActionSpecFilter:
 
     @staticmethod
     def _pad_trajectories_beyond_spec(action_specs: List[ActionSpec], ftrajectories_s: np.array,
-                                      ftrajectories_d: np.array, T: np.array, in_padding_mode: np.array) -> np.array:
+                                      ftrajectories_d: np.array, in_padding_mode: np.array) -> np.array:
         """
         Given action specs and their Frenet trajectories, pad (extrapolate) short trajectories from spec.t until
         minimal action time. Beyond the maximum between spec.t and minimal action time Frenet trajectories are set to
@@ -102,20 +102,23 @@ class ActionSpecFilter:
         :param action_specs: list of actions spec
         :param ftrajectories_s: matrix Nx3 of N Frenet trajectories for s component
         :param ftrajectories_d: matrix Nx3 of N Frenet trajectories for d component
-        :param T: array of size N: time horizons for each action
         :param in_padding_mode: boolean array of size N: True if an action is in padding mode
         :return: full Frenet trajectories (s & d)
         """
+        T, T_d = np.array([[spec.t, spec.t_d] for spec in action_specs]).T
+
         # calculate trajectory time indices for all spec.t
         spec_t_idxs = (T / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
+        spec_t_d_idxs = (T_d / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
         spec_t_idxs[in_padding_mode] = 0
+        spec_t_d_idxs[in_padding_mode] = 0
 
         # calculate trajectory time indices for t = max(spec.t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON)
         last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(T) + 1
 
         # pad short ftrajectories beyond spec.t until MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
-        for (spec_t_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
-                zip(spec_t_idxs, last_pad_idxs, ftrajectories_s, ftrajectories_d, action_specs):
+        for (spec_t_idx, spec_t_d_idx, last_pad_idx, trajectory_s, trajectory_d, spec) in \
+                zip(spec_t_idxs, spec_t_d_idxs, last_pad_idxs, ftrajectories_s, ftrajectories_d, action_specs):
             # if spec.t < MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, pad ftrajectories_s from spec.t to
             # MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON
             if spec_t_idx < last_pad_idx:
@@ -125,7 +128,7 @@ class ActionSpecFilter:
                                                               np.zeros_like(times_beyond_spec)]
             # beyond spec.t and beyond MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON pad ftrajectories by 0
             trajectory_s[last_pad_idx:] = 0
-            trajectory_d[spec_t_idx:] = 0
+            trajectory_d[spec_t_d_idx:] = 0
 
         # return full Frenet trajectories
         return np.c_[ftrajectories_s, ftrajectories_d]

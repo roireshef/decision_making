@@ -10,6 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Sta
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from sklearn.utils.extmath import cartesian
@@ -69,7 +70,7 @@ class StaticActionSpace(ActionSpace):
         T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        T_d = StaticActionSpace.specify_lateral_planning_time(
+        T_d = KinematicUtils.specify_lateral_planning_time(
             projected_ego_fstates[:, FS_DA], projected_ego_fstates[:, FS_DV], -projected_ego_fstates[:, FS_DX])
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
@@ -82,25 +83,8 @@ class StaticActionSpace(ActionSpace):
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, vt, st, 0, recipe)
+        action_specs = [ActionSpec(t, td, vt, st, 0, recipe)
                         if ~np.isnan(t) else None
-                        for recipe, t, vt, st in zip(action_recipes, T, v_T, target_s)]
+                        for recipe, t, td, vt, st in zip(action_recipes, T, T_d, v_T, target_s)]
 
         return action_specs
-
-    @staticmethod
-    def specify_lateral_planning_time(a_0: np.array, v_0: np.array, dx: np.array) -> np.array:
-        """
-        Calculate lateral planning times by time-jerk cost optimization. Here we choose the calmest aggressiveness level.
-        :param a_0: initial lateral acceleration in Frenet frame
-        :param v_0: initial lateral velocity in Frenet frame
-        :param dx: array or scalar lateral distance to the target in Frenet frame
-        :return: lateral planning times of the same size like dx or array of size 1 if dx is scalar.
-        """
-        # choose the calmest lateral aggressiveness level
-        weights = np.tile(BP_JERK_S_JERK_D_TIME_WEIGHTS[0], (1 if np.isscalar(dx) else dx.shape[0], 1))
-
-        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1], a_0=a_0, v_0=v_0, v_T=0, dx=dx, T_m=0)
-        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
-        return np.fmin.reduce(roots_d, axis=-1)

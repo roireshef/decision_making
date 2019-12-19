@@ -173,7 +173,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         target_vehicles = [behavioral_state.road_occupancy_grid[cell][0]
                            if len(behavioral_state.road_occupancy_grid[cell]) > 0 else None
                            for cell in relative_cells]
-        T = np.array([spec.t for spec in action_specs])
+        T, T_d = np.array([[spec.t, spec.t_d] for spec in action_specs]).T
 
         # represent initial and terminal boundary conditions (for s axis)
         initial_fstates = np.array([behavioral_state.projected_ego_fstates[cell[LAT_CELL]] for cell in relative_cells])
@@ -182,7 +182,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         # create boolean arrays indicating whether the specs are in tracking mode
         padding_mode = np.array([spec.only_padding_mode for spec in action_specs])
 
-        poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX], padding_mode)
+        poly_coefs_s, _ = KinematicUtils.calc_poly_coefs(T, T_d, initial_fstates[:, :FS_DX], terminal_fstates[:, :FS_DX],
+                                                         padding_mode)
 
         are_valid = []
         for poly_s, cell, target, spec in zip(poly_coefs_s, relative_cells, target_vehicles, action_specs):

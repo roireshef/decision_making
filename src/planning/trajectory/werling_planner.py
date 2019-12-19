@@ -9,7 +9,6 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LAT_ACC_LIMITS_BY_K, \
     TP_LAT_ACC_STRICT_COEF
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -95,7 +94,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
             # Lateral planning horizon (Td)
-            T_d_grid = np.minimum(StaticActionSpace.specify_lateral_planning_time(
+            T_d_grid = np.minimum(KinematicUtils.specify_lateral_planning_time(
                                                 fconstraints_t0._da, fconstraints_t0._dv, -fconstraints_t0._dx),
                                   T_target_horizon)
 
