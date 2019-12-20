@@ -11,7 +11,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT, EPS, \
     TRAJECTORY_TIME_RESOLUTION, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, \
-    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
+    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION, VELOCITY_LIMITS
 from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX, LAT_CELL, FS_SA, FS_SX, FS_SV, Limits
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
@@ -66,16 +66,15 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
                                               and recipe.action_type == ActionType.FOLLOW_ROAD_SIGN]
         return follow_road_sign_valid_action_idxs[0] if len(follow_road_sign_valid_action_idxs) > 0 else -1
 
-    def _get_follow_lane_valid_action_idx(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                                          action_specs: List[ActionSpec], action_specs_mask: List[bool], target_lane: RelativeLane) -> int:
+    def _get_follow_lane_valid_action_idx(self, action_recipes: List[ActionRecipe], action_specs: List[ActionSpec],
+                                          action_specs_mask: List[bool], target_lane: RelativeLane, desired_velocity: float) -> int:
         """
-        Look for valid static action with the minimal aggressiveness level and a scenario-dependent velocity. If a lane change is desired,
-        try to maintain velocity; otherwise, choose the action with the highest velocity.
-        :param behavioral_state: semantic behavioral state, containing the semantic grid
+        Look for valid static action with the minimal aggressiveness level and closest velocity to the desired velocity
         :param action_recipes: action_recipes.
         :param action_specs: specifications of action_recipes
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
         :param target_lane: lane to choose actions from
+        :param desired_velocity: velocity that we want to choose an action closest to
         :return: index of the chosen action_recipe within action_recipes. If there are no valid actions, -1 is returned
         """
         filtered_follow_lane_idxs = [i for i, recipe in enumerate(action_recipes)
@@ -88,19 +87,27 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
             follow_lane_valid_action_idxs = [idx for idx in filtered_follow_lane_idxs
                                              if action_recipes[idx].aggressiveness.value == min_aggr_level]
 
-            # Among the minimal aggressiveness level recipes, choose the velocity based on whether actions are for a lane change or not.
-            if behavioral_state.lane_change_state.get_lane_change_mask([target_lane], behavioral_state.extended_lane_frames)[0]:
-                # If we reach here, actions towards the provided target_lane are lane change actions. Choose the valid action that will
-                # maintain the host's velocity.
-                valid_action_velocities = np.array([action_specs[index].v for index in follow_lane_valid_action_idxs])
-                selected_valid_action_idx = np.argmin(abs(valid_action_velocities - behavioral_state.ego_state.velocity)).item()
-                selected_follow_lane_idx = follow_lane_valid_action_idxs[selected_valid_action_idx]
-            else:
-                # If we're not doing a lane change, choose the valid action with the highest velocity.
-                selected_follow_lane_idx = follow_lane_valid_action_idxs[-1]
+            # Among the minimal aggressiveness level actions, choose the action with the closest velocity to the desired velocity
+            valid_action_velocities = np.array([action_specs[index].v for index in follow_lane_valid_action_idxs])
+            selected_valid_action_idx = np.argmin(abs(valid_action_velocities - desired_velocity)).item()
+            selected_follow_lane_idx = follow_lane_valid_action_idxs[selected_valid_action_idx]
         else:
             selected_follow_lane_idx = -1
         return selected_follow_lane_idx
+
+    def get_desired_velocity_for_lane(self, target_lane: RelativeLane, behavioral_state: BehavioralGridState) -> float:
+        """
+        Based on the target lane and scenario, return the desired velocity
+        :param target_lane: relative lane in question
+        :param behavioral_state: state of the world
+        :return: desired velocity for lane
+        """
+        # If actions towards the target lane are lane change actions, try to maintain the host's current velocity; otherwise,
+        # drive as fast as possible.
+        if behavioral_state.lane_change_state.get_lane_change_mask([target_lane], behavioral_state.extended_lane_frames)[0]:
+            return behavioral_state.ego_state.velocity
+        else:
+            return max(VELOCITY_LIMITS)
 
     def _is_static_action_preferred(self, action_recipes: List[ActionRecipe], road_sign_idx: int, follow_lane_idx: int):
         """
