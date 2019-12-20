@@ -15,6 +15,7 @@ from decision_making.src.planning.behavioral.state.lane_change_state import Lane
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.types import BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, QuinticPoly1D
 from decision_making.src.state.state import State
 from sympy.matrices import *
@@ -239,8 +240,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         w_J_calm, _, w_T_calm = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
         w_J_stand, _, w_T_stand = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
-        s1, t1 = KinematicUtils.specify_quartic_action(w_T_calm, w_J_calm, v_0, v_max, a_0)
+        # s1, t1 = KinematicUtils.specify_quartic_action(w_T_calm, w_J_calm, v_0, v_max, a_0)
         S3_grid, T3_grid = KinematicUtils.specify_quartic_actions(w_T_stand, w_J_stand, v_max, v_grid)
+
+        # quartic action with acceleration peak = LON_ACC_LIMITS[1]
+        a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP
+        a0 = EPS if abs(a_0) < EPS else a_0
+        t1 = 3*(v_max - v_0) * (a0 + a_max - np.sqrt(a_max*(a_max - a0))) / (a0*(a0 + 3*a_max))
+        # t1 = 3*(v_max - v_0) / (2*amax)  # for a_0 = 0
+        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_max, np.array([t1]))
+        s1 = Math.zip_polyval2d(s_profile_coefs, np.array([t1])[:, np.newaxis])[0, 0]
 
         target_v, target_t = np.meshgrid(v_grid, t_grid)
         target_v, target_t = target_v.ravel(), target_t.ravel()
@@ -330,7 +339,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         actors_s.sort()
         actor_i = np.sum(actors_s < 0)
-        print('s_min=', s_min, 's_max=', s_max, 'actors_rel_s=', actors_s[actor_i-1:actor_i+1])
+        print('s_min=', s_min, 's_max=', s_max, 'actors_rel_s=', actors_s)
 
         # calculate planning time bounds given target_s
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
