@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 from decision_making.src.messages.control_status_message import ControlStatus
+from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
@@ -16,9 +17,9 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_CONTROL_STATUS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
-
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES
 from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
+
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet, \
     RepeatedRoadSegments, EgoRoadSegmentNotFound, EgoStationBeyondLaneLength, EgoLaneOccupancyCostIncorrect, \
     RoutePlanningException, MappingException, raises
@@ -38,6 +39,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -62,8 +64,10 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
+        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
+        self._lane_change_state = LaneChangeState()
 
     def _write_filters_to_log_if_required(self, now: float):
         """
@@ -104,10 +108,6 @@ class BehavioralPlanningFacade(DmModule):
         try:
             start_time = time.time()
 
-            # pedal position is a signal used for Driver Initiated Motion
-            # TODO: implement usage in DIM
-            self._get_current_pedal_position()
-
             # Turn signal (blinkers) is a signal used for Lane Change on Demand
             try:
                 turn_signal = self._get_current_turn_signal()
@@ -120,6 +120,16 @@ class BehavioralPlanningFacade(DmModule):
             control_status = self._get_current_control_status()
             is_engaged = control_status is not None and control_status.is_av_engaged()
 
+            # read pedal position from pubsub and update DIM state accordingly
+            try:
+                pedal_position = self._get_current_pedal_position()
+            except MsgDeserializationError as e:
+                self.logger.warning("MsgDeserializationError was raised for pedal position. Overriding with None")
+                pedal_position = None
+            # update pedal press/release times according to the acceleration pedal position
+            if pedal_position is not None:
+                self._driver_initiated_motion_state.update_pedal_times(pedal_position)
+
             with DMProfiler(self.__class__.__name__ + '._get_current_route_plan'):
                 route_plan = self._get_current_route_plan()
                 route_plan_dict = route_plan.to_costs_dict()
@@ -127,7 +137,6 @@ class BehavioralPlanningFacade(DmModule):
             with DMProfiler(self.__class__.__name__ + '.get_scene_static'):
                 scene_static = self._get_current_scene_static()
                 SceneStaticModel.get_instance().set_scene_static(scene_static)
-
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
@@ -137,7 +146,8 @@ class BehavioralPlanningFacade(DmModule):
                                                               selected_gff_segment_ids=self._last_gff_segment_ids,
                                                               route_plan_dict=route_plan_dict,
                                                               logger=self.logger,
-                                                              turn_signal=turn_signal)
+                                                              turn_signal=turn_signal,
+                                                              dim_state=self._driver_initiated_motion_state)
 
                 state.handle_negative_velocities(self.logger)
 
@@ -159,12 +169,24 @@ class BehavioralPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if is_engaged and LocalizationUtils.is_actual_state_close_to_expected_state(
+            
+            # TODO: this check should include is_engaged with <and> *after* the LocalizationUtils check
+            if LocalizationUtils.is_actual_state_close_to_expected_state(
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                # If a lane change is active and we're not localized to a lane in our last action's GFF, that means that we're targeting a
+                # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
+                # the target GFF. This will happen when we're performing a lane change.
+                target_gff = self._lane_change_state.source_lane_gff \
+                    if self._lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane \
+                        and state.ego_state.map_state.lane_id not in self._last_gff_segment_ids \
+                    else None
+
                 updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
-                                                                              self.logger, self.__class__.__name__)
+                                                                              self.logger, self.__class__.__name__, target_gff)
             else:
                 updated_state = state
+
+            self._lane_change_state.update_pre_iteration(updated_state.ego_state)
 
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
@@ -177,12 +199,18 @@ class BehavioralPlanningFacade(DmModule):
             planner = planner_class(self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
-                trajectory_params, samplable_trajectory, behavioral_visualization_message = planner.plan(updated_state, route_plan)
+                trajectory_params, samplable_trajectory, behavioral_visualization_message, behavioral_state, selected_action_spec = \
+                    planner.plan(updated_state, route_plan, self._lane_change_state)
+
+            self._lane_change_state.update_post_iteration(behavioral_state.extended_lane_frames, behavioral_state.projected_ego_fstates,
+                                                          behavioral_state.ego_state, selected_action_spec)
 
             # if AV is disengaged avoid saving the latest trajectory which may hold a random vehicle state,
             # especially when the map is not properly mapped so we may get large YAW offsets leading to large lateral
             # offsets up to even crossing lane boundaries
-            self._last_trajectory = samplable_trajectory if is_engaged else None
+
+            # TODO: this should be set with: if is_engaged else None
+            self._last_trajectory = samplable_trajectory
 
             self._last_gff_segment_ids = trajectory_params.reference_route.segment_ids
 
@@ -303,7 +331,7 @@ class BehavioralPlanningFacade(DmModule):
 
         return takeover_message
 
-    def _get_current_pedal_position(self) -> PedalPosition:
+    def _get_current_pedal_position(self) -> Optional[PedalPosition]:
         """
         Read last message of brake & acceleration pedals position
         :return: PedalPosition

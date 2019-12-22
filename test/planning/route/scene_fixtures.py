@@ -555,6 +555,7 @@ def construction_scene_for_takeover_test(request):
         expected_takeover = True
 
     elif request.param is "scene_three":
+        # TODO: this is now not true since thersholds were increased. Need to change this fixture
         # All lanes are blocked, but the vehicle is not close to crossing into one of them. The takeover flag should be False.
         lane_modifications = {220: [(True,
                                      RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA.value,
@@ -585,6 +586,7 @@ def construction_scene_for_takeover_test(request):
 
         ego_state = generate_ego_state(ego_lane_id=211, ego_lane_station=30)
 
+        expected_takeover = True
     else:
         lane_modifications = {}
 

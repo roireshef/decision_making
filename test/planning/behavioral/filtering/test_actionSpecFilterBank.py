@@ -39,6 +39,8 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_for_oval_track_file, \
     route_plan_1_2, behavioral_grid_state_with_left_lane_ending, state_with_left_lane_ending, follow_2_lanes_recipes
 from decision_making.test.planning.custom_fixtures import tcd_status
+    route_plan_1_2, behavioral_grid_state_with_left_lane_ending, state_with_left_lane_ending
+from decision_making.test.planning.custom_fixtures import tcd_status, lane_change_state
 
 
 def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control,
