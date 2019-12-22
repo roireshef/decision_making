@@ -47,6 +47,13 @@ class LaneMergeState(BehavioralGridState):
         """
         return self.projected_ego_fstates[RelativeLane.SAME_LANE][:FS_DX]
 
+    @ego_fstate_1d.setter
+    def ego_fstate_1d(self, s_state):
+        """
+        :set longitudinal (1D) part of ego Frenet state projected on GFF
+        """
+        self.projected_ego_fstates[RelativeLane.SAME_LANE] = np.concatenate((s_state, np.zeros(FS_1D_LEN)))
+
     @property
     def actors_states(self) -> List[LaneMergeActorState]:
         return [LaneMergeActorState(obj.longitudinal_distance, obj.dynamic_object.velocity, obj.dynamic_object.size.length)
@@ -159,4 +166,3 @@ class LaneMergeState(BehavioralGridState):
         ego_fstate2D = np.concatenate((ego_fstate, np.zeros(FS_1D_LEN)))
         return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D},
                    merge_from_s, red_line_s, target_rel_lane, None, AV_Logger.get_logger())
-

@@ -1,6 +1,7 @@
 from logging import Logger
 from typing import List
 import numpy as np
+import copy
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS, EPS, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, LANE_MERGE_ACTION_T_LIMITS, \
@@ -12,6 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import AggressivenessL
     StaticActionRecipe
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
+from decision_making.src.planning.behavioral.state.lane_merge_actor_state import LaneMergeActorState
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.types import BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -91,24 +93,22 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         target_v, target_t = np.meshgrid(v_grid, t_grid)
         target_v, target_t = target_v.ravel(), target_t.ravel()
-        vts, vts_last = RuleBasedLaneMergePlanner._calculate_safe_target_points(lane_merge_state, target_v, target_t)
-        if vts.shape[0] == 0:
-            return []
 
         # create single-spec quintic safe actions
-        single_actions = RuleBasedLaneMergePlanner._create_quintic_actions(lane_merge_state, vts)
+        single_actions = RuleBasedLaneMergePlanner._create_quintic_actions(lane_merge_state, target_v, target_t)
 
         # create composite "max_velocity" actions, such that each sequence includes quartic + const_max_vel + quartic
-        max_vel_actions = RuleBasedLaneMergePlanner._create_max_vel_actions(lane_merge_state, v_grid, t_grid)
+        max_vel_actions = RuleBasedLaneMergePlanner._create_max_vel_actions(lane_merge_state, target_v, target_t)
 
         stop_actions = []
         # create composite "stop" actions, such that each sequence includes quartic + zero_vel + quartic
         # create stop actions only if there are no single-spec actions, since quintic actions have lower time
         # and lower jerk than composite stop action
-        # stop_actions = RuleBasedLaneMergePlanner._create_braking_actions(lane_merge_state, vts_last)
+        # stop_actions = RuleBasedLaneMergePlanner._create_braking_actions(lane_merge_state, vts)
 
         lane_merge_actions = single_actions + max_vel_actions + stop_actions
 
+        print('# single_actions:', len(single_actions), ', # max_vel_actions:', len(max_vel_actions))
         # print('\ntime = %f: quintic=(%d) quartic=(%d)' % (time.time() - st_tot, len(single_actions), len(max_vel_actions)))
         return np.array(lane_merge_actions)
 
@@ -198,120 +198,117 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return chosen_spec
 
     @staticmethod
-    def _create_quintic_actions(state: LaneMergeState, vts: np.array) -> List[LaneMergeSequence]:
+    def _create_quintic_actions(state: LaneMergeState, target_v: np.array, target_t: np.array) -> List[LaneMergeSequence]:
+
+        vts = RuleBasedLaneMergePlanner._calculate_safe_target_points(state, target_v, target_t)
+        if vts.shape[0] == 0:
+            return []
         v_T, T, ds = vts.T
 
         # calculate s_profile coefficients for all actions
         ego_fstate = state.ego_fstate_1d
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
-        poly_coefs = QuinticPoly1D.position_profile_coefficients(a_0, v_0, v_T, ds, T)
 
-        # the fast analytic kinematic filter reduce the load on the regular kinematic filter
-        # calculate actions that don't violate acceleration limits
-        valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
-        if not valid_acc.any():
-            return []
-        velocity_limits = np.array([0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH])
-        valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], velocity_limits)
-        valid_idxs = np.where(valid_acc)[0][valid_vel]
+        # filter actions violating velocity or acceleration limits
+        valid_idxs = RuleBasedLaneMergePlanner._validate_vel_acc_limits(a_0, v_0, v_T, ds, T)
 
         actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())])
                    for t, vT, s in zip(T[valid_idxs], v_T[valid_idxs], ds[valid_idxs])]
         return actions
 
     @staticmethod
-    def _create_max_vel_actions(state: LaneMergeState, v_grid: np.array, t_grid: np.array) -> List[LaneMergeSequence]:
+    def _create_max_vel_actions(state: LaneMergeState, target_v: np.array, target_t: np.array) -> List[LaneMergeSequence]:
         """
         Given array of final velocities, create composite safe actions:
             1. quartic CALM acceleration to v_max,
             2. constant velocity with v_max,
             3. quartic STANDARD deceleration to v_T.
         :param state: lane merge state
-        :param v_grid: array of final velocities
-        :param t_grid: array of planning times
+        :param target_v: array of final velocities
+        :param target_t: array of planning times
         :return: list of safe composite actions
         """
-        s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
-        s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
-
         v_max = LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
         ego_fstate = state.ego_fstate_1d
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
 
-        w_J_calm, _, w_T_calm = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
-        w_J_stand, _, w_T_stand = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
-        # s1, t1 = KinematicUtils.specify_quartic_action(w_T_calm, w_J_calm, v_0, v_max, a_0)
-        S3_grid, T3_grid = KinematicUtils.specify_quartic_actions(w_T_stand, w_J_stand, v_max, v_grid)
+        # constant acceleration
+        a_max = LON_ACC_LIMITS[1] * np.arange(1, 0.5, -0.05)
+        t1_arr = (v_max - v_0) / a_max
+        s1_arr = 0.5 * (v_0 + v_max) * t1_arr
+        acc_poly_coefs = QuinticPoly1D.position_profile_coefficients(a_0, v_0, v_max, s1_arr, t1_arr)
+        valid_acc = QuinticPoly1D.are_accelerations_in_limits(acc_poly_coefs, t1_arr, LON_ACC_LIMITS)
+        valid_idx = np.argmax(valid_acc)
+        t1, s1 = t1_arr[valid_idx], s1_arr[valid_idx]
 
-        # quartic action with acceleration peak = LON_ACC_LIMITS[1]
-        a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP
-        a0 = EPS if abs(a_0) < EPS else a_0
-        t1 = 3*(v_max - v_0) * (a0 + a_max - np.sqrt(a_max*(a_max - a0))) / (a0*(a0 + 3*a_max))
-        # t1 = 3*(v_max - v_0) / (2*amax)  # for a_0 = 0
-        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_max, np.array([t1]))
-        s1 = Math.zip_polyval2d(s_profile_coefs, np.array([t1])[:, np.newaxis])[0, 0]
+        # # quartic action with acceleration peak = LON_ACC_LIMITS[1]
+        # a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP
+        # a0 = EPS if abs(a_0) < EPS else a_0
+        # t1 = 3*(v_max - v_0) * (a0 + a_max - np.sqrt(a_max*(a_max - a0))) / (a0*(a0 + 3*a_max))
+        # # t1 = 3*(v_max - v_0) / (2*amax)  # for a_0 = 0
+        # s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_max, np.array([t1]))
+        # s1 = Math.zip_polyval2d(s_profile_coefs, np.array([t1])[:, np.newaxis])[0, 0]
 
-        target_v, target_t = np.meshgrid(v_grid, t_grid)
-        target_v, target_t = target_v.ravel(), target_t.ravel()
-        mesh_to_v_grid = np.tile(np.arange(len(v_grid)), len(t_grid))
-        S3 = S3_grid[mesh_to_v_grid]
-        T3 = T3_grid[mesh_to_v_grid]
+        # create future state when ego will accelerate to the maximal velocity
+        future_actors = [LaneMergeActorState(actor.s_relative_to_ego + t1*actor.velocity - s1, actor.velocity, actor.length)
+                         for actor in state.actors_states]
+        max_vel_state = LaneMergeState.create_thin_state(state.ego_state.size.length, np.array([ego_fstate[FS_SX] + s1, v_max, 0]),
+                                                         future_actors, state.merge_from_s_on_ego_gff, state.red_line_s_on_ego_gff)
+        future_target_v = target_v[target_t > t1]
+        future_target_t = target_t[target_t > t1] - t1
 
-        T2 = target_t - t1 - T3
-        S2 = T2 * v_max
-        ds = s1 + S2 + S3
-        valid = (s_min < ds) & (ds < s_max) & (T2 > 0)
-        if not valid.any():
+        # calculate candidate safe end-points of quintic actions starting from max_vel_state
+        vts = RuleBasedLaneMergePlanner._calculate_safe_target_points(max_vel_state, future_target_v, future_target_t)
+        if vts.shape[0] == 0:
             return []
-        T2, S2, T3, S3, v_end, t_end, ds = T2[valid], S2[valid], T3[valid], S3[valid], target_v[valid], target_t[valid], ds[valid]
+        v_T, T, ds = vts.T
 
-        actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
-                                                      for actor in state.actors_states]).T
-        margins = 0.5 * (actors_length + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
-        safety_dist = RuleBasedLaneMergePlanner._caclulate_RSS_distances(
-            actors_s[:, np.newaxis], actors_v[:, np.newaxis], margins[:, np.newaxis], v_end, t_end, ds)
-        is_safe = safety_dist > 0
+        # filter actions violating velocity or acceleration limits
+        valid_idxs = RuleBasedLaneMergePlanner._validate_vel_acc_limits(0, v_max, v_T, ds, T)
 
         actions = []
-        for t2, s2, t3, s3, v_t in zip(T2[is_safe], S2[is_safe], T3[is_safe], S3[is_safe], v_end[is_safe]):
-            action1 = LaneMergeSpec(t1, v_0, a_0, v_max, s1, QuarticPoly1D.num_coefs())
-            action2 = LaneMergeSpec(t2, v_max, 0, v_max, s2, poly_coefs_num=2)
-            action3 = LaneMergeSpec(t3, v_max, 0, v_t, s3, QuarticPoly1D.num_coefs())
-            actions.append(LaneMergeSequence([action1, action2, action3]))
+        for t2, s2, v_t in zip(T[valid_idxs], ds[valid_idxs], v_T[valid_idxs]):
+            action1 = LaneMergeSpec(t1, v_0, a_0, v_max, s1, QuinticPoly1D.num_coefs())
+            action2 = LaneMergeSpec(t2, v_max, 0, v_t, s2, QuinticPoly1D.num_coefs())
+            actions.append(LaneMergeSequence([action1, action2]))
 
         return actions
 
     @staticmethod
-    def _create_braking_actions(state: LaneMergeState, vts_last: np.array) -> List[LaneMergeSequence]:
+    def _create_braking_actions(state: LaneMergeState, bounds: np.array, vts: np.array) -> List[LaneMergeSequence]:
 
         ego_fstate = state.ego_fstate_1d
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
-        terminal_v, terminal_t, terminal_s = vts_last.T
 
         # specify aggressive stop
         w_J_agg, _, w_T_agg = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
         brake_distance, brake_time = KinematicUtils.specify_quartic_action(w_T_agg, w_J_agg, v_0, 0., a_0)
 
-        # specify quartic accelerations to the terminal states
-        acc_dist = terminal_s - brake_distance
-        acc_time = 2 * acc_dist / terminal_v
-        acc_poly_s = QuarticPoly1D.position_profile_coefficients(a_0=0, v_0=0, v_T=terminal_v, T=acc_time)
-        valid_acc = QuarticPoly1D.are_accelerations_in_limits(acc_poly_s, acc_time, LON_ACC_LIMITS)
-        valid_idxs = np.where((acc_dist > 0) & (brake_time + acc_time <= terminal_t) & valid_acc)[0]
-
-        # create actions with full stop
-        actions = []
-        for t_acc, s_acc, v_term, t_term in zip(acc_time[valid_idxs], acc_dist[valid_idxs], terminal_v[valid_idxs],
-                                                terminal_t[valid_idxs]):
-            action1 = LaneMergeSpec(brake_time, v_0, a_0, 0, brake_distance, QuarticPoly1D.num_coefs())
-            action2 = LaneMergeSpec(t_term - (brake_time + t_acc), 0, 0, 0, 0, poly_coefs_num=2)
-            action3 = LaneMergeSpec(t_acc, 0, 0, v_term, s_acc, QuarticPoly1D.num_coefs())
-            actions.append(LaneMergeSequence([action1, action2, action3]))
-
         # create actions that start during the braking (before the full stop)
         brake_poly_s = QuarticPoly1D.position_profile_coefficients(a_0=a_0, v_0=v_0, v_T=0, T=np.array([brake_time]))
         brake_t = np.arange(start=2, stop=brake_time, step=1)
         brake_s, brake_v, brake_a = QuarticPoly1D.polyval_with_derivatives(brake_poly_s, brake_t)[0].T
+
+        v_T, T, ds = vts.T
+        acc_poly_coefs = QuinticPoly1D.position_profile_coefficients(0, brake_v, v_T, ds - brake_s, T)
+
+        # the fast analytic kinematic filter reduce the load on the regular kinematic filter
+        # calculate actions that don't violate acceleration limits
+        valid_acc = QuinticPoly1D.are_accelerations_in_limits(acc_poly_coefs, T, LON_ACC_LIMITS)
+        velocity_limits = np.array([0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH])
+        valid_vel = QuinticPoly1D.are_velocities_in_limits(acc_poly_coefs[valid_acc], T[valid_acc], velocity_limits)
+        valid_idxs = np.where(valid_acc)[0][valid_vel]
+
+        actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())])
+                   for t, vT, s in zip(T[valid_idxs], v_T[valid_idxs], ds[valid_idxs])]
+
+        # create actions with full stop
+        a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP
+        acc_time = 3*(target_v - v_0) / (2*a_max)  # for a_0 = 0
+        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(0, 0, target_v, acc_time)
+        acc_dist = Math.zip_polyval2d(s_profile_coefs, acc_time[:, np.newaxis])[0, 0]
+
+        actions = []
 
         return actions
 
@@ -324,11 +321,11 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :param state: lane merge state
         :return: two 2D arrays of [v_T, T, s], where ego is safe at target_s relatively to all actors
         """
-        s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
-        s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
+        ego_fstate = state.ego_fstate_1d
+        s_min = max(0, state.merge_from_s_on_ego_gff - ego_fstate[FS_SX])
+        s_max = state.red_line_s_on_ego_gff - ego_fstate[FS_SX]
 
         ego_length = state.ego_length
-        ego_fstate = state.ego_fstate_1d
         actors_states = state.actors_states
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in actors_states]).T
@@ -401,13 +398,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             important_bounds[unsafe_optimal_s_idxs, above_unsafe_optimal_bound_idxs],
             target_v_unsafe_optimal, target_t_unsafe_optimal)
         vts = np.concatenate((vts_optimal, vts_under_optimal, vts_above_optimal), axis=0)
-
-        # for each [target_v, target_t], find s of the last safe bound
-        last_bound_idxs = np.argmax(important_bounds == np.inf, axis=-1) - 1
-        vts_last = RuleBasedLaneMergePlanner._calculate_points_for_safe_bounds(
-            important_bounds[range(important_bounds.shape[0]), last_bound_idxs], target_v, target_t)
-
-        return vts, vts_last
+        return vts
 
     @staticmethod
     def _calculate_points_for_safe_bounds(bounds: np.array, target_v: np.array, target_t: np.array):
@@ -420,6 +411,18 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         actions_with_valid_bounds = np.where(np.isfinite(bounds))[0]
         return np.c_[target_v[actions_with_valid_bounds], target_t[actions_with_valid_bounds], bounds[actions_with_valid_bounds]]
+
+    @staticmethod
+    def _validate_vel_acc_limits(a_0: float, v_0: float, v_T: np.array, ds: np.array, T: np.array):
+        poly_coefs = QuinticPoly1D.position_profile_coefficients(a_0, v_0, v_T, ds, T)
+        # the fast analytic kinematic filter reduce the load on the regular kinematic filter
+        # calculate actions that don't violate acceleration limits
+        valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+        if not valid_acc.any():
+            return []
+        velocity_limits = np.array([0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH])
+        valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], velocity_limits)
+        return np.where(valid_acc)[0][valid_vel]
 
     @staticmethod
     def _caclulate_RSS_distances(actors_s: np.array, actors_v: np.array, margins: np.array,
