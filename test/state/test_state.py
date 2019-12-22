@@ -71,7 +71,7 @@ def test_createStateFromSceneDyamic_twoHostHypotheses_correctHostLocalization(pu
 
 
 def test_createStateFromSceneDyamic_threeHostHypotheses_correctHostLocalization(pubsub: PubSub,
-                                                                              scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
+                                                                                scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action
@@ -91,7 +91,7 @@ def test_createStateFromSceneDyamic_threeHostHypotheses_correctHostLocalization(
 
 
 def test_createStateFromSceneDyamic_noGFFDifferentEndCosts_correctHostLocalization(pubsub: PubSub,
-                                                                                scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
+                                                                                   scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action
@@ -113,7 +113,7 @@ def test_createStateFromSceneDyamic_noGFFDifferentEndCosts_correctHostLocalizati
 
 
 def test_createStateFromSceneDyamic_noGFFSimilarEndCosts_correctHostLocalization(pubsub: PubSub,
-                                                                                scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
+                                                                                 scene_dynamic_fix_three_host_hypotheses: SceneDynamic):
     """
     :param scene_dynamic_fix: Fixture of scene dynamic
     :param gff_segment_ids: GFF lane segment ids for last action

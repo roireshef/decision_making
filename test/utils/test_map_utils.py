@@ -20,7 +20,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_on_left_and_right_left_first, \
     route_plan_lane_splits_on_left_and_right_right_first, behavioral_grid_state_with_stop_bar
-from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3
+from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3, lane_change_state
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_left_first, \

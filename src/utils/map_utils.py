@@ -505,31 +505,48 @@ class MapUtils:
 
     @staticmethod
     def get_closest_stop_bar(target_lane_frenet: GeneralizedFrenetSerretFrame, ego_location: float,
-                             offset_to_ego: float, logger: Logger = None) -> Optional[Tuple[TrafficControlBar, float]]:
+                             offset_to_ego: float, stop_bar_id_to_ignore: int = None, logger: Logger = None) -> \
+            Tuple[Optional[Tuple[TrafficControlBar, float]], float]:
         """
         Returns the closest stop bar and its distance.
         No existence checks necessary, as it was already tested by FilterActionsTowardsCellsWithoutRoadSigns
         :param target_lane_frenet:
         :param ego_location: on GFF
         :param offset_to_ego the offset relative to the ego location from which to start looking for a stop bar
+        :param stop_bar_id_to_ignore: id of stop sign/bar to ignore (used by driver initiated motion)
         :param logger:
-        :return: tuple of (closest stop bar, distance to closest stop bar) or None if not found
+        :return: tuple of (closest stop bar, distance to closest stop bar, distance to ignored) or None if not found
+        and distance to ignored stop bar (or None)
         """
         # TODO Possibly apply the DIM_MARGIN_TO_STOP_BAR only if there is no other stop bar close in front,
         #  to handle case of 2 close stop bars say DIM_MARGIN_TO_STOP_BAR-1 apart
         stop_bars_and_distances = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - offset_to_ego)
         static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
 
-        # check for active stop bar from the closest to the farthest
+        ignored_distance = None
+        # check for active stop bar from the closest to the farthest (ignored should be first if it exists)
         for stop_bar, distance in stop_bars_and_distances:
-            # Only considers TCB is in front of (ego_location - DIM_MARGIN_TO_STOP_BAR)
-            active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
-            road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds,
-                                                                               logger)
-            should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
-            if should_stop:
-                return stop_bar, distance
-        return None
+            if stop_bar.e_i_traffic_control_bar_id != stop_bar_id_to_ignore:
+                # Only considers TCB is in front of (ego_location - DIM_MARGIN_TO_STOP_BAR)
+                active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
+                road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds,
+                                                                                   logger)
+                should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
+                if logger is not None:
+                    logger.debug("Stop bar check id %d at distance %f active S-TCD %s active D-TCD %s, ego at %f, stop? %s",
+                                 stop_bar.e_i_traffic_control_bar_id, distance,
+                                 [(active_static_tcd.object_id, active_static_tcd.e_e_traffic_control_device_type)
+                                  for active_static_tcd in active_static_tcds],
+                                 [(active_dynamic_tcd[0].object_id, active_dynamic_tcd[0].e_e_traffic_control_device_type,
+                                   MapUtils._get_confident_status(active_dynamic_tcd[1]))
+                                  for active_dynamic_tcd in active_dynamic_tcds],
+                                 ego_location, should_stop)
+                if should_stop:
+                    return (stop_bar, distance), ignored_distance
+            else:
+                ignored_distance = distance
+                logger.debug("Stop bar ignored id %d distance %f", stop_bar_id_to_ignore, ignored_distance)
+        return None, ignored_distance
 
     @staticmethod
     def get_traffic_control_bars_s(lane_frenet: GeneralizedFrenetSerretFrame, start_offset: float) -> \
@@ -705,6 +722,7 @@ class MapUtils:
         Red line is s coordinate, from which host starts to interference laterally with the main road actors.
         We assume that there is a host's road segment starting from the red line and ending at the merge point.
         If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
+        If there is a stop bar/sign before the red line, then return None.
         :param initial_lane_id: current lane id of ego
         :param initial_s: s of ego on initial_lane_id
         :param lookahead_distance: maximal lookahead for the lane merge from ego location
@@ -723,6 +741,13 @@ class MapUtils:
             if cumulative_length > lookahead_distance:
                 break
             current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
+
+            # if there is a stop bar/sign before the red line, then return None
+            # TODO is this a good restriction ???
+            stop_bars = current_lane_segment.as_traffic_control_bar
+            if len(stop_bars) > 0:
+                break
+
             downstream_connectivity = current_lane_segment.as_downstream_lanes
 
             # Red line is s coordinate, from which host starts to interference laterally with the main road actors.

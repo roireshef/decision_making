@@ -7,11 +7,11 @@ from unittest.mock import patch
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_lane_split_on_right, state_with_lane_split_on_left, \
     state_with_lane_split_on_left_and_right
 from decision_making.test.planning.custom_fixtures import route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_1_2, \
-    route_plan_lane_split_on_left_and_right
+    route_plan_lane_split_on_left_and_right, lane_change_state
 
 
-def test_findMinCostAugmentedLane_rightSplitLowerCost(state_with_lane_split_on_right, route_plan_lane_split_on_right):
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right, route_plan_lane_split_on_right, None)
+def test_findMinCostAugmentedLane_rightSplitLowerCost(state_with_lane_split_on_right, route_plan_lane_split_on_right, lane_change_state):
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right, route_plan_lane_split_on_right, lane_change_state, None)
     evaluator = AugmentedLaneActionSpecEvaluator(None)
     # set route cost of lane 21 to have a high cost, leading to the right split maneuver towards lane 20 to be cheaper
     route_plan_lane_split_on_right.s_Data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1
@@ -20,8 +20,8 @@ def test_findMinCostAugmentedLane_rightSplitLowerCost(state_with_lane_split_on_r
     assert min_cost_lane == RelativeLane.RIGHT_LANE
 
 
-def test_findMinCostAugmentedLane_rightSplitHigherCost(state_with_lane_split_on_right, route_plan_lane_split_on_right):
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right, route_plan_lane_split_on_right, None)
+def test_findMinCostAugmentedLane_rightSplitHigherCost(state_with_lane_split_on_right, route_plan_lane_split_on_right, lane_change_state):
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right, route_plan_lane_split_on_right, lane_change_state, None)
     evaluator = AugmentedLaneActionSpecEvaluator(None)
     # set route cost of lane 20 to have a high cost, leading to the same lane maneuver towards lane 21 to be cheaper
     route_plan_lane_split_on_right.s_Data.as_route_plan_lane_segments[1][0].e_cst_lane_end_cost = 1
@@ -30,8 +30,8 @@ def test_findMinCostAugmentedLane_rightSplitHigherCost(state_with_lane_split_on_
     assert min_cost_lane == RelativeLane.SAME_LANE
 
 
-def test_findMinCostAugmentedLane_leftSplitLowerCost(state_with_lane_split_on_left, route_plan_lane_split_on_left):
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left, route_plan_lane_split_on_left, None)
+def test_findMinCostAugmentedLane_leftSplitLowerCost(state_with_lane_split_on_left, route_plan_lane_split_on_left, lane_change_state):
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left, route_plan_lane_split_on_left, lane_change_state, None)
     evaluator = AugmentedLaneActionSpecEvaluator(None)
     # set route cost of lane 21 to have a high cost, leading to the left split lane maneuver towards lane 22 to be cheaper
     route_plan_lane_split_on_left.s_Data.as_route_plan_lane_segments[1][1].e_cst_lane_end_cost = 1
@@ -39,9 +39,9 @@ def test_findMinCostAugmentedLane_leftSplitLowerCost(state_with_lane_split_on_le
     min_cost_lane = evaluator._find_min_cost_augmented_lane(behavioral_grid_state, route_plan_lane_split_on_left)
     assert min_cost_lane == RelativeLane.LEFT_LANE
 
-def test_findMinCostAugmentedLane_leftSplitHigherCost(state_with_lane_split_on_left, route_plan_lane_split_on_left):
+def test_findMinCostAugmentedLane_leftSplitHigherCost(state_with_lane_split_on_left, route_plan_lane_split_on_left, lane_change_state):
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left,
-                                                                  route_plan_lane_split_on_left, None)
+                                                                  route_plan_lane_split_on_left, lane_change_state, None)
     evaluator = AugmentedLaneActionSpecEvaluator(None)
     # set route cost of lane 22 to have a high cost, leading to the same lane lane maneuver towards lane 21 to be cheaper
     route_plan_lane_split_on_left.s_Data.as_route_plan_lane_segments[1][2].e_cst_lane_end_cost = 1
@@ -50,9 +50,9 @@ def test_findMinCostAugmentedLane_leftSplitHigherCost(state_with_lane_split_on_l
     assert min_cost_lane == RelativeLane.SAME_LANE
 
 @patch('decision_making.src.planning.behavioral.evaluators.lane_based_action_spec_evaluator.PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT', False)
-def test_findMinCostAugmentedLane_leftRightSplit_usePreference(state_with_lane_split_on_left_and_right, route_plan_lane_split_on_left_and_right):
+def test_findMinCostAugmentedLane_leftRightSplit_usePreference(state_with_lane_split_on_left_and_right, route_plan_lane_split_on_left_and_right, lane_change_state):
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_and_right,
-                                                                  route_plan_lane_split_on_left_and_right, None)
+                                                                  route_plan_lane_split_on_left_and_right, lane_change_state, None)
     evaluator = AugmentedLaneActionSpecEvaluator(None)
 
     # based on PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT = False, the right split should be taken when the straight lane 21 has a high cost
