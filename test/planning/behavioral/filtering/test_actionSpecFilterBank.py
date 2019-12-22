@@ -7,7 +7,6 @@ from decision_making.src.planning.types import FS_SX
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_accel_towards_vehicle
 from typing import List
 from unittest.mock import patch
 
@@ -25,6 +24,7 @@ from decision_making.src.planning.behavioral.filtering.recipe_filtering import R
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
 
+from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_accel_towards_vehicle
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_acceleration_towards_vehicle, \
     behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode, \
@@ -38,8 +38,6 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
     behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_for_oval_track_file, \
     route_plan_1_2, behavioral_grid_state_with_left_lane_ending, state_with_left_lane_ending, follow_2_lanes_recipes
-from decision_making.test.planning.custom_fixtures import tcd_status
-    route_plan_1_2, behavioral_grid_state_with_left_lane_ending, state_with_left_lane_ending
 from decision_making.test.planning.custom_fixtures import tcd_status, lane_change_state
 
 
