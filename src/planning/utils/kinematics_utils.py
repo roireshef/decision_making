@@ -1,16 +1,17 @@
 import numpy as np
 from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
-    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, LAT_ACC_LIMITS_BY_K
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
     FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
-from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class KinematicUtils:
@@ -263,42 +264,6 @@ class KinematicUtils:
         return frenet_lateral_movement_is_feasible
 
     @staticmethod
-    def create_linear_profile_polynomial_pair(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
-        """
-        Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
-        velocity). Those polynomials are degenerate to s(t)=v*t+x form
-        :param frenet_state: the current frenet state to pull positions and velocities from
-        :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
-        """
-        poly_s, poly_d = KinematicUtils.create_linear_profile_polynomial_pairs(frenet_state[np.newaxis])
-        return poly_s[0], poly_d[0]
-
-    @staticmethod
-    def create_linear_profile_polynomial_pairs(frenet_states: FrenetStates2D) -> (np.ndarray, np.ndarray):
-        """
-        Given N frenet states, create two Nx6 matrices (s, d) of polynomials that assume constant velocity
-        (we keep the same momentary velocity). Those polynomials are degenerate to s(t)=v*t+x form
-        :param frenet_states: the current frenet states to pull positions and velocities from
-        :return: a tuple of Nx6 matrices (s(t), d(t)) polynomial coefficient arrays
-        """
-        # zero 4 highest coefficients of poly_s: from x^5 until x^2 (including)
-        poly_s = np.c_[np.zeros((frenet_states.shape[0], S2+1)), frenet_states[:, FS_SV], frenet_states[:, FS_SX]]
-        # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
-        poly_d = np.zeros((frenet_states.shape[0], QuinticPoly1D.num_coefs()))
-        return poly_s, poly_d
-
-    @staticmethod
-    def create_ego_by_goal_state(goal_frenet_state: FrenetState2D, ego_to_goal_time: float) -> FrenetState2D:
-        """
-        calculate Frenet state in ego time, such that its constant-velocity prediction in goal time is goal_frenet_state
-        :param goal_frenet_state: goal Frenet state
-        :param ego_to_goal_time: the difference between the goal time and ego time
-        :return: ego by goal frenet state
-        """
-        return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV],
-                         goal_frenet_state[FS_SV], 0, 0, 0, 0])
-
-    @staticmethod
     def calc_poly_coefs(T: np.array, initial_fstates, terminal_fstates, padding_mode: np.array) -> [np.array, np.array]:
         """
         Given initial and end constraints for multiple actions and their time horizons, calculate polynomials,
@@ -329,7 +294,7 @@ class KinematicUtils:
                 poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
         # create linear polynomials for padding mode
-        poly_coefs_s[padding_mode], _ = KinematicUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
+        poly_coefs_s[padding_mode], _ = FrenetUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
         return poly_coefs_s, poly_coefs_d
 
 

@@ -2,20 +2,19 @@ from logging import Logger
 from typing import List
 
 import numpy as np
-
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
+from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT, EPS, \
+    TRAJECTORY_TIME_RESOLUTION, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, \
+    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe, AggressivenessLevel, DynamicActionRecipe, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT, EPS, \
-    TRAJECTORY_TIME_RESOLUTION, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, \
-    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
-from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX, LAT_CELL, FS_SA, FS_SX, FS_SV, Limits
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
-from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
@@ -282,7 +281,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
-            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
+            target_poly_s, _ = FrenetUtils.create_linear_profile_polynomial_pair(target_fstate)
 
             # minimal margin used in addition to headway (center-to-center of both objects)
             # Uses LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT and not LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, as otherwise

@@ -18,6 +18,7 @@ from decision_making.src.planning.behavioral.filtering.constraint_spec_filter im
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K, FS_SX
 from decision_making.src.planning.types import LAT_CELL
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
@@ -192,7 +193,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
-            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
+            target_poly_s, _ = FrenetUtils.create_linear_profile_polynomial_pair(target_fstate)
 
             # minimal margin used in addition to headway (center-to-center of both objects)
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \

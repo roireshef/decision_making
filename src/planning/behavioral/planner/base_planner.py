@@ -4,8 +4,7 @@ from abc import abstractmethod, ABCMeta
 
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_planning_utils import BehavioralPlanningUtils
-from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from logging import Logger
 
 import rte.python.profiler as prof
@@ -22,10 +21,8 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, ActionSpecArray
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.types import FS_SX, ActionSpecArray
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, State
 from decision_making.src.utils.map_utils import MapUtils
@@ -63,7 +60,7 @@ class BasePlanner:
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
         timestamp_in_sec = state.ego_state.timestamp_in_sec
-        baseline_trajectory = BehavioralPlanningUtils.generate_baseline_trajectory(
+        baseline_trajectory = FrenetUtils.generate_baseline_trajectory(
             timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
