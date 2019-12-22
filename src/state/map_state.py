@@ -31,5 +31,5 @@ class MapState(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsub_msg: TsSYSMapState)-> ():
+    def deserialize(cls, pubsub_msg: TsSYSMapState) -> ():
         return cls(pubsub_msg.a_LaneFState, pubsub_msg.e_i_LaneID)
