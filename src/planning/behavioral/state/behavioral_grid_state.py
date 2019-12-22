@@ -691,7 +691,8 @@ class BehavioralGridState:
         :param relative_lane: in the GFF
         :return: tuple of (closest stop bar, its distance.)
         """
-        return self.tcb_in_gff_and_their_distances[relative_lane]
+        return self.tcb_in_gff_and_their_distances[relative_lane] \
+            if relative_lane in self.tcb_in_gff_and_their_distances else None
 
     def get_ignored_stop_bar_distance(self, relative_lane: RelativeLane) -> float:
         """
