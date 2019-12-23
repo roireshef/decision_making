@@ -71,13 +71,16 @@ def plot_dynamics(log_file_path: str):
     vel_limit = []
     vel_limit_time = []
 
+    engaged = []
+    engaged_time = []
+
     while True:
         text = f.readline()
         if not text:
             break
 
         if 'Received state' in text:
-            state_str = text.split('Received state: ')[1]
+            state_str = text.split('Received state: ')[1].replace('inf', 'None')
             state_dict = ast.literal_eval(state_str)
             ego_cv.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_V])
             ego_ca.append(state_dict['ego_state']['_cached_cartesian_state']['array'][C_A])
@@ -200,6 +203,15 @@ def plot_dynamics(log_file_path: str):
                     vel_limit.append(speed_limit_per_lane[ego_lane_id])
                     vel_limit_time.append(float(text.split('Speed limits at time')[1].split(':')[0]))
 
+        if 'Received ControlStatus message' in text:
+            msg = text.split('Timestamp: :')[1]
+            parts = msg.split('engaged')
+            try:
+                engaged_time.append(time)  # using time since the timestamp attached to this message is in system time, not ego time
+                engaged.append(int(parts[1]))
+            except NameError:
+                pass  # do nothing if time was not initialized yet
+
     f = plt.figure(1)
 
     ax1 = plt.subplot(5, 2, 1)
@@ -272,14 +284,15 @@ def plot_dynamics(log_file_path: str):
     bp_if_lat,  = plt.plot(bp_if_time, bp_if_lat_err, 'o--')
     tp_if_lon,  = plt.plot(tp_if_time, tp_if_lon_err, 'o-.')
     tp_if_lat,  = plt.plot(tp_if_time, tp_if_lat_err, 'o--')
+    engaged_plt, = plt.plot(engaged_time, engaged, 'o--')
 
     lon_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LON, linewidth=1, color='k', linestyle='-.')
     lat_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LAT, linewidth=1, color='k', linestyle='--')
 
     plt.xlabel('time[s]')
     plt.ylabel('loc/tracking errors')
-    plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th],
-               ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold'])
+    plt.legend([bp_if_lon, bp_if_lat, tp_if_lon, tp_if_lat, lon_th, lat_th, engaged_plt],
+               ['BP-Lon', 'BP-Lat', 'TP-Lon', 'TP-Lat', 'Lon threshold', 'Lat threshold', 'engaged'])
     plt.grid(True)
 
     ax7 = plt.subplot(5, 2, 7, sharex=ax1)
@@ -319,6 +332,7 @@ def plot_dynamics(log_file_path: str):
 
     ax9 = plt.subplot(5, 2, 8, sharex=ax1)
     ego_sv_plt, = plt.plot(timestamp_in_sec, ego_sv, 'k-', alpha=0.2)
+    plt.plot(timestamp_in_sec[0:-1:10], ego_sv[0:-1:10], 'kx', alpha=0.2)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_V], '-.')
 
@@ -329,6 +343,7 @@ def plot_dynamics(log_file_path: str):
 
     ax10 = plt.subplot(5, 2, 10, sharex=ax1)
     ego_sa_plt, = plt.plot(timestamp_in_sec, ego_sa, 'k-', alpha=0.2)
+    plt.plot(timestamp_in_sec[0:-1:10], ego_sa[0:-1:10], 'kx', alpha=0.2)
     for t, traj in zip(trajectory_time, trajectory):
         plt.plot(t + np.arange(len(traj)) * 0.1, traj[:, C_A], '-.')
     no_valid_traj_plot = plt.scatter(no_valid_traj_timestamps, [1]*len(no_valid_traj_timestamps), s=5, c='k')

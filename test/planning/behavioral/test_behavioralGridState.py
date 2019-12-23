@@ -2,6 +2,7 @@ from decision_making.src.global_constants import MAX_BACKWARD_HORIZON, MAX_FORWA
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLongitudinalPosition
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
+from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from rte.python.logger.AV_logger import AV_Logger
 from unittest.mock import patch
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
@@ -10,8 +11,8 @@ from decision_making.src.utils.map_utils import MapUtils
 import numpy as np
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.state.state import DynamicObject, MapState, ObjectSize
-from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment
+from decision_making.src.state.state import DynamicObject, MapState, ObjectSize, State
+from decision_making.src.messages.route_plan_message import RoutePlanLaneSegment, RoutePlan
 from decision_making.src.exceptions import UpstreamLaneNotFound
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
@@ -25,20 +26,24 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     state_with_lane_split_on_left_and_right_right_first, state_with_object_after_merge, state_with_objects_around_3to1_merge, \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, state_with_objects_for_filtering_too_aggressive, \
     route_plan_20_30, create_route_plan_msg, route_plan_lane_splits_on_left_and_right_left_first, \
-    route_plan_lane_splits_on_left_and_right_right_first, state_with_five_objects_on_oval_track, route_plan_for_oval_track_file
+    route_plan_lane_splits_on_left_and_right_right_first, state_with_five_objects_on_oval_track, route_plan_for_oval_track_file, \
+    behavioral_grid_state_with_scene_short_testable, state_with_scene_static_short_testable, state_with_ego_at_split_on_oval, \
+    behavioral_grid_state_with_split_on_oval, state_with_ego_at_merge_on_oval, behavioral_grid_state_with_merge_on_oval, \
+    route_plan_for_mound_north_file
 
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, route_plan_1_2_3, route_plan_left_lane_ends, route_plan_right_lane_ends, \
-    route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right
+    route_plan_lane_split_on_right, route_plan_lane_split_on_left, route_plan_lane_split_on_left_and_right, lane_change_state
 
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, right_lane_split_scene_static, \
     left_right_lane_split_scene_static, scene_static_short_testable, scene_static_left_lane_ends, scene_static_right_lane_ends, \
     left_lane_split_scene_static, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_left_first, \
-    scene_static_lane_splits_on_left_and_right_right_first, scene_static_oval_with_splits
+    scene_static_lane_splits_on_left_and_right_right_first, scene_static_oval_with_splits, scene_static_mound_road_north, \
+    scene_dynamic_obj_intruding_in_lane_mound_road_north
 
 SMALL_DISTANCE_ERROR = 0.01
 
-def test_createFromState_objectAfterMerge_objectAssignedToAllGffs(state_with_object_after_merge, route_plan_1_2):
-    behavioral_state = BehavioralGridState.create_from_state(state_with_object_after_merge, route_plan_1_2, None)
+def test_createFromState_objectAfterMerge_objectAssignedToAllGffs(state_with_object_after_merge, route_plan_1_2, lane_change_state):
+    behavioral_state = BehavioralGridState.create_from_state(state_with_object_after_merge, route_plan_1_2, lane_change_state, None)
     # check to see if the road occupancy grid contains the actor for both same_lane and right_lane
     occupancy_grid = behavioral_state.road_occupancy_grid
     assert len(occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
@@ -46,8 +51,9 @@ def test_createFromState_objectAfterMerge_objectAssignedToAllGffs(state_with_obj
     assert len(occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
     assert occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)][0].dynamic_object.obj_id == 1
 
-def test_createFromState_objectsAroundMerge_objectsCorrectlyAssigned(state_with_objects_around_3to1_merge, route_plan_1_2):
-    behavioral_state = BehavioralGridState.create_from_state(state_with_objects_around_3to1_merge, route_plan_1_2, None)
+def test_createFromState_objectsAroundMerge_objectsCorrectlyAssigned(state_with_objects_around_3to1_merge, route_plan_1_2,
+                                                                     lane_change_state):
+    behavioral_state = BehavioralGridState.create_from_state(state_with_objects_around_3to1_merge, route_plan_1_2, lane_change_state, None)
 
     occupancy_grid = behavioral_state.road_occupancy_grid
     assert len(occupancy_grid[(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)]) > 0
@@ -58,20 +64,20 @@ def test_createFromState_objectsAroundMerge_objectsCorrectlyAssigned(state_with_
     assert np.array_equal(np.sort(front_left_grid_ids), [1, 2, 4])
     assert np.array_equal(np.sort(front_right_grid_ids), [1, 2, 5])
 
-def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_surrounding_objects, route_plan_20_30):
+def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_surrounding_objects, route_plan_20_30, lane_change_state):
     """
     validate that 8 objects around ego create 8 grid cells in the behavioral state in multi-road map
     (a cell is created only if it contains at least one object)
     """
     logger = AV_Logger.get_logger()
 
-    behavioral_state = BehavioralGridState.create_from_state(state_with_surrounding_objects, route_plan_20_30, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state_with_surrounding_objects, route_plan_20_30, lane_change_state, logger)
 
     assert len(behavioral_state.road_occupancy_grid) == len(state_with_surrounding_objects.dynamic_objects)
 
 
 def test_createFromState_eightObjectsAroundEgo_IgnoreThreeOffMapObjects(state_with_surrounding_objects_and_off_map_objects,
-                                                                        route_plan_20_30):
+                                                                        route_plan_20_30, lane_change_state):
     """
     Off map objects are located at ego's right lane.
     validate that 8 objects around ego create 5 grid cells in the behavioral state in multi-road map, while ignoring 3
@@ -80,7 +86,7 @@ def test_createFromState_eightObjectsAroundEgo_IgnoreThreeOffMapObjects(state_wi
     """
     logger = AV_Logger.get_logger()
     behavioral_state = BehavioralGridState.create_from_state(
-        state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, logger)
+        state_with_surrounding_objects_and_off_map_objects, route_plan_20_30, lane_change_state, logger)
     on_map_objects = [obj for obj in state_with_surrounding_objects_and_off_map_objects.dynamic_objects
                       if not obj.off_map]
     assert len(behavioral_state.road_occupancy_grid) == len(on_map_objects)
@@ -90,12 +96,13 @@ def test_createFromState_eightObjectsAroundEgo_IgnoreThreeOffMapObjects(state_wi
         dynamic_objects_on_grid = behavioral_state.road_occupancy_grid[(rel_lane, rel_lon)]
         assert np.all([not obj.dynamic_object.off_map for obj in dynamic_objects_on_grid])
 
-def test_createFromState_leftLaneEnds_partialGffOnLeft(state_with_left_lane_ending, route_plan_left_lane_ends):
+def test_createFromState_leftLaneEnds_partialGffOnLeft(state_with_left_lane_ending, route_plan_left_lane_ends, lane_change_state):
     """
     Host is in middle lane of three-lane road, and the left lane ends ahead. The left GFF should be a partial, and the other two should
     be normal.
     """
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_left_lane_ends, None)
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_left_lane_ending, route_plan_left_lane_ends, lane_change_state,
+                                                                  None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -104,12 +111,13 @@ def test_createFromState_leftLaneEnds_partialGffOnLeft(state_with_left_lane_endi
     assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFFType.Normal
 
 
-def test_createFromState_rightLaneEnds_partialGffOnRight(state_with_right_lane_ending, route_plan_right_lane_ends):
+def test_createFromState_rightLaneEnds_partialGffOnRight(state_with_right_lane_ending, route_plan_right_lane_ends, lane_change_state):
     """
     Host is in middle lane of three-lane road, and the right lane ends ahead. The right GFF should be a partial, and the other two should
     be normal.
     """
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_right_lane_ending, route_plan_right_lane_ends, None)
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_right_lane_ending, route_plan_right_lane_ends,
+                                                                  lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -118,12 +126,14 @@ def test_createFromState_rightLaneEnds_partialGffOnRight(state_with_right_lane_e
     assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFFType.Partial
 
 
-def test_createFromState_laneEndsNoLeftLane_partialGffInLaneNoLeftLane(state_with_same_lane_ending_no_left_lane, route_plan_left_lane_ends):
+def test_createFromState_laneEndsNoLeftLane_partialGffInLaneNoLeftLane(state_with_same_lane_ending_no_left_lane, route_plan_left_lane_ends,
+                                                                       lane_change_state):
     """
     Host is on three-lane road, and is in the furthest left lane that ends ahead. A left GFF should not be created, the same lane GFF
     should be partial, and the right lane GFF should be normal.
     """
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_same_lane_ending_no_left_lane, route_plan_left_lane_ends, None)
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_same_lane_ending_no_left_lane, route_plan_left_lane_ends,
+                                                                  lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -135,12 +145,13 @@ def test_createFromState_laneEndsNoLeftLane_partialGffInLaneNoLeftLane(state_wit
 
 
 def test_createFromState_laneEndsNoRightLane_partialGffInLaneNoRightLane(state_with_same_lane_ending_no_right_lane,
-                                                                         route_plan_right_lane_ends):
+                                                                         route_plan_right_lane_ends, lane_change_state):
     """
     Host is on three-lane road, and is in the furthest right lane that ends ahead. A right GFF should not be created, the same lane GFF
     should be partial, and the left lane GFF should be normal.
     """
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_same_lane_ending_no_right_lane, route_plan_right_lane_ends, None)
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_same_lane_ending_no_right_lane, route_plan_right_lane_ends,
+                                                                  lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -151,12 +162,14 @@ def test_createFromState_laneEndsNoRightLane_partialGffInLaneNoRightLane(state_w
     assert RelativeLane.RIGHT_LANE not in gffs
 
 
-def test_createFromState_laneSplitOnRight_augmentedGffOnRight(state_with_lane_split_on_right, route_plan_lane_split_on_right):
+def test_createFromState_laneSplitOnRight_augmentedGffOnRight(state_with_lane_split_on_right, route_plan_lane_split_on_right,
+                                                              lane_change_state):
     """
     Host is in right lane of two-lane road, and a lane split on the right is ahead. The right GFF should be augmented, and the other two
     should be normal.
     """
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right, route_plan_lane_split_on_right, None)
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right, route_plan_lane_split_on_right,
+                                                                  lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -165,12 +178,14 @@ def test_createFromState_laneSplitOnRight_augmentedGffOnRight(state_with_lane_sp
     assert gffs[RelativeLane.RIGHT_LANE].gff_type == GFFType.Augmented
 
 
-def test_createFromState_laneSplitOnLeft_augmentedGffOnLeft(state_with_lane_split_on_left, route_plan_lane_split_on_left):
+def test_createFromState_laneSplitOnLeft_augmentedGffOnLeft(state_with_lane_split_on_left, route_plan_lane_split_on_left,
+                                                            lane_change_state):
     """
     Host is in left lane of two-lane road, and a lane split on the left is ahead. The left GFF should be augmented, and the other two
     should be normal.
     """
-    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left, route_plan_lane_split_on_left, None)
+    behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left, route_plan_lane_split_on_left,
+                                                                  lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -180,13 +195,13 @@ def test_createFromState_laneSplitOnLeft_augmentedGffOnLeft(state_with_lane_spli
 
 
 def test_createFromState_laneSplitOnLeftAndRight_augmentedGffOnLeftAndRight(state_with_lane_split_on_left_and_right,
-                                                                            route_plan_lane_split_on_left_and_right):
+                                                                            route_plan_lane_split_on_left_and_right, lane_change_state):
     """
     Host is on one-lane road, and lane splits on the left and right are ahead. The left and right GFFs should be augmented, and the same
     lane GFF should be normal.
     """
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_and_right,
-                                                                  route_plan_lane_split_on_left_and_right, None)
+                                                                  route_plan_lane_split_on_left_and_right, lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -196,13 +211,14 @@ def test_createFromState_laneSplitOnLeftAndRight_augmentedGffOnLeftAndRight(stat
 
 
 def test_createFromState_laneSplitOnRight_augmentedPartialGffOnRight(state_with_lane_split_on_right_ending,
-                                                                     route_plan_lane_split_on_right_ends):
+                                                                     route_plan_lane_split_on_right_ends, lane_change_state):
     """
     Host is in right lane of two-lane road, a lane split on the right is ahead, and the new lane ends shortly thereafter. The right GFF
     should be augmented partial, and the other two should be normal.
     """
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_right_ending,
-                                                                  route_plan_lane_split_on_right_ends, None)
+                                                                  route_plan_lane_split_on_right_ends, lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -212,13 +228,13 @@ def test_createFromState_laneSplitOnRight_augmentedPartialGffOnRight(state_with_
 
 
 def test_createFromState_laneSplitOnLeft_augmentedPartialGffOnLeft(state_with_lane_split_on_left_ending,
-                                                                   route_plan_lane_split_on_left_ends):
+                                                                   route_plan_lane_split_on_left_ends, lane_change_state):
     """
     Host is in left lane of two-lane road, a lane split on the left is ahead, and the new lane ends shortly thereafter. The left GFF
     should be augmented partial, and the other two should be normal.
     """
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_ending,
-                                                                  route_plan_lane_split_on_left_ends, None)
+                                                                  route_plan_lane_split_on_left_ends, lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -228,13 +244,14 @@ def test_createFromState_laneSplitOnLeft_augmentedPartialGffOnLeft(state_with_la
 
 
 def test_createFromState_laneSplitOnLeftAndRight_augmentedPartialGffOnLeftAndRight(state_with_lane_split_on_left_and_right_ending,
-                                                                                   route_plan_lane_splits_on_left_and_right_end):
+                                                                                   route_plan_lane_splits_on_left_and_right_end,
+                                                                                   lane_change_state):
     """
     Host is on one-lane road, lane splits on the left and right are ahead, and the new lanes end shortly thereafter. The left and right GFFs
     should be augmented partial, and the same lane GFF should be normal.
     """
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_and_right_ending,
-                                                                  route_plan_lane_splits_on_left_and_right_end, None)
+                                                                  route_plan_lane_splits_on_left_and_right_end, lane_change_state, None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -244,14 +261,16 @@ def test_createFromState_laneSplitOnLeftAndRight_augmentedPartialGffOnLeftAndRig
 
 
 def test_createFromState_laneSplitOnLeftAndRightLeftFirst_augmentedGffOnLeftAndRightOffset(state_with_lane_split_on_left_and_right_left_first,
-                                                                                           route_plan_lane_splits_on_left_and_right_left_first):
+                                                                                           route_plan_lane_splits_on_left_and_right_left_first,
+                                                                                           lane_change_state):
     """
     Host is on one-lane road and lane splits on the left and right are ahead.
     The left split comes before the right split.
     The left and right GFFs should be augmented, and the same lane GFF should be normal.
     """
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_and_right_left_first,
-                                                                  route_plan_lane_splits_on_left_and_right_left_first, None)
+                                                                  route_plan_lane_splits_on_left_and_right_left_first, lane_change_state,
+                                                                  None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -261,14 +280,16 @@ def test_createFromState_laneSplitOnLeftAndRightLeftFirst_augmentedGffOnLeftAndR
 
 
 def test_createFromState_laneSplitOnLeftAndRightRightFirst_augmentedGffOnLeftAndRightOffset(state_with_lane_split_on_left_and_right_right_first,
-                                                                                            route_plan_lane_splits_on_left_and_right_right_first):
+                                                                                            route_plan_lane_splits_on_left_and_right_right_first,
+                                                                                            lane_change_state):
     """
     Host is on one-lane road and lane splits on the left and right are ahead.
     The left split comes after the right split.
     The left and right GFFs should be augmented, and the same lane GFF should be normal.
     """
     behavioral_grid_state = BehavioralGridState.create_from_state(state_with_lane_split_on_left_and_right_right_first,
-                                                                  route_plan_lane_splits_on_left_and_right_right_first, None)
+                                                                  route_plan_lane_splits_on_left_and_right_right_first, lane_change_state,
+                                                                  None)
     gffs = behavioral_grid_state.extended_lane_frames
 
     # Check GFF Types
@@ -293,53 +314,16 @@ def test_calculateLongitudinalDifferences_8objectsAroundEgo_accurate(state_with_
         assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
 
 
-def test_createProjectedObjects_laneSplit_carInOverlap(scene_static_oval_with_splits: SceneStatic):
-    """
-    Validate that projected object is correctly placed in overlapping lane
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
-
-    # Create other car in lane 21, which overlaps with lane 22
-    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
-                                                  map_state=MapState(np.array([5,1,0,0,0,0]), 19670532),
-                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
-
-    assert projected_dynamic_objects[0].map_state.lane_id == 19670533
-
-
-def test_createProjectedObjects_laneMerge_carInOverlap(scene_static_oval_with_splits: SceneStatic):
-    """
-    Validate that projected object is correctly placed in overlapping lane
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_oval_with_splits)
-
-    overlaps = {}
-    geo_lane_ids = [lane.e_i_lane_segment_id  for lane in scene_static_oval_with_splits.s_Data.s_SceneStaticGeometry.as_scene_lane_segments]
-    for lane in scene_static_oval_with_splits.s_Data.s_SceneStaticBase.as_scene_lane_segments:
-        if lane.e_Cnt_lane_overlap_count > 0 and lane.e_i_lane_segment_id in geo_lane_ids:
-            for overlap in lane.as_lane_overlaps:
-                overlaps[lane.e_i_lane_segment_id] = (
-                overlap.e_i_other_lane_segment_id, overlap.e_e_lane_overlap_type)
-
-    # Create other car in lane 21, which overlaps with lane 22
-    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
-                                                  map_state=MapState(np.array([5, 1, 0, 0, 0, 0]), 58375684),
-                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
-    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
-
-    assert projected_dynamic_objects[0].map_state.lane_id == 58375685
-
-
-def test_createProjectedObjects_laneSplit_carNotInOverlap(scene_static_short_testable: SceneStatic):
+def test_createProjectedObjects_laneSplit_carNotInOverlap(behavioral_grid_state_with_scene_short_testable):
     """
     Validate that no mirror object is created if there is no overlap
     """
-    SceneStaticModel.get_instance().set_scene_static(scene_static_short_testable)
+    logger = AV_Logger.get_logger()
+
     # Create other car in lane 21 which does NOT overlap with any other lane
     dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([1,1,0,0,0,0]), 21),
                                                   size=ObjectSize(1,1,1), confidence=1, off_map=False)
-    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj])
+    projected_dynamic_objects = BehavioralGridState._create_projected_objects([dyn_obj], behavioral_grid_state_with_scene_short_testable.extended_lane_frames, logger)
 
     assert not projected_dynamic_objects
 
@@ -739,3 +723,93 @@ def test_getUpstreamLaneSubsegments_NoUpstreamLane_validateUpstreamLaneNotFound(
         assert False
     except UpstreamLaneNotFound:
         assert True
+
+def test_isObjectInLane_carOnLaneLine(behavioral_grid_state_with_scene_short_testable):
+    """
+    Tests the method is_object_in_lane. Places a car in lane 11, shifted 1.5 meters right from lane 11's nominal points.
+    :param scene_static_short_testable:
+    :return:
+    """
+    logger = AV_Logger.get_logger()
+    bgs = behavioral_grid_state_with_scene_short_testable
+
+
+    # Create car in lane 11 which is offset 1.5 meters to the right (s station is 120 since host is also at 120)
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,-1.5,0,0]), 11),
+                                                  size=ObjectSize(4,1.5,1), confidence=1, off_map=False)
+
+    # LEFT_LANE is lane 11
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    # SAME_LANE is lane 10
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+
+def test_isObjectInLane_carInSingleLane(behavioral_grid_state_with_scene_short_testable):
+    """
+    Car is in its own lane and not intruding on any other lane.
+    """
+    logger = AV_Logger.get_logger()
+    bgs = behavioral_grid_state_with_scene_short_testable
+
+    # Create car in lane 11
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5, map_state=MapState(np.array([120.0,0,0,0,0,0]), 11),
+                                                  size=ObjectSize(1,1,1), confidence=1, off_map=False)
+
+    # LEFT_LANE is lane 11
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    # SAME_LANE is lane 10
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == False
+
+def test_isObjectInLane_laneSplit_carInOverlap(behavioral_grid_state_with_split_on_oval: BehavioralGridState):
+    """
+    Validate that projected object is correctly placed in overlapping lane
+    """
+    logger = AV_Logger.get_logger()
+    bgs = behavioral_grid_state_with_split_on_oval
+
+    # Create other car in lane 21, which overlaps with lane 22
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
+                                                  map_state=MapState(np.array([1,0,0,2,0,0]), 19670532),
+                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.RIGHT_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+
+def test_isObjectInLane_laneMerge_carInOverlap(behavioral_grid_state_with_merge_on_oval: BehavioralGridState):
+    """
+    Validate that projected object is correctly placed in overlapping lane
+    """
+    logger = AV_Logger.get_logger()
+    bgs = behavioral_grid_state_with_merge_on_oval
+
+    dyn_obj = DynamicObject.create_from_map_state(obj_id=10, timestamp=5,
+                                                  map_state=MapState(np.array([1,0,0,-2,0,0]), 58375684),
+                                                  size=ObjectSize(5, 2, 2), confidence=1, off_map=False)
+
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(dyn_obj,
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+
+def test_isObjectInLane_moundRoadNorth_carIntrudingInLane(scene_static_mound_road_north, scene_dynamic_obj_intruding_in_lane_mound_road_north,
+                                                          route_plan_for_mound_north_file, lane_change_state):
+    logger = AV_Logger.get_logger()
+    SceneStaticModel.get_instance().set_scene_static(scene_static_mound_road_north)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
+    state = State.create_state_from_scene_dynamic(scene_dynamic_obj_intruding_in_lane_mound_road_north, [], None)
+    bgs = BehavioralGridState.create_from_state(state, route_plan_for_mound_north_file, lane_change_state, logger)
+
+    # test that the object was successfully projected into the SAME_LANE
+    assert len(bgs.road_occupancy_grid[RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT]) == 1
+
+    assert BehavioralGridState._is_object_in_lane(state.dynamic_objects[0],
+                                                  bgs.extended_lane_frames[RelativeLane.SAME_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(state.dynamic_objects[0],
+                                                  bgs.extended_lane_frames[RelativeLane.RIGHT_LANE], logger) == True
+    assert BehavioralGridState._is_object_in_lane(state.dynamic_objects[0],
+                                                  bgs.extended_lane_frames[RelativeLane.LEFT_LANE], logger) == False
+

@@ -3,13 +3,13 @@ from typing import List, Dict, Tuple
 import numpy as np
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_enums import MapLaneMarkerType, MapRoadSegmentType,\
-    MapLaneType, RoadObjectType, TrafficSignalState, MovingDirection, ManeuverType, LaneMappingStatusType,\
+    MapLaneType, MovingDirection, ManeuverType, LaneMappingStatusType,\
     MapLaneDirection, GMAuthorityType, LaneConstructionType, RoutePlanLaneSegmentAttr
-from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic,\
-    SceneStaticGeometry, SceneStaticBase, NavigationPlan, SceneLaneSegmentGeometry,\
-    BoundaryPoint, SceneLaneSegmentBase, SceneRoadSegment,\
-    MAX_NOMINAL_PATH_POINT_FIELDS, StaticTrafficFlowControl, DynamicTrafficFlowControl,\
-    DynamicStatus, AdjacentLane, LaneSegmentConnectivity, LaneOverlap, LaneOverlapType
+from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, \
+    SceneStaticGeometry, SceneStaticBase, NavigationPlan, SceneLaneSegmentGeometry, \
+    BoundaryPoint, SceneLaneSegmentBase, SceneRoadSegment, \
+    MAX_NOMINAL_PATH_POINT_FIELDS, AdjacentLane, LaneSegmentConnectivity, LaneOverlap, LaneOverlapType, \
+    TrafficControlBar
 
 
 class SceneStaticPublisher:
@@ -76,7 +76,9 @@ class SceneStaticPublisher:
                                                                         sum(len(row) for row in self._lane_segment_ids),
                                                                      as_scene_lane_segments=self._generate_lane_segments(),
                                                                      e_Cnt_num_road_segments=len(self._road_segment_ids),
-                                                                     as_scene_road_segment=self._generate_road_segments()),
+                                                                     as_scene_road_segment=self._generate_road_segments(),
+                                                                     as_static_traffic_control_device=[],
+                                                                     as_dynamic_traffic_control_device=[]),
                                    s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=0,
                                                                              as_scene_lane_segments=lane_geometry,
                                                                              a_nominal_path_points=a_nominal_path_points),
@@ -131,10 +133,8 @@ class SceneStaticPublisher:
                 lane_segment_base.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_segment_id,
                                                               e_i_road_segment_id=road_segment_id,
                                                               e_e_lane_type=MapLaneType.ControlledAccess_DividedRoadLane,
-                                                              e_Cnt_static_traffic_flow_control_count=0,
-                                                              as_static_traffic_flow_control=self._generate_traffic_flow_control(),
-                                                              e_Cnt_dynamic_traffic_flow_control_count=0,
-                                                              as_dynamic_traffic_flow_control=self._generate_dynamic_traffic_flow_control(),
+                                                              e_Cnt_traffic_control_bar_count=0,
+                                                              as_traffic_control_bar=self._generate_traffic_control_bars(),
                                                               e_Cnt_left_adjacent_lane_count=0,
                                                               as_left_adjacent_lanes=self._generate_adjacent_lane(),
                                                               e_Cnt_right_adjacent_lane_count=0,
@@ -187,26 +187,14 @@ class SceneStaticPublisher:
     def _generate_adjacent_lane(self) -> List[AdjacentLane]:
         """ Generates default adjacent lane data """
         return [AdjacentLane(e_i_lane_segment_id=1,
-                             e_e_moving_direction=0,
-                             e_e_lane_type=MovingDirection.Adjacent_or_same_dir)]
+                             e_e_moving_direction=MovingDirection.Adjacent_or_same_dir,
+                             e_e_lane_type=MapLaneType.LocalRoadLane)]
 
-    def _generate_dynamic_status(self) -> List[DynamicStatus]:
-        """ Generates default dynamic status data """
-        return [DynamicStatus(e_e_status=TrafficSignalState.NO_DETECTION,
-                              e_Pct_confidence=0)]
-
-    def _generate_dynamic_traffic_flow_control(self) -> List[DynamicTrafficFlowControl]:
-        """ Generates default dynamic traffic flow control data """
-        return [DynamicTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
-                                          e_l_station=0,
-                                          e_Cnt_dynamic_status_count=0,
-                                          as_dynamic_status=self._generate_dynamic_status())]
-
-    def _generate_traffic_flow_control(self) -> List[StaticTrafficFlowControl]:
-        """ Generates default traffic flow control data """
-        return [StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
-                                         e_l_station=0,
-                                         e_Pct_confidence=0)]
+    def _generate_traffic_control_bars(self) -> List[TrafficControlBar]:
+        """ Generate default empty TCBs """
+        return [TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=0.0,
+                                  e_i_static_traffic_control_device_id=[1],
+                                  e_i_dynamic_traffic_control_device_id=[2])]
 
     def _generate_lane_overlap(self) -> List[LaneOverlap]:
         """ Generate default lane overlap data"""

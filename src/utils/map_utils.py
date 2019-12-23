@@ -7,18 +7,21 @@ from decision_making.src.exceptions import raises, RoadNotFound, \
     UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.scene_static_enums import ManeuverType
-from decision_making.src.messages.scene_static_enums import NominalPathPoint, RoadObjectType
+from decision_making.src.messages.scene_static_enums import ManeuverType, TrafficSignalState, \
+    StaticTrafficControlDeviceType, DynamicTrafficControlDeviceType
+from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
-    SceneLaneSegmentBase, SceneRoadSegment
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianPoint2D, FS_SX, RoadSignInfo
+    SceneLaneSegmentBase, SceneRoadSegment, TrafficControlBar, StaticTrafficControlDevice, DynamicTrafficControlDevice
+from decision_making.src.messages.scene_tcd_message import DynamicTrafficControlDeviceStatus
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RoadSignRestriction
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX
 from decision_making.src.planning.types import LaneSegmentID
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 
 
 class MapUtils:
@@ -211,12 +214,30 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: distance from the right lane border, distance from the left lane border
         """
+        right_borders, left_borders =  MapUtils.get_dists_to_lane_borders(lane_id, np.array([s]))
+        return right_borders[0], left_borders[0]
+
+    @staticmethod
+    def get_dists_to_lane_borders(lane_id: int, ss: np.ndarray) -> (np.ndarray, np.ndarray):
+        """
+        get distances from the lane center to the lane borders at given longitudes from the lane's origin
+        :param lane_id: id of lane of interest
+        :param ss: longitudes of the lane center points (w.r.t. the lane Frenet frame) (must be 1D array)
+        :return: distances from the right lane border, distances from the left lane border
+                 (both 1D arrays, length corresponds to number of points in ss)
+        """
         nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 
-        closest_s_idx = np.argmin(np.abs(nominal_points[:,
-                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s))
-        return (nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
-                -nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
+        # if ss was array of size 1, it is squeezed to zero-dimensional array by the calling function
+        if ss.ndim == 0:
+            ss = np.array([ss])
+        closest_s_idxs = np.array([np.argmin(np.abs(nominal_points[:,
+                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s)) for s in ss])
+
+        return (nominal_points[closest_s_idxs, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
+               - nominal_points[closest_s_idxs, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
+
+
 
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:
@@ -483,61 +504,215 @@ class MapUtils:
         return road_segments[0]
 
     @staticmethod
-    def get_stop_bar_and_stop_sign(lane_frenet: GeneralizedFrenetSerretFrame) -> List[RoadSignInfo]:
+    def get_closest_stop_bar(target_lane_frenet: GeneralizedFrenetSerretFrame, ego_location: float,
+                             offset_to_ego: float, stop_bar_id_to_ignore: int = None, logger: Logger = None) -> \
+            Tuple[Optional[Tuple[TrafficControlBar, float]], float]:
         """
-        Returns a list of the locations (s coordinates) of stop signs and stop bars on the GFF, with their type
-        The list is ordered from closest traffic flow control to farthest.
-        :param lane_frenet: The GFF on which to retrieve the static flow controls.
-        :return: A list of distances to stop signs and stop bars on the the GFF, ordered from closest traffic flow
-        control to farthest, along with the type of the control.
+        Returns the closest stop bar and its distance.
+        No existence checks necessary, as it was already tested by FilterActionsTowardsCellsWithoutRoadSigns
+        :param target_lane_frenet:
+        :param ego_location: on GFF
+        :param offset_to_ego the offset relative to the ego location from which to start looking for a stop bar
+        :param stop_bar_id_to_ignore: id of stop sign/bar to ignore (used by driver initiated motion)
+        :param logger:
+        :return: tuple of (closest stop bar, distance to closest stop bar, distance to ignored) or None if not found
+        and distance to ignored stop bar (or None)
         """
-        road_signs = MapUtils.get_static_traffic_flow_controls_s(lane_frenet)  # ensures the returned value is sorted
-        # TODO verify these are the correct stop bar enums
-        desired_sign_types = [RoadObjectType.StopSign, RoadObjectType.StopBar_Left, RoadObjectType.StopBar_Right]
-        stop_bars_and_signs = MapUtils.filter_flow_control_by_type(road_signs, desired_sign_types)
-        return stop_bars_and_signs
+        # TODO Possibly apply the DIM_MARGIN_TO_STOP_BAR only if there is no other stop bar close in front,
+        #  to handle case of 2 close stop bars say DIM_MARGIN_TO_STOP_BAR-1 apart
+        stop_bars_and_distances = MapUtils.get_traffic_control_bars_s(target_lane_frenet, ego_location - offset_to_ego)
+        static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
+
+        ignored_distance = None
+        # check for active stop bar from the closest to the farthest (ignored should be first if it exists)
+        for stop_bar, distance in stop_bars_and_distances:
+            if stop_bar.e_i_traffic_control_bar_id != stop_bar_id_to_ignore:
+                # Only considers TCB is in front of (ego_location - DIM_MARGIN_TO_STOP_BAR)
+                active_static_tcds, active_dynamic_tcds = MapUtils.get_TCDs_for_bar(stop_bar, static_tcds, dynamic_tcds)
+                road_signs_restriction = MapUtils.resolve_restriction_of_road_sign(active_static_tcds, active_dynamic_tcds,
+                                                                                   logger)
+                should_stop = MapUtils.should_stop_at_stop_bar(road_signs_restriction)
+                if logger is not None:
+                    logger.debug("Stop bar check id %d at distance %f active S-TCD %s active D-TCD %s, ego at %f, stop? %s",
+                                 stop_bar.e_i_traffic_control_bar_id, distance,
+                                 [(active_static_tcd.object_id, active_static_tcd.e_e_traffic_control_device_type)
+                                  for active_static_tcd in active_static_tcds],
+                                 [(active_dynamic_tcd[0].object_id, active_dynamic_tcd[0].e_e_traffic_control_device_type,
+                                   MapUtils._get_confident_status(active_dynamic_tcd[1]))
+                                  for active_dynamic_tcd in active_dynamic_tcds],
+                                 ego_location, should_stop)
+                if should_stop:
+                    return (stop_bar, distance), ignored_distance
+            else:
+                ignored_distance = distance
+                logger.debug("Stop bar ignored id %d distance %f", stop_bar_id_to_ignore, ignored_distance)
+        return None, ignored_distance
 
     @staticmethod
-    def filter_flow_control_by_type(road_signs: List[RoadSignInfo], road_sign_types: List[RoadObjectType]) -> List[
-        RoadSignInfo]:
+    def get_traffic_control_bars_s(lane_frenet: GeneralizedFrenetSerretFrame, start_offset: float) -> \
+            List[Tuple[TrafficControlBar, float]]:
         """
-        Filters the given road signs list to the desired road sign types
-        :param road_signs: list of road signs to filter
-        :param road_sign_types: list of desired road sign types
-        :return: filtered list of road signs
-        """
-        selected_road_signs = []
-        for road_sign in road_signs:
-            if road_sign.sign_type in road_sign_types:
-                selected_road_signs.append(road_sign)
-        return selected_road_signs
-
-    @staticmethod
-    def get_static_traffic_flow_controls_s(lane_frenet: GeneralizedFrenetSerretFrame) -> List[RoadSignInfo]:
-        """
-        Returns a list of the locations (s coordinates) of Static_Traffic_flow_controls on the GFF, with their type
+        Returns a list of the TrafficControlBars and their locations (s coordinates) on the GFF
         The list is ordered from closest traffic flow control to farthest.
-        :param lane_frenet: The GFF on which to retrieve the static flow controls.
-        :return: A list of distances to static flow controls on the the GFF, ordered from closest traffic flow control
-        to farthest, along with the type of the control.
+        :param lane_frenet: The GFF on which to retrieve the TCBs.
+        :param start_offset: An offset relative to GFF start from which TCBs are returned
+        :return: List of TrafficControlBars and their distances on the the GFF, ordered from closest to farthest.
         """
+        offset = max(start_offset, 0)
         lane_ids = []
-        # s coordinates
-        road_signs_s_on_lane_segments = []
-        road_sign_types = []
+        tcbs = []
+        # go over the lanes and aggregate the TCBs
         for lane_id in lane_frenet.segment_ids:
             lane_segment = MapUtils.get_lane(lane_id)
-            for static_traffic_flow_control in lane_segment.as_static_traffic_flow_control:
-                lane_ids.append(lane_id)
-                road_sign_types.append(static_traffic_flow_control.e_e_road_object_type)
-                road_signs_s_on_lane_segments.append(static_traffic_flow_control.e_l_station)
-        frenet_states = np.zeros((len(road_signs_s_on_lane_segments), 6))
-        frenet_states[:, FS_SX] = np.asarray(road_signs_s_on_lane_segments)
-        road_sign_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
-        road_sign_info_on_gff = [RoadSignInfo(sign_type=sign_type, s=s) for sign_type, s in
-                                 zip(road_sign_types, road_sign_s_on_gff)]
-        road_sign_info_on_gff.sort(key=lambda x: x.s)  # sort by distance after the conversion to real distance
-        return road_sign_info_on_gff
+            lane_ids += len(lane_segment.as_traffic_control_bar) * [lane_id]  # add same value multiple times
+            tcbs.extend(lane_segment.as_traffic_control_bar)
+        # calculate the distance on the GFF
+        frenet_states = np.zeros((len(tcbs), 6))
+        frenet_states[:, FS_SX] = np.asarray([tcb.e_l_station for tcb in tcbs])
+        tcb_s_on_gff = lane_frenet.convert_from_segment_states(frenet_states, np.asarray(lane_ids))[:, FS_SX]
+        # ensures we only return control bars that are within the GFF
+        tcb_info_on_gff = [(tcb, s) for tcb, s in zip(tcbs, tcb_s_on_gff) if offset < s < lane_frenet.s_max]
+        # sort by distance after the conversion to real distance
+        tcb_info_on_gff.sort(key=lambda x: x[1])
+
+        return tcb_info_on_gff
+
+    @staticmethod
+    def get_traffic_control_devices() -> \
+            (Dict[int, StaticTrafficControlDevice],
+             Dict[int, Tuple[DynamicTrafficControlDevice, DynamicTrafficControlDeviceStatus]]):
+        """
+        Returns a Dictionary of id:StaticTrafficControlDevice
+        and id:(DynamicTrafficControlDevice, DynamicTrafficControlDeviceStatus)
+        :return: Dict of static / dynamic TCDs on the the GFF. TCD id -> TCD.
+        """
+        scene_static = SceneStaticModel.get_instance().get_scene_static()
+        tcds_status = SceneTrafficControlDevicesStatusModel.get_instance().get_traffic_control_devices_status()
+
+        # STATIC signs
+        static_tcds = {static_tcd.object_id: static_tcd
+                       for static_tcd in scene_static.s_Data.s_SceneStaticBase.as_static_traffic_control_device}
+
+        # DYNAMIC signs
+        dynamic_tcds_and_status = {dynamic_tcd.object_id: (dynamic_tcd, tcds_status[dynamic_tcd.object_id]
+                                   if dynamic_tcd.object_id in tcds_status else None) for dynamic_tcd in
+                                   scene_static.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device}
+
+        return static_tcds, dynamic_tcds_and_status
+
+    @staticmethod
+    def get_TCDs_for_bar(stop_bar: TrafficControlBar, static_tcds: Dict[int, StaticTrafficControlDevice],
+                         dynamic_tcds: Dict[int, Tuple[DynamicTrafficControlDevice, DynamicTrafficControlDeviceStatus]]) -> \
+            (List[StaticTrafficControlDevice], List[Tuple[DynamicTrafficControlDevice, DynamicTrafficControlDeviceStatus]]):
+        """
+        Find the TCDs that govern the desired behavior at the stop bar.
+        :param stop_bar: for which the TCDs are retrieved.
+        :param static_tcds: Dict of static TCDs on the GFF
+        :param dynamic_tcds: Dict of dynamic TCDs on the GFF
+        :return: Lists of static / dynamic TCDs for the given TCB
+        """
+        static_tcds_in_effect = [static_tcds[tcd_id] for tcd_id in stop_bar.e_i_static_traffic_control_device_id]
+        dynamic_tcds_in_effect = [dynamic_tcds[tcd_id] for tcd_id in stop_bar.e_i_dynamic_traffic_control_device_id]
+        return static_tcds_in_effect, dynamic_tcds_in_effect
+
+    @staticmethod
+    def resolve_restriction_of_road_sign(active_static_tcds: List[StaticTrafficControlDevice], active_dynamic_tcds:
+                                         List[Tuple[DynamicTrafficControlDevice, DynamicTrafficControlDeviceStatus]],
+                                         logger: Logger = None) \
+            -> RoadSignRestriction:
+        """
+        Find the proper restriction given all the relevant TCDs and their statuses
+        :param active_static_tcds: List of active static TCDs to consider 
+        :param active_dynamic_tcds: List of (active dynamic TCDs, their status) to consider
+        :param logger: logger
+        :return: A single restriction imposed by the TCDs
+        """
+        # find the restriction imposed by each TCD. Keep it in a list of TCD type to its restriction
+        static_restrictions = []
+        for active_static_tcd in active_static_tcds:
+            if active_static_tcd.e_e_traffic_control_device_type in [StaticTrafficControlDeviceType.YIELD,
+                                                                     StaticTrafficControlDeviceType.STOP,
+                                                                     StaticTrafficControlDeviceType.CROSSWALK,
+                                                                     StaticTrafficControlDeviceType.MOVABLE_BARRIER]:
+                static_restrictions.append((active_static_tcd.e_e_traffic_control_device_type, RoadSignRestriction.STOP))
+            else:
+                logger.warning("Static TCD for id " + active_static_tcd.object_id + ", type " +
+                               active_static_tcd.e_e_traffic_control_device_type + " not expected. Ignoring")
+        dynamic_restrictions = []
+        for active_dynamic_tcd, dynamic_tcd_status in active_dynamic_tcds:
+            status = MapUtils._get_confident_status(dynamic_tcd_status)
+            if (status == TrafficSignalState.UNKNOWN) and logger is not None:
+                logger.warning("Dynamic TCD status for id " + active_dynamic_tcd.object_id + ", type " +
+                               active_dynamic_tcd.e_e_traffic_control_device_type + " is UNKNOWN. Will restrict to STOP")
+            if active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
+                dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,
+                                             RoadSignRestriction.STOP if status != TrafficSignalState.GREEN
+                                             else RoadSignRestriction.NONE))
+            elif active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
+                dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,
+                                             RoadSignRestriction.STOP if status != TrafficSignalState.RAILROAD_CROSSING_CLEAR
+                                             else RoadSignRestriction.NONE))
+            elif active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.SCHOOL_ZONE:
+                # TODO: Need to understand how to get the information on days + hours at which this is in effect.
+                #   Currently, always stop in this situation
+                dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,
+                                            RoadSignRestriction.STOP))
+
+        # combine restrictions
+        return MapUtils.combine_restrictions(static_restrictions, dynamic_restrictions)
+
+    @staticmethod
+    def combine_restrictions(static_restrictions: List[Tuple[StaticTrafficControlDeviceType, RoadSignRestriction]],
+                             dynamic_restrictions: List[Tuple[DynamicTrafficControlDeviceType, RoadSignRestriction]]) \
+            -> RoadSignRestriction:
+        """
+        Combine the restrictions of all the TCDs into a single restriction.
+        If there are dynamic TCDs, they currently override static TCDs
+        Select the most restricting dynamic restriction. This allows a TRAFFIC LIGHT to override a STOP SIGN
+        Otherwise select the most restricting static restriction.
+        Assumes restriction with higher ordinal number are more restrictive
+        # TODO break cases below into finer cases when relevant,
+        #  e.g when there is a traffic light with flashing yellow + stop sign, we should stop
+        :param static_restrictions: List of tuples(StaticTrafficControlDeviceType, RoadSignRestriction) for static TCD.
+        :param dynamic_restrictions: List of tuples(DynamicTrafficControlDeviceType, RoadSignRestriction) for dynamic TCD.
+        :return: combined restriction
+        """
+        # if there are dynamic TCDs, they currently override static TCDs
+        # select the most restricting dynamic restriction. This allows a TRAFFIC LIGHT to override a STOP SIGN
+        if len(dynamic_restrictions) > 0:
+            return max([restriction for tcd_type, restriction in dynamic_restrictions])
+        # otherwise select the most restricting static restriction.
+        elif len(static_restrictions):
+            return max([restriction for tcd_type, restriction in static_restrictions])
+        else:
+            return RoadSignRestriction.NONE
+
+    @staticmethod
+    def should_stop_at_stop_bar(restriction: RoadSignRestriction) -> bool:
+        """
+        Decide if need to stop at stop bar according to the restriction.
+        Currently, decides to stop unless the restriction is RoadSignRestriction.NONE
+        :param restriction: to evaluate
+        :return: whether it is required to stop at stop bar
+        """
+        return restriction != RoadSignRestriction.NONE
+
+    @staticmethod
+    def _get_confident_status(status: DynamicTrafficControlDeviceStatus) -> TrafficSignalState:
+        """
+        Given a list of statuses and their confidence for a dynamic TCD, decide which status to use.
+        Currently uses the status with the highest probability
+        :param status: of a dynamic TCD (2 lists of possible status and associated confidence)
+        :return: A single status to be used as a probability 1 status
+        """
+        # TODO handle case where argmax is not good enough, and need to choose the worst case that is confident enough
+        if status is None or len(status.a_e_status) == 0:
+            return TrafficSignalState.UNKNOWN
+        else:
+            confidence = np.array(status.a_Pct_status_confidence)
+            status = np.array(status.a_e_status)
+            highest_confidence_idx = np.argmax(confidence)
+            return status[highest_confidence_idx]
 
     @staticmethod
     def get_merge_lane_id(initial_lane_id: int, initial_s: float, lookahead_distance: float, route_plan: RoutePlan,
@@ -547,6 +722,7 @@ class MapUtils:
         Red line is s coordinate, from which host starts to interference laterally with the main road actors.
         We assume that there is a host's road segment starting from the red line and ending at the merge point.
         If initial_lane_id == segment.e_i_SegmentID, then we already crossed the red line.
+        If there is a stop bar/sign before the red line, then return None.
         :param initial_lane_id: current lane id of ego
         :param initial_s: s of ego on initial_lane_id
         :param lookahead_distance: maximal lookahead for the lane merge from ego location
@@ -560,10 +736,18 @@ class MapUtils:
         # Find the merge point ahead
         cumulative_length = 0
         for segment in lane_subsegments:
+            # TODO should this if be after the check for merge in current segment?
             cumulative_length += segment.e_i_SEnd - segment.e_i_SStart
             if cumulative_length > lookahead_distance:
                 break
             current_lane_segment = MapUtils.get_lane(segment.e_i_SegmentID)
+
+            # if there is a stop bar/sign before the red line, then return None
+            # TODO is this a good restriction ???
+            stop_bars = current_lane_segment.as_traffic_control_bar
+            if len(stop_bars) > 0:
+                break
+
             downstream_connectivity = current_lane_segment.as_downstream_lanes
 
             # Red line is s coordinate, from which host starts to interference laterally with the main road actors.

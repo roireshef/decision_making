@@ -13,7 +13,7 @@ class SceneStaticModel:
         self._scene_static_message = None
 
     @classmethod
-    def get_instance(cls) -> None:
+    def get_instance(cls) -> 'SceneStaticModel':
         """
         :return: The instance of SceneModel
         """

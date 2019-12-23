@@ -1,8 +1,11 @@
 import numpy as np
+from decision_making.src.messages.scene_static_enums import StaticTrafficControlDeviceType
+from decision_making.src.messages.scene_static_message import TrafficControlBar, StaticTrafficControlDevice
+from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
 from decision_making.src.global_constants import LAT_ACC_LIMITS_BY_K, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
-from decision_making.src.messages.scene_static_message import StaticTrafficFlowControl, RoadObjectType
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, scene_static_accel_towards_vehicle
 from typing import List
@@ -35,21 +38,16 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
     behavioral_grid_state_with_traffic_control, state_with_traffic_control, route_plan_20_30, route_plan_for_oval_track_file, \
     route_plan_1_2, behavioral_grid_state_with_left_lane_ending, state_with_left_lane_ending
+from decision_making.test.planning.custom_fixtures import tcd_status, lane_change_state
 
 
 def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behavioral_grid_state_with_traffic_control,
                                                                            scene_static_pg_split):
     ego_location = behavioral_grid_state_with_traffic_control.ego_state.map_state.lane_fstate[FS_SX]
 
-    gff = behavioral_grid_state_with_traffic_control.extended_lane_frames[RelativeLane.SAME_LANE]
-    gff_state = np.array([[ego_location + 12.0, 0., 0., 0., 0., 0.]])
-    lane_id, segment_states = gff.convert_to_segment_states(gff_state)
-    segment_s = segment_states[0][0]
-
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
-                                         e_Pct_confidence=1.0)
-    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+    scene_tcd_status = {}
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(scene_tcd_status)
 
     filter = StaticTrafficFlowControlFilter()
     t, v, s, d = 10, 20, ego_location + 40.0, 0
@@ -72,10 +70,21 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
     lane_id, segment_states = gff.convert_to_segment_states(gff_state)
     segment_s = segment_states[0][0]
 
+    stop_bar = TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=segment_s,
+                                  e_i_static_traffic_control_device_id=[11], e_i_dynamic_traffic_control_device_id=[])
+    stop_sign = StaticTrafficControlDevice(object_id=11, e_e_traffic_control_device_type=StaticTrafficControlDeviceType.STOP,
+                                           e_Pct_confidence=1.0, e_i_controlled_lane_segment_id=[lane_id],
+                                           e_l_east_x=0, e_l_north_y=0)
+
+    for lane_segment in scene_static_pg_split.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_pg_split.s_Data.s_SceneStaticBase.as_static_traffic_control_device = [stop_sign]
+    scene_static_pg_split.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
-    stop_sign = StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.StopSign, e_l_station=segment_s,
-                                         e_Pct_confidence=1.0)
-    MapUtils.get_lane(lane_id).as_static_traffic_flow_control.append(stop_sign)
+    scene_tcd_status = {}
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(scene_tcd_status)
+
+    MapUtils.get_lane(lane_id).as_traffic_control_bar.append(stop_bar)
 
     filter = BeyondSpecStaticTrafficFlowControlFilter()
     t, v, s, d = 10, 20, gff_stop_sign_location - 2.0, 0
@@ -396,7 +405,8 @@ def test_filter_laneSpeedLimits_filtersSpecsViolatingLaneSpeedLimits_filterResul
     np.testing.assert_array_equal(filter_results, expected_filter_results)
 
 
-def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_state_with_left_lane_ending):
+def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_state_with_left_lane_ending,
+                                                              tcd_status: SceneTrafficControlDevices):
     """
     Tests the filter BeyondSpecGffFilter.
     Puts the host in a situation where the left lane will suddenly end.
@@ -406,6 +416,8 @@ def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_st
     :return:
     """
 
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(
+        tcd_status.s_Data.as_dynamic_traffic_control_device_status)
     partial_gff_end_s = behavioral_grid_state_with_left_lane_ending.extended_lane_frames[RelativeLane.LEFT_LANE].s_max
 
     filter = BeyondSpecPartialGffFilter()

@@ -1,21 +1,22 @@
 from abc import ABCMeta, abstractmethod
 from logging import Logger
-from typing import List, Union, Any
+from typing import List, Any
 
 import numpy as np
 import rte.python.profiler as prof
 import six
 from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIAL_GFF_END_PADDING, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    SAFETY_HEADWAY, \
-    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K
+    SAFETY_HEADWAY, REL_LAT_ACC_LIMITS, LAT_ACC_LIMITS_LANE_CHANGE, \
+    BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K, \
+    STOP_BAR_DISTANCE_IND, TIME_THRESHOLDS, SPEED_THRESHOLDS
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     RelativeLongitudinalPosition, AggressivenessLevel, RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K
+from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K, FS_SX
 from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
@@ -53,21 +54,58 @@ class FilterForKinematics(ActionSpecFilter):
         :param behavioral_state:
         :return: boolean array per action spec: True if a spec passed the filter
         """
-        _, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
+        # Build trajectories for each action
+        ftrajectories, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
 
-        # for each point in the trajectories, compute the corresponding lateral acceleration (per point-wise curvature)
-        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(
-            ctrajectories[..., C_K], LAT_ACC_LIMITS_BY_K)
+        # Determine which actions are lane change actions
+        action_spec_rel_lanes = [spec.relative_lane for spec in action_specs]
+        lane_change_mask = behavioral_state.lane_change_state.get_lane_change_mask(action_spec_rel_lanes,
+                                                                                   behavioral_state.extended_lane_frames)
+        not_lane_change_mask = [not i for i in lane_change_mask]
+
+        # for each point in the non-lane change trajectories,
+        # compute the corresponding lateral acceleration (per point-wise curvature)
+        baseline_curvatures = np.array([behavioral_state.extended_lane_frames[spec.relative_lane].get_curvature(ftrajectory[:, FS_SX])
+                                        for spec, ftrajectory in zip(action_specs, ftrajectories)])
+        nominal_abs_lat_acc_limits = KinematicUtils.get_lateral_acceleration_limit_by_curvature(baseline_curvatures, LAT_ACC_LIMITS_BY_K)
 
         # multiply the nominal lateral acceleration limits by the TP constant (acceleration limits may differ between
         # TP and BP), and duplicate the vector with negative sign to create boundaries for lateral acceleration
         two_sided_lat_acc_limits = BP_LAT_ACC_STRICT_COEF * \
                                    np.stack((-nominal_abs_lat_acc_limits, nominal_abs_lat_acc_limits), -1)
 
-        self._log_debug_message(action_specs, ctrajectories[..., C_K], two_sided_lat_acc_limits)
+        self._log_debug_message(np.array(action_specs)[not_lane_change_mask].tolist(),
+                                ctrajectories[not_lane_change_mask,:,C_K],
+                                two_sided_lat_acc_limits[not_lane_change_mask])
 
-        return KinematicUtils.filter_by_cartesian_limits(
-            ctrajectories, VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits)
+        # Initialize conforms_limits array
+        conforms_limits = np.full(ftrajectories.shape[0], False)
+
+        # Filter for absolute limits for actions that are NOT part of a lane change
+        conforms_limits[not_lane_change_mask] = KinematicUtils.filter_by_cartesian_limits(
+            ctrajectories[not_lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, two_sided_lat_acc_limits[not_lane_change_mask])
+
+        # Deal with lane change actions if they exist
+        if any(lane_change_mask):
+            # Get the GFF that corresponds to the lane change's target (rel_lane depending on lane change state)
+            target_gff = behavioral_state.lane_change_state.get_target_lane_gff(behavioral_state.extended_lane_frames)
+
+            # Generate new limits based on lane change requirements
+            num_lc_trajectories, num_lc_points, _ = ctrajectories[lane_change_mask].shape
+            lane_change_max_lat_accel_limits = np.tile(
+                LAT_ACC_LIMITS_LANE_CHANGE, reps=(num_lc_trajectories, num_lc_points)).reshape((num_lc_trajectories, num_lc_points, 2))
+
+            # Filter for both relative and absolute limits for lane change actions
+            conforms_limits[lane_change_mask] = np.logical_and(
+                KinematicUtils.filter_by_relative_lateral_acceleration_limits(ftrajectories[lane_change_mask],
+                                                                              ctrajectories[lane_change_mask],
+                                                                              REL_LAT_ACC_LIMITS,
+                                                                              nominal_abs_lat_acc_limits[lane_change_mask],
+                                                                              target_gff),
+                KinematicUtils.filter_by_cartesian_limits(
+                    ctrajectories[lane_change_mask], VELOCITY_LIMITS, LON_ACC_LIMITS, lane_change_max_lat_accel_limits))
+
+        return conforms_limits
 
     def _log_debug_message(self, action_specs: List[ActionSpec], curvatures: np.ndarray, acc_limits: np.ndarray):
         max_curvature_idxs = np.argmax(curvatures, axis=1)
@@ -177,9 +215,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
 class StaticTrafficFlowControlFilter(ActionSpecFilter):
     """
-    Checks if there is a StaticTrafficFlowControl between ego and the goal
-    Currently treats every 'StaticTrafficFlowControl' as a stop event.
-
+    Checks if there is a StopBar between ego and the goal
+    If no bar is found, action is invalidated.
     """
     @staticmethod
     def _has_stop_bar_until_goal(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
@@ -189,12 +226,9 @@ class StaticTrafficFlowControlFilter(ActionSpecFilter):
         :param behavioral_state: BehavioralGridState in context
         :return: if there is a stop_bar between current ego location and the action_spec goal
         """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_locations = np.asarray([stop_sign.s for stop_sign in MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)])
-        ego_location = behavioral_state.projected_ego_fstates[action_spec.relative_lane][FS_SX]
-
-        return np.logical_and(ego_location <= stop_bar_locations, stop_bar_locations < action_spec.s).any() \
-            if len(stop_bar_locations) > 0 else False
+        closest_TCB_ant_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
+        return closest_TCB_ant_its_distance is not None and \
+               closest_TCB_ant_its_distance[STOP_BAR_DISTANCE_IND] < action_spec.s
 
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
         return np.array([not StaticTrafficFlowControlFilter._has_stop_bar_until_goal(action_spec, behavioral_state)
@@ -299,29 +333,17 @@ class BeyondSpecStaticTrafficFlowControlFilter(BeyondSpecBrakingFilter):
         #  start of the action, or 1 BP cycle later, instead of relative to the end of the action.
         super().__init__(aggresiveness_level=AggressivenessLevel.STANDARD)
 
-    def _get_first_stop_s(self, target_lane_frenet: GeneralizedFrenetSerretFrame, action_spec_s) -> Union[float, None]:
-        """
-        Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
-        :param target_lane_frenet:
-        :param action_spec_s:
-        :return:  Returns the s value of the closest StaticTrafficFlow. Returns -1 is none exist
-        """
-        stop_signs = MapUtils.get_stop_bar_and_stop_sign(target_lane_frenet)
-        distances = [stop_sign.s for stop_sign in stop_signs if stop_sign.s >= action_spec_s]
-        return distances[0] if len(distances) > 0 else None
-
     def _select_points(self, behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> [np.ndarray, np.ndarray]:
         """
         Checks if there are stop signs. Returns the `s` of the first (closest) stop-sign
-        :param behavioral_state:
-        :param action_spec:
-        :return: The index of the end point
+        :param behavioral_state: behavioral grid state
+        :param action_spec: action specification
+        :return: s of the next stop bar, target velocity (zero)
         """
-        target_lane_frenet = behavioral_state.extended_lane_frames[action_spec.relative_lane]  # the target GFF
-        stop_bar_s = self._get_first_stop_s(target_lane_frenet, action_spec.s)
-        if stop_bar_s is None:  # no stop bars
+        closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action_spec.relative_lane)
+        if closest_TCB_and_its_distance is None:  # no stop bars
             self._raise_true()
-        return np.array([stop_bar_s]), np.array([0])
+        return np.array([closest_TCB_and_its_distance[STOP_BAR_DISTANCE_IND]]), np.array([0])
 
 
 class BeyondSpecCurvatureFilter(BeyondSpecBrakingFilter):
@@ -491,10 +513,6 @@ class BeyondSpecPartialGffFilter(BeyondSpecBrakingFilter):
 
 
 class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
-    # thresholds are defined by the system requirements
-    SPEED_THRESHOLDS = np.array([3, 6, 9, 12, 14, 100])  # in [m/s]
-    TIME_THRESHOLDS = np.array([7, 8, 10, 13, 15, 19.8])  # in [s]
-
     @staticmethod
     def _is_time_to_stop(action_spec: ActionSpec, behavioral_state: BehavioralGridState) -> bool:
         """
@@ -504,11 +522,11 @@ class FilterStopActionIfTooSoonByTime(ActionSpecFilter):
         :param behavioral_state: state of the world
         :return: True if the action should start, False otherwise
         """
-        assert max(FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
+        assert max(TIME_THRESHOLDS) < BP_ACTION_T_LIMITS[1]  # sanity check
         ego_speed = behavioral_state.projected_ego_fstates[action_spec.recipe.relative_lane][FS_SV]
         # lookup maximal time threshold
-        indices = np.where(FilterStopActionIfTooSoonByTime.SPEED_THRESHOLDS > ego_speed)[0]
-        maximal_stop_time = FilterStopActionIfTooSoonByTime.TIME_THRESHOLDS[indices[0]] \
+        indices = np.where(SPEED_THRESHOLDS > ego_speed)[0]
+        maximal_stop_time = TIME_THRESHOLDS[indices[0]] \
             if len(indices) > 0 else BP_ACTION_T_LIMITS[1]
 
         return action_spec.t < maximal_stop_time
