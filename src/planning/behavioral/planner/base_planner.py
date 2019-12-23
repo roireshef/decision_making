@@ -202,7 +202,7 @@ class BasePlanner:
 
         return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
                                           T_s=action_spec.t,
-                                          T_d=action_spec.t,
+                                          T_d=action_spec.t_d,
                                           T_extended=minimal_horizon,
                                           frenet_frame=trajectory_parameters.reference_route,
                                           poly_s_coefs=poly_coefs_s,

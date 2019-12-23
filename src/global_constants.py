@@ -72,10 +72,11 @@ VELOCITY_STEP = 5/MPH_TO_MPS
 BP_ACTION_T_LIMITS = np.array([0.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
+# For lane change to last 6 seconds, lateral w_J = 1.296 / lw^2, where lw is lane width. For lw=3.6, w_J=0.1.
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [1, 0.15, 0.1],
-    [0.2, 0.15, 0.1],
-    [0.015, 0.15, 0.1]
+    [1, 0.1, 0.1],
+    [0.2, 0.1, 0.1],
+    [0.015, 0.1, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]

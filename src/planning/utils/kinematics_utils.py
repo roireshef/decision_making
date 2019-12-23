@@ -299,11 +299,13 @@ class KinematicUtils:
                          goal_frenet_state[FS_SV], 0, 0, 0, 0])
 
     @staticmethod
-    def calc_poly_coefs(T: np.array, initial_fstates, terminal_fstates, padding_mode: np.array) -> [np.array, np.array]:
+    def calc_poly_coefs(T: np.array, T_d: np.array, initial_fstates: np.array, terminal_fstates: np.array,
+                        padding_mode: np.array) -> [np.array, np.array]:
         """
         Given initial and end constraints for multiple actions and their time horizons, calculate polynomials,
         describing s and optionally d profiles.
-        :param T: 1D array. Actions' time horizons
+        :param T: 1D array. Actions' longitudinal time horizons
+        :param T_d: 1D array. Actions' lateral time horizons
         :param initial_fstates: 2D matrix Nx6 or Nx3. Initial constraints for s and optionally for d
         :param terminal_fstates: e2D matrix Nx6 or Nx3. End constraints for s and optionally for d
         :param padding_mode: 1D boolean array. True if an action is in padding mode (shorter than 0.1)
@@ -317,20 +319,39 @@ class KinematicUtils:
         not_padding_mode = ~padding_mode
         if not_padding_mode.any():
             # generate a matrix that is used to find jerk-optimal polynomial coefficients
-            A_inv = QuinticPoly1D.inverse_time_constraints_tensor(T[not_padding_mode])
+            A_inv_s = QuinticPoly1D.inverse_time_constraints_tensor(T[not_padding_mode])
 
             # solve for s
             constraints_s = np.c_[(initial_fstates[not_padding_mode, :FS_DX], terminal_fstates[not_padding_mode, :FS_DX])]
-            poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+            poly_coefs_s[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv_s, constraints_s)
 
             # solve for d if the constraints are given also for d dimension
             if poly_coefs_d is not None:
+                # generate a matrix that is used to find jerk-optimal polynomial coefficients
+                A_inv_d = QuinticPoly1D.inverse_time_constraints_tensor(T_d[not_padding_mode])
                 constraints_d = np.c_[(initial_fstates[not_padding_mode, FS_DX:], terminal_fstates[not_padding_mode, FS_DX:])]
-                poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+                poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
 
         # create linear polynomials for padding mode
         poly_coefs_s[padding_mode], _ = KinematicUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
         return poly_coefs_s, poly_coefs_d
+
+    @staticmethod
+    def specify_lateral_planning_time(a_0: np.array, v_0: np.array, dx: np.array) -> np.array:
+        """
+        Calculate lateral planning times by time-jerk cost optimization. Here we choose the calmest aggressiveness level.
+        :param a_0: initial lateral acceleration in Frenet frame
+        :param v_0: initial lateral velocity in Frenet frame
+        :param dx: array or scalar lateral distance to the target in Frenet frame
+        :return: lateral planning times of the same size like dx or array of size 1 if dx is scalar.
+        """
+        # choose the calmest lateral aggressiveness level
+        weights = np.tile(BP_JERK_S_JERK_D_TIME_WEIGHTS[0], (1 if np.isscalar(dx) else dx.shape[0], 1))
+
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], a_0=a_0, v_0=v_0, v_T=0, dx=dx, T_m=0)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
+        return np.fmin.reduce(roots_d, axis=-1)
 
     @staticmethod
     def calc_T_s(w_T: np.array, w_J: np.array, v_0: np.array, a_0: np.array, v_T: np.array, time_limit: float):
