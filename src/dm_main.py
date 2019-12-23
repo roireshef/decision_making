@@ -96,7 +96,7 @@ if __name__ == '__main__':
         visualizer.start()
 
         visualizer_queue.put(DIM_States.DISABLED)
-        visualizer_queue.put(LaneChangeStatus.Requestable)
+        visualizer_queue.put(LaneChangeStatus.PENDING)
     else:
         visualizer_queue = None
 
