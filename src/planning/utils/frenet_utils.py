@@ -4,7 +4,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, FS_SV, FrenetStates2D
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, FS_SV, FrenetStates2D, S2
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
