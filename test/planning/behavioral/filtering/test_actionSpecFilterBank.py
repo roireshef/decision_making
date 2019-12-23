@@ -276,25 +276,23 @@ def test_filter_trackingMode_allActionsAreValid(
 ]))
 def test_filter_staticActionsWithLeadingVehicle_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode,
-        follow_lane_recipes: List[StaticActionRecipe]):
+        follow_lane_recipes: List[StaticActionRecipe], scene_static_pg_split):
     """
     # actions [9, 12, 15] are None after specify
     # actions [6-17] are static, aiming to higher velocity - which hits the front vehicle
-    # actions 7, 8 are safe and can be seen here: https://www.desmos.com/calculator/dtntkm1hsr
     """
-
     logger = AV_Logger.get_logger()
 
     filtering = RecipeFiltering(filters=[], logger=logger)
 
-    expected_filter_results = np.array([True, True, True, True, True, True, False, True, True,
+    expected_filter_results = np.array([True, True, True, True, True, True, False, False, False,
                                         False, False, False, False, False, False, False, False, False], dtype=bool)
     static_action_space = StaticActionSpace(logger, filtering=filtering)
 
     action_specs = static_action_space.specify_goals(follow_lane_recipes,
                                                      behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode)
 
-    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForSafetyTowardsTargetVehicle()], logger=logger)
+    action_spec_filter = ActionSpecFiltering(filters=[FilterSpecIfNone(), FilterForSafetyTowardsTargetVehicle(logger)], logger=logger)
 
     filter_results = action_spec_filter.filter_action_specs(action_specs,
                                                             behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode)

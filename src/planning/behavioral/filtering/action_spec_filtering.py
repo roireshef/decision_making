@@ -9,7 +9,8 @@ from logging import Logger
 from typing import List
 from typing import Optional
 
-from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, BoolArray
+from decision_making.src.planning.types import CRT_LEN, FS_2D_LEN, BoolArray, FrenetTrajectories2D, \
+    CartesianExtendedTrajectories
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
@@ -26,7 +27,8 @@ class ActionSpecFilter:
     (or one of its children) and  BehavioralGridState (or one of its children) even if they don't actually use them.
     """
     @abstractmethod
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState,
+               ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories) -> BoolArray:
         pass
 
     @staticmethod
@@ -45,50 +47,6 @@ class ActionSpecFilter:
                 indices_by_rel_lane[spec.relative_lane].append(i)
 
         return specs_by_rel_lane, indices_by_rel_lane
-
-    @staticmethod
-    def _build_trajectories(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> (np.ndarray, np.ndarray):
-        """
-        Builds a baseline trajectory out of the action specs (terminal states)
-        :param action_specs: an ordered list of action specs
-        :param behavioral_state:
-        :return: A tuple of (cartesian_trajectories, lane_based_velocity_limits) the latter is all zero
-        if build_lane_segment_velocities is False
-        """
-        # group all specs and their indices by the relative lanes
-        specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
-
-        time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
-        ctrajectories = np.empty((len(action_specs), len(time_samples), CRT_LEN), dtype=np.float)
-        ftrajectories = np.empty((len(action_specs), len(time_samples), FS_2D_LEN), dtype=np.float)
-
-        # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
-        for rel_lane, lane_specs in specs_by_rel_lane.items():
-            specs_t = np.array([spec.t for spec in lane_specs])
-            pad_mode = np.array([spec.only_padding_mode for spec in lane_specs])
-            goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
-
-            lane_frenet = behavioral_state.extended_lane_frames[rel_lane]  # the target GFF
-            ego_fstate = behavioral_state.projected_ego_fstates[rel_lane]
-            ego_fstates = np.tile(ego_fstate, len(lane_specs)).reshape((len(lane_specs), -1))
-
-            # calculate polynomials
-            poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(specs_t, ego_fstates, goal_fstates, pad_mode)
-
-            # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
-            ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_samples)
-            ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_samples)
-
-            # Pad (extrapolate) short trajectories from spec.t until minimal action time.
-            # Beyond the maximum between spec.t and minimal action time the Frenet trajectories are set to zero.
-            ftrajectories[indices_by_rel_lane[rel_lane]] = ActionSpecFilter._pad_trajectories_beyond_spec(
-                lane_specs, ftrajectories_s, ftrajectories_d, specs_t, pad_mode)
-
-            # convert Frenet trajectories to cartesian trajectories
-            ctrajectories[indices_by_rel_lane[rel_lane]] = lane_frenet.ftrajectories_to_ctrajectories(
-                ftrajectories[indices_by_rel_lane[rel_lane]])
-
-        return ftrajectories, ctrajectories
 
     @staticmethod
     def _pad_trajectories_beyond_spec(action_specs: List[ActionSpec], ftrajectories_s: np.array,
@@ -153,6 +111,8 @@ class ActionSpecFiltering:
         filtering_map = np.zeros(len(action_specs))
         mask = np.full(shape=len(action_specs), fill_value=True, dtype=np.bool)
 
+        ftrajectories, ctrajectories = self._build_trajectories(action_specs, behavioral_state)
+
         for filter_idx, action_spec_filter in enumerate(self._filters):
             if ~np.any(mask):
                 break
@@ -161,7 +121,7 @@ class ActionSpecFiltering:
             valid_action_specs = list(compress(action_specs, mask))
 
             # a mask only on the valid action specs
-            current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state)
+            current_mask = action_spec_filter.filter(valid_action_specs, behavioral_state, ftrajectories[mask], ctrajectories[mask])
 
             # use the reduced mask to update the original mask (that contains all initial actions specs given)
             mask[mask] = current_mask
@@ -186,3 +146,55 @@ class ActionSpecFiltering:
         """
         return self.filter_action_specs([action_spec], behavioral_state)[0]
 
+    @staticmethod
+    def _build_trajectories(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> (np.ndarray, np.ndarray):
+        """
+        Builds a baseline trajectory out of the action specs (terminal states)
+        :param action_specs: an ordered list of action specs
+        :param behavioral_state:
+        :return: A tuple of (cartesian_trajectories, lane_based_velocity_limits) the latter is all zero
+        if build_lane_segment_velocities is False
+        """
+        specs_array = np.array(action_specs)
+        specs_mask = specs_array.astype(bool)
+        existing_specs = specs_array[specs_mask]
+
+        time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
+        ctrajectories = np.empty((len(existing_specs), len(time_samples), CRT_LEN), dtype=np.float)
+        ftrajectories = np.empty((len(existing_specs), len(time_samples), FS_2D_LEN), dtype=np.float)
+
+        # group all specs and their indices by the relative lanes
+        specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(existing_specs)
+
+        # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
+        for rel_lane, lane_specs in specs_by_rel_lane.items():
+            specs_t = np.array([spec.t for spec in lane_specs])
+            pad_mode = np.array([spec.only_padding_mode for spec in lane_specs])
+            goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
+
+            lane_frenet = behavioral_state.extended_lane_frames[rel_lane]  # the target GFF
+            ego_fstate = behavioral_state.projected_ego_fstates[rel_lane]
+            ego_fstates = np.tile(ego_fstate, len(lane_specs)).reshape((len(lane_specs), -1))
+
+            # calculate polynomials
+            poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(specs_t, ego_fstates, goal_fstates, pad_mode)
+
+            # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
+            ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_samples)
+            ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_samples)
+
+            # Pad (extrapolate) short trajectories from spec.t until minimal action time.
+            # Beyond the maximum between spec.t and minimal action time the Frenet trajectories are set to zero.
+            ftrajectories[indices_by_rel_lane[rel_lane]] = ActionSpecFilter._pad_trajectories_beyond_spec(
+                lane_specs, ftrajectories_s, ftrajectories_d, specs_t, pad_mode)
+
+            # convert Frenet trajectories to cartesian trajectories
+            ctrajectories[indices_by_rel_lane[rel_lane]] = lane_frenet.ftrajectories_to_ctrajectories(
+                ftrajectories[indices_by_rel_lane[rel_lane]])
+
+        full_ftrajectories = np.empty((len(action_specs), len(time_samples), FS_2D_LEN), dtype=np.float)
+        full_ctrajectories = np.empty((len(action_specs), len(time_samples), CRT_LEN), dtype=np.float)
+        full_ftrajectories[specs_mask] = ftrajectories
+        full_ctrajectories[specs_mask] = ctrajectories
+
+        return full_ftrajectories, full_ctrajectories
