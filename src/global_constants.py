@@ -269,7 +269,7 @@ LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL = 3.8
 # [m/sec] maximal actors' velocity in the lane merge scenarios
 LANE_MERGE_ACTORS_MAX_VELOCITY = 25.
 # [sec] time limits of RL actions
-LANE_MERGE_ACTION_T_LIMITS = np.array([0, 100])
+LANE_MERGE_ACTION_T_LIMITS = np.array([0, 30])
 # [m] distance beyond the merging lane origin, where the actual red line is defined
 LANE_MERGE_RED_LINE_EXTENTION = 40  # TODO: remove it when the map will be fixed
 

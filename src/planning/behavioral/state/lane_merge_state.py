@@ -137,7 +137,8 @@ class LaneMergeState(BehavioralGridState):
 
     @classmethod
     def create_thin_state(cls, ego_length: float, ego_fstate: FrenetState1D,
-                          actors_lane_merge_state: List[LaneMergeActorState], merge_from_s: float, red_line_s: float):
+                          actors_lane_merge_state: List[LaneMergeActorState], front_actor: LaneMergeActorState,
+                          merge_from_s: float, red_line_s: float):
         """
         This function may be used by RL training procedure, where ego & actors are created in a fast simple simulator,
         like SUMO, where scene_static (with Frenet frames) does not exist.
@@ -161,7 +162,16 @@ class LaneMergeState(BehavioralGridState):
                                        obj_id=i+1, timestamp=0, cartesian_state=np.array([0, 0, 0, actor.velocity, 0, 0]),
                                        size=ObjectSize(actor.length, 0, 0), confidence=1, off_map=False),
                                    longitudinal_distance=actor.s_relative_to_ego, relative_lanes=[target_rel_lane])
-                                for i, actor in enumerate(actors_lane_merge_state)]}
+                                for i, actor in enumerate(actors_lane_merge_state)],
+
+                               (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT):
+                               [DynamicObjectWithRoadSemantics(DynamicObject.create_from_cartesian_state(
+                                   obj_id=len(actors_lane_merge_state)+1, timestamp=0,
+                                   cartesian_state=np.array([0, 0, 0, front_actor.velocity, 0, 0]),
+                                   size=ObjectSize(front_actor.length, 0, 0), confidence=1, off_map=False),
+                                   longitudinal_distance=front_actor.s_relative_to_ego, relative_lanes=[RelativeLane.SAME_LANE])]
+                               if front_actor is not None else []
+                              }
 
         ego_fstate2D = np.concatenate((ego_fstate, np.zeros(FS_1D_LEN)))
         return cls(road_occupancy_grid, ego_state, {}, {RelativeLane.SAME_LANE: ego_fstate2D},
