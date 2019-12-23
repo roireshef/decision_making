@@ -175,7 +175,7 @@ class BehavioralPlanningFacade(DmModule):
                 # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
                 # the target GFF. This will happen when we're performing a lane change.
                 target_gff = self._lane_change_state.source_lane_gff \
-                    if self._lane_change_state.status == LaneChangeStatus.ActiveInSourceLane \
+                    if self._lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE \
                         and state.ego_state.map_state.lane_id not in self._last_gff_segment_ids \
                     else None
 
