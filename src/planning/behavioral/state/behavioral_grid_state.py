@@ -750,8 +750,8 @@ class BehavioralGridState:
 
         # If an object is in both the left and right lane (based only on lane ID's), there may be an error in the map.
         if not (in_left ^ in_right):
-            logger.info(f"Object {dynamic_object.obj_id}'s lane ({dynamic_object.map_state.lane_id}) was found in both "
-                        f"the left and right GFFs.")
+            logger.warning(f"Object {dynamic_object.obj_id}'s lane ({dynamic_object.map_state.lane_id}) was found in "
+                           f"both the left and right GFFs.")
 
         bbox = dynamic_object.bounding_box()
 
