@@ -57,7 +57,7 @@ class LaneMergeStateEncoder:
 
         # init for empty grid cells
         actors_exist_default = np.zeros(shape=(1, num_of_grid_cells))
-        actors_vel_default = np.zeros(shape=(1, num_of_grid_cells))
+        actors_vel_default = -LANE_MERGE_ACTION_SPACE_MAX_VELOCITY * np.ones(shape=(1, num_of_grid_cells))
         encoded_actors_states = np.vstack((actors_exist_default, actors_vel_default))
 
         for actor in actors_states:
