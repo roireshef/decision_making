@@ -277,7 +277,7 @@ class BehavioralGridState:
         :return: maximal speed limit in [m/s]
         """
         lane_id_by_gff = [gff.segment_ids.tolist() for gff in self.extended_lane_frames.values()]
-        unique_lane_ids = set(itertools.chain(*lane_id_by_gff))
+        unique_lane_ids = set(itertools.chain.from_iterable(lane_id_by_gff))
         return max([MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in unique_lane_ids])
 
     @staticmethod
