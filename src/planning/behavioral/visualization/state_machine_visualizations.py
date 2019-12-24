@@ -24,7 +24,7 @@ class BehavioralStateMachineVisualizer(StateMachineVisualizer):
         return [None] * self.plot_num
 
     def _update_data(self, elem: Any):
-        self._data[self._type_to_index(elem)] = self._render_digraph(self._transform(elem))
+        self._data[self._type_to_index(elem)] = elem
 
     def _init_fig(self):
         self.fig = plt.figure(figsize=(10, 8), num="Planning Agent State Machine Status")
@@ -48,9 +48,9 @@ class BehavioralStateMachineVisualizer(StateMachineVisualizer):
 
             if self.im[idx] is None:
                 # initialize window used to plot images
-                self.im[idx] = self.ax[idx].imshow(img)
+                self.im[idx] = self.ax[idx].imshow(self._render_digraph(self._transform(img)))
             else:
-                self.im[idx].set_data(img)
+                self.im[idx].set_data(self._render_digraph(self._transform(img)))
 
     def _refresh_fig(self):
         self.fig.canvas.draw()
