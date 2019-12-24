@@ -1,7 +1,7 @@
 from os import getpid
 
 from decision_making.src import global_constants
-from decision_making.src.dm_main import DmInitialization, DEFAULT_MAP_FILE
+from decision_making.src.dm_main import DmInitialization
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
     FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN
