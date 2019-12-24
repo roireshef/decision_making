@@ -170,7 +170,7 @@ class ActionSpecFiltering:
 
         # loop on the target relative lanes and calculate lateral accelerations for all relevant specs
         for rel_lane, lane_specs in specs_by_rel_lane.items():
-            specs_t = np.array([spec.t for spec in lane_specs])
+            specs_t, specs_t_d = np.array([[spec.t, spec.t_d] for spec in lane_specs]).T
             pad_mode = np.array([spec.only_padding_mode for spec in lane_specs])
             goal_fstates = np.array([spec.as_fstate() for spec in lane_specs])
 
@@ -179,7 +179,7 @@ class ActionSpecFiltering:
             ego_fstates = np.tile(ego_fstate, len(lane_specs)).reshape((len(lane_specs), -1))
 
             # calculate polynomials
-            poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(specs_t, ego_fstates, goal_fstates, pad_mode)
+            poly_coefs_s, poly_coefs_d = KinematicUtils.calc_poly_coefs(specs_t, specs_t_d, ego_fstates, goal_fstates, pad_mode)
 
             # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
             ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_samples)
@@ -188,7 +188,7 @@ class ActionSpecFiltering:
             # Pad (extrapolate) short trajectories from spec.t until minimal action time.
             # Beyond the maximum between spec.t and minimal action time the Frenet trajectories are set to zero.
             ftrajectories[indices_by_rel_lane[rel_lane]] = ActionSpecFilter._pad_trajectories_beyond_spec(
-                lane_specs, ftrajectories_s, ftrajectories_d, specs_t, pad_mode)
+                lane_specs, ftrajectories_s, ftrajectories_d, pad_mode)
 
             # convert Frenet trajectories to cartesian trajectories
             ctrajectories[indices_by_rel_lane[rel_lane]] = lane_frenet.ftrajectories_to_ctrajectories(

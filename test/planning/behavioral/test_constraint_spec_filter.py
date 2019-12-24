@@ -30,7 +30,7 @@ def test_filter_FilteringChangesInMiddleOfRange():
     points = np.arange(0, 100, 1)
     dummy_filter = DummyConstraintSpecFilter(constraint_value, points)
     expected = points ** 2 + 10 < constraint_value
-    v = dummy_filter.filter(behavioral_state=None, action_specs=[1])
+    v = dummy_filter.filter(behavioral_state=None, action_specs=[1], ftrajectories=None, ctrajectories=None)
     for (expected_value, actual_value) in zip(expected, v[0]):
         assert expected_value == actual_value
 
@@ -39,7 +39,7 @@ def test_filter_filterAlwaysTrue():
     points = np.arange(0, 100, 1)
     dummy_filter = DummyConstraintSpecFilter(constraint_value, points)
     expected = [True] * len(points)
-    v = dummy_filter.filter(behavioral_state=None, action_specs=[1])
+    v = dummy_filter.filter(behavioral_state=None, action_specs=[1], ftrajectories=None, ctrajectories=None)
     for (expected_value, actual_value) in zip(expected, v[0]):
         assert expected_value == actual_value
 
@@ -49,7 +49,7 @@ def test_filter_filterAlwaysFalse():
     points = np.arange(0, 100, 1)
     dummy_filter = DummyConstraintSpecFilter(constraint_value, points)
     expected = [False] * len(points)
-    v = dummy_filter.filter(behavioral_state=None, action_specs=[1])
+    v = dummy_filter.filter(behavioral_state=None, action_specs=[1], ftrajectories=None, ctrajectories=None)
     for (expected_value, actual_value) in zip(expected, v[0]):
         assert expected_value == actual_value
 
@@ -63,7 +63,7 @@ def test_raiseFalse_filterAlwaysFalse():
     constraint_value = -1
     points = np.arange(0, 100, 1)
     dummy_filter = RaiseFalseDummyConstraintSpecFilter(constraint_value, points)
-    v = dummy_filter.filter(behavioral_state=None, action_specs=[1])
+    v = dummy_filter.filter(behavioral_state=None, action_specs=[1], ftrajectories=None, ctrajectories=None)
     assert not v[0]
 
 
@@ -76,5 +76,5 @@ def test_raiseTrue_filterAlwaysTrue():
     constraint_value = -1
     points = np.arange(0, 100, 1)
     dummy_filter = RaiseTrueDummyConstraintSpecFilter(constraint_value, points)
-    v = dummy_filter.filter(behavioral_state=None, action_specs=[1])
+    v = dummy_filter.filter(behavioral_state=None, action_specs=[1], ftrajectories=None, ctrajectories=None)
     assert v[0]
