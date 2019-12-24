@@ -127,6 +127,10 @@ class DummyVisualizer(MultiprocessVisualizer):
         """
         pass
 
+    @property
+    def queue(self):
+        return None
+
     def start(self) -> None:
         pass
 
