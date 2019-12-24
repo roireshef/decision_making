@@ -5,7 +5,7 @@ from decision_making.src.global_constants import MINIMUM_REQUIRED_TRAJECTORY_TIM
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFilter
-from decision_making.src.planning.types import BoolArray
+from decision_making.src.planning.types import BoolArray, FrenetTrajectories2D, CartesianExtendedTrajectories
 from typing import Any, List
 import numpy as np
 
@@ -123,7 +123,8 @@ class ConstraintSpecFilter(ActionSpecFilter):
                 ActionSpec(min_action_time, spec.t_d, spec.v, spec.s + (min_action_time - spec.t) * spec.v, spec.d, spec.recipe)
                 for spec in action_specs]
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> BoolArray:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState,
+               ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories) -> BoolArray:
         """
         The filter function
         No need to implement this method in your subclass

@@ -558,6 +558,7 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
     scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
     scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
     SceneStaticModel.get_instance().set_scene_static(scene_static_message)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
 
     road_id = 20
 
