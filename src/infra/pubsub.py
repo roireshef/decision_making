@@ -46,7 +46,7 @@ class PubSub:
         :param data:
         :return:
         """
-        topic.send(data)
+        topic.append(data)
 
     def unsubscribe(self, topic):
         """
