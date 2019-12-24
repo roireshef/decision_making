@@ -52,8 +52,9 @@ class LaneMergeSpec:
 
 
 class LaneMergeSequence:
-    def __init__(self, action_specs: List[LaneMergeSpec]):
+    def __init__(self, action_specs: List[LaneMergeSpec], target_rel_lane: RelativeLane):
         self.action_specs = action_specs
+        self.target_rel_lane = target_rel_lane
 
     @property
     def t(self):
@@ -218,7 +219,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # filter actions violating velocity or acceleration limits
         valid_idxs = RuleBasedLaneMergePlanner._validate_vel_acc_limits(a_0, v_0, v_T, ds, T)
 
-        actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())])
+        actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())], state.target_rel_lane)
                    for t, vT, s in zip(T[valid_idxs], v_T[valid_idxs], ds[valid_idxs])]
         return actions
 
@@ -265,7 +266,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         for t2, s2, v_t in zip(T[valid_idxs], ds[valid_idxs], v_T[valid_idxs]):
             action1 = LaneMergeSpec(t1, v_0, a_0, v_max, s1, QuinticPoly1D.num_coefs())
             action2 = LaneMergeSpec(t2, v_max, 0, v_t, s2, QuinticPoly1D.num_coefs())
-            actions.append(LaneMergeSequence([action1, action2]))
+            actions.append(LaneMergeSequence([action1, action2], state.target_rel_lane))
 
         return actions
 
@@ -323,7 +324,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
                 action1 = LaneMergeSpec(t_brake[idx], v_0, a_0, v_slow, s_brake[idx], QuinticPoly1D.num_coefs())
                 action2 = LaneMergeSpec(t_slow[idx], v_slow, 0, v_slow, s_slow[idx], poly_coefs_num=2)
                 action3 = LaneMergeSpec(t_acc[oidx], v_slow, 0, target_v[oidx], s_acc[oidx], QuarticPoly1D.num_coefs())
-                actions.append(LaneMergeSequence([action1, action2, action3]))
+                actions.append(LaneMergeSequence([action1, action2, action3], state.target_rel_lane))
 
         return actions
 
@@ -353,7 +354,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     #     valid_vel = QuinticPoly1D.are_velocities_in_limits(acc_poly_coefs[valid_acc], T[valid_acc], velocity_limits)
     #     valid_idxs = np.where(valid_acc)[0][valid_vel]
     #
-    #     actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())])
+    #     actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())],
+    #                                  state.target_rel_lane)
     #                for t, vT, s in zip(T[valid_idxs], v_T[valid_idxs], ds[valid_idxs])]
     #
     #     # create actions with full stop
