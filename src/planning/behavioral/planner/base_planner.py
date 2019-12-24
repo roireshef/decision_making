@@ -277,7 +277,6 @@ class BasePlanner:
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            # TODO: deprecated - should be replaced or removed
-                                           lat_acceleration_limits=LAT_ACC_LIMITS,
-                                           desired_velocity=VELOCITY_LIMITS[LIMIT_MAX])  # TODO: remove since not used
+                                           lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params

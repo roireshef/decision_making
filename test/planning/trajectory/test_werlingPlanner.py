@@ -86,8 +86,7 @@ def test_werlingPlanner_toyScenario_noException():
                                        lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                        velocity_limits=VELOCITY_LIMITS,
                                        lon_acceleration_limits=LON_ACC_LIMITS,
-                                       lat_acceleration_limits=LAT_ACC_LIMITS,
-                                       desired_velocity=VELOCITY_LIMITS[LIMIT_MAX])
+                                       lat_acceleration_limits=LAT_ACC_LIMITS)
 
     planner = WerlingPlanner(logger, predictor)
 
