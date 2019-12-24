@@ -273,14 +273,14 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     @staticmethod
     def _create_braking_actions(state: LaneMergeState, target_v: np.array, target_t: np.array, bounds: np.array) -> \
             List[LaneMergeSequence]:
-        cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
-        if cell not in state.road_occupancy_grid or len(state.road_occupancy_grid[cell]) == 0:
-            return []
 
-        front_car = state.road_occupancy_grid[cell][0]
-        v_slow = front_car.dynamic_object.velocity
-        margin = 0.5 * (state.ego_length + front_car.dynamic_object.size.length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
         v_0, a_0 = state.ego_fstate_1d[FS_SV], state.ego_fstate_1d[FS_SA]
+
+        cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        front_car = state.road_occupancy_grid[cell][0] if cell in state.road_occupancy_grid and len(state.road_occupancy_grid[cell]) > 0 else None
+        v_slow = front_car.dynamic_object.velocity if front_car is not None else 5
+        if front_car is None and ~np.isfinite(state.red_line_s_on_ego_gff):  # no need to brake
+            return []
 
         bounds = bounds[target_v > v_slow]
         target_t = target_t[target_v > v_slow]
@@ -292,9 +292,19 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         s_profile_coefs = QuarticPoly1D.position_profile_coefficients(0, v_slow, target_v, t_acc)
         s_acc = Math.zip_polyval2d(s_profile_coefs, t_acc[:, np.newaxis])[:, 0]
 
-        # for each target t,v find the largest s safe w.r.t. the front car
-        safe_dist = SAFETY_HEADWAY * target_v + margin
-        safe_target_s = front_car.longitudinal_distance + target_t * v_slow - safe_dist
+        # specify aggressive stop (used if there is no front car)
+        w_J_agg, _, w_T_agg = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+        s_aggr_brake, t_aggr_brake = KinematicUtils.specify_quartic_action(w_T_agg, w_J_agg, v_0, v_slow, a_0)
+
+        if front_car is None:
+            t_slow = target_t - t_aggr_brake - t_acc
+            s_slow = t_slow * v_slow
+            safe_target_s = s_aggr_brake + s_slow + s_acc
+        else:
+            margin = 0.5 * (state.ego_length + front_car.dynamic_object.size.length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            # for each target t,v find the largest s safe w.r.t. the front car
+            safe_dist = SAFETY_HEADWAY * target_v + margin
+            safe_target_s = front_car.longitudinal_distance + target_t * v_slow - safe_dist
 
         actions = []
         for bnd in range(0, bounds.shape[1], 2):
@@ -305,14 +315,18 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             if len(valid_idxs) == 0:
                 continue
 
-            # assume that host arrives to the target, when it's safe_dist behind the front car
-            dx = front_car.longitudinal_distance - safe_dist[valid_idxs] + t_acc[valid_idxs] * v_slow - s_acc[valid_idxs]
-            weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
-            w_J, _, w_T = np.full((valid_idxs.shape[0], weights.shape[0]), weights).T
-            cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(w_T, w_J, a_0, v_0, v_T=v_slow, dx=dx, T_m=0)
-            roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
-            t_brake = np.fmin.reduce(roots_s, axis=-1)
-            s_brake = dx + t_brake * v_slow
+            if front_car is not None:
+                # assume that host arrives to the target, when it's safe_dist behind the front car
+                dx = front_car.longitudinal_distance - safe_dist[valid_idxs] + t_acc[valid_idxs] * v_slow - s_acc[valid_idxs]
+                weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
+                w_J, _, w_T = np.full((valid_idxs.shape[0], weights.shape[0]), weights).T
+                cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(w_T, w_J, a_0, v_0, v_T=v_slow, dx=dx, T_m=0)
+                roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
+                t_brake = np.fmin.reduce(roots_s, axis=-1)
+                s_brake = dx + t_brake * v_slow
+            else:
+                t_brake = np.full(len(valid_idxs), t_aggr_brake)
+                s_brake = np.full(len(valid_idxs), s_aggr_brake)
 
             valid = np.isfinite(t_brake) & (s_brake >= 0) & (t_acc[valid_idxs] + t_brake <= target_t[valid_idxs])
             orig_valid_idxs = valid_idxs[valid]
