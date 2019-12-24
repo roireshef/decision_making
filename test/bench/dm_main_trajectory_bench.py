@@ -49,7 +49,7 @@ class DmMockInitialization:
         return trajectory_planning_module
 
 
-def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE):
+def main(fixed_trajectory_file: str = None):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.
