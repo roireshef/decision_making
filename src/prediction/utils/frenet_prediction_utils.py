@@ -5,7 +5,9 @@ from decision_making.src.planning.types import FS_SV, FS_SX, \
 
 
 class FrenetPredictionUtils:
-
+    """
+    This class contains methods for making predictions on frenet states, independent on uc objects (e.g. dynamic objects)
+    """
     @staticmethod
     def predict_1d_frenet_states(objects_fstates: FrenetState1D, horizons: np.ndarray) -> FrenetTrajectories1D:
         """

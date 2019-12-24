@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, \
     LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
-    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
+    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_ACTION_SPACE_EMPTY_CELL_VELOCITY
 from decision_making.src.planning.behavioral.state.lane_merge_actor_state import LaneMergeActorState
 from decision_making.src.planning.types import FS_SX, FrenetState1D, FS_SV, \
     FS_SA
@@ -57,7 +57,7 @@ class LaneMergeStateEncoder:
 
         # init for empty grid cells
         actors_exist_default = np.zeros(shape=(1, num_of_grid_cells))
-        actors_vel_default = np.zeros(shape=(1, num_of_grid_cells))
+        actors_vel_default = -LANE_MERGE_ACTION_SPACE_EMPTY_CELL_VELOCITY * np.ones(shape=(1, num_of_grid_cells))
         encoded_actors_states = np.vstack((actors_exist_default, actors_vel_default))
 
         for actor in actors_states:
