@@ -21,6 +21,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_facade import T
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.utils.multiprocess_visualizer import DummyVisualizer
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
@@ -89,17 +90,14 @@ if __name__ == '__main__':
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
 
-    # MultiVisualizer
-    if RUN_STATE_MACHINE_VISUALIZER:
-        visualizer = BehavioralStateMachineVisualizer()
-        visualizer_queue = visualizer.queue
-        visualizer.start()
+    # instantiate real state machine visualizer if RUN_STATE_MACHINE_VISUALIZER is True, otherwise a dummy one
+    visualizer = BehavioralStateMachineVisualizer() if RUN_STATE_MACHINE_VISUALIZER else DummyVisualizer()
+    visualizer_queue = visualizer.queue
+    visualizer.start()
 
-        # put default values in the queue
-        visualizer_queue.put(DIM_States.DISABLED)
-        visualizer_queue.put(LaneChangeStatus.PENDING)
-    else:
-        visualizer_queue = None
+    # put default values in the queue
+    visualizer.append(DIM_States.DISABLED)
+    visualizer.append(LaneChangeStatus.PENDING)
 
     modules_list = \
         [
