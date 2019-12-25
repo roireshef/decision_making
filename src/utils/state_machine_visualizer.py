@@ -6,11 +6,11 @@ import cv2
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import pydotplus
-from decision_making.src.utils.multiprocess_visualizer import MultiprocessVisualizer
+from decision_making.src.utils.async_visualizer import AsyncVisualizer
 from graphviz import Digraph
 
 
-class StateMachineVisualizer(MultiprocessVisualizer):
+class StateMachineVisualizer(AsyncVisualizer):
     def __init__(self, plot_num):
         """
         Visualizer that visualizes a single Matplotlib figure with flexible number of subplots (axes)

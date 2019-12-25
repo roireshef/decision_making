@@ -1,4 +1,3 @@
-from typing import Any
 from typing import Union
 
 import matplotlib.pyplot as plt
@@ -8,7 +7,7 @@ from decision_making.src.utils.state_machine_visualizer import StateMachineVisua
 from graphviz import Digraph
 
 
-class BehavioralStateMachineVisualizer(StateMachineVisualizer):
+class DIMAndLCoDVisualizer(StateMachineVisualizer):
     def __init__(self, plot_num: int = 2):
         """
         Visualizer that visualizes DIM and LCoD state machine graphs

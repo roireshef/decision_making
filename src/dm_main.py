@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.behavioral_planning_facade import B
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DIM_States
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.visualization.behavioral_state_machine_visualizations \
-    import BehavioralStateMachineVisualizer
+    import DIMAndLCoDVisualizer
 from decision_making.src.planning.route.backpropagating_route_planner import BackpropagatingRoutePlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     os.environ['MKL_NUM_THREADS'] = '1'
 
     # instantiate real state machine visualizer if RUN_STATE_MACHINE_VISUALIZER is True, otherwise a dummy one
-    visualizer = BehavioralStateMachineVisualizer() if RUN_STATE_MACHINE_VISUALIZER else DummyVisualizer()
+    visualizer = DIMAndLCoDVisualizer() if RUN_STATE_MACHINE_VISUALIZER else DummyVisualizer()
     visualizer_queue = visualizer.queue
     visualizer.start()
 

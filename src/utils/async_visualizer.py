@@ -6,7 +6,7 @@ from pandas import DataFrame
 from typing import Any
 
 
-class MultiprocessVisualizer(mp.Process):
+class AsyncVisualizer(mp.Process):
     def __init__(self, queue_len: int = 20, *args, **kwargs):
         """
         Interface for a visualizer that uses a dedicated process for visualization. It opens a multiprocess Queue used
@@ -20,7 +20,7 @@ class MultiprocessVisualizer(mp.Process):
 
         self._queue = mp.Queue(queue_len)
         self._is_running = mp.Value('b', False)
-        self._plot_lock = mp.Lock()
+        self._figure_lock = mp.Lock()
 
         self._data = self._init_data()
 
@@ -29,22 +29,28 @@ class MultiprocessVisualizer(mp.Process):
         return self._queue
 
     def run(self):
-        self._plot_lock.acquire()
+        # Here we lock <self._figure_lock> while we initialize the figure and release it after the figure
+        # has been initialized. The client process can choose to call async_visualizer.wait_for_figure_lock() if it
+        # wants to wait for figure-initialization
+        self._figure_lock.acquire()
         self._init_fig()
         self._refresh_fig()
-        self._plot_lock.release()
+        self._figure_lock.release()
 
         self._is_running.value = True
         while self._is_running.value:
+            # if queue is empty, refresh figure to avoid greying it out and sleep for some short period
             if self._queue.empty():
                 time.sleep(0.01)
                 self._refresh_fig()
                 continue
 
+            # read from queue into the buffer <self._data> until it is empty
             while self._is_running.value and not self._queue.empty():
                 elem = self._queue.get_nowait()
                 self._update_data(elem)
 
+            # use <self._data> to visualize and refresh the figure
             self._update_fig()
             self._refresh_fig()
 
@@ -63,12 +69,14 @@ class MultiprocessVisualizer(mp.Process):
         """
         self._queue.put(elem)
 
-    def wait_for_figure(self):
+    def wait_for_figure_lock(self):
         """
-        utility method used to lock the user's process while plots are being initialized
+        utility method used to lock the user's process while plots are being initialized. When lock is being acquired,
+        if it's already acquired by other process, then interpreter waits for it to be released first (and therefor
+        waits at the lock.acquire() line.
         """
-        self._plot_lock.acquire()
-        self._plot_lock.release()
+        self._figure_lock.acquire()
+        self._figure_lock.release()
 
     # USER CUSTOMIZABLE METHODS
 
@@ -117,7 +125,7 @@ class MultiprocessVisualizer(mp.Process):
         pass
 
 
-class DummyVisualizer(MultiprocessVisualizer):
+class DummyVisualizer(AsyncVisualizer):
     def __init__(self, *args, **kwargs):
         """
         A dummy visualizer the exposes the same interface of MultiprocessVisualizer, but does nothing.
@@ -143,7 +151,7 @@ class DummyVisualizer(MultiprocessVisualizer):
     def append(self, elem):
         pass
 
-    def wait_for_figure(self):
+    def wait_for_figure_lock(self):
         pass
 
     def _init_fig(self):
