@@ -29,6 +29,7 @@ AV_Logger.init_group("PLAN")
 
 RUN_STATE_MACHINE_VISUALIZER = True
 
+
 class DmInitialization:
     """
     This class contains the module initializations
