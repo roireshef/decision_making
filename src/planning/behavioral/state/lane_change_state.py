@@ -21,12 +21,6 @@ class LaneChangeStatus(Enum):
     ACTIVE_IN_SOURCE_LANE = 3
     ACTIVE_IN_TARGET_LANE = 4
     COMPLETE_WAITING_FOR_RESET = 5
-    Requestable = 0   # TODO: Find a better name so that it's not confused with LaneChangeRequested?
-    Requested = 1
-    AnalyzingSafety = 2
-    ActiveInSourceLane = 3
-    ActiveInTargetLane = 4
-    CompleteWaitingForReset = 5
 
 
 class LaneChangeState:

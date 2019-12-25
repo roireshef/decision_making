@@ -1,7 +1,5 @@
-import multiprocessing as mp
 import os
 
-from decision_making.paths import Paths
 from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \

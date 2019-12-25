@@ -73,11 +73,11 @@ class BehavioralGridState:
         self.ego_state = ego_state
         self.extended_lane_frames = extended_lane_frames
         self.projected_ego_fstates = projected_ego_fstates
-        self.max_speed_limit = self._get_max_speed_limit()
         self.tcb_in_gff_and_their_distances = tcb_in_gff_and_their_distances
         self.lane_change_state = lane_change_state
         self.ignored_tcb_distance_in_gff = ignored_tcb_distance_in_gff
         self.logger = logger
+        self.max_speed_limit = self._get_max_speed_limit()
 
     @property
     def ego_length(self) -> float:
