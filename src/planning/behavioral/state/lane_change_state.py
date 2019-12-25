@@ -11,6 +11,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Rel
 from decision_making.src.planning.types import FS_DX, FS_SX, C_YAW, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType, GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import EgoState
+from decision_making.src.utils.dummy_queue import DummyQueue
 from decision_making.src.utils.map_utils import MapUtils
 
 
@@ -45,7 +46,7 @@ class LaneChangeState:
         self.lane_change_start_time = lane_change_start_time
         self.target_relative_lane = target_relative_lane
         self.status = status
-        self.visualizer_queue = visualizer_queue
+        self.visualizer_queue = visualizer_queue or DummyQueue()
         self.visualizer_queue.put(self.status)
 
     def __str__(self):

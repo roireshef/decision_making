@@ -13,6 +13,7 @@ from decision_making.src.messages.pedal_position_message import PedalPosition
 from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FS_SV, FrenetState2D
+from decision_making.src.utils.dummy_queue import DummyQueue
 
 
 class DIM_States(Enum):
@@ -39,7 +40,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
 
     def __init__(self, logger: Logger, visualizer_queue: mp.Queue = None):
         self.logger = logger
-        self.visualizer_queue = visualizer_queue
+        self.visualizer_queue = visualizer_queue or DummyQueue()
         self._reset()
 
     def to_dict(self, left_out_fields=None):
