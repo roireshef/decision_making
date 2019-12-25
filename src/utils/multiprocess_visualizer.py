@@ -7,7 +7,7 @@ from typing import Any
 
 
 class MultiprocessVisualizer(mp.Process):
-    def __init__(self, queue_len: int = 10, *args, **kwargs):
+    def __init__(self, queue_len: int = 20, *args, **kwargs):
         """
         Interface for a visualizer that uses a dedicated process for visualization. It opens a multiprocess Queue used
         to communicate the data for visualization and a Lock used to (optionally) lock client process waiting for the

@@ -1,4 +1,6 @@
 import multiprocessing as mp
+from enum import Enum
+from logging import Logger
 from typing import Tuple
 
 import numpy as np
@@ -8,12 +10,8 @@ from decision_making.src.global_constants import DRIVER_INITIATED_MOTION_PEDAL_T
     DRIVER_INITIATED_MOTION_TIMEOUT, STOP_BAR_IND, STOP_BAR_DISTANCE_IND, \
     DIM_MARGIN_TO_STOP_BAR
 from decision_making.src.messages.pedal_position_message import PedalPosition
-from enum import Enum
-from logging import Logger
-
 from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
-from decision_making.src.planning.behavioral.visualization.dummy_queue import DummyQueue
 from decision_making.src.planning.types import FS_SV, FrenetState2D
 
 

@@ -10,7 +10,7 @@ from decision_making.src.messages.control_status_message import ControlStatus
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
-from decision_making.src.planning.behavioral.visualization.dummy_queue import DummyQueue
+from decision_making.src.utils.dummy_queue import DummyQueue
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC

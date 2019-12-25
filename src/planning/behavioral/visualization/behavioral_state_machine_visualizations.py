@@ -13,18 +13,7 @@ class BehavioralStateMachineVisualizer(StateMachineVisualizer):
         """
         Visualizer that visualizes DIM and LCoD state machine graphs
         """
-        self.plot_num = plot_num
-
-        super().__init__()
-
-        self.im = [None] * self.plot_num
-        self.ax = [None] * self.plot_num
-
-    def _init_data(self) -> Any:
-        return [None] * self.plot_num
-
-    def _update_data(self, elem: Any):
-        self._data[self._type_to_index(elem)] = elem
+        super().__init__(plot_num)
 
     def _init_fig(self):
         self.fig = plt.figure(figsize=(10, 8), num="Planning Agent State Machine Status")
@@ -40,26 +29,10 @@ class BehavioralStateMachineVisualizer(StateMachineVisualizer):
 
         self.fig.tight_layout()
         self.ax = [lcod_ax, dim_ax]
+        self.fig.show()
 
-    def _update_fig(self):
-        for idx, img in enumerate(self._data):
-            if img is None:
-                continue
-
-            if self.im[idx] is None:
-                # initialize window used to plot images
-                self.im[idx] = self.ax[idx].imshow(self._render_digraph(self._transform(img)))
-            else:
-                self.im[idx].set_data(self._render_digraph(self._transform(img)))
-
-    def _refresh_fig(self):
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
-    def _destroy_fig(self):
-        plt.close(self.fig)
-
-    def _transform(self, elem: Union[LaneChangeStatus, DIM_States]) -> Digraph:
+    @staticmethod
+    def _transform(elem: Union[LaneChangeStatus, DIM_States]) -> Digraph:
         d = Digraph(comment="comment")
 
         states = {}
