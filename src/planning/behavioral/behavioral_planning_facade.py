@@ -73,6 +73,16 @@ class BehavioralPlanningFacade(DmModule):
         self.last_log_time = -1.0
         self._lane_change_state = LaneChangeState(visualizer_queue=visualizer_queue)
 
+    def _write_filters_to_log_if_required(self, now: float):
+        """
+        Write list of applicable filters to log every 5 seconds.
+        :param now: time in seconds
+        """
+        if now - self.last_log_time > 5.0:
+            self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
+                                                              as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
+            self.last_log_time = now
+
     @property
     def planner(self):
         return self._planner
@@ -412,14 +422,3 @@ class BehavioralPlanningFacade(DmModule):
 
     def _publish_takeover(self, takeover_message:Takeover) -> None :
         self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_message.serialize())
-
-    def _write_filters_to_log_if_required(self, now: float):
-        """
-        Write list of applicable filters to log every 5 seconds.
-        :param now: time in seconds
-        """
-        if now - self.last_log_time > 5.0:
-            self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
-                                                              as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
-            self.last_log_time = now
-
