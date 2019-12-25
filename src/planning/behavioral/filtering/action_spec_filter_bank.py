@@ -173,26 +173,31 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
         are_safe = np.zeros(len(action_specs)).astype(bool)
 
+        # loop over relative target lanes
         for target_lane, lane_frame in behavioral_state.extended_lane_frames.items():
             if len(indices_by_rel_lane[target_lane]) == 0:
                 continue
 
+            # build ego Frenet trajectories for the current target_lane
             specs_t = np.array([spec.t for spec in specs_by_rel_lane[target_lane]])
             trajectory_lengths = (np.maximum(specs_t, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
             max_trajectory_length = np.max(trajectory_lengths)
             ego_ftrajectories = ftrajectories[indices_by_rel_lane[target_lane], :max_trajectory_length]
 
+            # if there is an actor in parallel cell, all actions to relative_lane are not safe
+            if target_lane != RelativeLane.SAME_LANE:
+                parallel_cell = (target_lane, RelativeLongitudinalPosition.PARALLEL)
+                if parallel_cell in behavioral_state.road_occupancy_grid and \
+                        len(behavioral_state.road_occupancy_grid[parallel_cell]) > 0:
+                    return np.zeros(len(action_specs)).astype(bool)
+
             # safety w.r.t. the front actor
             are_safe[indices_by_rel_lane[target_lane]] = FilterForSafetyTowardsTargetVehicle._check_safety_for_actor(
                 behavioral_state, ego_ftrajectories, trajectory_lengths, target_lane,
                 RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT, self._logger)
+            # if target_lane == SAME_LANE, only front actor should be tested
             if target_lane == RelativeLane.SAME_LANE:
                 continue
-
-            # if there is an actor in parallel cell, all actions to relative_lane are not safe
-            if (target_lane, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid and \
-                len(behavioral_state.road_occupancy_grid[(target_lane, RelativeLongitudinalPosition.PARALLEL)]) > 0:
-                return np.zeros(len(action_specs)).astype(bool)
 
             # safety w.r.t. the target lane front actor
             are_safe[indices_by_rel_lane[target_lane]] &= FilterForSafetyTowardsTargetVehicle._check_safety_for_actor(
@@ -230,6 +235,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                 return np.ones(ego_ftrajectories.shape[0]).astype(bool)
         trajectory_lengths = np.minimum(trajectory_lengths, till_time_idx)
 
+        # predict actor's Frenet trajectory
         margin = 0.5 * (ego_length + actor.size.length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
         max_trajectory_length = np.max(trajectory_lengths)
         target_fstate = behavioral_state.extended_lane_frames[actor_lane].convert_from_segment_state(

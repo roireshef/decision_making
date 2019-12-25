@@ -64,6 +64,12 @@ class LaneMergeState(BehavioralGridState):
         return f'EGO: {self.ego_fstate_1d} + \r\nACTORS:{[[actor.s_relative_to_ego, actor.velocity, actor.length] for actor in self.actors_states]}'
 
     @classmethod
+    def create_from_behavioral_state(cls, behaviral_state: BehavioralGridState, target_lane: RelativeLane):
+        return cls(behaviral_state.road_occupancy_grid, behaviral_state.ego_state, behaviral_state.extended_lane_frames,
+                   behaviral_state.projected_ego_fstates, 0, np.inf, target_lane, behaviral_state.lane_change_state,
+                   behaviral_state.logger)
+
+    @classmethod
     def create_from_state(cls, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState, logger: Logger):
         """
         Create LaneMergeState from a given State.

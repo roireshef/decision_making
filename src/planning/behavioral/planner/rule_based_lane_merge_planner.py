@@ -142,6 +142,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         actions_jerks = np.zeros(len(actions))
         actions_times = np.zeros(len(actions))
         actions_dists = np.zeros(len(actions))
+        accel_times = np.zeros(len(actions))
+        accel_dists = np.zeros(len(actions))
         calm_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
         for poly1d in [QuinticPoly1D, QuarticPoly1D]:
             specs_list = [[idx, spec.t, spec.v_0, spec.a_0, spec.v_T, spec.ds]
@@ -165,15 +167,18 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             for action_idx, spec_jerk, spec_t, spec_v, spec_s, acc_t, acc_s in \
                     zip(action_idxs.astype(int), spec_jerks, T, v_T, ds, accel_to_max_vel_T, accel_to_max_vel_s):
                 actions_jerks[action_idx] += spec_jerk
-                actions_times[action_idx] += spec_t + acc_t  # add acceleration time from v_T to max_vel
-                actions_dists[action_idx] += spec_s + acc_s
+                actions_times[action_idx] += spec_t
+                actions_dists[action_idx] += spec_s
+                accel_times[action_idx] += acc_t
+                accel_dists[action_idx] += acc_s
 
         # calculate actions' costs according to the AGGRESSIVE jerk-time weights
-        time_jerk_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+        jerk_w, _, time_w = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+        left_lane_weight = (time_w / 4) * (-1 if lane_merge_state.target_rel_lane == RelativeLane.LEFT_LANE else 1)
         # assume that after acceleration to max_vel it will continue to max_dist with max_vel
         max_dist = np.max(actions_dists)
-        full_times = actions_times + (max_dist - actions_dists) / LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
-        action_costs = time_jerk_weights[0] * actions_jerks + time_jerk_weights[2] * full_times
+        full_times = actions_times + accel_times + (max_dist - actions_dists - accel_dists) / LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
+        action_costs = jerk_w * actions_jerks + time_w * full_times + left_lane_weight * actions_times
         action_costs[actions == None] = np.inf
         return action_costs
 
@@ -302,8 +307,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             safe_target_s = s_aggr_brake + s_slow + s_acc
         else:
             margin = 0.5 * (state.ego_length + front_car.dynamic_object.size.length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            # safe_dist = RSS distance + half lane change
+            safe_dist = margin + SAFETY_HEADWAY * target_v + (target_v*target_v - v_slow*v_slow)/(-2*LON_ACC_LIMITS[0]) + \
+                        0.5 * LANE_CHANGE_TIME_COMPLETION_TARGET * (target_v - v_slow)
             # for each target t,v find the largest s safe w.r.t. the front car
-            safe_dist = SAFETY_HEADWAY * target_v + margin
             safe_target_s = front_car.longitudinal_distance + target_t * v_slow - safe_dist
 
         actions = []
