@@ -29,9 +29,6 @@ from rte.python.parser import av_argument_parser
 
 AV_Logger.init_group("PLAN")
 
-# TODO: obsolete??
-DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
-
 RUN_STATE_MACHINE_VISUALIZER = True
 
 
