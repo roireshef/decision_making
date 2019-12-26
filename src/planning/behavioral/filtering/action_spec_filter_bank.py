@@ -21,7 +21,7 @@ from decision_making.src.planning.types import LAT_CELL
 from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
-from decision_making.src.planning.utils.braking_distance import BrakingDistances
+from decision_making.src.planning.utils.braking_distances import BrakingDistances
 from decision_making.src.utils.map_utils import MapUtils
 
 

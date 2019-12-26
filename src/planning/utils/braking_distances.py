@@ -41,7 +41,7 @@ class BrakingDistances:
         # calculate actions' planning time
         if a_0 is None:
             a_0 = np.zeros_like(v_0)
-        T = BrakingDistances.calc_T_s(w_T, w_J, v_0, a_0, v_T)
+        T = BrakingDistances.calc_T_s_for_quartic(w_T, w_J, v_0, a_0, v_T)
         non_zero = ~np.isclose(T, 0)
 
         # check acceleration limits
@@ -58,7 +58,7 @@ class BrakingDistances:
         return distances, T
 
     @staticmethod
-    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
+    def calc_T_s_for_quartic(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
         """
         given initial & end constraints and time-jerk weights, calculate longitudinal planning time
         :param w_T: weight of Time component in time-jerk cost function

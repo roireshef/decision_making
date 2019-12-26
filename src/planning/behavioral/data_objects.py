@@ -156,22 +156,3 @@ class ActionSpec:
 
     def as_fstate(self) -> FrenetState2D:
         return np.array([self.s, self.v, 0, self.d, 0, 0])
-
-
-class MidActionSpec(ActionSpec):
-    def __init__(self, t: float, v: float, s: float, d: float, recipe: ActionRecipe, a: float = 0):
-        """
-        this data structure inherits from ActionSpec but allows acceleration which is different from 0.
-        Typically used for depicting an action before it's finished (acc!=0)
-        :param t: time [sec]
-        :param v: velocity [m/s]
-        :param s: global longitudinal position in Frenet frame [m]
-        :param d: global lateral position in Frenet frame [m]
-        :param recipe: the original recipe that the action space originated from (redundant but stored for efficiency)
-        :param a: acceleration [m/s^2]
-        """
-        super().__init__(t, v, s, d, recipe)
-        self.a = a
-
-    def as_fstate(self) -> FrenetState2D:
-        return np.array([self.s, self.v, self.a, self.d, 0, 0])
