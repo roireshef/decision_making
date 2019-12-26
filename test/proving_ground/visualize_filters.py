@@ -46,6 +46,9 @@ def plot_filters_map(log_file_path: str):
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                  RoadSignActionSpace(logger, predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
+    speed_limit_idxs = [i for i, recipe in enumerate(action_space.recipes)
+                        if recipe.action_type == ActionType.FOLLOW_LANE and recipe.velocity < 0]
+
     # TODO in the future remove this limitation of SAME_LANE
     limit_relative_lane = [RelativeLane.SAME_LANE]  # currently limit to SAME_LANE to make visualization easier.
     action_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane in limit_relative_lane]
@@ -76,16 +79,14 @@ def plot_filters_map(log_file_path: str):
                 speed_limit_per_lane = ast.literal_eval(text.split('Speed limits at time')[1].split(': ', maxsplit=1)[1])
                 if ego_lane_id in list(speed_limit_per_lane):
                     speed_limit = speed_limit_per_lane[ego_lane_id]
-                    for recipe in action_space.recipes:
-                        if recipe.action_type == ActionType.FOLLOW_LANE:
-                            recipe.velocity = (speed_limit if recipe.velocity < 0 else float(recipe.velocity))
+                    for recipe_idx in speed_limit_idxs:
+                        action_space.recipes[recipe_idx].velocity = speed_limit
 
         if 'Filtering_map' in text:
             colon_str = text.split('timestamp_in_sec ')[1].split(':')
             timestamp = float(colon_str[0])
 
-            filters_str = colon_str[1].split('; speed limit')[0]
-            filters_result = np.array(list(map(int, filters_str.replace('array([', '').replace('])', '').split(', '))))
+            filters_result = np.array(list(map(int, colon_str[1].replace('array([', '').replace('])', '').split(', '))))
             filters_result = filters_result[valid_idxs]
             # filtering_map.append((timestamp, filters_result))
             plt.scatter(np.full(len(filters_result), timestamp), np.array(range(len(filters_result))),
