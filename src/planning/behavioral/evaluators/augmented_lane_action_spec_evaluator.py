@@ -30,7 +30,6 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
         :param route_plan: the route plan which contains lane costs
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
-
         # Choose the minimum cost lane based on route plan costs.
         # The minimum cost lane is defined as the lane who has the minimum cost at the first point where
         # it diverges from the SAME_LANE.
@@ -65,6 +64,10 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
             else:
                 lanes_to_try.append(RelativeLane.SAME_LANE)
 
+        # if SAME_LANE actions does not exist, try other lanes
+        existing_target_lanes = set([spec.relative_lane for spec in action_specs if spec is not None])
+        if RelativeLane.SAME_LANE not in existing_target_lanes:
+            lanes_to_try = existing_target_lanes
 
         for target_lane in lanes_to_try:
             # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE

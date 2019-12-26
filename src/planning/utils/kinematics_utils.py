@@ -10,7 +10,7 @@ from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
 
 
@@ -411,24 +411,3 @@ class KinematicUtils:
                                acc_limits: np.array = LON_ACC_LIMITS) -> [float, float]:
         ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0, action_horizon_limit, acc_limits)
         return ds[0], T[0]
-
-
-class BrakingDistances:
-    """
-    Calculates braking distances
-    """
-    @staticmethod
-    def create_braking_distances(aggressiveness_level: AggressivenessLevel) -> np.array:
-        """
-        Creates distances of all follow_lane with the given aggressiveness_level.
-        Actions violating acceleration limits get infinite distance.
-        :return: the actions' distances
-        """
-        # create v0 & vT arrays for all braking actions
-        v0, vT = np.meshgrid(FILTER_V_0_GRID.array, FILTER_V_T_GRID.array, indexing='ij')
-        v0, vT = np.ravel(v0), np.ravel(vT)
-        # calculate distances for braking actions
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness_level.value]
-        distances = np.zeros_like(v0)
-        distances[v0 > vT], _ = KinematicUtils.specify_quartic_actions(w_T, w_J, v0[v0 > vT], vT[v0 > vT], action_horizon_limit=np.inf)
-        return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))

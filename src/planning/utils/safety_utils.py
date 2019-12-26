@@ -74,19 +74,23 @@ class SafetyRSS:
                 ego_s[traj_length:] = -np.inf
 
             # extrapolate ego trajectories ego_response_time seconds beyond their end state
+            traj_lengths = trajectory_lengths[ego_behind]
             dt = TRAJECTORY_TIME_RESOLUTION
             predictor = RoadFollowingPredictor(logger)
             extrapolated_times = np.arange(dt, ego_response_time + EPS, dt)
-            last_ego_states_s = ego_trajectories_s[ego_behind, -1]
+            last_ego_states_s = ego_trajectories_s[ego_behind, traj_lengths - 1]
             ego_extrapolation = predictor.predict_1d_frenet_states(last_ego_states_s, extrapolated_times)
+            delay_shift = ego_extrapolation.shape[1]
 
-            ext_ego_lon = np.concatenate((ego_behind_lon, ego_extrapolation[..., FS_SX]), axis=1)
-            ext_ego_vel = np.concatenate((ego_behind_vel, ego_extrapolation[..., FS_SV]), axis=1)
+            ext_ego_lon = np.concatenate((ego_behind_lon, np.zeros_like(ego_extrapolation[..., FS_SX])), axis=1)
+            ext_ego_vel = np.concatenate((ego_behind_vel, np.zeros_like(ego_extrapolation[..., FS_SV])), axis=1)
+            for i in range(delay_shift):
+                ext_ego_lon[range(ext_ego_lon.shape[0]), traj_lengths + i] = ego_extrapolation[:, i, FS_SX]
+                ext_ego_vel[range(ext_ego_vel.shape[0]), traj_lengths + i] = ego_extrapolation[:, i, FS_SV]
 
             # we assume ego continues its trajectory during its reaction time, so we compute the difference between
             # object's braking distance from any moment and delayed braking distance of ego
-            delay_shift = ego_extrapolation.shape[1]
-            braking_distances_diff = (ext_ego_vel[:, delay_shift:] ** 2 - obj_vel ** 2) / (2 * ego_behind_max_brake)
+            braking_distances_diff = np.maximum(0, ext_ego_vel[:, delay_shift:] ** 2 - obj_vel ** 2) / (2 * ego_behind_max_brake)
             marginal_safe_dist[ego_behind] = obj_lon - ext_ego_lon[:, delay_shift:] - braking_distances_diff - margin
 
         return marginal_safe_dist if ego_trajectories.ndim > 2 else marginal_safe_dist[0]

@@ -18,9 +18,11 @@ from decision_making.src.planning.behavioral.filtering.constraint_spec_filter im
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K, FS_SX, \
     FrenetTrajectories2D, CartesianExtendedTrajectories
+from decision_making.src.planning.utils.braking_distances import BrakingDistances
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
-from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.safety_utils import SafetyRSS
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.utils.map_utils import MapUtils
 
 

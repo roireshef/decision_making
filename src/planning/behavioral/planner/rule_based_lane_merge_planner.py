@@ -13,6 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import AggressivenessL
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
+from decision_making.src.planning.behavioral.state.lane_merge_actor_state import LaneMergeActorState
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
 from decision_making.src.planning.types import BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -60,9 +61,13 @@ class LaneMergeSequence:
     def t(self):
         return sum([spec.t for spec in self.action_specs])
 
+    @property
+    def v_T(self):
+        return self.action_specs[-1].v_T
+
 
 class RuleBasedLaneMergePlanner(BasePlanner):
-    TIME_GRID_RESOLUTION = 0.5
+    TIME_GRID_RESOLUTION = 1
     VEL_GRID_RESOLUTION = 2
 
     def __init__(self, logger: Logger):
@@ -89,8 +94,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         st_tot = time.time()
 
         t_res = RuleBasedLaneMergePlanner.TIME_GRID_RESOLUTION
-        t_grid = np.arange(t_res, LANE_MERGE_ACTION_T_LIMITS[1] + EPS, t_res)
-        v_grid = np.arange(0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + EPS, RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION)
+        ego_time = lane_merge_state.ego_state.timestamp_in_sec
+        time_fraction = (np.floor(ego_time/t_res) + 1) * t_res - ego_time
+        t_grid = np.arange(time_fraction, LANE_MERGE_ACTION_T_LIMITS[1] + EPS, t_res)
+        v_res = RuleBasedLaneMergePlanner.VEL_GRID_RESOLUTION
+        v_grid = np.arange(0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + EPS, v_res)
+        # fine_v_res = v_res / 8
+        # ego_v = np.floor(lane_merge_state.ego_state.velocity / v_res) * v_res
+        # fine_v_grid = np.arange(ego_v + fine_v_res, ego_v + v_res - EPS, fine_v_res)
+        # v_grid = np.append(v_grid, fine_v_grid)
+        # v_grid = np.sort(v_grid)
 
         target_v, target_t = np.meshgrid(v_grid, t_grid)
         target_v, target_t = target_v.ravel(), target_t.ravel()
@@ -110,7 +123,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         lane_merge_actions = single_actions + max_vel_actions + brake_actions
 
-        print('# single_actions:', len(single_actions), ', # max_vel_actions:', len(max_vel_actions))
+        print('# single_actions:', len(single_actions), ', # max_vel_actions:', len(max_vel_actions), '# brake actions:', len(brake_actions))
         # print('\ntime = %f: quintic=(%d) quartic=(%d)' % (time.time() - st_tot, len(single_actions), len(max_vel_actions)))
         return np.array(lane_merge_actions)
 
@@ -122,9 +135,11 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         :return: array of actions of the same size as the input, but filtered actions are None
         """
         s_0 = lane_merge_state.ego_fstate_1d[FS_SX]
-        action_specs = [action.action_specs[0].to_spec(s_0) for action in actions]
+        action_specs = np.array([action.action_specs[0].to_spec(s_0) for action in actions])
         action_specs_mask = DEFAULT_ACTION_SPEC_FILTERING.filter_action_specs(action_specs, lane_merge_state)
-        return actions[action_specs_mask]
+        filtered_actions = np.full(len(actions), None)
+        filtered_actions[action_specs_mask] = actions[action_specs_mask]
+        return filtered_actions
 
     def _evaluate_actions(self, lane_merge_state: LaneMergeState, route_plan: RoutePlan, actions: np.array) -> np.array:
         """
@@ -174,7 +189,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         # calculate actions' costs according to the AGGRESSIVE jerk-time weights
         jerk_w, _, time_w = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
-        left_lane_weight = (time_w / 4) * (-1 if lane_merge_state.target_rel_lane == RelativeLane.LEFT_LANE else 1)
+        # prefer longer actions before passing to the left lane and shorter actions before passing to the right lane
+        left_lane_weight = -lane_merge_state.target_rel_lane.value * time_w / 4
         # assume that after acceleration to max_vel it will continue to max_dist with max_vel
         max_dist = np.max(actions_dists)
         full_times = actions_times + accel_times + (max_dist - actions_dists - accel_dists) / LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
@@ -394,7 +410,17 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         s_min = max(0, state.merge_from_s_on_ego_gff - state.ego_fstate_1d[FS_SX])
         s_max = state.red_line_s_on_ego_gff - state.ego_fstate_1d[FS_SX]
 
+        # add the front actor to actors_states from the target lane
         actors_states = state.actors_states
+        cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        front_car = state.road_occupancy_grid[cell][0] if cell in state.road_occupancy_grid and len(state.road_occupancy_grid[cell]) > 0 else None
+        if front_car is not None:
+            actors_states.append(LaneMergeActorState(front_car.longitudinal_distance, front_car.dynamic_object.velocity,
+                                                     front_car.dynamic_object.size.length))
+        if len(actors_states) == 0:
+            print('NO ACTORS ON THE TARGET LANE')
+            return np.tile(np.array([-np.inf, s_min, s_max, np.inf]), (target_t.shape[0], 1))
+
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in actors_states]).T
         # add extra margin for longer actions to enable comfort short actions and another extra margin for smooth
@@ -499,29 +525,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         velocity_limits = np.array([0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH])
         valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], velocity_limits)
         return np.where(valid_acc)[0][valid_vel]
-
-    @staticmethod
-    def _caclulate_RSS_distances(actors_s: np.array, actors_v: np.array, margins: np.array,
-                                 target_v: np.array, target_t: np.array, target_s: np.array) -> np.array:
-        """
-        Given actors on the main road and actions (planning times, target velocities and target distances),
-        create matrix of differences between predicted distances from the actors and minimal safe distances at
-        actions' end-points target_s.
-        :param actors_s: current s of actor relatively to the merge point (negative or positive)
-        :param actors_v: current actor's velocity
-        :param margins: half sum of cars' lengths + safety margin
-        :param target_t: array of planning times
-        :param target_v: array of target velocities
-        :param target_s: array of target s
-        :return: shape like of target_(v/s/t): difference between predicted distances and safe distances
-        """
-        front_bounds, back_bounds = RuleBasedLaneMergePlanner._caclulate_RSS_bounds(actors_s, actors_v, margins, target_v, target_t)
-
-        # calculate if ego is safe according to the longitudinal RSS formula
-        front_safety_dist = front_bounds - target_s
-        back_safety_dist = target_s - back_bounds
-        safety_dist = np.maximum(front_safety_dist, back_safety_dist)
-        return np.min(safety_dist, axis=0)  # AND on actors
 
     @staticmethod
     def _caclulate_RSS_bounds(actors_s: np.array, actors_v: np.array, margins: np.array,
