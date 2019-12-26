@@ -21,7 +21,6 @@ from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MA
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, GFFType
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils, BrakingDistances
 from decision_making.src.planning.utils.safety_utils import SafetyRSS
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.utils.map_utils import MapUtils
 
 

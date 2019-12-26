@@ -36,10 +36,13 @@ class SingleStepBehavioralPlanner(BasePlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, logger: Logger):
+    def __init__(self, state: State, logger: Logger):
         super().__init__(logger)
         self.predictor = RoadFollowingPredictor(logger)
-        self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+
+        speed_limit = MapUtils.get_lane(state.ego_state.map_state.lane_id).e_v_nominal_speed
+
+        self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING, speed_limit),
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
