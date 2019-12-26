@@ -172,9 +172,8 @@ class ActionSpecFiltering:
             # Update cells of actions that survived the current filter.
             filtering_map[mask] = filter_idx + 1
 
-        self.logger.debug('\nFiltering_map at timestamp_in_sec %f: %s; speed limit: %f' %
-                          (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(filtering_map.astype(int)),
-                           MapUtils.get_lane(behavioral_state.ego_state.map_state.lane_id).e_v_nominal_speed))
+        self.logger.debug('\nFiltering_map at timestamp_in_sec %f: %s' %
+                          (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(filtering_map.astype(int))))
 
         return mask.tolist()
 
