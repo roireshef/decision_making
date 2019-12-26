@@ -42,7 +42,7 @@ def plot_filters_map(log_file_path: str):
 
     logger = AV_Logger.get_logger("Filters_visualizer")
     predictor = RoadFollowingPredictor(logger)
-    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING, 'limit'),
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                  RoadSignActionSpace(logger, predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
@@ -52,7 +52,8 @@ def plot_filters_map(log_file_path: str):
     valid_idxs = [idx for idx, recipe in enumerate(action_space.recipes) if recipe.relative_lane in limit_relative_lane]
     y_values = [(recipe.action_type.__str__().split('_')[1][:4], recipe.relative_lane.__str__().split('.')[1][:4],
                  recipe.aggressiveness.__str__().split('.')[1][:4],
-                 '%.1f' % recipe.velocity if recipe.action_type == ActionType.FOLLOW_LANE else '')
+                 '' if recipe.action_type != ActionType.FOLLOW_LANE else '%s' % recipe.velocity
+                 if recipe.velocity=='limit' else '%.1d' % float(recipe.velocity))
                 for recipe in action_recipes]
     y_axis = np.arange(len(action_recipes))
     plt.yticks(y_axis, y_values)
@@ -65,7 +66,16 @@ def plot_filters_map(log_file_path: str):
         if 'Filtering_map' in text:
             colon_str = text.split('timestamp_in_sec ')[1].split(':')
             timestamp = float(colon_str[0])
-            filters_result = np.array(list(map(int, colon_str[1].replace('array([', '').replace('])', '').split(', '))))
+
+            # set speed limit velocity in static actions, whose velocity is unknown (nan)
+            speed_limit_str = text.split('speed limit: ')[1]
+            speed_limit = float(speed_limit_str)
+            for recipe in action_space.recipes:
+                if recipe.action_type == ActionType.FOLLOW_LANE:
+                    recipe.velocity = speed_limit if recipe.velocity=='limit' else float(recipe.velocity)
+
+            filters_str = colon_str[1].split('; speed limit')[0]
+            filters_result = np.array(list(map(int, filters_str.replace('array([', '').replace('])', '').split(', '))))
             filters_result = filters_result[valid_idxs]
             # filtering_map.append((timestamp, filters_result))
             plt.scatter(np.full(len(filters_result), timestamp), np.array(range(len(filters_result))),
@@ -113,6 +123,11 @@ def plot_filters_map(log_file_path: str):
             else:
                 err_msg = "Unknown action %s" % recipe_dict
                 raise AssertionError(err_msg)
+
+            if len(chosen_recipe_idx) > 1:
+                chosen_recipe_idx = chosen_recipe_idx[-1]
+            elif len(chosen_recipe_idx) == 0:
+                time = time
 
             # plot with black x
             plt.scatter(np.array([time]), np.array([chosen_recipe_idx]), c='k', linestyle='None', marker='x')

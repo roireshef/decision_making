@@ -16,6 +16,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.utils.map_utils import MapUtils
 
 
 @six.add_metaclass(ABCMeta)
@@ -171,8 +172,9 @@ class ActionSpecFiltering:
             # Update cells of actions that survived the current filter.
             filtering_map[mask] = filter_idx + 1
 
-        self.logger.debug('\nFiltering_map at timestamp_in_sec %f: %s' %
-                          (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(filtering_map.astype(int))))
+        self.logger.debug('\nFiltering_map at timestamp_in_sec %f: %s; speed limit: %f' %
+                          (behavioral_state.ego_state.timestamp_in_sec, NumpyUtils.str_log(filtering_map.astype(int)),
+                           MapUtils.get_lane(behavioral_state.ego_state.map_state.lane_id).e_v_nominal_speed))
 
         return mask.tolist()
 
