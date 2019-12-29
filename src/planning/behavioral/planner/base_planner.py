@@ -68,7 +68,7 @@ class BasePlanner:
 
         print('chosen action idx=', np.argmin(costs), 'chosen spec (t,v,s):', selected_action_spec.t, selected_action_spec.v,
               selected_action_spec.s - behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE][0],
-              'rel_lane:', selected_action_spec.relative_lane.value)
+              'aggr:', selected_action_spec.recipe.aggressiveness.value, 'rel_lane:', selected_action_spec.relative_lane.value)
 
         return trajectory_parameters, baseline_trajectory, visualization_message, behavioral_state, selected_action_spec
 
