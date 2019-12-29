@@ -8,7 +8,7 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import MappingException, OutOfSegmentBack, OutOfSegmentFront, LaneNotFound, \
     RoadNotFound, raises, StraightConnectionNotFound, UpstreamLaneNotFound
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, \
-    MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID, DIM_MARGIN_TO_STOP_BAR
+    MAX_FORWARD_HORIZON, LOG_MSG_BEHAVIORAL_GRID, DIM_MARGIN_TO_STOP_BAR, VELOCITY_LIMITS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import LaneOverlapType, ManeuverType
 from decision_making.src.messages.scene_static_message import TrafficControlBar
@@ -278,7 +278,8 @@ class BehavioralGridState:
         """
         lane_id_by_gff = [gff.segment_ids.tolist() for gff in self.extended_lane_frames.values()]
         unique_lane_ids = set(itertools.chain.from_iterable(lane_id_by_gff))
-        return max([MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in unique_lane_ids])
+        speed_limits = [MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in unique_lane_ids]
+        return max(speed_limits) if len(speed_limits) > 0 else VELOCITY_LIMITS[1]
 
     @staticmethod
     def _calculate_longitudinal_differences(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],

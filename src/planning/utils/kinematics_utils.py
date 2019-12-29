@@ -1,10 +1,9 @@
 import numpy as np
-from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
+from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
     SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, BP_ACTION_T_LIMITS
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FS_SX, FS_DX, Limits2D, RangedLimits2D, \
+    FrenetTrajectories2D, LIMIT_MAX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
@@ -293,9 +292,10 @@ class KinematicUtils:
             # solve for d if the constraints are given also for d dimension
             if poly_coefs_d is not None:
                 # generate a matrix that is used to find jerk-optimal polynomial coefficients
-                A_inv_d = QuinticPoly1D.inverse_time_constraints_tensor(T_d[not_padding_mode])
-                constraints_d = np.c_[(initial_fstates[not_padding_mode, FS_DX:], terminal_fstates[not_padding_mode, FS_DX:])]
-                poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
+                non_zero_t_d = not_padding_mode & (T_d > TRAJECTORY_TIME_RESOLUTION)
+                A_inv_d = QuinticPoly1D.inverse_time_constraints_tensor(T_d[non_zero_t_d])
+                constraints_d = np.c_[(initial_fstates[non_zero_t_d, FS_DX:], terminal_fstates[non_zero_t_d, FS_DX:])]
+                poly_coefs_d[non_zero_t_d] = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
 
         # create linear polynomials for padding mode
         poly_coefs_s[padding_mode], _ = FrenetUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])

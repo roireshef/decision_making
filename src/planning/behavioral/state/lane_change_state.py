@@ -48,6 +48,9 @@ class LaneChangeState:
         self.status = status
         self.autonomous_mode = autonomous_mode
 
+        #self.last_spec_idx = None
+        #self.last_spec = None
+
     def __str__(self):
         # print as dict for logs
         return str(self.__dict__)

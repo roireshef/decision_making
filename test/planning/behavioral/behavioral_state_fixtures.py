@@ -14,7 +14,8 @@ from decision_making.src.planning.types import RoadSegmentID, LaneOccupancyCost,
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY
+from decision_making.src.global_constants import EPS, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, SPECIFICATION_HEADWAY, \
+    VELOCITY_LIMITS, VELOCITY_STEP
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
@@ -26,11 +27,14 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.messages.scene_static_fixture import scene_static_pg_split, \
-    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends, scene_static_right_lane_ends, \
+    scene_static_accel_towards_vehicle, scene_dynamic_accel_towards_vehicle, scene_static_left_lane_ends, \
+    scene_static_right_lane_ends, \
     right_lane_split_scene_static, left_lane_split_scene_static, left_right_lane_split_scene_static, \
-    scene_static_lane_split_on_right_ends, scene_static_lane_split_on_left_ends, scene_static_lane_splits_on_left_and_right_end, \
+    scene_static_lane_split_on_right_ends, scene_static_lane_split_on_left_ends, \
+    scene_static_lane_splits_on_left_and_right_end, \
     scene_static_lane_splits_on_left_and_right_left_first, scene_static_lane_splits_on_left_and_right_right_first, \
-    scene_static_merge_right, scene_static_merge_left_right_to_center, scene_static_oval_with_splits, scene_static_short_testable
+    scene_static_merge_right, scene_static_merge_left_right_to_center, scene_static_oval_with_splits, \
+    scene_static_short_testable, scene_static_pg_no_split
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, lane_change_state
 from decision_making.test.messages.scene_static_fixture import testable_scene_static_mock, scene_static_mound_road_north
@@ -595,6 +599,56 @@ def state_with_objects_for_filtering_almost_tracking_mode(route_plan_20_30: Rout
 
 
 @pytest.fixture(scope='function')
+def state_with_objects_for_safety(route_plan_20_30: RoutePlan):
+
+    scene_static_message = scene_static_pg_no_split()
+    for lane_segment in scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments:
+        lane_segment.as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_scene_lane_segments[0].as_traffic_control_bar = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
+    scene_static_message.s_Data.s_SceneStaticBase.as_dynamic_traffic_control_device = []
+    SceneStaticModel.get_instance().set_scene_static(scene_static_message)
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
+
+    road_id = 20
+
+    # Stub of occupancy grid
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+    car_size = ObjectSize(length=4., width=1.5, height=1.0)
+
+    # Ego state
+    ego_lane_lon = EGO_LANE_LON
+    ego_vel = 24.23081117733757
+    ego_acc = 0.17250154569968298
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
+    left_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
+
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, ego_acc, 0, 0, 0]), lane_id)
+    ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1, off_map=False)
+
+    obj_vel = 25
+
+    dynamic_objects: List[DynamicObject] = list()
+    map_state = MapState(np.array([ego_lane_lon + 144.7364730834961, obj_vel, 0, 0, 0, 0]), lane_id)
+    dynamic_object = EgoState.create_from_map_state(obj_id=1, timestamp=0, map_state=map_state,
+                                                    size=car_size, confidence=1., off_map=False)
+    dynamic_objects.append(dynamic_object)
+
+    map_state = MapState(np.array([ego_lane_lon - 49.20079803, obj_vel, 0, 0, 0, 0]), left_lane_id)
+    dynamic_object = EgoState.create_from_map_state(obj_id=2, timestamp=0, map_state=map_state,
+                                                    size=car_size, confidence=1., off_map=False)
+    dynamic_objects.append(dynamic_object)
+
+    map_state = MapState(np.array([ego_lane_lon + 17.61667633, obj_vel, 0, 0, 0, 0]), left_lane_id)
+    dynamic_object = EgoState.create_from_map_state(obj_id=3, timestamp=0, map_state=map_state,
+                                                    size=car_size, confidence=1., off_map=False)
+    dynamic_objects.append(dynamic_object)
+
+    yield State(is_sampled=False, occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+
+@pytest.fixture(scope='function')
 def state_with_objects_for_filtering_exact_tracking_mode():
 
     scene_static_message = scene_static_pg_split()
@@ -1124,6 +1178,12 @@ def behavioral_grid_state_with_objects_for_filtering_almost_tracking_mode(
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_almost_tracking_mode,
                                                 route_plan_20_30, lane_change_state, None)
 
+@pytest.fixture(scope='function')
+def behavioral_grid_state_with_objects_for_safety(
+        state_with_objects_for_safety: State, route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
+    yield BehavioralGridState.create_from_state(state_with_objects_for_safety,
+                                                route_plan_20_30, lane_change_state, None)
+
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_exact_tracking_mode(
@@ -1205,4 +1265,11 @@ def follow_lane_recipes():
            for velocity in velocity_grid
            for agg in AggressivenessLevel]
 
+
+@pytest.fixture(scope='function')
+def follow_left_lane_recipes():
+    velocity_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1] + EPS, VELOCITY_STEP)
+    yield [StaticActionRecipe(RelativeLane.LEFT_LANE, velocity, agg)
+           for velocity in velocity_grid
+           for agg in AggressivenessLevel]
 

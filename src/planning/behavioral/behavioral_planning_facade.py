@@ -184,6 +184,7 @@ class BehavioralPlanningFacade(DmModule):
                 updated_state = LocalizationUtils.get_state_with_expected_ego(state, self._last_trajectory,
                                                                               self.logger, self.__class__.__name__, target_gff)
             else:
+                print('RE-PLANNING!')
                 updated_state = state
 
             self._lane_change_state.update_pre_iteration(updated_state.ego_state)

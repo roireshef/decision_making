@@ -267,7 +267,7 @@ LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL = 0.
 # [m/sec^2] worst-case acceleration of back actor before lane-merge (used by rule-based planner)
 LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL = 0.
 # [m/sec^2] back actor's deceleration in RSS formula that enables to yield the way to the back actor
-LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL = 3.8
+LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL = 5.5  # 3.8
 # [m/sec] maximal actors' velocity in the lane merge scenarios
 LANE_MERGE_ACTORS_MAX_VELOCITY = 25.
 # [sec] time limits of RL actions

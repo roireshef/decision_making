@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.planner.base_planner import BasePla
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
 from decision_making.src.planning.behavioral.state.lane_merge_actor_state import LaneMergeActorState
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
-from decision_making.src.planning.types import BoolArray, FS_SX, FrenetState1D, FS_SA, FS_SV
+from decision_making.src.planning.types import BoolArray, FS_SX, FS_SA, FS_SV
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, QuinticPoly1D
@@ -68,7 +68,7 @@ class LaneMergeSequence:
 
 class RuleBasedLaneMergePlanner(BasePlanner):
     TIME_GRID_RESOLUTION = 1
-    VEL_GRID_RESOLUTION = 2
+    VEL_GRID_RESOLUTION = 5
 
     def __init__(self, logger: Logger):
         super().__init__(logger)
@@ -83,7 +83,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         return LaneMergeState.create_from_state(state, route_plan, lane_change_state, self.logger)
 
-    def _create_action_specs(self, lane_merge_state: LaneMergeState) -> np.array:
+    def _create_action_specs(self, lane_merge_state: LaneMergeState, route_plan: RoutePlan) -> np.array:
         """
         Create all possible actions to the merge point, filter unsafe actions, filter actions exceeding vel-acc limits,
         calculate time-jerk cost for the remaining actions.
@@ -124,6 +124,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         lane_merge_actions = single_actions + max_vel_actions + brake_actions
 
         print('# single_actions:', len(single_actions), ', # max_vel_actions:', len(max_vel_actions), '# brake actions:', len(brake_actions))
+        print('min time =', min([ac.t for ac in lane_merge_actions]))
+
         # print('\ntime = %f: quintic=(%d) quartic=(%d)' % (time.time() - st_tot, len(single_actions), len(max_vel_actions)))
         return np.array(lane_merge_actions)
 
@@ -190,7 +192,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # calculate actions' costs according to the AGGRESSIVE jerk-time weights
         jerk_w, _, time_w = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
         # prefer longer actions before passing to the left lane and shorter actions before passing to the right lane
-        left_lane_weight = -lane_merge_state.target_rel_lane.value * time_w / 4
+        left_lane_weight = -lane_merge_state.target_rel_lane.value * time_w / 8
         # assume that after acceleration to max_vel it will continue to max_dist with max_vel
         max_dist = np.max(actions_dists)
         full_times = actions_times + accel_times + (max_dist - actions_dists - accel_dists) / LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
@@ -261,18 +263,22 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         ego_fstate = state.ego_fstate_1d
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
 
+        reaction_delay = 0.5
+        v_ext = v_0 + a_0 * reaction_delay
+        s_ext = v_0 * reaction_delay + 0.5 * a_0 * reaction_delay**2
+
         # quartic action with acceleration peak = LON_ACC_LIMITS[1]
         a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP
-        a0 = EPS if abs(a_0) < EPS else a_0
-        t1 = 3*(v_max - v_0) * (a0 + a_max - np.sqrt(a_max*(a_max - a0))) / (a0*(a0 + 3*a_max))
-        # t1 = 3*(v_max - v_0) / (2*amax)  # for a_0 = 0
-        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0, v_0, v_max, np.array([t1]))
+        a0 = EPS if abs(a_0) < EPS else min(a_0, a_max)
+        t1 = 3*(v_max - v_ext) * (a0 + a_max - np.sqrt(a_max*(a_max - a0))) / (a0*(a0 + 3*a_max))
+        # t1 = 3*(v_max - v_0_ext) / (2*amax)  # for a_0 = 0
+        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0, v_ext, v_max, np.array([t1]))
         s1 = Math.zip_polyval2d(s_profile_coefs, np.array([t1])[:, np.newaxis])[0, 0]
 
         # create future state when ego will accelerate to the maximal velocity
-        future_target_v = target_v[target_t > t1]
-        future_target_t = target_t[target_t > t1] - t1
-        future_bounds = safety_bounds[target_t > t1] - s1
+        future_target_v = target_v[target_t > t1 + reaction_delay]
+        future_target_t = target_t[target_t > t1 + reaction_delay] - t1 - reaction_delay
+        future_bounds = safety_bounds[target_t > t1 + reaction_delay] - s1 - s_ext
 
         # calculate candidate safe end-points of quintic actions starting from max_vel_state
         vts = RuleBasedLaneMergePlanner._calculate_safe_target_points(v_max, 0, future_target_v, future_target_t, future_bounds)
@@ -285,7 +291,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         actions = []
         for t2, s2, v_t in zip(T[valid_idxs], ds[valid_idxs], v_T[valid_idxs]):
-            action1 = LaneMergeSpec(t1, v_0, a_0, v_max, s1, QuinticPoly1D.num_coefs())
+            action1 = LaneMergeSpec(t1 + reaction_delay, v_0, a_0, v_max, s1 + s_ext, QuinticPoly1D.num_coefs())
             action2 = LaneMergeSpec(t2, v_max, 0, v_t, s2, QuinticPoly1D.num_coefs())
             actions.append(LaneMergeSequence([action1, action2], state.target_rel_lane))
 
@@ -439,6 +445,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # 2D matrix with 3 columns of safe actions: target velocities, planning times and distances
         front_bounds, back_bounds = RuleBasedLaneMergePlanner._caclulate_RSS_bounds(
             actors_s, actors_v, margins, target_v[:, np.newaxis], target_t[:, np.newaxis])
+
+        # ego can't be ahead of the front car
+        if front_car is not None:
+            back_bounds[:, -1] = np.inf
 
         # concatenate s_min & s_max to front and back bounds
         front_bounds = np.c_[front_bounds, np.full(front_bounds.shape[0], -np.inf), np.full(front_bounds.shape[0], s_max)]

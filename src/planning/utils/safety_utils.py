@@ -13,7 +13,8 @@ class SafetyRSS:
     @staticmethod
     def get_lon_safe_dist(ego_trajectories: FrenetTrajectories2D, trajectory_lengths: np.array, ego_response_time: float,
                           obj_trajectory: FrenetTrajectory2D, obj_response_time: float,
-                          margin: float, logger: Logger, ego_behind_max_brake: float = -LON_ACC_LIMITS[0],
+                          margin: float, front_actor: bool, logger: Logger,
+                          ego_behind_max_brake: float = -LON_ACC_LIMITS[0],
                           ego_ahead_max_brake: float = LON_SAFETY_BACK_ACTOR_MAX_DECEL) -> np.array:
         """
         Calculate longitudinal safety between ego and another object for all timestamps.
@@ -27,6 +28,7 @@ class SafetyRSS:
         :param obj_trajectory: object's Frenet trajectory: 2D matrix: timestamps_num x 6
         :param obj_response_time: [sec] object's response time
         :param margin: [m] cars' lengths half sum
+        :param front_actor: True if the actor is in front of ego
         :param logger:
         :param ego_behind_max_brake: [m/s^2] maximal deceleration of both objects for front actor
         :param ego_ahead_max_brake: [m/s^2] maximal deceleration of both objects for back actor
@@ -38,22 +40,36 @@ class SafetyRSS:
         if ego_trajectories.ndim == 2:  # single ego trajectory
             ego_lon = ego_lon[np.newaxis]
             ego_vel = ego_vel[np.newaxis]
-            ego_lat = ego_lat[np.newaxis]
             ego_trajectories_s = ego_trajectories_s[np.newaxis]
 
         obj_lon, obj_vel, obj_lat = obj_trajectory[:, FS_SX], obj_trajectory[:, FS_SV], obj_trajectory[:, FS_DX]
 
-        # find trajectories, for which ego is ahead the object, when they are closest laterally
-        min_lat_dist_times = np.argmin(np.abs(ego_lat - obj_lat), axis=-1)
-        ego_ahead = (ego_lon[np.arange(ego_lon.shape[0]), min_lat_dist_times] > obj_lon[min_lat_dist_times])
-        ego_behind = np.logical_not(ego_ahead)
+        if front_actor:
+            for ego_s, traj_length in zip(ego_lon, trajectory_lengths):
+                ego_s[traj_length:] = -np.inf
 
-        marginal_safe_dist = np.zeros_like(ego_lon)
+            # extrapolate ego trajectories ego_response_time seconds beyond their end state
+            traj_lengths = trajectory_lengths
+            dt = TRAJECTORY_TIME_RESOLUTION
+            predictor = RoadFollowingPredictor(logger)
+            extrapolated_times = np.arange(dt, ego_response_time + EPS, dt)
+            last_ego_states_s = ego_trajectories_s[range(ego_trajectories_s.shape[0]), traj_lengths - 1]
+            ego_extrapolation = predictor.predict_1d_frenet_states(last_ego_states_s, extrapolated_times)
+            delay_shift = ego_extrapolation.shape[1]
 
-        if ego_ahead.any() > 0:
-            ego_ahead_lon = ego_lon[ego_ahead]
-            ego_ahead_vel = ego_vel[ego_ahead]
-            for ego_s, traj_length in zip(ego_ahead_lon, trajectory_lengths):
+            ext_ego_lon = np.concatenate((ego_lon, np.zeros_like(ego_extrapolation[..., FS_SX])), axis=1)
+            ext_ego_vel = np.concatenate((ego_vel, np.zeros_like(ego_extrapolation[..., FS_SV])), axis=1)
+            for i in range(delay_shift):
+                ext_ego_lon[range(ext_ego_lon.shape[0]), traj_lengths + i] = ego_extrapolation[:, i, FS_SX]
+                ext_ego_vel[range(ext_ego_vel.shape[0]), traj_lengths + i] = ego_extrapolation[:, i, FS_SV]
+
+            # we assume ego continues its trajectory during its reaction time, so we compute the difference between
+            # object's braking distance from any moment and delayed braking distance of ego
+            braking_distances_diff = np.maximum(0, ext_ego_vel[:, delay_shift:] ** 2 - obj_vel ** 2) / (2 * ego_behind_max_brake)
+            marginal_safe_dist = obj_lon - ext_ego_lon[:, delay_shift:] - braking_distances_diff - margin
+
+        else:
+            for ego_s, traj_length in zip(ego_lon, trajectory_lengths):
                 ego_s[traj_length:] = np.inf
 
             # The worst-case velocity of the rear object (either ego or another object) may increase during its reaction
@@ -63,34 +79,8 @@ class SafetyRSS:
             # longitudinal RSS formula considers distance reduction during the reaction time and difference between
             # objects' braking distances
             obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * obj_response_time ** 2
-            min_safe_dist = np.maximum((obj_vel_after_reaction_time ** 2 - ego_ahead_vel ** 2) / (2 * ego_ahead_max_brake), 0) + \
+            min_safe_dist = np.maximum((obj_vel_after_reaction_time ** 2 - ego_vel ** 2) / (2 * ego_ahead_max_brake), 0) + \
                             (obj_vel * obj_response_time + obj_acceleration_dist) + margin
-            marginal_safe_dist[ego_ahead] = ego_ahead_lon - obj_lon - min_safe_dist
-
-        if ego_behind.any():
-            ego_behind_lon = ego_lon[ego_behind]
-            ego_behind_vel = ego_vel[ego_behind]
-            for ego_s, traj_length in zip(ego_behind_lon, trajectory_lengths):
-                ego_s[traj_length:] = -np.inf
-
-            # extrapolate ego trajectories ego_response_time seconds beyond their end state
-            traj_lengths = trajectory_lengths[ego_behind]
-            dt = TRAJECTORY_TIME_RESOLUTION
-            predictor = RoadFollowingPredictor(logger)
-            extrapolated_times = np.arange(dt, ego_response_time + EPS, dt)
-            last_ego_states_s = ego_trajectories_s[ego_behind, traj_lengths - 1]
-            ego_extrapolation = predictor.predict_1d_frenet_states(last_ego_states_s, extrapolated_times)
-            delay_shift = ego_extrapolation.shape[1]
-
-            ext_ego_lon = np.concatenate((ego_behind_lon, np.zeros_like(ego_extrapolation[..., FS_SX])), axis=1)
-            ext_ego_vel = np.concatenate((ego_behind_vel, np.zeros_like(ego_extrapolation[..., FS_SV])), axis=1)
-            for i in range(delay_shift):
-                ext_ego_lon[range(ext_ego_lon.shape[0]), traj_lengths + i] = ego_extrapolation[:, i, FS_SX]
-                ext_ego_vel[range(ext_ego_vel.shape[0]), traj_lengths + i] = ego_extrapolation[:, i, FS_SV]
-
-            # we assume ego continues its trajectory during its reaction time, so we compute the difference between
-            # object's braking distance from any moment and delayed braking distance of ego
-            braking_distances_diff = np.maximum(0, ext_ego_vel[:, delay_shift:] ** 2 - obj_vel ** 2) / (2 * ego_behind_max_brake)
-            marginal_safe_dist[ego_behind] = obj_lon - ext_ego_lon[:, delay_shift:] - braking_distances_diff - margin
+            marginal_safe_dist = ego_lon - obj_lon - min_safe_dist
 
         return marginal_safe_dist if ego_trajectories.ndim > 2 else marginal_safe_dist[0]

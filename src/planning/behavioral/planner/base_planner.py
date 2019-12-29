@@ -20,7 +20,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_SX, ActionSpecArray
+from decision_making.src.planning.types import FS_SX, ActionSpecArray, FS_DX
 from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, State
@@ -50,7 +50,7 @@ class BasePlanner:
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
         behavioral_state = self._create_behavioral_state(state, route_plan, lane_change_state)
-        actions = self._create_action_specs(behavioral_state)
+        actions = self._create_action_specs(behavioral_state, route_plan)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
         selected_action_spec = self._choose_action(behavioral_state, filtered_actions, costs)
@@ -66,9 +66,10 @@ class BasePlanner:
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)", selected_action_spec, timestamp_in_sec)
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_spec.recipe, timestamp_in_sec)
 
-        print('ego_v, ego_a', behavioral_state.ego_state.velocity, behavioral_state.ego_state.cartesian_state[4],
+        print('ego_frenet: ', behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane],
               'action_idx=', np.argmin(costs), 'chosen spec (t,v,s):', selected_action_spec.t, selected_action_spec.v,
-              selected_action_spec.s - behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE][0])
+              selected_action_spec.s - behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE][0],
+              'rel_lane:', selected_action_spec.relative_lane.value)
 
         return trajectory_parameters, baseline_trajectory, visualization_message, behavioral_state, selected_action_spec
 
@@ -81,7 +82,7 @@ class BasePlanner:
         pass
 
     @abstractmethod
-    def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
+    def _create_action_specs(self, behavioral_state: BehavioralGridState, route_plan: RoutePlan) -> ActionSpecArray:
         """
         Given a default action space (self.action_space.recipes), where filtered recipes are None,
         create action specifications for all actions.

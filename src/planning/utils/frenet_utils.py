@@ -1,5 +1,6 @@
 import numpy as np
 import rte.python.profiler as prof
+from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
@@ -51,13 +52,16 @@ class FrenetUtils:
             poly_coefs_s, poly_coefs_d = FrenetUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
         else:
             # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-            A_inv = QuinticPoly1D.inverse_time_constraints_matrix(action_spec.t)
-
+            A_inv_s = QuinticPoly1D.inverse_time_constraints_matrix(action_spec.t)
             constraints_s = np.concatenate((ego_fstate[FS_SX:(FS_SA + 1)], goal_fstate[FS_SX:(FS_SA + 1)]))
-            constraints_d = np.concatenate((ego_fstate[FS_DX:(FS_DA + 1)], goal_fstate[FS_DX:(FS_DA + 1)]))
+            poly_coefs_s = QuinticPoly1D.solve(A_inv_s, constraints_s[np.newaxis, :])[0]
 
-            poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
-            poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+            if action_spec.t_d > TRAJECTORY_TIME_RESOLUTION:
+                A_inv_d = QuinticPoly1D.inverse_time_constraints_matrix(action_spec.t_d)
+                constraints_d = np.concatenate((ego_fstate[FS_DX:(FS_DA + 1)], goal_fstate[FS_DX:(FS_DA + 1)]))
+                poly_coefs_d = QuinticPoly1D.solve(A_inv_d, constraints_d[np.newaxis, :])[0]
+            else:
+                poly_coefs_d = np.zeros_like(poly_coefs_s)
 
         return poly_coefs_s, poly_coefs_d
 

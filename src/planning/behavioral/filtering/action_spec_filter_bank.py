@@ -16,6 +16,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
     ActionSpecFilter
 from decision_making.src.planning.behavioral.filtering.constraint_spec_filter import ConstraintSpecFilter
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.types import FS_DX, FS_SV, BoolArray, LIMIT_MAX, LIMIT_MIN, C_K, FS_SX, \
     FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.braking_distances import BrakingDistances
@@ -38,8 +39,8 @@ class FilterForSLimit(ActionSpecFilter):
     Check if target s value of action spec is inside s limit of the appropriate GFF.
     """
     def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState,
-               ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories) -> List[bool]:
-        return [spec.s <= behavioral_state.extended_lane_frames[spec.relative_lane].s_max for spec in action_specs]
+               ftrajectories: FrenetTrajectories2D, ctrajectories: CartesianExtendedTrajectories) -> BoolArray:
+        return np.array([spec.s <= behavioral_state.extended_lane_frames[spec.relative_lane].s_max for spec in action_specs])
 
 
 class FilterForKinematics(ActionSpecFilter):
@@ -173,6 +174,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
          verify ego maintains enough safety towards closest vehicle"""
         specs_by_rel_lane, indices_by_rel_lane = ActionSpecFilter._group_by_lane(action_specs)
         are_safe = np.zeros(len(action_specs)).astype(bool)
+        map_state = behavioral_state.ego_state.map_state
+        lane_width = MapUtils.get_lane_width(map_state.lane_id, map_state.lane_fstate[FS_SX])
 
         # loop over relative target lanes
         for target_lane, lane_frame in behavioral_state.extended_lane_frames.items():
@@ -195,7 +198,10 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             # safety w.r.t. the front actor
             are_safe[indices_by_rel_lane[target_lane]] = FilterForSafetyTowardsTargetVehicle._check_safety_for_actor(
                 behavioral_state, ego_ftrajectories, trajectory_lengths, target_lane,
-                RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT, self._logger)
+                RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT, lane_width, self._logger)
+            if not are_safe[indices_by_rel_lane[target_lane]].any():
+                continue
+
             # if target_lane == SAME_LANE, only front actor should be tested
             if target_lane == RelativeLane.SAME_LANE:
                 continue
@@ -203,11 +209,14 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             # safety w.r.t. the target lane front actor
             are_safe[indices_by_rel_lane[target_lane]] &= FilterForSafetyTowardsTargetVehicle._check_safety_for_actor(
                 behavioral_state, ego_ftrajectories, trajectory_lengths, target_lane,
-                target_lane, RelativeLongitudinalPosition.FRONT, self._logger)
+                target_lane, RelativeLongitudinalPosition.FRONT, lane_width, self._logger)
+            if not are_safe[indices_by_rel_lane[target_lane]].any():
+                continue
+
             # safety w.r.t. the target lane back actor
             are_safe[indices_by_rel_lane[target_lane]] &= FilterForSafetyTowardsTargetVehicle._check_safety_for_actor(
                 behavioral_state, ego_ftrajectories, trajectory_lengths, target_lane,
-                target_lane, RelativeLongitudinalPosition.REAR, self._logger)
+                target_lane, RelativeLongitudinalPosition.REAR, lane_width, self._logger)
 
         return are_safe
 
@@ -215,7 +224,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
     def _check_safety_for_actor(behavioral_state: BehavioralGridState, ego_ftrajectories: FrenetTrajectories2D,
                                 trajectory_lengths: np.array, target_lane: RelativeLane,
                                 actor_lane: RelativeLane, actor_lon: RelativeLongitudinalPosition,
-                                logger: Logger) -> BoolArray:
+                                lane_width: float, logger: Logger) -> BoolArray:
 
         if (actor_lane, actor_lon) not in behavioral_state.road_occupancy_grid:
             return np.ones(ego_ftrajectories.shape[0]).astype(bool)
@@ -226,26 +235,47 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         # For front actor on same lane and back actor on target lane check safety until host crosses the lanes border.
         # Here we assume that lateral movement is the same in all ego_ftrajectories.
-        till_time_idx = ego_ftrajectories.shape[1]
-        if (target_lane != RelativeLane.SAME_LANE) and \
-                ((actor_lane != RelativeLane.SAME_LANE and actor_lon == RelativeLongitudinalPosition.REAR) or
-                 (actor_lane == RelativeLane.SAME_LANE)):
-            # TODO: bring the lane width from the map
-            till_time_idx = np.argmax(np.abs(ego_ftrajectories[0, :, FS_DX]) < 1.8)
+        border_time_idx = np.argmax(np.abs(ego_ftrajectories[0, :, FS_DX]) < lane_width/2)
+
+        from_time_idx, till_time_idx = 0, ego_ftrajectories.shape[1]
+        # front same-lane actor and target-lane rear actor are tested until crossing the lanes border
+        if (target_lane != RelativeLane.SAME_LANE and actor_lane == RelativeLane.SAME_LANE) or \
+                (actor_lane != RelativeLane.SAME_LANE and actor_lon == RelativeLongitudinalPosition.REAR):
+            till_time_idx = border_time_idx
             if till_time_idx == 0:  # no need to check safety
                 return np.ones(ego_ftrajectories.shape[0]).astype(bool)
         trajectory_lengths = np.minimum(trajectory_lengths, till_time_idx)
 
+        # target lane actors are tested starting from crossing the lanes border
+        if actor_lane != RelativeLane.SAME_LANE:
+            from_time_idx = max(0, border_time_idx - 1)
+
         # predict actor's Frenet trajectory
         margin = 0.5 * (ego_length + actor.size.length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+
+        # hysteresis
+        if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeRequestable:
+            margin += 1
+
+        # align obj_trajectory to global time from TRAJECTORY_TIME_RESOLUTION grid
+        time_offset = (-behavioral_state.ego_state.timestamp_in_sec/TRAJECTORY_TIME_RESOLUTION) % 1
+        if 1 - time_offset < EPS:
+            time_offset = 0
         max_trajectory_length = np.max(trajectory_lengths)
+
         target_fstate = behavioral_state.extended_lane_frames[actor_lane].convert_from_segment_state(
             actor.map_state.lane_fstate, actor.map_state.lane_id)
         obj_ftrajectory = predictor.predict_2d_frenet_states(
-            target_fstate[np.newaxis], np.arange(max_trajectory_length) * TRAJECTORY_TIME_RESOLUTION)[0]
+            target_fstate[np.newaxis], np.arange(from_time_idx + time_offset, max_trajectory_length) * TRAJECTORY_TIME_RESOLUTION)[0]
+        front_actor = (actor_lon == RelativeLongitudinalPosition.FRONT)
 
-        safety_dist = SafetyRSS.get_lon_safe_dist(ego_ftrajectories[:, :max_trajectory_length], trajectory_lengths,
-                                                  SAFETY_HEADWAY, obj_ftrajectory, SAFETY_HEADWAY, margin, logger)
+        safety_dist = SafetyRSS.get_lon_safe_dist(ego_ftrajectories[:, from_time_idx:max_trajectory_length],
+                                                  trajectory_lengths - from_time_idx, SAFETY_HEADWAY,
+                                                  obj_ftrajectory, SAFETY_HEADWAY, margin, front_actor, logger)
+
+        # if idx is not None:
+        #     print('actor_lon =', actor_lon, 'safety_dist =', np.min(safety_dist[idx]))
+
         return (safety_dist > 0).all(axis=1)
 
 
