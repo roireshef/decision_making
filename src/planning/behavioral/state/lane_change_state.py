@@ -194,19 +194,22 @@ class LaneChangeState:
                                extended_lane_frames[RelativeLane.SAME_LANE].get_yaw(host_station_in_target_lane_gff)[0]
 
             # If lane change completion requirements are met, the lane change is complete.
-            if (abs(distance_to_target_lane_center) < MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE
-                    and abs(relative_heading) < MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE):
-                self.status = LaneChangeStatus.LaneChangeRequestable \
-                    if self.autonomous_mode else LaneChangeStatus.LaneChangeCompleteWaitingForReset
+            if abs(distance_to_target_lane_center) < MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE and \
+                    abs(relative_heading) < MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE:
+                if self.autonomous_mode:
+                    self._reset()
+                else:
+                    self.status = LaneChangeStatus.LaneChangeCompleteWaitingForReset
         elif self.status == LaneChangeStatus.LaneChangeCompleteWaitingForReset:
             pass
 
     def get_selected_action_idx(self, action_specs) -> Optional[int]:
         if self.selected_action is None:
             return None
-        idxs = [idx for idx, spec in enumerate(action_specs) if spec.recipe.action_type == ActionType.FOLLOW_LANE and
+        idxs = [idx for idx, spec in enumerate(action_specs) if spec is not None and
+                spec.recipe.action_type == ActionType.FOLLOW_LANE and
                 spec.recipe.aggressiveness == self.selected_action.recipe.aggressiveness and
-                spec.v == self.selected_action.v]
+                spec.v == self.selected_action.v and spec.relative_lane == self.selected_action.relative_lane]
         if len(idxs) == 0:
             return None
         return idxs[0]

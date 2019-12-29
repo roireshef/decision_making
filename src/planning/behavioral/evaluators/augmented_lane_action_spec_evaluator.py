@@ -84,9 +84,15 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
                                                                                  target_lane)
 
             if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
-                # lowest velocity above current velocity
-                selected_follow_lane_idx = self._get_lane_change_valid_action_idx(action_recipes, action_specs_mask,
-                                                                                  target_lane, behavioral_state.ego_state.velocity)
+                # try to continue with the original action
+                selected_idx = behavioral_state.lane_change_state.get_selected_action_idx(action_specs)
+                if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane and \
+                        selected_idx is not None and action_specs_mask[selected_idx]:
+                    selected_follow_lane_idx = selected_idx
+                else:
+                    # lowest velocity above current velocity
+                    selected_follow_lane_idx = self._get_lane_change_valid_action_idx(action_recipes, action_specs_mask,
+                                                                                      target_lane, behavioral_state.ego_state.velocity)
             else:
                 # last, look for valid static action
                 selected_follow_lane_idx = self._get_follow_lane_valid_action_idx(action_recipes, action_specs_mask,

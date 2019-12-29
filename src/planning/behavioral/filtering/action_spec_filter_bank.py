@@ -9,7 +9,8 @@ from decision_making.src.global_constants import EPS, BP_ACTION_T_LIMITS, PARTIA
     VELOCITY_LIMITS, LON_ACC_LIMITS, FILTER_V_0_GRID, FILTER_V_T_GRID, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     SAFETY_HEADWAY, REL_LAT_ACC_LIMITS, LAT_ACC_LIMITS_LANE_CHANGE, \
     BP_LAT_ACC_STRICT_COEF, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, ZERO_SPEED, LAT_ACC_LIMITS_BY_K, \
-    STOP_BAR_DISTANCE_IND, TIME_THRESHOLDS, SPEED_THRESHOLDS, TRAJECTORY_TIME_RESOLUTION
+    STOP_BAR_DISTANCE_IND, TIME_THRESHOLDS, SPEED_THRESHOLDS, TRAJECTORY_TIME_RESOLUTION, \
+    LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLongitudinalPosition, \
     AggressivenessLevel, RoadSignActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import \
@@ -203,7 +204,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                 RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT, lane_width, self._logger)
             are_safe[indices_by_rel_lane[target_lane]] = (front_safety_dist > 0)
 
-            if target_lane != RelativeLane.SAME_LANE and behavioral_state.lane_change_state.status==LaneChangeStatus.LaneChangeActiveInSourceLane:
+            if target_lane != RelativeLane.SAME_LANE and behavioral_state.lane_change_state.status==LaneChangeStatus.LaneChangeActiveInSourceLane and \
+                    selected_action_idx is not None:
                 print('safety dist front =', front_safety_dist[selected_action_idx])
 
             if not are_safe[indices_by_rel_lane[target_lane]].any():
@@ -221,7 +223,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                 target_lane, RelativeLongitudinalPosition.FRONT, lane_width, self._logger)
             are_safe[indices_by_rel_lane[target_lane]] &= (target_safety_dist > 0)
 
-            if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
+            if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane and \
+                    selected_action_idx is not None:
                 print('safety dist target =', target_safety_dist[selected_action_idx])
 
             if not are_safe[indices_by_rel_lane[target_lane]].any():
@@ -235,7 +238,8 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                 target_lane, RelativeLongitudinalPosition.REAR, lane_width, self._logger)
             are_safe[indices_by_rel_lane[target_lane]] &= (rear_safety_dist > 0)
 
-            if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
+            if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane and \
+                    selected_action_idx is not None:
                 print('safety dist rear =', rear_safety_dist[selected_action_idx])
 
             if not are_safe[indices_by_rel_lane[target_lane]].any():
@@ -280,7 +284,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         # hysteresis
         if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeRequestable:
-            margin += 1
+            margin += LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS
 
         # align obj_trajectory to global time from TRAJECTORY_TIME_RESOLUTION grid
         time_offset = (-behavioral_state.ego_state.timestamp_in_sec/TRAJECTORY_TIME_RESOLUTION) % 1

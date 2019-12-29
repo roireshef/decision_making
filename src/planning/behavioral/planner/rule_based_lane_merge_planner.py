@@ -6,7 +6,7 @@ from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS,
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, LANE_MERGE_ACTION_T_LIMITS, \
     LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, \
     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, SPEEDING_SPEED_TH, \
-    LANE_CHANGE_TIME_COMPLETION_TARGET, BP_ACTION_T_LIMITS
+    LANE_CHANGE_TIME_COMPLETION_TARGET, BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, RelativeLane, \
     StaticActionRecipe, RelativeLongitudinalPosition
@@ -124,7 +124,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         lane_merge_actions = single_actions + max_vel_actions + brake_actions
 
         print('# single_actions:', len(single_actions), ', # max_vel_actions:', len(max_vel_actions), '# brake actions:', len(brake_actions))
-        print('min time =', min([ac.t for ac in lane_merge_actions]))
 
         # print('\ntime = %f: quintic=(%d) quartic=(%d)' % (time.time() - st_tot, len(single_actions), len(max_vel_actions)))
         return np.array(lane_merge_actions)
@@ -162,6 +161,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         accel_times = np.zeros(len(actions))
         accel_dists = np.zeros(len(actions))
         calm_weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.CALM.value]
+
         for poly1d in [QuinticPoly1D, QuarticPoly1D]:
             specs_list = [[idx, spec.t, spec.v_0, spec.a_0, spec.v_T, spec.ds]
                           for idx, action in enumerate(actions) if action is not None
@@ -196,8 +196,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # assume that after acceleration to max_vel it will continue to max_dist with max_vel
         max_dist = np.max(actions_dists)
         full_times = actions_times + accel_times + (max_dist - actions_dists - accel_dists) / LANE_MERGE_ACTION_SPACE_MAX_VELOCITY
+
         action_costs = jerk_w * actions_jerks + time_w * full_times + left_lane_weight * actions_times
-        action_costs[actions == None] = np.inf
+        action_costs[~action_mask] = np.inf
+
+        # times = np.array([ac.t if ac is not None else np.inf for ac in actions])
+        # fastest_idx = np.argmin(times)
+        # chosen_idx = np.argmin(action_costs)
+        # print('RB.evaluator: fastest_idx=', fastest_idx, 'time[fastest] =', times[fastest_idx], 'full_time[fastest]=', full_times[fastest_idx],
+        #       'chosen_idx=', chosen_idx, 'time[chosen]=', times[chosen_idx], 'full_time[chosen]=', full_times[chosen_idx])
+
         return action_costs
 
     def _choose_action(self, lane_merge_state: LaneMergeState, actions: np.array, costs: np.array) -> ActionSpec:
@@ -432,7 +440,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # add extra margin for longer actions to enable comfort short actions and another extra margin for smooth
         # switching with the single_step_planner
         margins = 0.5 * (actors_length + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                  1 + 1 * (target_t[:, np.newaxis] > 2)
+                  LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS  # + 2 * (target_t[:, np.newaxis] > 2)
 
         # actors_s.sort()
         # actor_i = np.sum(actors_s < 0)
