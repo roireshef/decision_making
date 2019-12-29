@@ -184,11 +184,8 @@ class LaneChangeState:
                 self.target_relative_lane = selected_action.relative_lane
                 self.status = LaneChangeStatus.LaneChangeActiveInSourceLane
         elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
-            if self.autonomous_mode:
-                if selected_action.relative_lane != self.target_relative_lane:
-                    self._reset()  # failed to change lane
-                elif self.selected_action is None:
-                    self.selected_action = selected_action
+            if self.autonomous_mode and self.selected_action is None:
+                self.selected_action = selected_action
         elif self.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
             distance_to_target_lane_center = projected_ego_fstates[RelativeLane.SAME_LANE][FS_DX]
 
