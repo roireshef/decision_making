@@ -7,6 +7,7 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_spec_evaluator import \
     AugmentedLaneActionSpecEvaluator
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
     ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
@@ -17,6 +18,7 @@ from logging import Logger
 from decision_making.src.planning.types import ActionSpecArray
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class SingleStepBehavioralPlanner(BasePlanner):
@@ -29,15 +31,28 @@ class SingleStepBehavioralPlanner(BasePlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, logger: Logger):
+    def __init__(self, state: State, logger: Logger):
         super().__init__(logger)
         self.predictor = RoadFollowingPredictor(logger)
-        self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+
+        speed_limit = MapUtils.get_lane(state.ego_state.map_state.lane_id).e_v_nominal_speed
+
+        self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING, speed_limit),
                                                           DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
                                                           RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
-    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
-        return BehavioralGridState.create_from_state(state=state, route_plan=route_plan, logger=self.logger)
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) -> BehavioralGridState:
+        """
+        Create behavioral state and update DIM state machine using same-lane GFF
+        :param state: current state
+        :param route_plan: route plan
+        :return:
+        """
+        behavioral_state = BehavioralGridState.create_from_state(state=state, route_plan=route_plan,
+                                                                 lane_change_state=lane_change_state,
+                                                                 logger=self.logger)
+        behavioral_state.update_dim_state()
+        return behavioral_state
 
     def _create_action_specs(self, behavioral_state: BehavioralGridState) -> ActionSpecArray:
         """

@@ -3,13 +3,13 @@ from typing import List, Dict, Tuple
 import numpy as np
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_enums import MapLaneMarkerType, MapRoadSegmentType,\
-    MapLaneType, RoadObjectType, TrafficSignalState, MovingDirection, ManeuverType, LaneMappingStatusType,\
+    MapLaneType, MovingDirection, ManeuverType, LaneMappingStatusType,\
     MapLaneDirection, GMAuthorityType, LaneConstructionType, RoutePlanLaneSegmentAttr
-from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic,\
-    SceneStaticGeometry, SceneStaticBase, NavigationPlan, SceneLaneSegmentGeometry,\
-    BoundaryPoint, SceneLaneSegmentBase, SceneRoadSegment,\
-    MAX_NOMINAL_PATH_POINT_FIELDS, StaticTrafficFlowControl, DynamicTrafficFlowControl,\
-    DynamicStatus, AdjacentLane, LaneSegmentConnectivity, LaneOverlap, LaneOverlapType
+from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, \
+    SceneStaticGeometry, SceneStaticBase, NavigationPlan, SceneLaneSegmentGeometry, \
+    BoundaryPoint, SceneLaneSegmentBase, SceneRoadSegment, \
+    MAX_NOMINAL_PATH_POINT_FIELDS, AdjacentLane, LaneSegmentConnectivity, LaneOverlap, LaneOverlapType, \
+    TrafficControlBar
 
 
 class SceneStaticPublisher:
@@ -42,7 +42,7 @@ class SceneStaticPublisher:
 
         if downstream_lane_connectivity is None:
             downstream_lane_connectivity = {}
-        
+
         if lane_attribute_modifications is None:
             lane_attribute_modifications = {}
 
@@ -76,7 +76,9 @@ class SceneStaticPublisher:
                                                                         sum(len(row) for row in self._lane_segment_ids),
                                                                      as_scene_lane_segments=self._generate_lane_segments(),
                                                                      e_Cnt_num_road_segments=len(self._road_segment_ids),
-                                                                     as_scene_road_segment=self._generate_road_segments()),
+                                                                     as_scene_road_segment=self._generate_road_segments(),
+                                                                     as_static_traffic_control_device=[],
+                                                                     as_dynamic_traffic_control_device=[]),
                                    s_SceneStaticGeometry=SceneStaticGeometry(e_Cnt_num_lane_segments=0,
                                                                              as_scene_lane_segments=lane_geometry,
                                                                              a_nominal_path_points=a_nominal_path_points),
@@ -112,10 +114,10 @@ class SceneStaticPublisher:
                 # Default lane attribute values
                 num_active_lane_attributes = 4
                 active_lane_attribute_indices = np.array([0, 1, 2, 3])
-                lane_attributes = np.array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
-                                            GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
-                                            LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                            MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value])
+                lane_attributes = [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap,
+                                   GMAuthorityType.CeSYS_e_GMAuthorityType_None,
+                                   LaneConstructionType.CeSYS_e_LaneConstructionType_Normal,
+                                   MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle]
                 lane_attribute_confidences = np.ones(4)
 
                 # Check for lane attribute modifications
@@ -127,14 +129,12 @@ class SceneStaticPublisher:
                         else:
                             active_lane_attribute_indices = np.delete(active_lane_attribute_indices, lane_modification[1])
                             num_active_lane_attributes -= 1
-                        
+
                 lane_segment_base.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_segment_id,
                                                               e_i_road_segment_id=road_segment_id,
                                                               e_e_lane_type=MapLaneType.ControlledAccess_DividedRoadLane,
-                                                              e_Cnt_static_traffic_flow_control_count=0,
-                                                              as_static_traffic_flow_control=self._generate_traffic_flow_control(),
-                                                              e_Cnt_dynamic_traffic_flow_control_count=0,
-                                                              as_dynamic_traffic_flow_control=self._generate_dynamic_traffic_flow_control(),
+                                                              e_Cnt_traffic_control_bar_count=0,
+                                                              as_traffic_control_bar=self._generate_traffic_control_bars(),
                                                               e_Cnt_left_adjacent_lane_count=0,
                                                               as_left_adjacent_lanes=self._generate_adjacent_lane(),
                                                               e_Cnt_right_adjacent_lane_count=0,
@@ -143,7 +143,7 @@ class SceneStaticPublisher:
                                                               as_downstream_lanes=downstream_lanes,
                                                               e_Cnt_upstream_lane_count=0,
                                                               as_upstream_lanes=self._generate_lane_segment_connectivity(),
-                                                              e_v_nominal_speed=0,
+                                                              e_v_nominal_speed=20,
                                                               e_l_length=100,
                                                               e_Cnt_num_active_lane_attributes=num_active_lane_attributes,
                                                               a_i_active_lane_attribute_indices=active_lane_attribute_indices,
@@ -151,7 +151,7 @@ class SceneStaticPublisher:
                                                               a_cmp_lane_attribute_confidences=lane_attribute_confidences,
                                                               e_Cnt_lane_overlap_count=0,
                                                               as_lane_overlaps=self._generate_lane_overlap()))
-        
+
         return lane_segment_base
 
     def _generate_road_segments(self) -> List[SceneRoadSegment]:
@@ -178,35 +178,23 @@ class SceneStaticPublisher:
                                      e_Cnt_downstream_segment_count=0,
                                      a_i_downstream_road_segment_ids=np.array([]))
                     for i, road_segment_id in enumerate(self._road_segment_ids)]
-    
+
     def _generate_lane_segment_connectivity(self) -> List[LaneSegmentConnectivity]:
         """ Generates default lane segment connectivity data """
         return [LaneSegmentConnectivity(e_i_lane_segment_id=1,
                                         e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
-    
+
     def _generate_adjacent_lane(self) -> List[AdjacentLane]:
         """ Generates default adjacent lane data """
         return [AdjacentLane(e_i_lane_segment_id=1,
-                             e_e_moving_direction=0,
-                             e_e_lane_type=MovingDirection.Adjacent_or_same_dir)]
-    
-    def _generate_dynamic_status(self) -> List[DynamicStatus]:
-        """ Generates default dynamic status data """
-        return [DynamicStatus(e_e_status=TrafficSignalState.NO_DETECTION,
-                              e_Pct_confidence=0)]
-    
-    def _generate_dynamic_traffic_flow_control(self) -> List[DynamicTrafficFlowControl]:
-        """ Generates default dynamic traffic flow control data """
-        return [DynamicTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
-                                          e_l_station=0,
-                                          e_Cnt_dynamic_status_count=0,
-                                          as_dynamic_status=self._generate_dynamic_status())]
-    
-    def _generate_traffic_flow_control(self) -> List[StaticTrafficFlowControl]:
-        """ Generates default traffic flow control data """
-        return [StaticTrafficFlowControl(e_e_road_object_type=RoadObjectType.Yield,
-                                         e_l_station=0,
-                                         e_Pct_confidence=0)]
+                             e_e_moving_direction=MovingDirection.Adjacent_or_same_dir,
+                             e_e_lane_type=MapLaneType.LocalRoadLane)]
+
+    def _generate_traffic_control_bars(self) -> List[TrafficControlBar]:
+        """ Generate default empty TCBs """
+        return [TrafficControlBar(e_i_traffic_control_bar_id=1, e_l_station=0.0,
+                                  e_i_static_traffic_control_device_id=[1],
+                                  e_i_dynamic_traffic_control_device_id=[2])]
 
     def _generate_lane_overlap(self) -> List[LaneOverlap]:
         """ Generate default lane overlap data"""
@@ -215,7 +203,7 @@ class SceneStaticPublisher:
                             a_l_other_lane_overlap_stations=np.array([0,0]),
                             e_e_lane_overlap_type=LaneOverlapType.CeSYS_e_LaneOverlapType_Unknown)]
 
-    
+
     def _generate_geometry(self, num_nominal_path_points: int = 1) -> List[SceneLaneSegmentGeometry]:
         """
         Generates default lane segment geometry data
@@ -224,7 +212,7 @@ class SceneStaticPublisher:
         boundary_point = [BoundaryPoint(e_e_lane_marker_type=MapLaneMarkerType.MapLaneMarkerType_None,
                                         e_l_s_start=0,
                                         e_l_s_end=0)]
-        
+
         return [SceneLaneSegmentGeometry(e_i_lane_segment_id=0,
                                          e_i_road_segment_id=0,
                                          e_Cnt_nominal_path_point_count=num_nominal_path_points,

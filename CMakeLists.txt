@@ -11,5 +11,3 @@ pack_python(test decision_making)
 pack_python(resources decision_making)
 pack_python_file(paths.py decision_making)
 pack_python_file(__init__.py decision_making)
-
-add_component_info("decision_making")

@@ -2,20 +2,19 @@ from logging import Logger
 from typing import List
 
 import numpy as np
-
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
+from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT, EPS, \
+    TRAJECTORY_TIME_RESOLUTION, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, \
+    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
     StaticActionRecipe, AggressivenessLevel, DynamicActionRecipe, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.global_constants import LANE_END_COST_IND, PREFER_LEFT_SPLIT_OVER_RIGHT_SPLIT, EPS, \
-    TRAJECTORY_TIME_RESOLUTION, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, REQUIRED_HEADWAY_FOR_CALM_DYNAMIC_ACTION, \
-    REQUIRED_HEADWAY_FOR_STANDARD_DYNAMIC_ACTION
-from decision_making.src.exceptions import AugmentedGffCreatedIncorrectly
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX, LAT_CELL, FS_SA, FS_SX, FS_SV, Limits
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
-from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
@@ -55,7 +54,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
         """
         Try to find a valid road sign action (FOLLOW_ROAD_SIGN) for target_lane
         Selection only needs to consider aggressiveness level, as all the target speeds are ZERO_SPEED.
-        :param action_specs: specifications of action_recipes.
+        :param action_recipes: action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
         :param target_lane: lane to choose actions from
         :return: index of the chosen action_recipe within action_recipes. If there are no valid actions, -1 is returned
@@ -69,7 +68,7 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
     def _get_follow_lane_valid_action_idx(self, action_recipes: List[ActionRecipe], action_specs_mask: List[bool], target_lane: RelativeLane) -> int:
         """
         Look for valid static action with the minimal aggressiveness level and fastest speed
-        :param action_specs: specifications of action_recipes.
+        :param action_recipes: action_recipes.
         :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
         :param target_lane: lane to choose actions from
         :return: index of the chosen action_recipe within action_recipes. If there are no valid actions, -1 is returned
@@ -282,14 +281,14 @@ class LaneBasedActionSpecEvaluator(ActionSpecEvaluator):
 
             target_fstate = behavioral_state.extended_lane_frames[cell[LAT_CELL]].convert_from_segment_state(
                 target.dynamic_object.map_state.lane_fstate, target.dynamic_object.map_state.lane_id)
-            target_poly_s, _ = KinematicUtils.create_linear_profile_polynomial_pair(target_fstate)
+            target_poly_s, _ = FrenetUtils.create_linear_profile_polynomial_pair(target_fstate)
 
             # minimal margin used in addition to headway (center-to-center of both objects)
             # Uses LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT and not LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, as otherwise
             # when approaching the leading vehicle, the distance becomes 0, and so does the headway,
             # leading to a selection of AGGRESSIVE action for no reason. Especially noticeable in stop&go tests
             margin = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                     behavioral_state.ego_state.size.length / 2 + target.dynamic_object.size.length / 2
+                     behavioral_state.ego_length / 2 + target.dynamic_object.size.length / 2
 
             # calculate safety margin (on frenet longitudinal axis)
             min_headway = LaneBasedActionSpecEvaluator.calc_minimal_headway_over_trajectory(poly_s, target_poly_s, margin, np.array([0, spec.t]))

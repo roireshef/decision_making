@@ -3,16 +3,21 @@ import pytest
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, ROUTE_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MAX_BACKWARD_HORIZON
+    MAX_BACKWARD_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan, RoutePlanLaneSegment
 from decision_making.src.messages.scene_common_messages import Timestamp, Header
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
     HostHypothesis, ObjectLocalization, BoundingBoxSize, ObjectClassification, ObjectHypothesis, \
     ObjectTrackDynamicProperty
+from decision_making.src.messages.scene_tcd_message import DataSceneTrafficControlDevices, SceneTrafficControlDevices
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
+from decision_making.src.messages.turn_signal_message import TurnSignal, DataTurnSignal, TurnSignalState
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, ActionType
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.types import LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -251,6 +256,17 @@ def scene_dynamic(scene_static_short_testable) -> SceneDynamic:
 
 
 @pytest.fixture(scope='function')
+def tcd_status() -> SceneTrafficControlDevices:
+
+    timestamp = Timestamp.from_seconds(5.0)
+    tcd_status_data = DataSceneTrafficControlDevices(s_RecvTimestamp=timestamp, s_ComputeTimestamp=timestamp, as_dynamic_traffic_control_device_status={})
+    header = Header(0, timestamp, 0)
+    tcd_status = SceneTrafficControlDevices(s_Header=header, s_Data=tcd_status_data)
+
+    yield tcd_status
+
+
+@pytest.fixture(scope='function')
 def scene_dynamic_fix_single_host_hypothesis(scene_static_pg_split):
 
     SceneStaticModel.get_instance().set_scene_static(scene_static_pg_split)
@@ -370,12 +386,11 @@ def trajectory_params():
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, 3.0, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT,
-                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS,
-                                                  BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, target_time=16, trajectory_end_time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY,
-                           bp_time=0)
+                           bp_time=0, target_lane=RelativeLane.SAME_LANE, action_type=ActionType.FOLLOW_LANE)
 
 
 ### VIZ MESSAGES ###
@@ -431,3 +446,18 @@ def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
 def predictor():
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     yield RoadFollowingPredictor(logger)
+
+
+@pytest.fixture(scope='function')
+def turn_signal() -> TurnSignal:
+    timestamp = Timestamp.from_seconds(5.0)
+    header = Header(0, timestamp, 0)
+    data = DataTurnSignal(True, timestamp, timestamp, TurnSignalState.CeSYS_e_Off, np.array([]))
+    turn_signal = TurnSignal(s_Header=header, s_Data=data)
+
+    yield turn_signal
+
+
+@pytest.fixture(scope='session')
+def lane_change_state() -> LaneChangeState:
+    yield LaneChangeState()

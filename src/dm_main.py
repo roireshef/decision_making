@@ -1,27 +1,26 @@
-from rte.python.logger.AV_logger import AV_Logger
+import os
+
 from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, ROUTE_PLANNING_MODULE_PERIOD
-from decision_making.paths import Paths
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
+    ROUTE_PLANNING_MODULE_PERIOD
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.src.planning.route.backpropagating_route_planner import BackpropagatingRoutePlanner
 from decision_making.src.planning.route.route_planning_facade import RoutePlanningFacade
-from decision_making.src.planning.route.binary_cost_based_route_planner import BinaryCostBasedRoutePlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-import os
+from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
 
 AV_Logger.init_group("PLAN")
-
-DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
 
 class DmInitialization:
@@ -34,7 +33,7 @@ class DmInitialization:
 
         pubsub = PubSub()
 
-        planner = BinaryCostBasedRoutePlanner()
+        planner = BackpropagatingRoutePlanner()
 
         route_planning_module = RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
         return route_planning_module

@@ -1,29 +1,27 @@
-import numpy as np
-import six
 from abc import abstractmethod, ABCMeta
-
-from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from logging import Logger
 
+import numpy as np
 import rte.python.profiler as prof
+import six
 from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, \
     LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, \
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, LARGE_DISTANCE_FROM_SHOULDER, \
-    ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, TP_DESIRED_VELOCITY_DEVIATION
+    ROAD_SHOULDERS_WIDTH
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, ActionSpecArray
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.types import FS_SX, ActionSpecArray
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, State
 from decision_making.src.utils.map_utils import MapUtils
@@ -38,7 +36,8 @@ class BasePlanner:
         self.logger = logger
 
     @prof.ProfileFunction()
-    def plan(self, state: State, route_plan: RoutePlan):
+    def plan(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) \
+        -> [TrajectoryParams, SamplableTrajectory, BehavioralVisualizationMsg, BehavioralGridState, ActionSpec]:
         """
         Given current state and a route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
@@ -47,9 +46,10 @@ class BasePlanner:
         cost params and strategy.
         :param state: the current world state
         :param route_plan: a route plan message
+        :param lane_change_state: lane change state
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
-        behavioral_state = self._create_behavioral_state(state, route_plan)
+        behavioral_state = self._create_behavioral_state(state, route_plan, lane_change_state)
         actions = self._create_action_specs(behavioral_state)
         filtered_actions = self._filter_actions(behavioral_state, actions)
         costs = self._evaluate_actions(behavioral_state, route_plan, filtered_actions)
@@ -58,18 +58,18 @@ class BasePlanner:
         trajectory_parameters = self._generate_trajectory_params(behavioral_state, selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(reference_route_points=trajectory_parameters.reference_route.points)
 
-        timestamp_in_sec = behavioral_state.ego_state.timestamp_in_sec
-        baseline_trajectory = BasePlanner.generate_baseline_trajectory(
+        timestamp_in_sec = state.ego_state.timestamp_in_sec
+        baseline_trajectory = FrenetUtils.generate_baseline_trajectory(
             timestamp_in_sec, selected_action_spec, trajectory_parameters,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)", selected_action_spec, timestamp_in_sec)
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)", selected_action_recipe, timestamp_in_sec)
 
-        return trajectory_parameters, baseline_trajectory, visualization_message
+        return trajectory_parameters, baseline_trajectory, visualization_message, behavioral_state, selected_action_spec
 
     @abstractmethod
-    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> BehavioralGridState:
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) -> BehavioralGridState:
         """
         Create behavioral state relevant for specific scenario
         :return: array of action specifications of the same size as the action space
@@ -157,47 +157,10 @@ class BasePlanner:
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                                  trajectory_end_time=trajectory_end_time,
-                                                 bp_time=ego.timestamp)
+                                                 bp_time=ego.timestamp,
+                                                 target_lane=action_spec.relative_lane,
+                                                 action_type=action_spec.recipe.action_type)
         return trajectory_parameters
-
-    @staticmethod
-    @prof.ProfileFunction()
-    def generate_baseline_trajectory(timestamp: float, action_spec: ActionSpec, trajectory_parameters: TrajectoryParams,
-                                     ego_fstate: FrenetState2D) -> SamplableTrajectory:
-        """
-        Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
-        :param timestamp: [s] ego timestamp in seconds
-        :param action_spec: action specification that contains all relevant info about the action's terminal state
-        :param trajectory_parameters: the parameters (of the required trajectory) that will be sent to TP
-        :param ego_fstate: ego Frenet state w.r.t. reference_route
-        :return: a SamplableWerlingTrajectory object
-        """
-        # Note: We create the samplable trajectory as a reference trajectory of the current action.
-        goal_fstate = action_spec.as_fstate()
-        if action_spec.only_padding_mode:
-            # in case of very short action, create samplable trajectory using linear polynomials from ego time,
-            # such that it passes through the goal at goal time
-            ego_by_goal_state = KinematicUtils.create_ego_by_goal_state(goal_fstate, action_spec.t)
-            poly_coefs_s, poly_coefs_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
-        else:
-            # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-            A_inv = QuinticPoly1D.inverse_time_constraints_matrix(action_spec.t)
-
-            constraints_s = np.concatenate((ego_fstate[FS_SX:(FS_SA + 1)], goal_fstate[FS_SX:(FS_SA + 1)]))
-            constraints_d = np.concatenate((ego_fstate[FS_DX:(FS_DA + 1)], goal_fstate[FS_DX:(FS_DA + 1)]))
-
-            poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
-            poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
-
-        minimal_horizon = trajectory_parameters.trajectory_end_time - timestamp
-
-        return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
-                                          T_s=action_spec.t,
-                                          T_d=action_spec.t,
-                                          T_extended=minimal_horizon,
-                                          frenet_frame=trajectory_parameters.reference_route,
-                                          poly_s_coefs=poly_coefs_s,
-                                          poly_d_coefs=poly_coefs_d)
 
     @staticmethod
     def _generate_cost_params(map_state: MapState, ego_size: ObjectSize) -> TrajectoryCostParams:
@@ -271,8 +234,7 @@ class BasePlanner:
                                            lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
-                                           lat_acceleration_limits=LAT_ACC_LIMITS,
-                                           desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED +
-                                                            TP_DESIRED_VELOCITY_DEVIATION)
+                                           # TODO: deprecated - should be replaced or removed
+                                           lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params

@@ -1,10 +1,10 @@
 from decision_making.src.exceptions import NoActionsLeftForBPError
 from logging import Logger
 from typing import List
-
 import numpy as np
 
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.lane_based_action_spec_evaluator import LaneBasedActionSpecEvaluator
 from decision_making.src.messages.route_plan_message import RoutePlan
@@ -38,11 +38,33 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
 
         costs = np.full(len(action_recipes), 1)
 
-        # if an augmented lane is chosen to be the minimum_cost_lane, also allow the possibility of choosing an action
-        # on the straight lane if no actions are available on the augmented lane
+        # if an augmented lane is chosen to be the minimum_cost_lane or a lane change is desired, also allow the possibility of choosing an
+        # action on the straight lane if no actions are available on the augmented lane or the desired lane for a lane change. Prioritize
+        # the lane change lane over the minimum_cost_lane.
+        lanes_to_try = []
 
-        # A set is used to prevent duplicates when minimum_cost_lane==RelativeLane.SAME_LANE
-        lanes_to_try = {minimum_cost_lane, RelativeLane.SAME_LANE}
+        if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
+            # If lane change is desired, prioritize actions towards that lanes by placing the respective relative lane first in the list.
+            lanes_to_try.append(behavioral_state.lane_change_state.target_relative_lane)
+
+            # Append SAME_LANE actions so that we continue driving in our lane in the case that an action towards the lane change target
+            # lane is not available.
+            lanes_to_try.append(RelativeLane.SAME_LANE)
+        elif behavioral_state.lane_change_state.status in [LaneChangeStatus.LaneChangeRequested,
+                                                           LaneChangeStatus.LaneChangeActiveInTargetLane,
+                                                           LaneChangeStatus.LaneChangeCompleteWaitingForReset]:
+            # In order to remove any unexpected behavior, force the host to stay in lane during these lane change statuses. Note that
+            # staying in lane means staying in the lane change source or target lane, depending on the status.
+            lanes_to_try.append(RelativeLane.SAME_LANE)
+        else:
+            # If no lane change is requested, drive according to route plan costs
+            # Append SAME_LANE and minimum_cost_lane accordingly
+            if minimum_cost_lane != RelativeLane.SAME_LANE:
+                lanes_to_try.append(minimum_cost_lane)
+                lanes_to_try.append(RelativeLane.SAME_LANE)
+            else:
+                lanes_to_try.append(RelativeLane.SAME_LANE)
+
 
         for target_lane in lanes_to_try:
             # first try to find a valid dynamic action (FOLLOW_VEHICLE) for SAME_LANE

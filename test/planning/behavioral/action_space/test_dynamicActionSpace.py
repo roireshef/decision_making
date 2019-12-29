@@ -14,6 +14,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
     follow_vehicle_recipes_towards_front_cells, state_with_surrounding_objects, route_plan_20_30
+from decision_making.test.planning.custom_fixtures import lane_change_state
 
 # Specifies follow actions for front vehicles in 3 lanes. longitudinal and lateral coordinates
 # of terminal states in action specification should be as expected.
@@ -52,7 +53,7 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
                            target.dynamic_object.map_state.lane_fstate[FS_SV] * actions[i].t -
                            actions[i].v * SPECIFICATION_HEADWAY -
                            LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT -
-                           behavioral_grid_state.ego_state.size.length / 2 - targets[i].dynamic_object.size.length / 2
+                           behavioral_grid_state.ego_length / 2 - targets[i].dynamic_object.size.length / 2
                            for i, target in enumerate(targets)]
 
     longitudes = [action.s for action in actions]  # also relative to the corresponding GFF
