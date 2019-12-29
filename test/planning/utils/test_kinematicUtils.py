@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, SAFETY_HEADWAY
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionSpecEvaluator
@@ -140,6 +141,7 @@ def test_calcMinimalHeadwayOverTrajectory_varyingAcceleration_returnsHeadwayAtMi
            minimal_headway < headway_on_the_way[-1] - 0.1
 
 
+@pytest.mark.skip(reason="not allowing speed volations for more than SPEEDING_VIOLATION_TIME_TH anymore")
 def test_filterByVelocityLimit_velocityDecreasesTowardLimit_valid():
     """
     initial velocity is above the limit and initial acceleration is positive;
@@ -148,15 +150,15 @@ def test_filterByVelocityLimit_velocityDecreasesTowardLimit_valid():
     v0 = 20
     vT = 10
     # limit value selected as value at 3 seconds. Values prior to it are a little higher, but should ne valid
-    velocity_limits = np.full(shape=[1, int(BP_ACTION_T_LIMITS[1] / TRAJECTORY_TIME_RESOLUTION)], fill_value=vT)
+    velocity_limits = np.full(shape=[1, 1], fill_value=vT)
 
-    constraints_s = np.array([0, v0, 1, vT, 0])  # initial acceleration is positive
+    constraints_s = np.array([0, v0, 0.1, vT, 0])  # initial acceleration is positive
     T = np.array([10])
     A_inv = QuarticPoly1D.inverse_time_constraints_tensor(T)
 
     # create ftrajectories
     poly_host_s = QuarticPoly1D.zip_solve(A_inv, constraints_s[np.newaxis, :])
-    time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
+    time_samples = np.arange(0, T, TRAJECTORY_TIME_RESOLUTION)
     ftrajectories_s = Poly1D.polyval_with_derivatives(poly_host_s, time_samples)
 
     # create ctrajectories
@@ -173,7 +175,7 @@ def test_filterByVelocityLimit_violatesLimitAndPositiveInitialJerk_invalid():
     """
     v0 = 10
     vT = 10
-    velocity_limits = np.full(shape=[1, int(BP_ACTION_T_LIMITS[1] / TRAJECTORY_TIME_RESOLUTION)], fill_value=13)
+    velocity_limits = np.full(shape=[1, 1], fill_value=13)
 
     T = np.array([10])
     constraints_s = np.array([0, v0, 0, v0 * T[0] + 20, vT, 0])  # initial acceleration is positive
@@ -181,7 +183,7 @@ def test_filterByVelocityLimit_violatesLimitAndPositiveInitialJerk_invalid():
 
     # create ftrajectories
     poly_host_s = QuinticPoly1D.zip_solve(A_inv, constraints_s[np.newaxis, :])
-    time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
+    time_samples = np.arange(0, T, TRAJECTORY_TIME_RESOLUTION)
     ftrajectories_s = Poly1D.polyval_with_derivatives(poly_host_s, time_samples)
 
     # create ctrajectories

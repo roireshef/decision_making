@@ -151,37 +151,6 @@ class KinematicUtils:
         return conforms_rel_lat_accel_limits
 
     @staticmethod
-    def filter_by_velocity_limit(ctrajectories: CartesianExtendedTrajectories, velocity_limits: np.ndarray,
-                                 T: np.array) -> np.array:
-        """
-        validates the following behavior for each trajectory:
-        (1) applies negative jerk to reduce initial positive acceleration, if necessary
-            (initial jerk is calculated by subtracting the first two acceleration samples)
-        (2) applies negative acceleration to reduce velocity until it reaches the desired velocity, if necessary
-        (3) keeps the velocity under the desired velocity limit.
-        Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
-        :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
-        :param velocity_limits: 2D matrix [trajectories, timestamps] of nominal velocities to validate against
-        :param T: array of target times for ctrajectories
-        :return: 1D boolean np array, True where the respective trajectory is valid and false where it is filtered out
-        """
-        lon_acceleration = ctrajectories[:, :, C_A]
-        lon_velocity = ctrajectories[:, :, C_V]
-        last_pad_idxs = KinematicUtils.convert_padded_spec_time_to_index(T)
-        last_pad_idxs = np.minimum(last_pad_idxs, ctrajectories.shape[1] - 1)
-        # for each trajectory use the appropriate last time index (possibly after padding)
-        end_velocities = ctrajectories[np.arange(ctrajectories.shape[0]), last_pad_idxs, C_V]
-        end_velocity_limits = velocity_limits[np.arange(ctrajectories.shape[0]), last_pad_idxs]
-
-        # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
-        conforms_velocity_limits = np.logical_and(
-            end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
-            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits, T),
-                   axis=1))
-
-        return conforms_velocity_limits
-
-    @staticmethod
     def filter_by_minimal_velocity_limit(ctrajectories: CartesianExtendedTrajectories, velocity_limits: np.ndarray,
                                  T: np.array) -> np.array:
         """
@@ -203,34 +172,27 @@ class KinematicUtils:
         end_velocities = ctrajectories[np.arange(ctrajectories.shape[0]), last_pad_idxs, C_V]
 
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
-        num_points = lon_velocity.shape[1]
-        num_trajectories = velocity_limits.shape[0]
         conforms_velocity_limits = np.logical_and(
             end_velocities <= velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
-            np.logical_or(
-                # either speed is below limit, or vehicle is slowing down when it doesn't
-                np.all(np.logical_or(lon_acceleration <= 0,
-                                     lon_velocity <= np.repeat(velocity_limits, num_points).reshape(
-                                         num_trajectories, num_points) + EPS), axis=1),
-                # negative initial jerk
-                lon_acceleration[:, 0] > lon_acceleration[:, 1]))
+            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits),
+                   axis=1))
 
         return conforms_velocity_limits
 
     @staticmethod
     def _speeding_within_allowed_limits(lon_velocity: np.array, lon_acceleration: np.array,
-                                        velocity_limits: np.ndarray, T: np.array) -> np.array:
+                                        velocity_limits: np.ndarray) -> np.array:
         """
         speeding is within allowed limits if it does not violate the speed limit for more than VIOLATION_TIME_TH.
         Furthermore it does so by no more than VIOLATION_SPEED_TH, unless starting velocity is above this value.
         Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
-        :param lon_velocity: trajectories velocities
+        :param lon_velocity: velocities limits
         :param lon_acceleration: trajectories accelerations
-        :param T: array of target times for ctrajectories
         :return:
         """
+        velocity_limits_over_time = np.repeat(velocity_limits, lon_velocity.shape[1]).reshape(lon_velocity.shape)
         # anywhere speed is below limit
-        speeding_is_within_limits = lon_velocity <= velocity_limits + EPS
+        speeding_is_within_limits = lon_velocity <= velocity_limits_over_time + EPS
         # or violation is limited to first SPEEDING_VIOLATION_TIME_TH seconds,last_allowed_idx
         last_allowed_idx = int(min(SPEEDING_VIOLATION_TIME_TH, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) /
                            TRAJECTORY_TIME_RESOLUTION)
@@ -238,9 +200,9 @@ class KinematicUtils:
         is_decelerating = lon_acceleration[:, 0:last_allowed_idx] <= 0
         # or speed limit is exceeded by no more than SPEEDING_SPEED_TH
         is_within_allowed_speed_violation = lon_velocity[:, 0:last_allowed_idx] <= \
-            velocity_limits[:, 0:last_allowed_idx] + SPEEDING_SPEED_TH
+            velocity_limits_over_time[:, 0:last_allowed_idx] + SPEEDING_SPEED_TH
         # or we were above this value to start with, and jerk is negative
-        was_violating_and_jerk_negative = np.logical_and(lon_velocity[:, 0] > velocity_limits[:, 0] + SPEEDING_SPEED_TH,
+        was_violating_and_jerk_negative = np.logical_and(lon_velocity[:, 0] > velocity_limits_over_time[:, 0] + SPEEDING_SPEED_TH,
                                                          lon_acceleration[:, 0] > lon_acceleration[:, 1])[:, np.newaxis]
         speeding_is_within_limits[:, 0:last_allowed_idx] |= \
             is_decelerating | is_within_allowed_speed_violation | was_violating_and_jerk_negative
