@@ -6,7 +6,7 @@ from decision_making.src.global_constants import MAX_OFFSET_FOR_LANE_CHANGE_COMP
     MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE, \
     LANE_CHANGE_DELAY, LANE_CHANGE_ABORT_THRESHOLD, LANE_CHANGE_TIME_COMPLETION_TARGET
 from decision_making.src.messages.turn_signal_message import TurnSignalState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLane, ActionType
 from decision_making.src.planning.types import FS_DX, FS_SX, C_YAW, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType, GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import EgoState
@@ -47,9 +47,8 @@ class LaneChangeState:
         self.target_relative_lane = target_relative_lane
         self.status = status
         self.autonomous_mode = autonomous_mode
-
         #self.last_spec_idx = None
-        #self.last_spec = None
+        self.selected_action = None
 
     def __str__(self):
         # print as dict for logs
@@ -62,6 +61,7 @@ class LaneChangeState:
         self.target_relative_lane = None
         self.status = LaneChangeStatus.LaneChangeRequestable
         self.autonomous_mode = False
+        self.selected_action = None
 
     def get_target_lane_gff(self, extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> GeneralizedFrenetSerretFrame:
         """
@@ -184,7 +184,11 @@ class LaneChangeState:
                 self.target_relative_lane = selected_action.relative_lane
                 self.status = LaneChangeStatus.LaneChangeActiveInSourceLane
         elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
-            pass
+            if self.autonomous_mode:
+                if selected_action.relative_lane != self.target_relative_lane:
+                    self._reset()  # failed to change lane
+                elif self.selected_action is None:
+                    self.selected_action = selected_action
         elif self.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
             distance_to_target_lane_center = projected_ego_fstates[RelativeLane.SAME_LANE][FS_DX]
 
@@ -195,6 +199,17 @@ class LaneChangeState:
             # If lane change completion requirements are met, the lane change is complete.
             if (abs(distance_to_target_lane_center) < MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE
                     and abs(relative_heading) < MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE):
-                self.status = LaneChangeStatus.LaneChangeCompleteWaitingForReset
+                self.status = LaneChangeStatus.LaneChangeRequestable \
+                    if self.autonomous_mode else LaneChangeStatus.LaneChangeCompleteWaitingForReset
         elif self.status == LaneChangeStatus.LaneChangeCompleteWaitingForReset:
             pass
+
+    def get_selected_action_idx(self, action_specs) -> Optional[int]:
+        if self.selected_action is None:
+            return None
+        idxs = [idx for idx, spec in enumerate(action_specs) if spec.recipe.action_type == ActionType.FOLLOW_LANE and
+                spec.recipe.aggressiveness == self.selected_action.recipe.aggressiveness and
+                spec.v == self.selected_action.v]
+        if len(idxs) == 0:
+            return None
+        return idxs[0]
