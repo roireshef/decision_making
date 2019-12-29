@@ -21,6 +21,7 @@ class DmModule:
         self.pubsub = pubsub
         self.logger = logger
         self.logger.info("initializing module: " + self.__class__.__name__)
+        self.prof_mark_execute = prof.TimeRange("[module] %s", self.__class__.__name__, category=prof.Category.Module)
 
     @abstractmethod
     def _start_impl(self):
@@ -62,7 +63,7 @@ class DmModule:
         Perform triggered action and write logging messages.
         """
         self.logger.debug("executing periodic action at module: " + self.__class__.__name__)
-        with prof.time_range(self.__class__.__name__ + ":periodic"):
+        with self.prof_mark_execute:
             with DMProfiler(self.__class__.__name__ + ".periodic"):
                 self._periodic_action_impl()
         self.logger.debug("finished periodic action at module: " + self.__class__.__name__)
