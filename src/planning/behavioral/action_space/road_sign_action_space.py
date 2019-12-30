@@ -65,3 +65,6 @@ class RoadSignActionSpace(TargetActionSpace):
         closest_TCB_and_its_distance = behavioral_state.get_closest_stop_bar(action.relative_lane)
         return closest_TCB_and_its_distance[STOP_BAR_DISTANCE_IND] - ego_location \
             if closest_TCB_and_its_distance is not None else np.nan
+
+    def _get_margin_to_keep_from_targets(self, behavioral_state: BehavioralGridState):
+        return self.margin_to_keep_from_targets

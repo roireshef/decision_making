@@ -1,12 +1,12 @@
 from logging import Logger
-from typing import List
+from typing import List, Optional
 import numpy as np
-from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS, EPS, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, LANE_MERGE_ACTION_T_LIMITS, \
     LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, \
     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, SPEEDING_SPEED_TH, \
-    LANE_CHANGE_TIME_COMPLETION_TARGET, BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS
+    LANE_CHANGE_TIME_COMPLETION_TARGET, BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS, \
+    PLANNING_LOOKAHEAD_DIST, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, RelativeLane, \
     StaticActionRecipe, RelativeLongitudinalPosition
@@ -152,8 +152,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         """
         action_mask = actions.astype(bool)
         if not action_mask.any():
-            raise NoActionsLeftForBPError("RB.evaluate_actions: No actions to evaluate. timestamp_in_sec: %f" %
-                                          lane_merge_state.ego_state.timestamp_in_sec)
+            return np.array([])
+
         # calculate full actions' jerks and times
         actions_jerks = np.zeros(len(actions))
         actions_times = np.zeros(len(actions))
@@ -323,7 +323,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         # quartic action with acceleration peak = LON_ACC_LIMITS[1]
         a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP
-        t_acc = 3*(target_v - v_slow) / (2*a_max)  # for a_0 = 0
+        t_acc = 3*(target_v - v_slow) / (2*a_max)  # quartic acceleration for a_0 = 0
         s_profile_coefs = QuarticPoly1D.position_profile_coefficients(0, v_slow, target_v, t_acc)
         s_acc = Math.zip_polyval2d(s_profile_coefs, t_acc[:, np.newaxis])[:, 0]
 
@@ -426,25 +426,29 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         # add the front actor to actors_states from the target lane
         actors_states = state.actors_states
+
+        # insert dummy back actor at PLANNING_LOOKAHEAD_DIST behind ego
+        back_v = actors_states[np.argmin(np.array([actor.s_relative_to_ego for actor in actors_states]))].velocity \
+            if len(actors_states) > 0 else state.ego_state.velocity
+        actors_states.insert(0, LaneMergeActorState(-PLANNING_LOOKAHEAD_DIST, back_v, 0))
+
         cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
         front_car = state.road_occupancy_grid[cell][0] if cell in state.road_occupancy_grid and len(state.road_occupancy_grid[cell]) > 0 else None
         if front_car is not None:
             actors_states.append(LaneMergeActorState(front_car.longitudinal_distance, front_car.dynamic_object.velocity,
                                                      front_car.dynamic_object.size.length))
-        if len(actors_states) == 0:
-            print('NO ACTORS ON THE TARGET LANE')
-            return np.tile(np.array([-np.inf, s_min, s_max, np.inf]), (target_t.shape[0], 1))
 
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in actors_states]).T
         # add extra margin for longer actions to enable comfort short actions and another extra margin for smooth
         # switching with the single_step_planner
         margins = 0.5 * (actors_length + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                  LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS  # + 2 * (target_t[:, np.newaxis] > 2)
+                  LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS + 2  # + 2 * (target_t[:, np.newaxis] > 2)
 
         # actors_s.sort()
         # actor_i = np.sum(actors_s < 0)
-        print('s_min=', s_min, 's_max=', s_max, 'actors_rel_s=', actors_s)
+        sorted_s = np.sort(actors_s if front_car is None else actors_s[:-1])
+        print('s_min=', s_min, 's_max=', s_max, 'actors_rel_s=', sorted_s, 'gaps=', np.diff(sorted_s))
 
         # calculate planning time bounds given target_s
         if len(actors_states) == 0:
@@ -454,7 +458,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         front_bounds, back_bounds = RuleBasedLaneMergePlanner._caclulate_RSS_bounds(
             actors_s, actors_v, margins, target_v[:, np.newaxis], target_t[:, np.newaxis])
 
-        # ego can't be ahead of the front car
+        # ego can't be behind the dummy back actor (first in actors_states)
+        front_bounds[:, 0] = -np.inf
+        # ego can't be ahead of the front car (last in actors_states)
         if front_car is not None:
             back_bounds[:, -1] = np.inf
 
@@ -537,7 +543,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         poly_coefs = QuinticPoly1D.position_profile_coefficients(a_0, v_0, v_T, ds, T)
         # the fast analytic kinematic filter reduce the load on the regular kinematic filter
         # calculate actions that don't violate acceleration limits
-        valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+        valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS * 0.9)
         if not valid_acc.any():
             return []
         velocity_limits = np.array([0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH])
@@ -578,6 +584,33 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         back_bounds = back_s + margins + (np.maximum(0, back_v * back_v - target_v * target_v) /
                                           (2 * LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL) + SAFETY_HEADWAY * back_v)
         return front_bounds, back_bounds
+
+    @staticmethod
+    def calculate_margin_to_keep_from_front(state: LaneMergeState) -> Optional[float]:
+        cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        front_car = state.road_occupancy_grid[cell][0] if cell in state.road_occupancy_grid and len(state.road_occupancy_grid[cell]) > 0 else None
+        rear_actors = [actor for actor in state.actors_states if actor.s_relative_to_ego < 0]
+        if front_car is None or len(rear_actors) == 0:
+            return None
+
+        # get average rear actors' velocity
+        target_v = np.mean(np.array([actor.velocity for actor in rear_actors]))
+        front_v = front_car.dynamic_object.velocity
+        if front_v >= target_v:
+            return None
+
+        margin = 0.5 * (state.ego_length + front_car.dynamic_object.size.length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+        # safe_dist = RSS distance + half lane change
+        safe_dist = margin + SAFETY_HEADWAY * target_v + (target_v * target_v - front_v * front_v) / (-2 * LON_ACC_LIMITS[0]) + \
+                    0.5 * LANE_CHANGE_TIME_COMPLETION_TARGET * (target_v - front_v)
+
+        # calculate acceleration distance
+        # a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP
+        # t_acc = 3*(target_v - front_v) / (2*a_max)  # quartic acceleration for a_0 = 0
+        # s_profile_coefs = QuarticPoly1D.position_profile_coefficients(0, front_v, target_v, t_acc)
+        # s_acc = Math.polyval2d(s_profile_coefs, np.array([t_acc]))[0, 0]
+        # return min(PLANNING_LOOKAHEAD_DIST, s_acc + safe_dist)
+        return min(PLANNING_LOOKAHEAD_DIST, safe_dist)
 
     @staticmethod
     def _sympy():

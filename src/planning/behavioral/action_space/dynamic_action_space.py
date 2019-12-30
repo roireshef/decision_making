@@ -71,3 +71,6 @@ class DynamicActionSpace(TargetActionSpace):
         longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_map_states)
         assert not np.isinf(longitudinal_differences).any()
         return longitudinal_differences
+
+    def _get_margin_to_keep_from_targets(self, behavioral_state: BehavioralGridState):
+        return behavioral_state.lane_change_state.margin_to_keep_from_targets or self.margin_to_keep_from_targets

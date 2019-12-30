@@ -64,61 +64,71 @@ class SingleStepBehavioralPlanner(BasePlanner):
         """
         see base class
         """
+        print('time:', behavioral_state.ego_state.timestamp_in_sec,
+              'fstate on same lane:', NumpyUtils.str_log(behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]),
+              'lane change status:', behavioral_state.lane_change_state.status)
+
+        # don't enable to change lane 10 seconds after last lane-change start
+        if behavioral_state.lane_change_state.status != LaneChangeStatus.LaneChangeRequestable or \
+                (behavioral_state.lane_change_state.lane_change_start_time is not None and
+                 behavioral_state.ego_state.timestamp_in_sec - behavioral_state.lane_change_state.lane_change_start_time < 10):
+            return self._specify_actions(behavioral_state)
+
+        # choose the preferred lane by route_plan
+        target_lane = SingleStepBehavioralPlanner.choose_target_lane(behavioral_state, route_plan)
+
+        if target_lane == RelativeLane.SAME_LANE:  # if we don't want to change lane
+            return self._specify_actions(behavioral_state, RelativeLane.SAME_LANE)  # use UC action space
+
+        # perform RB optimization on the same lane
+        lane_merge_state = LaneMergeState.create_from_behavioral_state(behavioral_state, target_lane)
+        planner = RuleBasedLaneMergePlanner(self.logger)
+        actions = planner._create_action_specs(lane_merge_state, route_plan)
+        filtered_actions = planner._filter_actions(lane_merge_state, actions)
+        costs = planner._evaluate_actions(lane_merge_state, route_plan, filtered_actions)
+        RB_chosen_action = filtered_actions[np.argmin(costs)] if len(costs) > 0 else None
+
+        if RB_chosen_action is None:  # if we can not change lane
+            behavioral_state.lane_change_state.margin_to_keep_from_targets = \
+                RuleBasedLaneMergePlanner.calculate_margin_to_keep_from_front(lane_merge_state)
+            print('target_lane = ', target_lane, 'No actions found by search. Margin =', behavioral_state.lane_change_state.margin_to_keep_from_targets)
+            return self._specify_actions(behavioral_state, RelativeLane.SAME_LANE)  # use UC action space
+        else:
+            print('target_lane = ', target_lane, 'Chosen action: idx', np.argmin(costs), [spec.__str__() for spec in RB_chosen_action.action_specs])
+
+        # try to start lane change by checking safety of UC actions toward target_lane
+        target_action_specs = self._specify_actions(behavioral_state, target_lane)  # specs to target_lane
+        # check safety for all UC actions to target_lane
+        action_spec_filter = ActionSpecFiltering(filters=[FilterIfNone(), FilterForSafetyTowardsTargetVehicle(None)], logger=None)
+        UC_safe_actions = action_spec_filter.filter_action_specs(list(target_action_specs), behavioral_state)
+
+        if UC_safe_actions.any() and RB_chosen_action.t < 5:  # there is a safe non-delayed UC action
+            self._start_lane_change(behavioral_state, target_lane)
+            return self._specify_actions(behavioral_state)  # specify all actions
+
+        # continue with RB search on SAME_LANE
+        if UC_safe_actions.any():
+            print('************** SAFE BUT DELAYED **************')
+        follow_lane_idx = [idx for idx, recipe in enumerate(self.action_space.recipes)
+                           if recipe.relative_lane == RelativeLane.SAME_LANE][0]
+        action_specs = np.full(len(self.action_space.recipes), None)
+        action_specs[follow_lane_idx] = RB_chosen_action.action_specs[0].to_spec(lane_merge_state.ego_fstate_1d[FS_SX])
+        return action_specs
+
+    def _specify_actions(self, behavioral_state: BehavioralGridState, relative_lane: RelativeLane = None) -> ActionSpecArray:
         action_recipes = self.action_space.recipes
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+        if relative_lane is not None:
+            recipes_mask &= np.array([recipe.relative_lane == relative_lane for recipe in action_recipes])
+
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
 
         action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
         action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
-
-        print('time:', behavioral_state.ego_state.timestamp_in_sec,
-              'fstate on same lane:', NumpyUtils.str_log(behavioral_state.projected_ego_fstates[RelativeLane.SAME_LANE]),
-              'lane change status:', behavioral_state.lane_change_state.status)
-
-        # don't enable to change lane 10 seconds after last lane-change start
-        if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeRequestable and \
-                (behavioral_state.lane_change_state.lane_change_start_time is None or
-                 behavioral_state.ego_state.timestamp_in_sec - behavioral_state.lane_change_state.lane_change_start_time > 10):
-            # choose the preferred lane by route_plan
-            target_lane = SingleStepBehavioralPlanner.choose_target_lane(behavioral_state, route_plan)
-            if target_lane != RelativeLane.SAME_LANE:  # try to start lane change
-                # enable actions only to target_lane
-                target_lane_mask = np.array([spec is not None and spec.relative_lane == target_lane for spec in action_specs])
-                action_specs[~target_lane_mask] = None
-
-                # check safety for all UC actions to target_lane
-                action_spec_filter = ActionSpecFiltering(filters=[FilterIfNone(), FilterForSafetyTowardsTargetVehicle(None)], logger=None)
-                UC_safe_actions = action_spec_filter.filter_action_specs(list(action_specs), behavioral_state)
-
-                # perform RB optimization on the same lane
-                lane_merge_state = LaneMergeState.create_from_behavioral_state(behavioral_state, target_lane)
-                planner = RuleBasedLaneMergePlanner(self.logger)
-                actions = planner._create_action_specs(lane_merge_state, route_plan)
-                filtered_actions = planner._filter_actions(lane_merge_state, actions)
-                costs = planner._evaluate_actions(lane_merge_state, route_plan, filtered_actions)
-                RB_chosen_action = filtered_actions[np.argmin(costs)]
-
-                print('target_lane = ', target_lane, 'Chosen action: idx', np.argmin(costs), [spec.__str__() for spec in RB_chosen_action.action_specs])
-
-                if UC_safe_actions.any() and RB_chosen_action.t < 5:  # there is a safe UC action
-                    print('************************************************  CHANGE LANE  ************************************************')
-                    behavioral_state.lane_change_state.lane_change_start_time = behavioral_state.ego_state.timestamp_in_sec
-                    behavioral_state.lane_change_state.status = LaneChangeStatus.LaneChangeActiveInSourceLane
-                    behavioral_state.lane_change_state.target_relative_lane = target_lane
-                    behavioral_state.lane_change_state.source_lane_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
-                    behavioral_state.lane_change_state._target_lane_ids = behavioral_state.extended_lane_frames[target_lane].segment_ids
-                    behavioral_state.lane_change_state.autonomous_mode = True
-                else:  # continue with RB search on SAME_LANE
-                    if UC_safe_actions.any():
-                        print('************** SAFE **************')
-                    follow_lane_idx = [i for i, recipe in enumerate(action_recipes)
-                                       if recipe.action_type == ActionType.FOLLOW_LANE and recipe.relative_lane == RelativeLane.SAME_LANE][0]
-                    action_specs[:] = None
-                    action_specs[follow_lane_idx] = RB_chosen_action.action_specs[0].to_spec(lane_merge_state.ego_fstate_1d[FS_SX])
 
         # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
@@ -127,6 +137,15 @@ class SingleStepBehavioralPlanner(BasePlanner):
         self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
         return action_specs
+
+    def _start_lane_change(self, behavioral_state: BehavioralGridState, target_lane: RelativeLane) -> None:
+        print('************************************************  CHANGE LANE  ************************************************')
+        behavioral_state.lane_change_state.lane_change_start_time = behavioral_state.ego_state.timestamp_in_sec
+        behavioral_state.lane_change_state.status = LaneChangeStatus.LaneChangeActiveInSourceLane
+        behavioral_state.lane_change_state.target_relative_lane = target_lane
+        behavioral_state.lane_change_state.source_lane_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
+        behavioral_state.lane_change_state._target_lane_ids = behavioral_state.extended_lane_frames[target_lane].segment_ids
+        behavioral_state.lane_change_state.autonomous_mode = True
 
     def _filter_actions(self, behavioral_state: BehavioralGridState, action_specs: ActionSpecArray) -> ActionSpecArray:
         """
@@ -238,7 +257,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
             return RelativeLane.SAME_LANE
 
         front_actor = behavioral_state.road_occupancy_grid[same_front][0].dynamic_object
-        if front_actor.velocity > min(speed_limit - 2, behavioral_state.ego_state.velocity + 1):
+        if front_actor.velocity > speed_limit - 2:
             print('SAME_LANE: front actor is fast: ', front_actor.velocity)
             return RelativeLane.SAME_LANE
 

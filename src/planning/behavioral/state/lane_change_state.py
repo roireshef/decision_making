@@ -49,6 +49,7 @@ class LaneChangeState:
         self.autonomous_mode = autonomous_mode
         #self.last_spec_idx = None
         self.selected_action = None
+        self.margin_to_keep_from_targets = None
 
     def __str__(self):
         # print as dict for logs
@@ -62,6 +63,7 @@ class LaneChangeState:
         self.status = LaneChangeStatus.LaneChangeRequestable
         self.autonomous_mode = False
         self.selected_action = None
+        self.margin_to_keep_from_targets = None
 
     def get_target_lane_gff(self, extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> GeneralizedFrenetSerretFrame:
         """

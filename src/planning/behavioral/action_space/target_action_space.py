@@ -79,6 +79,10 @@ class TargetActionSpace(ActionSpace):
         """
         pass
 
+    @abstractmethod
+    def _get_margin_to_keep_from_targets(self, behavioral_state: BehavioralGridState) -> float:
+        pass
+
     @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
@@ -109,8 +113,8 @@ class TargetActionSpace(ActionSpace):
         # here we deduct from the distance to progress: half of lengths of host and target (so we can stay in center-host
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
         # irrelevant due to 0 velocity
-        ds = longitudinal_differences + margin_sign * (
-                self.margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
+        ds = longitudinal_differences + margin_sign * (self._get_margin_to_keep_from_targets(behavioral_state) +
+                                                       behavioral_state.ego_length / 2 + target_lengths / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]
