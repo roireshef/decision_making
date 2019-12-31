@@ -38,9 +38,9 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
     is_pedal_pressed = bool             # True if the pedal is currently pressed
     stop_bar_id = int                   # the closest stop bar id at the moment of pressing the pedal
 
-    def __init__(self, logger: Logger, visualizer_queue: mp.Queue = None):
+    def __init__(self, logger: Logger, visualizer_queue: mp.Queue = DummyQueue()):
         self.logger = logger
-        self.visualizer_queue = visualizer_queue or DummyQueue()
+        self.visualizer_queue = visualizer_queue
         self._reset()
 
     def to_dict(self, left_out_fields=None):

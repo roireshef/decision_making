@@ -20,7 +20,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_facade import T
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.utils.multiprocess_visualizer import DummyVisualizer
+from decision_making.src.utils.async_visualizer import DummyVisualizer
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser

@@ -31,7 +31,7 @@ class LaneChangeState:
 
     def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame] = None, target_lane_ids: Optional[np.ndarray] = None,
                  lane_change_start_time: Optional[float] = None, target_relative_lane: Optional[RelativeLane] = None,
-                 status: Optional[LaneChangeStatus] = LaneChangeStatus.PENDING, visualizer_queue: mp.Queue = None):
+                 status: Optional[LaneChangeStatus] = LaneChangeStatus.PENDING, visualizer_queue: mp.Queue = DummyQueue()):
         """
         Holds lane change state
         :param source_lane_gff: GFF that the host was in when a lane change was initiated
@@ -46,7 +46,7 @@ class LaneChangeState:
         self.lane_change_start_time = lane_change_start_time
         self.target_relative_lane = target_relative_lane
         self.status = status
-        self.visualizer_queue = visualizer_queue or DummyQueue()
+        self.visualizer_queue = visualizer_queue
         self.visualizer_queue.put(self.status)
 
     def __str__(self):
