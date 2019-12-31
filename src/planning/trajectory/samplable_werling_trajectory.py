@@ -1,16 +1,17 @@
 import numpy as np
 
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
 from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D, FS_1D_LEN, \
     FrenetTrajectory1D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.utils.frenet_prediction_utils import FrenetPredictionUtils
+from typing import Optional
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, T_extended: float, frenet_frame: FrenetSerret2DFrame,
+    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, T_extended: float, frenet_frame: Optional[FrenetSerret2DFrame],
                  poly_s_coefs: np.ndarray, poly_d_coefs: np.ndarray):
         """
         To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
@@ -21,7 +22,8 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         :param T_d: [sec] lateral trajectory duration (relative to self.timestamp).
         :param T_extended: [sec] lateral trajectory duration (relative to self.timestamp).
         :param frenet_frame: frenet frame of the curve which was used to create this samplable trajectory, used for
-                            transforming between frenet and cartesian coordinates.
+                            transforming between frenet and cartesian coordinates. Sampling frenet states
+                            (in contrast to cartesian) doesn't require a frenet frame.
         :param poly_s_coefs: coefficients of the longitudinal polynomial which is being sampled for getting the
                 longitudinal frenet states
         :param poly_d_coefs: coefficients of the lateral polynomial which is being sampled for getting the
@@ -46,6 +48,8 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         """See base method for API. In this specific representation of the trajectory, we sample from s-axis polynomial
         (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial
         (lateral) and extrapolate the rest of the states in d-axis to conform to the trajectory's total duration"""
+
+        assert self.frenet_frame, "frenet_frame is None, can't sample cartesian states"
 
         # Sample the trajectory in the desired points in time in Frenet coordinates
         fstates = self.sample_frenet(time_points=time_points)
@@ -73,14 +77,14 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
             'self.total_trajectory_time=%f, max(relative_time_points)=%f' % (self.T_extended, max(relative_time_points))
 
         # Handle the longitudinal(s) axis
-        fstates_s = self._sample_lon_frenet(relative_time_points)
+        fstates_s = self.sample_lon_frenet(relative_time_points)
         # Now handle the lateral(d) axis:
         fstates_d = self._sample_lat_frenet(relative_time_points)
 
         # Return trajectory in Frenet coordinates
         return np.hstack((fstates_s, fstates_d))
 
-    def _sample_lon_frenet(self, relative_time_points: np.array) -> FrenetTrajectory1D:
+    def sample_lon_frenet(self, relative_time_points: np.array) -> FrenetTrajectory1D:
         """
         Samples the appropriate longitudinal frenet states from the longitudinal polynomial w.r.t to the given
         relative time points
@@ -103,11 +107,10 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         if len(extrapolated_time_points) > 0:
             # time points will trigger extrapolating the last sampled point from the polynomial using a constant
             # velocity predictor
-            road_following_predictor = RoadFollowingPredictor(None)
             fstate_in_T_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), np.array([self.T_s]))[
                 0]
             extrapolated_fstates_s = \
-            road_following_predictor.predict_1d_frenet_states(fstate_in_T_s, extrapolated_time_points - self.T_s)[0]
+            FrenetPredictionUtils.predict_1d_frenet_states(fstate_in_T_s, extrapolated_time_points - self.T_s)[0]
             fstates_s = np.vstack((fstates_s, extrapolated_fstates_s))
 
         return fstates_s

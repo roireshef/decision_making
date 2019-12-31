@@ -18,10 +18,13 @@ from typing import Optional, List, Type
 
 
 class StaticActionSpace(ActionSpace):
-    def __init__(self, logger, filtering: RecipeFiltering):
+    def __init__(self, logger, filtering: RecipeFiltering, speed_limit: float = None):
         self._velocity_grid = np.arange(VELOCITY_LIMITS[LIMIT_MIN],
                                         VELOCITY_LIMITS[LIMIT_MAX] + EPS,
                                         VELOCITY_STEP)
+        if speed_limit is not None:
+            self._velocity_grid = np.append(self._velocity_grid, speed_limit)
+
         super().__init__(logger,
                          recipes=[StaticActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])],

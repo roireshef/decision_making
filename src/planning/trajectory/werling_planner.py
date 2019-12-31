@@ -9,6 +9,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, EPS, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, LAT_ACC_LIMITS_BY_K, \
     TP_LAT_ACC_STRICT_COEF
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -84,7 +85,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # calculate frenet state in ego time, such that its prediction in goal time is goal_frenet_state
         # it is used only when not is_target_ahead
-        ego_by_goal_state = KinematicUtils.create_ego_by_goal_state(goal_frenet_state, T_target_horizon)
+        ego_by_goal_state = FrenetUtils.create_ego_by_goal_state(goal_frenet_state, T_target_horizon)
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
@@ -174,7 +175,7 @@ class WerlingPlanner(TrajectoryPlanner):
                 T_extended=planning_horizon
             )
         else:  # Publish a fixed trajectory, containing just padding
-            poly_s, poly_d = KinematicUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
+            poly_s, poly_d = FrenetUtils.create_linear_profile_polynomial_pair(ego_by_goal_state)
             samplable_trajectory = SamplableWerlingTrajectory(state.ego_state.timestamp_in_sec,
                                                               planning_horizon, planning_horizon, planning_horizon,
                                                               reference_route, poly_s, poly_d)
