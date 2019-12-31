@@ -57,7 +57,7 @@ class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
     def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None,
-                 visualizer_queue: mp.Queue = None) -> None:
+                 visualizer_queue: mp.Queue = DummyQueue()) -> None:
         """
         :param pubsub:
         :param logger:

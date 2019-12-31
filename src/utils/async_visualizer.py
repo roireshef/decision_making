@@ -7,14 +7,12 @@ from typing import Any
 
 
 class AsyncVisualizer(mp.Process):
-    def __init__(self, queue_len: int = 20, *args, **kwargs):
+    def __init__(self, queue_len: int = 20):
         """
         Interface for a visualizer that uses a dedicated process for visualization. It opens a multiprocess Queue used
         to communicate the data for visualization and a Lock used to (optionally) lock client process waiting for the
         visualization figure to load
         :param queue_len:
-        :param args:
-        :param kwargs:
         """
         super().__init__()
 
@@ -126,12 +124,10 @@ class AsyncVisualizer(mp.Process):
 
 
 class DummyVisualizer(AsyncVisualizer):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         """
         A dummy visualizer the exposes the same interface of MultiprocessVisualizer, but does nothing.
         This is useful for a "null instantiation" of a visualizer, to not impact code.
-        :param args:
-        :param kwargs:
         """
         pass
 
