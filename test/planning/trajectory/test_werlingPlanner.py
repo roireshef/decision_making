@@ -12,14 +12,14 @@ import pytest
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, \
-    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    LON_MARGIN_FROM_EGO, ROAD_SHOULDERS_WIDTH
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
-    CartesianExtendedState, CartesianTrajectory
+    CartesianExtendedState, CartesianTrajectory, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
@@ -86,8 +86,7 @@ def test_werlingPlanner_toyScenario_noException():
                                        lat_jerk_cost_weight=LAT_JERK_COST_WEIGHT,
                                        velocity_limits=VELOCITY_LIMITS,
                                        lon_acceleration_limits=LON_ACC_LIMITS,
-                                       lat_acceleration_limits=LAT_ACC_LIMITS,
-                                       desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+                                       lat_acceleration_limits=LAT_ACC_LIMITS)
 
     planner = WerlingPlanner(logger, predictor)
 

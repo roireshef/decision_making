@@ -77,6 +77,7 @@ class BehavioralGridState:
         self.lane_change_state = lane_change_state
         self.ignored_tcb_distance_in_gff = ignored_tcb_distance_in_gff
         self.logger = logger
+        self.max_speed_limit = self._get_max_speed_limit()
 
     @property
     def ego_length(self) -> float:
@@ -269,6 +270,15 @@ class BehavioralGridState:
         """
         return BehavioralGridState._calculate_longitudinal_differences(
             self.extended_lane_frames, self.projected_ego_fstates, target_map_states)
+
+    def _get_max_speed_limit(self) -> float:
+        """
+        Iterates over all lanes in the state's GFFs and returns the maximal speed limit
+        :return: maximal speed limit in [m/s]
+        """
+        lane_id_by_gff = [gff.segment_ids.tolist() for gff in self.extended_lane_frames.values()]
+        unique_lane_ids = set(itertools.chain.from_iterable(lane_id_by_gff))
+        return max([MapUtils.get_lane(lane_id).e_v_nominal_speed for lane_id in unique_lane_ids])
 
     @staticmethod
     def _calculate_longitudinal_differences(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
@@ -748,10 +758,10 @@ class BehavioralGridState:
         in_left = np.any(gff.has_segment_ids(np.array(MapUtils.get_adjacent_lane_ids(obj_lane_id, RelativeLane.RIGHT_LANE))))
         offset_side = RelativeLane.RIGHT_LANE if in_right else RelativeLane.LEFT_LANE
 
-        # object can only overlap with adjacent lanes, and can't be in both left and right.
-        # todo: is this assumption true?
+        # If an object is in both the left and right lane (based only on lane ID's), there may be an error in the map.
         if not (in_left ^ in_right):
-            return False
+            logger.warning(f"Object {dynamic_object.obj_id}'s lane ({dynamic_object.map_state.lane_id}) was found in "
+                           f"both the left and right GFFs.")
 
         bbox = dynamic_object.bounding_box()
 
