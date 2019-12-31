@@ -1,13 +1,15 @@
 import numpy as np
-from decision_making.src.global_constants import EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
-    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FS_SX, FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
+from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, \
+    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, BP_ACTION_T_LIMITS
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FS_SX, FS_DX, Limits2D, RangedLimits2D, \
+    FrenetTrajectories2D, LIMIT_MAX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
 
 
@@ -290,10 +292,122 @@ class KinematicUtils:
             # solve for d if the constraints are given also for d dimension
             if poly_coefs_d is not None:
                 # generate a matrix that is used to find jerk-optimal polynomial coefficients
-                A_inv_d = QuinticPoly1D.inverse_time_constraints_tensor(T_d[not_padding_mode])
-                constraints_d = np.c_[(initial_fstates[not_padding_mode, FS_DX:], terminal_fstates[not_padding_mode, FS_DX:])]
-                poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
+                non_zero_t_d = not_padding_mode & (T_d > TRAJECTORY_TIME_RESOLUTION)
+                A_inv_d = QuinticPoly1D.inverse_time_constraints_tensor(T_d[non_zero_t_d])
+                constraints_d = np.c_[(initial_fstates[non_zero_t_d, FS_DX:], terminal_fstates[non_zero_t_d, FS_DX:])]
+                poly_coefs_d[non_zero_t_d] = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
 
         # create linear polynomials for padding mode
         poly_coefs_s[padding_mode], _ = FrenetUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
         return poly_coefs_s, poly_coefs_d
+
+    @staticmethod
+    def specify_lateral_planning_time(a_0: np.array, v_0: np.array, dx: np.array) -> np.array:
+        """
+        Calculate lateral planning times by time-jerk cost optimization. Here we choose the calmest aggressiveness level.
+        :param a_0: initial lateral acceleration in Frenet frame
+        :param v_0: initial lateral velocity in Frenet frame
+        :param dx: array or scalar lateral distance to the target in Frenet frame
+        :return: lateral planning times of the same size like dx or array of size 1 if dx is scalar.
+        """
+        # choose the calmest lateral aggressiveness level
+        weights = np.tile(BP_JERK_S_JERK_D_TIME_WEIGHTS[0], (1 if np.isscalar(dx) else dx.shape[0], 1))
+
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], a_0=a_0, v_0=v_0, v_T=0, dx=dx, T_m=0)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
+        return np.fmin.reduce(roots_d, axis=-1)
+
+    @staticmethod
+    def calc_T_s(w_T: np.array, w_J: np.array, v_0: np.array, a_0: np.array, v_T: np.array, time_limit: float):
+        """
+        given initial & end constraints and time-jerk weights, calculate longitudinal planning time
+        :param w_T: array of weights of Time component in time-jerk cost function
+        :param w_J: array of weights of longitudinal jerk component in time-jerk cost function
+        :param v_0: array of initial velocities [m/s]
+        :param a_0: array of initial accelerations [m/s^2]
+        :param v_T: array of final velocities [m/s]
+        :param time_limit: [sec] time limit for an action
+        :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
+        """
+        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
+        # zero. This degenerate action is valid but can't be solved analytically.
+        non_tracking = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
+
+        # Get polynomial coefficients of time-jerk cost function derivative for our settings
+        time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
+            w_T[non_tracking], w_J[non_tracking], a_0[non_tracking], v_0[non_tracking], v_T[non_tracking])
+
+        # Find roots of the polynomial in order to get extremum points
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, time_limit]))
+
+        # return T as the minimal real root
+        T = np.zeros_like(v_0)
+        T[non_tracking] = np.fmin.reduce(cost_real_roots, axis=-1)
+        return T
+
+    @staticmethod
+    def specify_quartic_actions(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array, a_0: np.array = 0,
+                                action_horizon_limit: float = BP_ACTION_T_LIMITS[1],
+                                acc_limits: np.array = LON_ACC_LIMITS) -> [np.array, np.array]:
+        """
+        Calculate the distances and times for the given actions' weights and scenario params.
+        Actions not meeting the acceleration limits have infinite distance and time.
+        Weights, velocities and acceleration may either be scalars or arrays.
+        :param w_T: scalar or array of weights of Time component in time-jerk cost function
+        :param w_J: scalar or array of weights of longitudinal jerk component in time-jerk cost function
+        :param v_0: scalar or array of initial velocities [m/s]
+        :param v_T: scalar or array of desired final velocities [m/s]
+        :param a_0: scalar or array of initial accelerations [m/s^2]
+        :param action_horizon_limit: [sec] time limit for an action
+        :param acc_limits: [m/sec^2] array of type np.array([min, max]): longitudinal acceleration limits
+            If acc_limits is None, the longitudinal limits are not tested.
+        :return: two arrays: actions' distances and times; actions not meeting time or acceleration limits have
+            infinite distance and time
+        """
+        # return the biggest dimension out of weights and velocities (1 if scalar, otherwise array length)
+        max_dimension = max(np.array([w_J]).shape[-1], np.array([v_0]).shape[-1], np.array([v_T]).shape[-1])
+
+        # convert weights, velocities and acceleration to arrays if they are scalars
+        w_J = NumpyUtils.set_dimension(w_J, max_dimension)
+        w_T = NumpyUtils.set_dimension(w_T, max_dimension)
+        v_0 = NumpyUtils.set_dimension(v_0, max_dimension)
+        v_T = NumpyUtils.set_dimension(v_T, max_dimension)
+        a_0 = NumpyUtils.set_dimension(a_0, max_dimension)
+
+        # calculate actions' planning time
+        T = KinematicUtils.calc_T_s(w_T, w_J, v_0, a_0, v_T, action_horizon_limit)
+        T[~np.isfinite(T)] = np.inf  # convert NAN values to inf
+        valid_non_zero = ~np.isclose(T, 0) & np.isfinite(T)
+        positive_T = T[valid_non_zero]
+
+        # calculate actions' planning distance, for zero actions distances is 0
+        distances = np.zeros_like(T)
+        # for invalid actions set distances to infinity
+        distances[~np.isfinite(T)] = np.inf
+
+        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0[valid_non_zero], v_0[valid_non_zero],
+                                                                      v_T[valid_non_zero], positive_T)
+        distances[valid_non_zero] = Math.zip_polyval2d(s_profile_coefs, positive_T[:, np.newaxis])[:, 0]
+
+        if acc_limits is not None:
+            # check acceleration limits
+            in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs, positive_T, acc_limits)
+
+            # distances for accelerations which are not in limits get infinity
+            non_zero_distances = distances[valid_non_zero]
+            non_zero_distances[~in_limits] = np.inf
+            distances[valid_non_zero] = non_zero_distances
+
+            # times for accelerations which are not in limits get infinity
+            positive_T[~in_limits] = np.inf
+            T[valid_non_zero] = positive_T
+
+        return distances, T
+
+    @staticmethod
+    def specify_quartic_action(w_T: float, w_J: float, v_0: float, v_T: float, a_0: float = 0,
+                               action_horizon_limit: float = BP_ACTION_T_LIMITS[1],
+                               acc_limits: np.array = LON_ACC_LIMITS) -> [float, float]:
+        ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0, action_horizon_limit, acc_limits)
+        return ds[0], T[0]
