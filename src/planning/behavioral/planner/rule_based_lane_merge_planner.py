@@ -70,7 +70,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
     TIME_GRID_RESOLUTION = 1
     VEL_GRID_RESOLUTION = 5
 
-    def __init__(self, logger: Logger):
+    def __init__(self, state: State, logger: Logger):
         super().__init__(logger)
 
     def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) -> LaneMergeState:

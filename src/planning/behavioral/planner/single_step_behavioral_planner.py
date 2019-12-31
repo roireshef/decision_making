@@ -82,7 +82,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
 
         # perform RB optimization on the same lane
         lane_merge_state = LaneMergeState.create_from_behavioral_state(behavioral_state, target_lane)
-        planner = RuleBasedLaneMergePlanner(self.logger)
+        planner = RuleBasedLaneMergePlanner(None, self.logger)
         actions = planner._create_action_specs(lane_merge_state, route_plan)
         filtered_actions = planner._filter_actions(lane_merge_state, actions)
         costs = planner._evaluate_actions(lane_merge_state, route_plan, filtered_actions)
