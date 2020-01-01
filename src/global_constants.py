@@ -248,6 +248,8 @@ LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH = 150
 LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
 # [m/sec] maximal velocity of actors and in action space
 LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
+# [m/sec] velocity of empty cells on actors grid
+LANE_MERGE_ACTION_SPACE_EMPTY_CELL_VELOCITY = 25
 # [m/sec] velocity resolution in action space
 LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
 

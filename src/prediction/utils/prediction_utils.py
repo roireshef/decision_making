@@ -1,9 +1,9 @@
-import numpy as np
 from typing import List
 
+import numpy as np
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.types import FS_SV, FS_SX, \
-    CartesianExtendedTrajectory, FrenetTrajectory2D, GlobalTimeStampInSec, MinGlobalTimeStampInSec
+    CartesianExtendedTrajectory, FrenetTrajectory2D
 from decision_making.src.prediction.ego_aware_prediction.ended_maneuver_params import EndedManeuverParams
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.map_state import MapState

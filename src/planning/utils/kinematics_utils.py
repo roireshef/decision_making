@@ -1,16 +1,14 @@
 import numpy as np
-from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
-    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, LAT_ACC_LIMITS_BY_K
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
+from decision_making.src.global_constants import EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FS_SX, FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
-from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class KinematicUtils:
@@ -263,42 +261,6 @@ class KinematicUtils:
         return frenet_lateral_movement_is_feasible
 
     @staticmethod
-    def create_linear_profile_polynomial_pair(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
-        """
-        Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
-        velocity). Those polynomials are degenerate to s(t)=v*t+x form
-        :param frenet_state: the current frenet state to pull positions and velocities from
-        :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
-        """
-        poly_s, poly_d = KinematicUtils.create_linear_profile_polynomial_pairs(frenet_state[np.newaxis])
-        return poly_s[0], poly_d[0]
-
-    @staticmethod
-    def create_linear_profile_polynomial_pairs(frenet_states: FrenetStates2D) -> (np.ndarray, np.ndarray):
-        """
-        Given N frenet states, create two Nx6 matrices (s, d) of polynomials that assume constant velocity
-        (we keep the same momentary velocity). Those polynomials are degenerate to s(t)=v*t+x form
-        :param frenet_states: the current frenet states to pull positions and velocities from
-        :return: a tuple of Nx6 matrices (s(t), d(t)) polynomial coefficient arrays
-        """
-        # zero 4 highest coefficients of poly_s: from x^5 until x^2 (including)
-        poly_s = np.c_[np.zeros((frenet_states.shape[0], S2+1)), frenet_states[:, FS_SV], frenet_states[:, FS_SX]]
-        # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
-        poly_d = np.zeros((frenet_states.shape[0], QuinticPoly1D.num_coefs()))
-        return poly_s, poly_d
-
-    @staticmethod
-    def create_ego_by_goal_state(goal_frenet_state: FrenetState2D, ego_to_goal_time: float) -> FrenetState2D:
-        """
-        calculate Frenet state in ego time, such that its constant-velocity prediction in goal time is goal_frenet_state
-        :param goal_frenet_state: goal Frenet state
-        :param ego_to_goal_time: the difference between the goal time and ego time
-        :return: ego by goal frenet state
-        """
-        return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV],
-                         goal_frenet_state[FS_SV], 0, 0, 0, 0])
-
-    @staticmethod
     def calc_poly_coefs(T: np.array, initial_fstates, terminal_fstates, padding_mode: np.array) -> [np.array, np.array]:
         """
         Given initial and end constraints for multiple actions and their time horizons, calculate polynomials,
@@ -329,88 +291,5 @@ class KinematicUtils:
                 poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
         # create linear polynomials for padding mode
-        poly_coefs_s[padding_mode], _ = KinematicUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
+        poly_coefs_s[padding_mode], _ = FrenetUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
         return poly_coefs_s, poly_coefs_d
-
-
-class BrakingDistances:
-    """
-    Calculates braking distances
-    """
-    @staticmethod
-    def create_braking_distances(aggressiveness_level: AggressivenessLevel) -> np.array:
-        """
-        Creates distances of all follow_lane with the given aggressiveness_level.
-        :return: the actions' distances
-        """
-        # create v0 & vT arrays for all braking actions
-        v0, vT = np.meshgrid(FILTER_V_0_GRID.array, FILTER_V_T_GRID.array, indexing='ij')
-        v0, vT = np.ravel(v0), np.ravel(vT)
-        # calculate distances for braking actions
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness_level]
-        distances = np.zeros_like(v0)
-        distances[v0 > vT], _ = BrakingDistances.calc_quartic_action_distances(w_T, w_J, v0[v0 > vT], vT[v0 > vT])
-        return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
-
-    @staticmethod
-    def calc_quartic_action_distances(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
-                                      a_0: np.array = None) -> [np.array, np.array]:
-        """
-        Calculate the distances and times for the given actions' weights and scenario params.
-        Actions not meeting the acceleration limits have infinite distance and time.
-        :param w_T: weight of Time component in time-jerk cost function
-        :param w_J: weight of longitudinal jerk component in time-jerk cost function
-        :param v_0: array of initial velocities [m/s]
-        :param v_T: array of desired final velocities [m/s]
-        :param a_0: array of initial accelerations [m/s^2]
-        :return: two arrays: actions' distances and times; actions not meeting acceleration limits have infinite distance
-        """
-        # calculate actions' planning time
-        if a_0 is None:
-            a_0 = np.zeros_like(v_0)
-        T = BrakingDistances.calc_T_s(w_T, w_J, v_0, a_0, v_T)
-        non_zero = ~np.isclose(T, 0)
-
-        # check acceleration limits
-        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0[non_zero], v_0[non_zero], v_T[non_zero], T[non_zero])
-        in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs, T[non_zero], LON_ACC_LIMITS)
-
-        # Distances for accelerations which are not in limits are defined as infinity. This implied that braking on
-        # invalid accelerations would take infinite distance, which in turn filters out these (invalid) action specs.
-        distances = np.zeros_like(T)
-        distances[non_zero] = Math.zip_polyval2d(s_profile_coefs, T[non_zero, np.newaxis])[:, 0]
-        distances[non_zero][~in_limits] = np.inf
-        T[non_zero][~in_limits] = np.inf
-
-        return distances, T
-
-    @staticmethod
-    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
-        """
-        given initial & end constraints and time-jerk weights, calculate longitudinal planning time
-        :param w_T: weight of Time component in time-jerk cost function
-        :param w_J: weight of longitudinal jerk component in time-jerk cost function
-        :param v_0: array of initial velocities [m/s]
-        :param a_0: array of initial accelerations [m/s^2]
-        :param v_T: array of final velocities [m/s]
-        :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
-        """
-        # Agent is in tracking mode, meaning the required velocity change is negligible and action time is actually
-        # zero. This degenerate action is valid but can't be solved analytically.
-        non_zero_actions = np.logical_not(QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0))
-
-        w_T_array = np.full(v_0[non_zero_actions].shape, w_T)
-        w_J_array = np.full(v_0[non_zero_actions].shape, w_J)
-
-        # Get polynomial coefficients of time-jerk cost function derivative for our settings
-        time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
-            w_T_array, w_J_array, a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions])
-
-        # Find roots of the polynomial in order to get extremum points
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
-
-        # return T as the minimal real root
-        T = np.zeros_like(v_0)
-        T[non_zero_actions] = np.fmin.reduce(cost_real_roots, axis=-1)
-        return T
-
