@@ -54,7 +54,6 @@ class AsyncVisualizer(mp.Process):
 
         self._destroy_fig()
         self._queue.close()
-        self.kill()
 
     def stop(self):
         self._is_running.value = False
