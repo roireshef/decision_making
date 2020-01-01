@@ -19,14 +19,14 @@ from decision_making.src.planning.trajectory.trajectory_planning_facade import T
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.utils.async_visualizer import DummyVisualizer
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
+from decision_making.src.utils.dummy_queue import DummyQueue
 
 AV_Logger.init_group("PLAN")
 
-RUN_STATE_MACHINE_VISUALIZER = True
+RUN_STATE_MACHINE_VISUALIZER = False
 
 
 class DmInitialization:
@@ -50,7 +50,7 @@ class DmInitialization:
 
         pubsub = PubSub()
 
-        # since it is sent to process from outside, the queue must be defined as a global variable
+        # queue is sent to process from outside, it must be defined as a global variable, which is populated below
         global visualizer_queue
 
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger, last_trajectory=None,
@@ -85,14 +85,20 @@ if __name__ == '__main__':
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
 
-    # instantiate real state machine visualizer if RUN_STATE_MACHINE_VISUALIZER is True, otherwise a dummy one
-    visualizer = DIMAndLCoDVisualizer() if RUN_STATE_MACHINE_VISUALIZER else DummyVisualizer()
-    visualizer_queue = visualizer.queue
-    visualizer.start()
+    # instantiate real state machine visualizer and get its queue, or define a DummyQueue that implements the queue
+    # interface and does nothing. Note that the visualizer_queue is read as a global variable above. This is where
+    # it is populated in the first place
+    if RUN_STATE_MACHINE_VISUALIZER:
+        visualizer = DIMAndLCoDVisualizer()
+        visualizer.start()
 
-    # put default values in the queue
-    visualizer.append(DIM_States.DISABLED)
-    visualizer.append(LaneChangeStatus.PENDING)
+        visualizer_queue = visualizer.queue
+
+        # put default values in the queue
+        visualizer.append(DIM_States.DISABLED)
+        visualizer.append(LaneChangeStatus.PENDING)
+    else:
+        visualizer_queue = DummyQueue()
 
     modules_list = \
         [
