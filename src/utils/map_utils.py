@@ -214,7 +214,7 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: distance from the right lane border, distance from the left lane border
         """
-        right_borders, left_borders =  MapUtils.get_dists_to_lane_borders(lane_id, np.array([s]))
+        right_borders, left_borders = MapUtils.get_dists_to_lane_borders(lane_id, np.array([s]))
         return right_borders[0], left_borders[0]
 
     @staticmethod

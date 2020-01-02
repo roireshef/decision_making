@@ -53,7 +53,9 @@ def test_StaticTrafficFlowControlFilter_filtersWhenTrafficFlowControlexits(behav
     t, v, s, d = 10, 20, ego_location + 40.0, 0
     action_specs = [ActionSpec(t, v, s, d,
                                ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
-    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
+    ftrajectories, ctrajectories = ActionSpecFiltering._build_trajectories(action_specs, behavioral_grid_state_with_traffic_control)
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control,
+                           ftrajectories=ftrajectories, ctrajectories=ctrajectories)
     expected = [False]
     assert actual == expected
 
@@ -90,7 +92,9 @@ def test_BeyondSpecStaticTrafficFlowControlFilter_filtersWhenTrafficFlowControle
     t, v, s, d = 10, 20, gff_stop_sign_location - 2.0, 0
     action_specs = [ActionSpec(t, v, s, d,
                                ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
-    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
+    ftrajectories, ctrajectories = ActionSpecFiltering._build_trajectories(action_specs, behavioral_grid_state_with_traffic_control)
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control,
+                           ftrajectories=ftrajectories, ctrajectories=ctrajectories)
     expected = [False]
     assert actual == expected
 
@@ -113,7 +117,9 @@ def test_BeyondSpecSpeedLimitFilter_SlowLaneAhead(behavioral_grid_state_with_tra
     t, v, s, d = 10, 25, ego_location + 5, 0
     action_specs = [
         ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
-    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
+    ftrajectories, ctrajectories = ActionSpecFiltering._build_trajectories(action_specs, behavioral_grid_state_with_traffic_control)
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control,
+                           ftrajectories=ftrajectories, ctrajectories=ctrajectories)
     expected = [False]
     assert actual == expected
 
@@ -133,7 +139,9 @@ def test_BeyondSpecSpeedLimitFilter_NoSpeedLimitChange(behavioral_grid_state_wit
     t, v, s, d = 10, 34/3.6, ego_location + 80, 0
     action_specs = [
         ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
-    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
+    ftrajectories, ctrajectories = ActionSpecFiltering._build_trajectories(action_specs, behavioral_grid_state_with_traffic_control)
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control,
+                           ftrajectories=ftrajectories, ctrajectories=ctrajectories)
     expected = [True]
     assert actual == expected
 
@@ -423,7 +431,9 @@ def test_BeyondSpecGffFilter_FilteredIfCloseToEndOfPartialGff(behavioral_grid_st
     action_specs = [
         ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM)),
         ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.LEFT_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
-    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_left_lane_ending)
+    ftrajectories, ctrajectories = ActionSpecFiltering._build_trajectories(action_specs, behavioral_grid_state_with_left_lane_ending)
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_left_lane_ending,
+                           ftrajectories=ftrajectories, ctrajectories=ctrajectories)
     expected = [True, False]
     assert np.all(actual == expected)
 
@@ -508,7 +518,9 @@ def test_beyondSpecCurvatureFilter_testValidAction_returnsTrue(behavioral_grid_s
     t, v, s, d = 10, 34/3.6, ego_location + 80, 0
     action_specs = [
         ActionSpec(t, v, s, d, ActionRecipe(RelativeLane.SAME_LANE, ActionType.FOLLOW_LANE, AggressivenessLevel.CALM))]
-    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control)
+    ftrajectories, ctrajectories = ActionSpecFiltering._build_trajectories(action_specs, behavioral_grid_state_with_traffic_control)
+    actual = filter.filter(action_specs=action_specs, behavioral_state=behavioral_grid_state_with_traffic_control,
+                           ftrajectories=ftrajectories, ctrajectories=ctrajectories)
     expected = [True]
     assert actual == expected
 
