@@ -1,6 +1,5 @@
 import numpy as np
 import sys
-from subdivision_planner.src.mcts import UCT
 
 ## TIMESTAMPS ##
 GlobalTimeStamp = int                   # global timestamp in [nanosec] since given time
@@ -89,8 +88,6 @@ CRT_LEN = 6
 
 # [s,d] Polynomials
 S5, S4, S3, S2, S1, S0, D5, D4, D3, D2, D1, D0 = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-
-SearchAlgo = UCT
 
 ## ROUTE PLANNER ##
 # Cost to be in a lane while traversing a lane segment
