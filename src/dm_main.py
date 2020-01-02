@@ -26,7 +26,7 @@ from decision_making.src.utils.dummy_queue import DummyQueue
 
 AV_Logger.init_group("PLAN")
 
-RUN_STATE_MACHINE_VISUALIZER = True
+RUN_STATE_MACHINE_VISUALIZER = False
 
 
 class DmInitialization:
