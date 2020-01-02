@@ -209,6 +209,7 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 # currently in the desired location and not in its actual location.
 REPLANNING_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
 REPLANNING_LAT = 0.5  # lateral (ego's side direction) difference threshold
+# TODO: remove this
 NEGLIGIBLE_DISPOSITION_LON = 0  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 0  # lateral (ego's side direction) difference threshold
 
