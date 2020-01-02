@@ -17,7 +17,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
-    MAX_VIS_TRAJECTORIES_NUMBER, NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, \
+    MAX_VIS_TRAJECTORIES_NUMBER, REPLANNING_LAT, REPLANNING_LON, \
     LOG_MSG_SCENE_DYNAMIC_RECEIVED, LOG_MSG_CONTROL_STATUS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
@@ -185,10 +185,10 @@ class TrajectoryPlanningFacade(DmModule):
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
         # TODO: understand if padding with zeros is necessary
-        allowed_tracking_errors = np.ones(shape=[trajectory_num_points, 4]) * [NEGLIGIBLE_DISPOSITION_LAT,  # left
-                                                                               NEGLIGIBLE_DISPOSITION_LAT,  # right
-                                                                               NEGLIGIBLE_DISPOSITION_LON,  # front
-                                                                               NEGLIGIBLE_DISPOSITION_LON]  # rear
+        allowed_tracking_errors = np.ones(shape=[trajectory_num_points, 4]) * [REPLANNING_LAT,  # left
+                                                                               REPLANNING_LAT,  # right
+                                                                               REPLANNING_LON,  # front
+                                                                               REPLANNING_LON]  # rear
         waypoints = np.hstack((trajectory_points, allowed_tracking_errors,
                                np.zeros(shape=[trajectory_num_points, TRAJECTORY_WAYPOINT_SIZE -
                                                trajectory_points.shape[1] - allowed_tracking_errors.shape[1]])))

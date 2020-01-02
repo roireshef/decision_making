@@ -5,7 +5,7 @@ from typing import Tuple
 import numpy as np
 
 from decision_making.src.exceptions import raises
-from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
+from decision_making.src.global_constants import REPLANNING_LON, REPLANNING_LAT, \
     WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
@@ -96,8 +96,8 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
         if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <
-                                          np.linalg.norm(np.array([NEGLIGIBLE_DISPOSITION_LON,
-                                                                   NEGLIGIBLE_DISPOSITION_LAT]))):
+                                          np.linalg.norm(np.array([REPLANNING_LON,
+                                                                   REPLANNING_LAT]))):
             self._triggered = True
 
         if self._triggered:
