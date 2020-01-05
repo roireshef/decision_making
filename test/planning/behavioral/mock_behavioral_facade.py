@@ -9,7 +9,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.types import CartesianPoint2D
-from decision_making.test.constants import BP_NEGLIGIBLE_DISPOSITION_LON, BP_NEGLIGIBLE_DISPOSITION_LAT
+from decision_making.test.constants import BP_REPLANNING_LON, BP_REPLANNING_LAT
 
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -58,7 +58,7 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
             current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
             if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <
-                                              np.array([BP_NEGLIGIBLE_DISPOSITION_LON, BP_NEGLIGIBLE_DISPOSITION_LAT])):
+                                              np.array([BP_REPLANNING_LON, BP_REPLANNING_LAT])):
                 self._triggered = True
 
                 # NOTE THAT TIMESTAMP IS UPDATED HERE !
