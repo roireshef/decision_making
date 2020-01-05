@@ -3,7 +3,7 @@ import ast
 import matplotlib.pyplot as plt
 import numpy as np
 from decision_making.paths import Paths
-from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON
+from decision_making.src.global_constants import REPLANNING_LAT, REPLANNING_LON
 from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FS_SV, C_V, FS_SX, FS_SA, C_A, C_K, C_X, C_Y, FS_DX
@@ -286,8 +286,8 @@ def plot_dynamics(log_file_path: str):
     tp_if_lat,  = plt.plot(tp_if_time, tp_if_lat_err, 'o--')
     engaged_plt, = plt.plot(engaged_time, engaged, 'o--')
 
-    lon_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LON, linewidth=1, color='k', linestyle='-.')
-    lat_th = plt.axhline(y=NEGLIGIBLE_DISPOSITION_LAT, linewidth=1, color='k', linestyle='--')
+    lon_th = plt.axhline(y=REPLANNING_LON, linewidth=1, color='k', linestyle='-.')
+    lat_th = plt.axhline(y=REPLANNING_LAT, linewidth=1, color='k', linestyle='--')
 
     plt.xlabel('time[s]')
     plt.ylabel('loc/tracking errors')

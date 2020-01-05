@@ -54,13 +54,6 @@ LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being ver
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
-# [m/sec] speed to plan towards by default in BP
-# original velocities in [mph] are converted into [m/s]
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 85/MPH_TO_MPS # TODO - get this value from the map
-
-# [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
-# we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
-TP_DESIRED_VELOCITY_DEVIATION = 1
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 # original velocities in [mph] are converted into [m/s]
@@ -220,8 +213,11 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as if the ego vehicle is
 # currently in the desired location and not in its actual location.
-NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
+REPLANNING_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
+REPLANNING_LAT = 0.5  # lateral (ego's side direction) difference threshold
+# TODO: remove this
+NEGLIGIBLE_DISPOSITION_LON = 0  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 0  # lateral (ego's side direction) difference threshold
 
 # limits for allowing tracking mode. During tracking we maintain a fixed speed trajectory with the speed the target.
 # May want to consider replacing with ego speed, so that speed is constant
@@ -391,6 +387,10 @@ TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
 ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
+
+#### State Machine Visualizers
+DIM_VISUALIZER_NAME = 'DIM_VISUALIZER'
+LC_VISUALIZER_NAME = 'LC_VISUALIZER'
 
 #### MetricLogger
 METRIC_LOGGER_DELIMITER = '_'

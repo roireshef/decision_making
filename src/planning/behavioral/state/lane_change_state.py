@@ -1,25 +1,27 @@
+import multiprocessing as mp
 from enum import Enum
-import numpy as np
 from typing import Optional, Dict, List
 
-from decision_making.src.global_constants import MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE, MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE, \
+import numpy as np
+from decision_making.src.global_constants import MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE, \
+    MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE, \
     LANE_CHANGE_DELAY, LANE_CHANGE_ABORT_THRESHOLD
 from decision_making.src.messages.turn_signal_message import TurnSignalState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLane
 from decision_making.src.planning.types import FS_DX, FS_SX, C_YAW, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType, GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import EgoState
+from decision_making.src.utils.dummy_queue import DummyQueue
 from decision_making.src.utils.map_utils import MapUtils
 
 
-
 class LaneChangeStatus(Enum):
-    LaneChangeRequestable = 0   # TODO: Find a better name so that it's not confused with LaneChangeRequested?
-    LaneChangeRequested = 1
-    AnalyzingSafety = 2
-    LaneChangeActiveInSourceLane = 3
-    LaneChangeActiveInTargetLane = 4
-    LaneChangeCompleteWaitingForReset = 5
+    PENDING = 0
+    REQUESTED = 1
+    ANALYZING_SAFETY = 2
+    ACTIVE_IN_SOURCE_LANE = 3
+    ACTIVE_IN_TARGET_LANE = 4
+    COMPLETE_WAITING_FOR_RESET = 5
 
 
 class LaneChangeState:
@@ -29,7 +31,7 @@ class LaneChangeState:
 
     def __init__(self, source_lane_gff: Optional[GeneralizedFrenetSerretFrame] = None, target_lane_ids: Optional[np.ndarray] = None,
                  lane_change_start_time: Optional[float] = None, target_relative_lane: Optional[RelativeLane] = None,
-                 status: Optional[LaneChangeStatus] = LaneChangeStatus.LaneChangeRequestable):
+                 status: Optional[LaneChangeStatus] = LaneChangeStatus.PENDING, visualizer_queue: mp.Queue = DummyQueue()):
         """
         Holds lane change state
         :param source_lane_gff: GFF that the host was in when a lane change was initiated
@@ -37,12 +39,15 @@ class LaneChangeState:
         :param lane_change_start_time: Time when a lane change began
         :param target_relative_lane: Relative lane of the target lane during a lane change
         :param status: lane change status
+        :param visualizer_queue: queue to send objects to visualizing
         """
         self.source_lane_gff = source_lane_gff
         self._target_lane_ids = target_lane_ids or np.array([])
         self.lane_change_start_time = lane_change_start_time
         self.target_relative_lane = target_relative_lane
         self.status = status
+        self.visualizer_queue = visualizer_queue
+        self.visualizer_queue.put(self.status)
 
     def __str__(self):
         # print as dict for logs
@@ -53,7 +58,7 @@ class LaneChangeState:
         self._target_lane_ids = np.array([])
         self.lane_change_start_time = None
         self.target_relative_lane = None
-        self.status = LaneChangeStatus.LaneChangeRequestable
+        self.status = LaneChangeStatus.PENDING
 
     def get_target_lane_gff(self, extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> GeneralizedFrenetSerretFrame:
         """
@@ -62,7 +67,7 @@ class LaneChangeState:
         :param extended_lane_frames:
         :return:
         """
-        if self.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
+        if self.status in [LaneChangeStatus.ANALYZING_SAFETY, LaneChangeStatus.ACTIVE_IN_SOURCE_LANE]:
             target_gff = extended_lane_frames[self.target_relative_lane]
         else:
             target_gff = extended_lane_frames[RelativeLane.SAME_LANE]
@@ -91,7 +96,7 @@ class LaneChangeState:
 
     def is_safe_to_start_lane_change(self) -> bool:
         # TODO when safety check is added, should return here the actual safety check result
-        return self.status == LaneChangeStatus.AnalyzingSafety
+        return self.status == LaneChangeStatus.ANALYZING_SAFETY
 
     def update_pre_iteration(self, ego_state: EgoState):
         """
@@ -99,27 +104,27 @@ class LaneChangeState:
         :param ego_state: state of host
         :return:
         """
-        if self.status == LaneChangeStatus.LaneChangeRequestable:
+        if self.status == LaneChangeStatus.PENDING:
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_LeftTurnSignalOn:
                 self.target_relative_lane = RelativeLane.LEFT_LANE
-                self.status = LaneChangeStatus.LaneChangeRequested
+                self.status = LaneChangeStatus.REQUESTED
             elif ego_state.turn_signal.s_Data.e_e_turn_signal_state == TurnSignalState.CeSYS_e_RightTurnSignalOn:
                 self.target_relative_lane = RelativeLane.RIGHT_LANE
-                self.status = LaneChangeStatus.LaneChangeRequested
-        elif self.status == LaneChangeStatus.LaneChangeRequested:
+                self.status = LaneChangeStatus.REQUESTED
+        elif self.status == LaneChangeStatus.REQUESTED:
             time_since_lane_change_requested = ego_state.timestamp_in_sec - ego_state.turn_signal.s_Data.s_time_changed.timestamp_in_seconds
 
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
                 self._reset()
             elif time_since_lane_change_requested > LANE_CHANGE_DELAY:
-                self.status = LaneChangeStatus.AnalyzingSafety
-        elif self.status == LaneChangeStatus.AnalyzingSafety:
+                self.status = LaneChangeStatus.ANALYZING_SAFETY
+        elif self.status == LaneChangeStatus.ANALYZING_SAFETY:
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
                 self._reset()
-        elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
+        elif self.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE:
             # This assumes that if the host has been localized in the target lane, it is definitely over the abort threshold 
             if self._is_lane_id_in_target_lane_ids(ego_state.map_state.lane_id):  # check to see if host has crossed into target lane
-                self.status = LaneChangeStatus.LaneChangeActiveInTargetLane
+                self.status = LaneChangeStatus.ACTIVE_IN_TARGET_LANE
             else:
                 dist_to_right_border_in_source_lane, dist_to_left_border_in_source_lane = MapUtils.get_dist_to_lane_borders(
                     ego_state.map_state.lane_id, ego_state.map_state.lane_fstate[FS_SX])
@@ -142,9 +147,9 @@ class LaneChangeState:
                         != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]
                         and lane_change_percent_complete <= LANE_CHANGE_ABORT_THRESHOLD):
                     self._reset()
-        elif self.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
+        elif self.status == LaneChangeStatus.ACTIVE_IN_TARGET_LANE:
             pass
-        elif self.status == LaneChangeStatus.LaneChangeCompleteWaitingForReset:
+        elif self.status == LaneChangeStatus.COMPLETE_WAITING_FOR_RESET:
             if ego_state.turn_signal.s_Data.e_e_turn_signal_state != LaneChangeState.expected_turn_signal_state[self.target_relative_lane]:
                 self._reset()
 
@@ -159,22 +164,22 @@ class LaneChangeState:
         :param selected_action: selected action spec
         :return:
         """
-        if self.status == LaneChangeStatus.LaneChangeRequestable:
+        if self.status == LaneChangeStatus.PENDING:
             pass
-        elif self.status == LaneChangeStatus.LaneChangeRequested:
+        elif self.status == LaneChangeStatus.REQUESTED:
             # if lane doesn't exist, reset
             if self.target_relative_lane not in extended_lane_frames.keys():
                 self._reset()
-        elif self.status == LaneChangeStatus.AnalyzingSafety:
+        elif self.status == LaneChangeStatus.ANALYZING_SAFETY:
             if self.get_lane_change_mask([selected_action.relative_lane], extended_lane_frames)[0]:
                 self.source_lane_gff = extended_lane_frames[RelativeLane.SAME_LANE]
                 self._target_lane_ids = extended_lane_frames[selected_action.relative_lane].segment_ids
                 self.lane_change_start_time = ego_state.timestamp_in_sec
                 self.target_relative_lane = selected_action.relative_lane
-                self.status = LaneChangeStatus.LaneChangeActiveInSourceLane
-        elif self.status == LaneChangeStatus.LaneChangeActiveInSourceLane:
+                self.status = LaneChangeStatus.ACTIVE_IN_SOURCE_LANE
+        elif self.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE:
             pass
-        elif self.status == LaneChangeStatus.LaneChangeActiveInTargetLane:
+        elif self.status == LaneChangeStatus.ACTIVE_IN_TARGET_LANE:
             distance_to_target_lane_center = projected_ego_fstates[RelativeLane.SAME_LANE][FS_DX]
 
             host_station_in_target_lane_gff = np.array([projected_ego_fstates[RelativeLane.SAME_LANE][FS_SX]])
@@ -184,6 +189,7 @@ class LaneChangeState:
             # If lane change completion requirements are met, the lane change is complete.
             if (abs(distance_to_target_lane_center) < MAX_OFFSET_FOR_LANE_CHANGE_COMPLETE
                     and abs(relative_heading) < MAX_REL_HEADING_FOR_LANE_CHANGE_COMPLETE):
-                self.status = LaneChangeStatus.LaneChangeCompleteWaitingForReset
-        elif self.status == LaneChangeStatus.LaneChangeCompleteWaitingForReset:
+                self.status = LaneChangeStatus.COMPLETE_WAITING_FOR_RESET
+        elif self.status == LaneChangeStatus.COMPLETE_WAITING_FOR_RESET:
             pass
+        self.visualizer_queue.put(self.status)
