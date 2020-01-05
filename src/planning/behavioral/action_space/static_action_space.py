@@ -11,6 +11,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Sta
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
+from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from sklearn.utils.extmath import cartesian
@@ -73,11 +74,8 @@ class StaticActionSpace(ActionSpace):
         T_s[QuarticPoly1D.is_tracking_mode(v_0, v_T, a_0)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1], a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0,
-            dx=-projected_ego_fstates[:, FS_DX], T_m=0)
-        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
-        T_d = np.fmin.reduce(roots_d, axis=-1)
+        T_d = KinematicUtils.specify_lateral_planning_time(
+            projected_ego_fstates[:, FS_DA], projected_ego_fstates[:, FS_DV], -projected_ego_fstates[:, FS_DX])
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
