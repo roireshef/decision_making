@@ -121,6 +121,12 @@ LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 
+# [m/sec^2] worst-case rear actor's acceleration during response time (RSS)
+LON_SAFETY_ACCEL_DURING_RESPONSE = 0.
+
+# [m/sec^2] maximal rear actor's deceleration after response time (RSS)
+LON_SAFETY_BACK_ACTOR_MAX_DECEL = 3.8
+
 # Additional distance after stop bar, where vehicle still considers bar as active, until DIM is active
 DIM_MARGIN_TO_STOP_BAR = 10.0
 
