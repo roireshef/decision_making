@@ -1,3 +1,6 @@
+import multiprocessing as mp
+from enum import Enum
+from logging import Logger
 from typing import Tuple
 
 import numpy as np
@@ -7,12 +10,10 @@ from decision_making.src.global_constants import DRIVER_INITIATED_MOTION_PEDAL_T
     DRIVER_INITIATED_MOTION_TIMEOUT, STOP_BAR_IND, STOP_BAR_DISTANCE_IND, \
     DIM_MARGIN_TO_STOP_BAR
 from decision_making.src.messages.pedal_position_message import PedalPosition
-from enum import Enum
-from logging import Logger
-
 from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FS_SV, FrenetState2D
+from decision_making.src.utils.dummy_queue import DummyQueue
 
 
 class DIM_States(Enum):
@@ -37,8 +38,9 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
     is_pedal_pressed = bool             # True if the pedal is currently pressed
     stop_bar_id = int                   # the closest stop bar id at the moment of pressing the pedal
 
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, visualizer_queue: mp.Queue = DummyQueue()):
         self.logger = logger
+        self.visualizer_queue = visualizer_queue
         self._reset()
 
     def to_dict(self, left_out_fields=None):
@@ -60,13 +62,11 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
             self.stop_bar_id = closestTCB[STOP_BAR_IND].e_i_traffic_control_bar_id
             self.state = DIM_States.PENDING
             self.logger.debug('DIM state: PENDING; stop_bar_id %s', self.stop_bar_id)
-        if self.state == DIM_States.DISABLED:
-            self._reset()
-            return
 
         # check if we can pass to CONFIRMED state
         if self._can_pass_to_confirmed_state(timestamp_in_sec):
             self.state = DIM_States.CONFIRMED
+            self.visualizer_queue.put(self.state)
             self.logger.debug('DIM state: CONFIRMED; stop_bar_id %s', self.stop_bar_id)
             # don't move to the "if _can_pass_to_disabled_state" since the ignored is not set properly yet.
             # Will be set in the next cycle
@@ -76,6 +76,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         if self._can_pass_to_disabled_state(ego_s, ignored_TCB_distance, timestamp_in_sec):
             self._reset()  # set DISABLED state
             self.logger.debug('DIM state: DISABLED; ')
+        self.visualizer_queue.put(self.state)
 
     def stop_bar_to_ignore(self):
         """
@@ -92,6 +93,8 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         self.pedal_last_change_time = np.inf
         self.is_pedal_pressed = False
         self.stop_bar_id = None
+        self.logger.debug('DIM state: DISABLED; ')
+        self.visualizer_queue.put(self.state)
 
     def update_pedal_times(self, pedal_position: PedalPosition) -> None:
         """

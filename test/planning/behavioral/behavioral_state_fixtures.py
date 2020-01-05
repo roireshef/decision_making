@@ -34,7 +34,7 @@ from decision_making.test.messages.scene_static_fixture import scene_static_pg_s
 from decision_making.test.planning.route.scene_fixtures import default_route_plan_for_PG_split_file
 from decision_making.test.planning.custom_fixtures import route_plan_1_2, lane_change_state
 from decision_making.test.messages.scene_static_fixture import testable_scene_static_mock, scene_static_mound_road_north
-
+from rte.python.logger.AV_logger import AV_Logger
 
 EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 NAVIGATION_PLAN = np.array(range(20, 30))
@@ -532,6 +532,8 @@ def state_with_surrounding_objects_and_off_map_objects(route_plan_20_30: RoutePl
 
 @pytest.fixture(scope='function')
 def state_with_objects_for_acceleration_towards_vehicle():
+    logger = AV_Logger.get_logger()
+
     # loads a scene dynamic where the vehicle is driving in its desired velocity towards another vehicle
     scene_static_message = scene_static_accel_towards_vehicle()
     scene_static_message.s_Data.s_SceneStaticBase.as_static_traffic_control_device = []
@@ -543,7 +545,7 @@ def state_with_objects_for_acceleration_towards_vehicle():
     scene_dynamic.dynamic_objects[0].off_map = False
     # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
     scene_dynamic.ego_state.cartesian_state[C_A] = 1
-    scene_dynamic.ego_state._dim_state = DriverInitiatedMotionState(None)
+    scene_dynamic.ego_state._dim_state = DriverInitiatedMotionState(logger)
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     yield scene_dynamic
 
