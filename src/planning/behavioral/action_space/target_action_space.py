@@ -6,10 +6,12 @@ from typing import Optional, List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, \
+    GAP_SETTING_HEADWAY, GAP_SETTING_COMFORT_HDW_MAX, GAP_SETTING_COMFORT_HDW_MIN, GAP_SETTING_MARGIN_BY_SPEED
+
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe, GapSetting
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.math_utils import Math
@@ -19,7 +21,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 
 class TargetActionSpace(ActionSpace):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, recipes: List[TargetActionRecipe],
-                 filtering: RecipeFiltering, margin_to_keep_from_targets: float):
+                 filtering: RecipeFiltering, gap_setting: GapSetting):
         """
         Abstract class for Target-Action-Space implementations. Implementations should include actions enumeration,
         filtering and specification.
@@ -33,7 +35,7 @@ class TargetActionSpace(ActionSpace):
                          recipes=recipes,
                          recipe_filtering=filtering)
         self.predictor = predictor
-        self.margin_to_keep_from_targets = margin_to_keep_from_targets
+        self.gap_setting = gap_setting or GapSetting.MEDIUM
 
     @abstractmethod
     def _get_target_lengths(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
@@ -78,6 +80,7 @@ class TargetActionSpace(ActionSpace):
         """
         pass
 
+
     @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
@@ -109,7 +112,7 @@ class TargetActionSpace(ActionSpace):
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
         # irrelevant due to 0 velocity
         ds = longitudinal_differences + margin_sign * (
-                self.margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
+                self.margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2) #TODO FIX self.margin...... 
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]

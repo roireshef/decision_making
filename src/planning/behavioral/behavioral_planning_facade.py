@@ -50,7 +50,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.planning.behavioral.data_objects import PlannerUserOptions
+from decision_making.src.planning.behavioral.data_objects import PlannerUserOptions, GapSetting
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
@@ -204,7 +204,7 @@ class BehavioralPlanningFacade(DmModule):
 
 
             # TODO: GET USER OPTION MESSAGE FROM VEHICLE
-            planner_user_options = PlannerUserOptions(target_margin=LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT)
+            planner_user_options = PlannerUserOptions(gap_setting=GapSetting.FAR)
 
             # choose scenario and planner
             scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)

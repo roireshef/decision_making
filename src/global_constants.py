@@ -108,6 +108,22 @@ TP_LAT_ACC_STRICT_COEF = 1.1
 SPECIFICATION_HEADWAY = 1.5
 SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-end)
 
+# Headway [sec] specification target from a leading vehicle, set by the Gap Setting selected by the user
+# [close, medium, far]
+GAP_SETTING_HEADWAY = np.array([1.0, 1.5, 2.0])
+
+# Comfort area headway zone [sec] around the GAP_SETTING_HEADWAY where the ego is allowed to "float" in order to maintain speed
+# [close, medium, far]
+GAP_SETTING_COMFORT_HDW_MIN = np.array([-0.1, -0.2, -0.3])
+GAP_SETTING_COMFORT_HDW_MAX = np.array([0.3, 0.2, 0.1])
+
+# Gap margin as a function of speed in order to maintain a time based following ratio at low speeds
+# [[Speeds (m/s)], [Close], [Medium], [Far]]
+GAP_SETTING_MARGIN_BY_SPEED  = [[0.0, 0.5, 4.0, 10.0, 13.9, 19.4, 25.0, 33.3, 41.7, 55.6],
+                                [3.0, 2.95, 2.4, 1.42, 1.0, 0.68, 0.47,  0.0,  0.0,  0.0],
+                                [3.0, 2.9, 2.42, 1.88, 1.4,  1.3, 1.05, 0.71,  0.4,  0.0],
+                                [3.0, 2.9, 2.45, 1.78, 1.14, 1.0,  0.7,  0.3,  0.0,  0.0]]
+
 # Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
 # safety checks accordingly
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
