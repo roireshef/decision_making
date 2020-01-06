@@ -2,7 +2,7 @@ from logging import Logger
 
 import numpy as np
 
-from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LAT, NEGLIGIBLE_DISPOSITION_LON, \
+from decision_making.src.global_constants import REPLANNING_LAT, REPLANNING_LON, \
     LOG_INVALID_TRAJECTORY_SAMPLING_TIME
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -65,8 +65,8 @@ class LocalizationUtils:
                        current_ego_state.acceleration - current_expected_state[C_A],
                        current_ego_state.timestamp_in_sec)).replace('\n', ' '))
 
-        return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
-               distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
+        return distances_in_expected_frame[FP_SX] <= REPLANNING_LON and \
+               distances_in_expected_frame[FP_DX] <= REPLANNING_LAT
 
     @staticmethod
     def get_state_with_expected_ego(state: State, samplable_trajectory: SamplableWerlingTrajectory, logger: Logger,
