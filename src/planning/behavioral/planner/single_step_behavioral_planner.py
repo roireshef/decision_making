@@ -32,8 +32,9 @@ class SingleStepBehavioralPlanner(BasePlanner):
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
     def __init__(self, state: State, user_options: PlannerUserOptions, logger: Logger):
-        super().__init__(logger)
+        super().__init__(user_options, logger)
         self.predictor = RoadFollowingPredictor(logger)
+        self.user_options = user_options
 
         speed_limit = MapUtils.get_lane(state.ego_state.map_state.lane_id).e_v_nominal_speed
 
