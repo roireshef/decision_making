@@ -95,6 +95,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # Actual trajectory planning is needed because T_s > 0.1 and the target is ahead of us
         if is_target_ahead:
             # Lateral planning horizon (Td)
+            # Since in BP.specify we chose T_s = max(T_s, T_d), here we can take T_d = min(T_s, T_d).
             T_d_grid = np.minimum(KinematicUtils.specify_lateral_planning_time(
                                                 fconstraints_t0._da, fconstraints_t0._dv, -fconstraints_t0._dx),
                                   T_target_horizon)
