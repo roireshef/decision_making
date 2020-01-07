@@ -114,16 +114,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         single_actions = RuleBasedLaneMergePlanner._create_single_actions(lane_merge_state, target_v, target_t, safety_bounds)
 
         # create composite "max_velocity" actions, such that each sequence includes quartic + const_max_vel + quartic
-        max_vel_actions = RuleBasedLaneMergePlanner._create_max_vel_actions(lane_merge_state, target_v, target_t, safety_bounds)
+        #max_vel_actions = RuleBasedLaneMergePlanner._create_max_vel_actions(lane_merge_state, target_v, target_t, safety_bounds)
 
         # create composite "stop" actions, such that each sequence includes quartic + zero_vel + quartic
         # create stop actions only if there are no single-spec actions, since quintic actions have lower time
         # and lower jerk than composite stop action
-        brake_actions = RuleBasedLaneMergePlanner._create_braking_actions(lane_merge_state, target_v, target_t, safety_bounds)
+        #brake_actions = RuleBasedLaneMergePlanner._create_braking_actions(lane_merge_state, target_v, target_t, safety_bounds)
 
-        lane_merge_actions = single_actions + max_vel_actions + brake_actions
+        lane_merge_actions = single_actions #+ max_vel_actions + brake_actions
 
-        print('# single_actions:', len(single_actions), ', # max_vel_actions:', len(max_vel_actions), '# brake actions:', len(brake_actions))
+        print('# single_actions:', len(single_actions))#, ', # max_vel_actions:', len(max_vel_actions), '# brake actions:', len(brake_actions))
 
         # print('\ntime = %f: quintic=(%d) quartic=(%d)' % (time.time() - st_tot, len(single_actions), len(max_vel_actions)))
         return np.array(lane_merge_actions)
