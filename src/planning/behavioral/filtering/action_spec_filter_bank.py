@@ -232,7 +232,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         # in case of NOT lane change action, check safety for full trajectory w.r.t. the front actor
         if target_lane == RelativeLane.SAME_LANE:
-            return {actor_cells[0]: np.tile((0, ego_ftrajectories.shape[1]), (ego_ftrajectories.shape[0], 1))} \
+            return {actor_cells[0]: np.c_[np.zeros(ego_ftrajectories.shape[0]).astype(int), trajectory_lengths]} \
                 if actor_cells[0] in behavioral_state.road_occupancy_grid and \
                    len(behavioral_state.road_occupancy_grid[actor_cells[0]]) > 0 else {}
 
