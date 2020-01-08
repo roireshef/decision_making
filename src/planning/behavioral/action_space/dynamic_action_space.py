@@ -7,7 +7,7 @@ from decision_making.src.planning.behavioral.action_space.target_action_space im
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, \
     ActionType, RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel, PlannerUserOptions
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -16,7 +16,7 @@ from sklearn.utils.extmath import cartesian
 
 
 class DynamicActionSpace(TargetActionSpace):
-    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, margin_to_keep_from_targets: Optional[float] = None):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, user_options: Optional[PlannerUserOptions] = None):
         super().__init__(logger,
                          predictor=predictor,
                          recipes=[DynamicActionRecipe.from_args_list(comb)
@@ -25,7 +25,7 @@ class DynamicActionSpace(TargetActionSpace):
                                                          [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE],
                                                          AggressivenessLevel])],
                          filtering=filtering,
-                         margin_to_keep_from_targets=margin_to_keep_from_targets or LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT)
+                         user_options= user_options)
 
     # TODO FOLLOW_VEHICLE for REAR vehicle isn't really supported for 2 reasons:
     #   1. We have no way to guarantee the trajectory we construct does not collide with the rear vehicle

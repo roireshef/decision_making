@@ -61,6 +61,15 @@ class RoadSignRestriction(Enum):
         return self.value == other.value
 
 
+class AdjustableGapSetting(Enum):
+    """
+    The gap setting specified by the user
+    """
+    CLOSE = 0
+    MEDIUM = 1
+    FAR = 2
+
+
 class ActionRecipe:
     def __init__(self, relative_lane: RelativeLane, action_type: ActionType, aggressiveness: AggressivenessLevel):
         self.relative_lane = relative_lane
@@ -161,9 +170,9 @@ class PlannerUserOptions:
     """
     Holds the parameters that may be changed by the driver
     """
-    def __init__(self, target_margin: float):
+    def __init__(self, gap_setting: AdjustableGapSetting):
         """
         Planner parameters
-        :param target_margin: Distance to target (on top of headway requirements)
+        :param target_margin: Gap setting specified by the user
         """
-        self.target_margin = target_margin
+        self.gap_setting = gap_setting

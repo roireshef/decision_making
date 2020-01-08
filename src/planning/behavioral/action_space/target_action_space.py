@@ -6,10 +6,11 @@ from typing import Optional, List
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, \
+    GAP_SETTING_HEADWAY, GAP_SETTING_COMFORT_HDW_MAX, GAP_SETTING_COMFORT_HDW_MIN, GAP_SETTING_MARGIN_BY_SPEED
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe, PlannerUserOptions
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.math_utils import Math
@@ -19,7 +20,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 
 class TargetActionSpace(ActionSpace):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, recipes: List[TargetActionRecipe],
-                 filtering: RecipeFiltering, margin_to_keep_from_targets: float):
+                 filtering: RecipeFiltering, user_options: Optional[PlannerUserOptions]):
         """
         Abstract class for Target-Action-Space implementations. Implementations should include actions enumeration,
         filtering and specification.
@@ -33,7 +34,7 @@ class TargetActionSpace(ActionSpace):
                          recipes=recipes,
                          recipe_filtering=filtering)
         self.predictor = predictor
-        self.margin_to_keep_from_targets = margin_to_keep_from_targets
+        self.user_options = user_options
 
     @abstractmethod
     def _get_target_lengths(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
@@ -78,6 +79,24 @@ class TargetActionSpace(ActionSpace):
         """
         pass
 
+    def _get_headway_specification(self):
+        """
+        Gets the headway specifications based on the user options that were specified
+        Returns a min/max range of allowable headways, based on the Comfort_Hdw_Min/Max specification
+        :return: a tuple of (min_headway, max_headway)
+        """
+        gap_setting_idx = self.user_options.gap_setting.value
+        return (GAP_SETTING_HEADWAY[gap_setting_idx] - GAP_SETTING_COMFORT_HDW_MIN[gap_setting_idx],
+                GAP_SETTING_HEADWAY[gap_setting_idx] + GAP_SETTING_COMFORT_HDW_MAX[gap_setting_idx])
+
+
+    def _get_margin_by_speed(self, host_velocity: float):
+        gap_setting_idx = self.user_options.gap_setting.value
+        speed_points = GAP_SETTING_MARGIN_BY_SPEED[0]
+        margin_points = GAP_SETTING_MARGIN_BY_SPEED[gap_setting_idx + 1]
+        return np.interp(host_velocity, speed_points, margin_points)
+
+
     @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
@@ -101,9 +120,14 @@ class TargetActionSpace(ActionSpace):
         # calculate initial longitudinal differences between all target objects and ego along target lanes
         longitudinal_differences = self._get_distance_to_targets(action_recipes, behavioral_state)
 
+
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
+
+        # get current headways to targets, then choose a specification headway within an allowable range that is closest to the current headway
+        current_headways = longitudinal_differences / behavioral_state.ego_state.velocity
+        T_m = np.clip(current_headways, -5, 5) # TODO: UPDATE TO SPECIFIED HEADWAY CONSTANT
 
         # here we deduct from the distance to progress: half of lengths of host and target (so we can stay in center-host
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
@@ -114,7 +138,6 @@ class TargetActionSpace(ActionSpace):
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]
         v_T_mod = self._modify_target_speed_if_ego_is_faster_than_target(behavioral_state, ds, v_0, v_T)
-        T_m = SPECIFICATION_HEADWAY
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
             v_0=projected_ego_fstates[:, FS_SV], v_T=v_T_mod, T_m=T_m)

@@ -196,7 +196,7 @@ class BehavioralPlanningFacade(DmModule):
 
 
             # TODO: GET USER OPTION MESSAGE FROM VEHICLE
-            planner_user_options = PlannerUserOptions(target_margin=LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT)
+            planner_user_options = PlannerUserOptions(target_margin=40)
 
             # choose scenario and planner
             scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
