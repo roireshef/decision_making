@@ -18,6 +18,7 @@ from logging import Logger
 from decision_making.src.planning.types import ActionSpecArray
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class SingleStepBehavioralPlanner(BasePlanner):
@@ -30,12 +31,16 @@ class SingleStepBehavioralPlanner(BasePlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, user_options: PlannerUserOptions, logger: Logger):
+    def __init__(self, state: State, user_options: PlannerUserOptions, logger: Logger):
         super().__init__(user_options, logger)
         self.predictor = RoadFollowingPredictor(logger)
-        self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
-                                                          DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING, user_options),
-                                                          RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING, user_options)])
+        self.user_options = user_options
+
+        speed_limit = MapUtils.get_lane(state.ego_state.map_state.lane_id).e_v_nominal_speed
+
+        self.action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING, speed_limit),
+                                                          DynamicActionSpace(logger, self.predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING),
+                                                          RoadSignActionSpace(logger, self.predictor, DEFAULT_ROAD_SIGN_RECIPE_FILTERING)])
 
     def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) -> BehavioralGridState:
         """

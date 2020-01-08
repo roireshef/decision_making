@@ -24,12 +24,12 @@ class MapState(PUBSUB_MSG_IMPL):
         on_road_laterally = (-dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH)
         return on_road_longitudinally and on_road_laterally
 
-    def serialize(self)-> TsSYSMapState:
+    def serialize(self) -> TsSYSMapState:
         pubsub_msg = TsSYSMapState()
         pubsub_msg.a_LaneFState = self.lane_fstate
         pubsub_msg.e_i_LaneID = self.lane_id
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsub_msg: TsSYSMapState)-> ():
+    def deserialize(cls, pubsub_msg: TsSYSMapState) -> ():
         return cls(pubsub_msg.a_LaneFState, pubsub_msg.e_i_LaneID)

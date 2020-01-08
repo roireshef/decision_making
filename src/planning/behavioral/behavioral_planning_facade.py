@@ -1,3 +1,5 @@
+import multiprocessing as mp
+
 import time
 import traceback
 from logging import Logger
@@ -8,6 +10,7 @@ from decision_making.src.messages.control_status_message import ControlStatus
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
 from decision_making.src.messages.pedal_position_message import PedalPosition
 from decision_making.src.messages.scene_tcd_message import SceneTrafficControlDevices
+from decision_making.src.utils.dummy_queue import DummyQueue
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
@@ -47,14 +50,15 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.planning.behavioral.data_objects import PlannerUserOptions
+from decision_making.src.planning.behavioral.data_objects import PlannerUserOptions, GapSetting
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
 class BehavioralPlanningFacade(DmModule):
     last_log_time = float
 
-    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None) -> None:
+    def __init__(self, pubsub: PubSub, logger: Logger, last_trajectory: SamplableTrajectory = None,
+                 visualizer_queue: mp.Queue = DummyQueue()) -> None:
         """
         :param pubsub:
         :param logger:
@@ -65,10 +69,10 @@ class BehavioralPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
         self._last_gff_segment_ids = np.array([])
         self._started_receiving_states = False
-        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger)
+        self._driver_initiated_motion_state = DriverInitiatedMotionState(logger, visualizer_queue)
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
-        self._lane_change_state = LaneChangeState()
+        self._lane_change_state = LaneChangeState(visualizer_queue=visualizer_queue)
 
     def _write_filters_to_log_if_required(self, now: float):
         """
@@ -79,6 +83,10 @@ class BehavioralPlanningFacade(DmModule):
             self.logger.debug('ActionSpec Filters List: %s', [as_filter.__str__() for
                                                               as_filter in DEFAULT_ACTION_SPEC_FILTERING._filters])
             self.last_log_time = now
+
+    @property
+    def planner(self):
+        return self._planner
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC)
@@ -178,7 +186,7 @@ class BehavioralPlanningFacade(DmModule):
                 # different lane's GFF but we're not actually in that lane yet. Therefore, we need to provide the host's actual lane as
                 # the target GFF. This will happen when we're performing a lane change.
                 target_gff = self._lane_change_state.source_lane_gff \
-                    if self._lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane \
+                    if self._lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE \
                         and state.ego_state.map_state.lane_id not in self._last_gff_segment_ids \
                     else None
 
@@ -196,12 +204,12 @@ class BehavioralPlanningFacade(DmModule):
 
 
             # TODO: GET USER OPTION MESSAGE FROM VEHICLE
-            planner_user_options = PlannerUserOptions(target_margin=40)
+            planner_user_options = PlannerUserOptions(gap_setting=GapSetting.FAR)
 
             # choose scenario and planner
             scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
             planner_class = scenario.choose_planner(updated_state, route_plan, self.logger)
-            planner = planner_class(planner_user_options, self.logger)
+            planner = planner_class(updated_state, planner_user_options, self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message, behavioral_state, selected_action_spec = \
@@ -419,7 +427,3 @@ class BehavioralPlanningFacade(DmModule):
 
     def _publish_takeover(self, takeover_message:Takeover) -> None :
         self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_message.serialize())
-
-    @property
-    def planner(self):
-        return self._planner

@@ -45,14 +45,14 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     ego_s = stop_bar_s - 7
 
     # pedal pressed
-    pedal_position = create_pedal_position(time_in_sec=0, pedal_pos=0.1)
+    pedal_position = create_pedal_position(time_in_sec=0.0, pedal_pos=0.1)
     dim_state.update_pedal_times(pedal_position)
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closestTCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
     assert dim_state.stop_bar_to_ignore() is None and dim_state.state == DIM_States.DISABLED
 
     # pedal pressed for enough time
-    pedal_position = create_pedal_position(time_in_sec=2, pedal_pos=0.1)
+    pedal_position = create_pedal_position(time_in_sec=0.2, pedal_pos=0.1)
     dim_state.update_pedal_times(pedal_position)
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closestTCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
@@ -63,21 +63,21 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     ego_s = stop_bar_s - 2
 
     # pedal pressed
-    pedal_position = create_pedal_position(time_in_sec=4, pedal_pos=0.1)
+    pedal_position = create_pedal_position(time_in_sec=0.4, pedal_pos=0.1)
     dim_state.update_pedal_times(pedal_position)
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closestTCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
     assert dim_state.stop_bar_to_ignore() is None and dim_state.state == DIM_States.PENDING
 
     # pedal pressed for enough time
-    pedal_position = create_pedal_position(time_in_sec=6, pedal_pos=0.1)
+    pedal_position = create_pedal_position(time_in_sec=0.6, pedal_pos=0.1)
     dim_state.update_pedal_times(pedal_position)
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closestTCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
     assert dim_state.stop_bar_to_ignore() is not None and dim_state.state == DIM_States.CONFIRMED
 
     # pedal released
-    pedal_position = create_pedal_position(time_in_sec=7, pedal_pos=0.01)
+    pedal_position = create_pedal_position(time_in_sec=0.7, pedal_pos=0.01)
     dim_state.update_pedal_times(pedal_position)
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closestTCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s)
@@ -87,14 +87,14 @@ def test_update_pedalPressedAndReleased_becomesActiveAndInactive(scene_static_pg
     lane_fstate = np.array([stop_bar.e_l_station + 15., 0, 0, 0, 0, 0])
     ego_s = stop_bar_s + 15
 
-    pedal_position = create_pedal_position(time_in_sec=8, pedal_pos=0.01)
+    pedal_position = create_pedal_position(time_in_sec=0.8, pedal_pos=0.01)
     dim_state.update_pedal_times(pedal_position)
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closestTCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s-ego_s)
     assert dim_state.stop_bar_to_ignore() is None and dim_state.state == DIM_States.DISABLED
 
     # timeout of the DIM state
-    pedal_position = create_pedal_position(time_in_sec=33, pedal_pos=0.01)
+    pedal_position = create_pedal_position(time_in_sec=3.3, pedal_pos=0.01)
     dim_state.update_pedal_times(pedal_position)
     dim_state.update_state(timestamp_in_sec=pedal_position.s_Data.s_RecvTimestamp.timestamp_in_seconds, ego_lane_fstate=lane_fstate,
                            ego_s=ego_s, closestTCB=(stop_bar, stop_bar_s), ignored_TCB_distance=stop_bar_s-ego_s)

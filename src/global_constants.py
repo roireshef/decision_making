@@ -54,13 +54,6 @@ LARGE_DISTANCE_FROM_SHOULDER = 1e8          # a large value indicating being ver
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
-# [m/sec] speed to plan towards by default in BP
-# original velocities in [mph] are converted into [m/s]
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 85/MPH_TO_MPS # TODO - get this value from the map
-
-# [m/sec] the addition to BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED for TP
-# we allow higher desired velocity in TP than in BP because TP & BP are not synchronized
-TP_DESIRED_VELOCITY_DEVIATION = 1
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 # original velocities in [mph] are converted into [m/s]
@@ -126,10 +119,10 @@ GAP_SETTING_COMFORT_HDW_MAX = np.array([0.3, 0.2, 0.1])
 
 # Gap margin as a function of speed in order to maintain a time based following ratio at low speeds
 # [[Speeds (m/s)], [Close], [Medium], [Far]]
-GAP_SETTING_MARGIN_BY_SPEED = [[0.0, 0.5, 4.0, 10.0, 13.9, 19.4, 25.0, 33.3, 41.7, 55.6],
-                               [3.0, 2.95, 2.4, 1.42, 1.0, 0.68, 0.47, 0.0, 0.0, 0.0],
-                               [3.0, 2.9, 2.42, 1.88, 1.4, 1.3, 1.05, 0.71, 0.4, 0.0],
-                               [3.0, 2.9, 2.45, 1.78, 1.14, 1.0, 0.7, 0.3, 0.0, 0.0]]
+GAP_SETTING_MARGIN_BY_SPEED  = [[0.0, 0.5, 4.0, 10.0, 13.9, 19.4, 25.0, 33.3, 41.7, 55.6],
+                                [3.0, 2.95, 2.4, 1.42, 1.0, 0.68, 0.47,  0.0,  0.0,  0.0],
+                                [3.0, 2.9, 2.42, 1.88, 1.4,  1.3, 1.05, 0.71,  0.4,  0.0],
+                                [3.0, 2.9, 2.45, 1.78, 1.14, 1.0,  0.7,  0.3,  0.0,  0.0]]
 
 # Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
 # safety checks accordingly
@@ -230,8 +223,11 @@ MAX_NUM_POINTS_FOR_VIZ = 60
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as if the ego vehicle is
 # currently in the desired location and not in its actual location.
-NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
+REPLANNING_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
+REPLANNING_LAT = 0.5  # lateral (ego's side direction) difference threshold
+# TODO: remove this
+NEGLIGIBLE_DISPOSITION_LON = 0  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 0  # lateral (ego's side direction) difference threshold
 
 # limits for allowing tracking mode. During tracking we maintain a fixed speed trajectory with the speed the target.
 # May want to consider replacing with ego speed, so that speed is constant
@@ -271,6 +267,8 @@ LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH = 150
 LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
 # [m/sec] maximal velocity of actors and in action space
 LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 25
+# [m/sec] velocity of empty cells on actors grid
+LANE_MERGE_ACTION_SPACE_EMPTY_CELL_VELOCITY = 25
 # [m/sec] velocity resolution in action space
 LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
 
@@ -399,6 +397,10 @@ TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
 ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
 ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
+
+#### State Machine Visualizers
+DIM_VISUALIZER_NAME = 'DIM_VISUALIZER'
+LC_VISUALIZER_NAME = 'LC_VISUALIZER'
 
 #### MetricLogger
 METRIC_LOGGER_DELIMITER = '_'

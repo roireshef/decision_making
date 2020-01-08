@@ -24,6 +24,13 @@ class AggressivenessLevel(Enum):
     STANDARD = 1
     AGGRESSIVE = 2
 
+class GapSetting(Enum):
+    """
+    Gap setting, to be set by the driver. Affects headway that will be kept to the car ahead.
+    """
+    CLOSE = 0
+    MEDIUM = 1
+    FAR = 2
 
 class RelativeLane(Enum):
     """"
@@ -59,15 +66,6 @@ class RoadSignRestriction(Enum):
     def __eq__(self, other):
         assert isinstance(other, RoadSignRestriction), "other is not of type RoadSignRestriction at self.__eq__()"
         return self.value == other.value
-
-
-class AdjustableGapSetting(Enum):
-    """
-    The gap setting specified by the user
-    """
-    CLOSE = 0
-    MEDIUM = 1
-    FAR = 2
 
 
 class ActionRecipe:
@@ -170,7 +168,7 @@ class PlannerUserOptions:
     """
     Holds the parameters that may be changed by the driver
     """
-    def __init__(self, gap_setting: AdjustableGapSetting):
+    def __init__(self, gap_setting: GapSetting):
         """
         Planner parameters
         :param target_margin: Gap setting specified by the user

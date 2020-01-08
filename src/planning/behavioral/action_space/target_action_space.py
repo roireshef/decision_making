@@ -8,9 +8,10 @@ import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, \
     GAP_SETTING_HEADWAY, GAP_SETTING_COMFORT_HDW_MAX, GAP_SETTING_COMFORT_HDW_MIN, GAP_SETTING_MARGIN_BY_SPEED
+
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe, PlannerUserOptions
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, TargetActionRecipe, GapSetting
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.math_utils import Math
@@ -20,7 +21,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 
 class TargetActionSpace(ActionSpace):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, recipes: List[TargetActionRecipe],
-                 filtering: RecipeFiltering, user_options: Optional[PlannerUserOptions]):
+                 filtering: RecipeFiltering, gap_setting: GapSetting):
         """
         Abstract class for Target-Action-Space implementations. Implementations should include actions enumeration,
         filtering and specification.
@@ -34,7 +35,7 @@ class TargetActionSpace(ActionSpace):
                          recipes=recipes,
                          recipe_filtering=filtering)
         self.predictor = predictor
-        self.user_options = user_options
+        self.gap_setting = gap_setting or GapSetting.MEDIUM
 
     @abstractmethod
     def _get_target_lengths(self, action_recipes: List[TargetActionRecipe], behavioral_state: BehavioralGridState) \
@@ -85,13 +86,13 @@ class TargetActionSpace(ActionSpace):
         Returns a min/max range of allowable headways, based on the Comfort_Hdw_Min/Max specification
         :return: a tuple of (min_headway, max_headway)
         """
-        gap_setting_idx = self.user_options.gap_setting.value
+        gap_setting_idx = self.gap_setting.value
         return (GAP_SETTING_HEADWAY[gap_setting_idx] - GAP_SETTING_COMFORT_HDW_MIN[gap_setting_idx],
                 GAP_SETTING_HEADWAY[gap_setting_idx] + GAP_SETTING_COMFORT_HDW_MAX[gap_setting_idx])
 
 
     def _get_margin_by_speed(self, host_velocity: float):
-        gap_setting_idx = self.user_options.gap_setting.value
+        gap_setting_idx = self.gap_setting.value
         speed_points = GAP_SETTING_MARGIN_BY_SPEED[0]
         margin_points = GAP_SETTING_MARGIN_BY_SPEED[gap_setting_idx + 1]
         return np.interp(host_velocity, speed_points, margin_points)
