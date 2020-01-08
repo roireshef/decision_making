@@ -1142,12 +1142,14 @@ def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_obje
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
         state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
                                                 route_plan_20_30, lane_change_state, None)
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_stop_bar(
         state_with_objects_for_filtering_too_aggressive: State, route_plan_20_30: RoutePlan, lane_change_state: LaneChangeState):
+    SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
                                                 route_plan_20_30, lane_change_state, None)
 

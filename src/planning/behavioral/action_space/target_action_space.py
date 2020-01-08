@@ -128,13 +128,20 @@ class TargetActionSpace(ActionSpace):
 
         # get current headways to targets, then choose a specification headway within an allowable range that is closest to the current headway
         current_headways = longitudinal_differences / behavioral_state.ego_state.velocity
-        T_m = np.clip(current_headways, -5, 5) # TODO: UPDATE TO SPECIFIED HEADWAY CONSTANT
+        min_headway, max_headway = self._get_headway_specification()
+        T_m = np.clip(current_headways, min_headway, max_headway)
+
+        margin_to_keep_from_targets = self._get_margin_by_speed(behavioral_state.ego_state.velocity)
+        margin_to_keep_from_targets = 5
 
         # here we deduct from the distance to progress: half of lengths of host and target (so we can stay in center-host
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
         # irrelevant due to 0 velocity
         ds = longitudinal_differences + margin_sign * (
-                self.margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
+                margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
+
+        T_m = np.clip(ds/behavioral_state.ego_state.velocity, min_headway, max_headway)
+        # T_m = SPECIFICATION_HEADWAY #TODO REMOVE
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]
@@ -153,7 +160,7 @@ class TargetActionSpace(ActionSpace):
         # TODO: this creates 3 actions (different aggressiveness levels) which are the same, in case of tracking mode
         v_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SV]
         a_0 = behavioral_state.ego_state.map_state.lane_fstate[FS_SA]
-        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T_mod, a_0, ds, SPECIFICATION_HEADWAY)] = 0
+        T_s[QuinticPoly1D.is_tracking_mode(v_0, v_T_mod, a_0, ds, T_m)] = 0
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -171,7 +178,7 @@ class TargetActionSpace(ActionSpace):
         distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
                                                              v_0=projected_ego_fstates[:, FS_SV],
                                                              v_T=v_T_mod, T=T, dx=ds,
-                                                             T_m=T_m)(T)
+                                                             T_m=T_m[0])(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
