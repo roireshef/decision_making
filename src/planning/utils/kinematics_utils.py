@@ -177,25 +177,24 @@ class KinematicUtils:
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_velocity_limits = np.logical_and(
             end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
-            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits, T),
+            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits),
                    axis=1))
 
         return conforms_velocity_limits
 
     @staticmethod
     def _speeding_within_allowed_limits(lon_velocity: np.array, lon_acceleration: np.array,
-                                        velocity_limits: np.ndarray, T: np.array) -> np.array:
+                                        velocity_limits: np.ndarray) -> np.array:
         """
         speeding is within allowed limits if it does not violate the speed limit for more than VIOLATION_TIME_TH.
         Furthermore it does so by no more than VIOLATION_SPEED_TH, unless starting velocity is above this value.
         Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
         :param lon_velocity: trajectories velocities
         :param lon_acceleration: trajectories accelerations
-        :param T: array of target times for ctrajectories
         :return:
         """
         # anywhere speed is below limit
-        speeding_is_within_limits = lon_velocity <= velocity_limits + EPS
+        speeding_is_within_limits = lon_velocity <= velocity_limits + NEGLIGIBLE_VELOCITY
         # or violation is limited to first SPEEDING_VIOLATION_TIME_TH seconds,last_allowed_idx
         last_allowed_idx = int(min(SPEEDING_VIOLATION_TIME_TH, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) /
                            TRAJECTORY_TIME_RESOLUTION)
