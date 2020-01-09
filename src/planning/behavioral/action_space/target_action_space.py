@@ -129,10 +129,13 @@ class TargetActionSpace(ActionSpace):
         # get current headways to targets, then choose a specification headway within an allowable range that is closest to the current headway
         current_headways = longitudinal_differences / behavioral_state.ego_state.velocity
         min_headway, max_headway = self._get_headway_specification()
-        T_m = np.clip(current_headways, min_headway, max_headway)
+
+        # If headway is already within [Gap_Setting - Comfort_Hdw_Min, Gap_Setting + Comfort_Hdw_Max], leave it as is since the headway can "float" for comfort
+        # If out of this range, replace it with the designated gap_setting headway
+        T_m = current_headways
+        T_m[np.where(np.logical_not(np.logical_and(T_m > min_headway, T_m < max_headway)))] = GAP_SETTING_HEADWAY[self.gap_setting.value]
 
         margin_to_keep_from_targets = self._get_margin_by_speed(behavioral_state.ego_state.velocity)
-        margin_to_keep_from_targets = 5
 
         # here we deduct from the distance to progress: half of lengths of host and target (so we can stay in center-host
         # to center-target distance, plus another margin that will represent the stopping distance, when headway is
@@ -140,8 +143,6 @@ class TargetActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (
                 margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
 
-        T_m = np.clip(ds/behavioral_state.ego_state.velocity, min_headway, max_headway)
-        # T_m = SPECIFICATION_HEADWAY #TODO REMOVE
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]
@@ -178,7 +179,7 @@ class TargetActionSpace(ActionSpace):
         distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
                                                              v_0=projected_ego_fstates[:, FS_SV],
                                                              v_T=v_T_mod, T=T, dx=ds,
-                                                             T_m=T_m[0])(T)
+                                                             T_m=T_m)(T)
         # Absolute longitudinal position of target
         target_s = distance_s + projected_ego_fstates[:, FS_SX]
 

@@ -151,10 +151,17 @@ def test_BeyondSpecSpeedLimitFilter_NoSpeedLimitChange(behavioral_grid_state_wit
     [2, 0.15, 0.1],
     [0.01, 0.15, 0.1]
 ]))
+@patch.multiple('decision_making.src.planning.behavioral.action_space.target_action_space', GAP_SETTING_MARGIN_BY_SPEED=np.array([
+    [0.0, 0.5, 4.0, 10.0, 13.9, 19.4, 25.0, 33.3, 41.7, 55.6],
+    [3.0, 2.95, 2.4, 1.42, 1.0, 0.68, 0.47,  0.0,  0.0,  0.0],
+    [3.0, 2.9, 2.42, 1.88, 1.4,  1.3, 1.05, 0.71,  0.4,  0.0],
+    [3.0, 2.9, 2.45, 1.78, 1.14, 1.0,  0.7,  0.3,  0.0,  0.0]
+])+4.0 )
 def test_filter_accelerationTowardsVehicle_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_acceleration_towards_vehicle,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     """ see velocities and accelerations at https://www.desmos.com/calculator/betept6wyx """
+    """ This unit test has been patched with higher gap_setting margin distances, since they were lowered in the requirements"""
 
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)

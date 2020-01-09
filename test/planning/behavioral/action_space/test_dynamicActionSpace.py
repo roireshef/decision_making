@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import SPECIFICATION_HEADWAY, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+from decision_making.src.global_constants import SPECIFICATION_HEADWAY, GAP_SETTING_HEADWAY
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, RelativeLane
@@ -10,6 +10,7 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.behavioral.data_objects import GapSetting
 from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
@@ -47,12 +48,16 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
             target_map_state.lane_fstate, target_map_state.lane_id)
         objects_longitudes.append(target_gff_fstate[FS_SX])
 
+
+    margin_from_object = dynamic_action_space._get_margin_by_speed(behavioral_grid_state.ego_state.velocity)
+    gap_setting_headway = GAP_SETTING_HEADWAY[GapSetting.MEDIUM.value]
+
     # terminal action-spec longitude equals the terminal longitude of target vehicle
     # (according to prediction at the terminal time)
     expected_longitudes = [objects_longitudes[i] +
                            target.dynamic_object.map_state.lane_fstate[FS_SV] * actions[i].t -
-                           actions[i].v * SPECIFICATION_HEADWAY -
-                           LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT -
+                           actions[i].v * gap_setting_headway -
+                           margin_from_object -
                            behavioral_grid_state.ego_length / 2 - targets[i].dynamic_object.size.length / 2
                            for i, target in enumerate(targets)]
 
