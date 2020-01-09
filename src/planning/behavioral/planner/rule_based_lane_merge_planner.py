@@ -227,7 +227,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             chosen_spec.t = LANE_CHANGE_TIME_COMPLETION_TARGET
             chosen_spec.s = lane_merge_state.projected_ego_fstates[lane_merge_state.target_rel_lane][FS_SX] + \
                             chosen_spec.t * lane_merge_state.ego_state.velocity
-            lane_merge_state.lane_change_state.status = LaneChangeStatus.AnalyzingSafety
+            lane_merge_state.lane_change_state.status = LaneChangeStatus.ANALYZING_SAFETY
             lane_merge_state.lane_change_state.lane_change_start_time = lane_merge_state.ego_state.timestamp_in_sec
             lane_merge_state.lane_change_state.autonomous_mode = True
 

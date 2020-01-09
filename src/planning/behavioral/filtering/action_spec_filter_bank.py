@@ -204,7 +204,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                 RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT, lane_width, self._logger)
             are_safe[indices_by_rel_lane[target_lane]] = (front_safety_dist > 0)
 
-            if target_lane != RelativeLane.SAME_LANE and behavioral_state.lane_change_state.status==LaneChangeStatus.LaneChangeActiveInSourceLane and \
+            if target_lane != RelativeLane.SAME_LANE and behavioral_state.lane_change_state.status==LaneChangeStatus.ACTIVE_IN_SOURCE_LANE and \
                     selected_action_idx is not None:
                 print('safety dist front =', front_safety_dist[selected_action_idx])
 
@@ -223,7 +223,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                 target_lane, RelativeLongitudinalPosition.FRONT, lane_width, self._logger)
             are_safe[indices_by_rel_lane[target_lane]] &= (target_safety_dist > 0)
 
-            if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane and \
+            if behavioral_state.lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE and \
                     selected_action_idx is not None:
                 print('safety dist target =', target_safety_dist[selected_action_idx])
 
@@ -238,7 +238,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
                 target_lane, RelativeLongitudinalPosition.REAR, lane_width, self._logger)
             are_safe[indices_by_rel_lane[target_lane]] &= (rear_safety_dist > 0)
 
-            if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane and \
+            if behavioral_state.lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE and \
                     selected_action_idx is not None:
                 print('safety dist rear =', rear_safety_dist[selected_action_idx])
 
@@ -283,7 +283,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         margin = 0.5 * (ego_length + actor.size.length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 
         # hysteresis
-        if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeRequestable:
+        if behavioral_state.lane_change_state.status == LaneChangeStatus.PENDING:
             margin += LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS
 
         # align obj_trajectory to global time from TRAJECTORY_TIME_RESOLUTION grid

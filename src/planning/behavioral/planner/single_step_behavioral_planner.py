@@ -69,7 +69,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
               'lane change status:', behavioral_state.lane_change_state.status)
 
         # don't enable to change lane 10 seconds after last lane-change start
-        if behavioral_state.lane_change_state.status != LaneChangeStatus.LaneChangeRequestable or \
+        if behavioral_state.lane_change_state.status != LaneChangeStatus.PENDING or \
                 (behavioral_state.lane_change_state.lane_change_start_time is not None and
                  behavioral_state.ego_state.timestamp_in_sec - behavioral_state.lane_change_state.lane_change_start_time < 10):
             return self._specify_actions(behavioral_state)
@@ -141,7 +141,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
     def _start_lane_change(self, behavioral_state: BehavioralGridState, target_lane: RelativeLane) -> None:
         print('************************************************  CHANGE LANE  ************************************************')
         behavioral_state.lane_change_state.lane_change_start_time = behavioral_state.ego_state.timestamp_in_sec
-        behavioral_state.lane_change_state.status = LaneChangeStatus.LaneChangeActiveInSourceLane
+        behavioral_state.lane_change_state.status = LaneChangeStatus.ACTIVE_IN_SOURCE_LANE
         behavioral_state.lane_change_state.target_relative_lane = target_lane
         behavioral_state.lane_change_state.source_lane_gff = behavioral_state.extended_lane_frames[RelativeLane.SAME_LANE]
         behavioral_state.lane_change_state._target_lane_ids = behavioral_state.extended_lane_frames[target_lane].segment_ids

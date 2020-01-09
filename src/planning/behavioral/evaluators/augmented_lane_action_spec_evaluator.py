@@ -83,10 +83,10 @@ class AugmentedLaneActionSpecEvaluator(LaneBasedActionSpecEvaluator):
             selected_road_sign_idx = self._get_follow_road_sign_valid_action_idx(action_recipes, action_specs_mask,
                                                                                  target_lane)
 
-            if behavioral_state.lane_change_state.status in [LaneChangeStatus.AnalyzingSafety, LaneChangeStatus.LaneChangeActiveInSourceLane]:
+            if behavioral_state.lane_change_state.status in [LaneChangeStatus.ANALYZING_SAFETY, LaneChangeStatus.ACTIVE_IN_SOURCE_LANE]:
                 # try to continue with the original action
                 selected_idx = behavioral_state.lane_change_state.get_selected_action_idx(action_specs)
-                if behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane and \
+                if behavioral_state.lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE and \
                         selected_idx is not None and action_specs_mask[selected_idx]:
                     selected_follow_lane_idx = selected_idx
                 else:
