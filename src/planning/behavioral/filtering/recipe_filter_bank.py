@@ -1,6 +1,5 @@
 from typing import List
 
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe, \
@@ -100,7 +99,7 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
     """
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         lane_change_desired = behavioral_state.lane_change_state.is_safe_to_start_lane_change() or \
-                              (behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane)
+                              (behavioral_state.lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE)
 
         return [recipe.relative_lane == RelativeLane.SAME_LANE
                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]

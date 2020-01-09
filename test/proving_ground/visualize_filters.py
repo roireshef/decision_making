@@ -136,7 +136,7 @@ def plot_filters_map(log_file_path: str):
                 raise AssertionError(err_msg)
 
             # plot with black x
-            plt.scatter(np.array([time]), np.array([chosen_recipe_idx]), c='k', linestyle='None', marker='x')
+            plt.scatter(np.array([time]), np.array([chosen_recipe_idx[-1]]), c='k', linestyle='None', marker='x')
 
     plt.xlabel('time [s]')
     plt.ylabel('action')
