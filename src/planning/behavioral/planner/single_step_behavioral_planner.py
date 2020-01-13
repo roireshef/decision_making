@@ -235,7 +235,9 @@ class SingleStepBehavioralPlanner(BasePlanner):
 
         right_front = (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT)
         if RelativeLane.RIGHT_LANE in behavioral_state.extended_lane_frames and right_front not in behavioral_state.road_occupancy_grid:
-            right_ids = behavioral_state.extended_lane_frames[RelativeLane.RIGHT_LANE].segment_ids
+            print('RIGHT_LANE: no front car')
+            return RelativeLane.RIGHT_LANE
+
         if right_front in behavioral_state.road_occupancy_grid:
             right_actor = behavioral_state.road_occupancy_grid[right_front][0].dynamic_object
             if right_actor.velocity > speed_limit - 0.5:

@@ -428,15 +428,17 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         actors_states = state.actors_states
 
         # insert dummy back actor at PLANNING_LOOKAHEAD_DIST behind ego
-        back_v = actors_states[np.argmin(np.array([actor.s_relative_to_ego for actor in actors_states]))].velocity \
-            if len(actors_states) > 0 else state.ego_state.velocity
-        actors_states.insert(0, LaneMergeActorState(-PLANNING_LOOKAHEAD_DIST, back_v, 0))
+        if len(actors_states) > 0:
+            back_v = actors_states[np.argmin(np.array([actor.s_relative_to_ego for actor in actors_states]))].velocity
+            actors_states.insert(0, LaneMergeActorState(-PLANNING_LOOKAHEAD_DIST, back_v, 0))
 
         cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
         front_car = state.road_occupancy_grid[cell][0] if cell in state.road_occupancy_grid and len(state.road_occupancy_grid[cell]) > 0 else None
         if front_car is not None:
             actors_states.append(LaneMergeActorState(front_car.longitudinal_distance, front_car.dynamic_object.velocity,
                                                      front_car.dynamic_object.size.length))
+        if len(actors_states) == 0:
+            return None
 
         actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
                                                       for actor in actors_states]).T
@@ -451,9 +453,6 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         print('s_min=', s_min, 's_max=', s_max, 'actors_rel_s=', sorted_s, 'gaps=', np.diff(sorted_s))
 
         # calculate planning time bounds given target_s
-        if len(actors_states) == 0:
-            return target_v, target_t
-
         # 2D matrix with 3 columns of safe actions: target velocities, planning times and distances
         front_bounds, back_bounds = RuleBasedLaneMergePlanner._caclulate_RSS_bounds(
             actors_s, actors_v, margins, target_v[:, np.newaxis], target_t[:, np.newaxis])
@@ -504,6 +503,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         optimal_s = target_t * (target_t * a_0 + 6 * v_0 + 6 * target_v) / 12
 
         # find actions for which optimal_s is safe
+        if safety_bounds is None:
+            return np.c_[target_v, target_t, optimal_s]
+
         above_optimal_bound_idxs = np.sum(safety_bounds < optimal_s[:, np.newaxis], axis=-1)
         # optimal_s is safe if number of important bounds under optimal_s is even
         optimal_s_is_safe = (above_optimal_bound_idxs & 1) == 0
@@ -603,6 +605,9 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         # safe_dist = RSS distance + half lane change
         safe_dist = margin + SAFETY_HEADWAY * target_v + (target_v * target_v - front_v * front_v) / (-2 * LON_ACC_LIMITS[0]) + \
                     0.5 * LANE_CHANGE_TIME_COMPLETION_TARGET * (target_v - front_v)
+
+        # print('rear_v', [actor.velocity for actor in rear_actors], 'front_v', front_v, 'hw=', margin + SAFETY_HEADWAY * target_v,
+        #       'sq=', (target_v * target_v - front_v * front_v) / (-2 * LON_ACC_LIMITS[0]))
 
         # calculate acceleration distance
         # a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP

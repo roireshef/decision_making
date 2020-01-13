@@ -58,7 +58,7 @@ class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_NumOfTrajectories = self.trajectories.shape[0]
         pubsub_msg.a_Trajectories = self.trajectories
 
-        pubsub_msg.e_Cnt_NumOfActors = len(self.as_actors_predictions)
+        pubsub_msg.e_Cnt_NumOfActors = min(16, len(self.as_actors_predictions))
         for i in range(pubsub_msg.e_Cnt_NumOfActors):
             pubsub_msg.as_ActorsPredictions[i] = self.as_actors_predictions[i].serialize()
 

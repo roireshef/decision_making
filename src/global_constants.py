@@ -12,7 +12,7 @@ MPH_TO_MPS = 2.23694
 PLANNING_LOOKAHEAD_DIST = 150.0
 
 # [m] Maximum forward horizon for building Generalized Frenet Frames
-MAX_FORWARD_HORIZON = 600.0
+MAX_FORWARD_HORIZON = 700.0
 
 # [m] Maximum backward horizon for building Generalized Frenet Frames
 MAX_BACKWARD_HORIZON = 100.0
@@ -254,7 +254,7 @@ LANE_MERGE_STATE_FAR_AWAY_DISTANCE = 300
 # [m] maximum horizon for actors relative s
 LANE_MERGE_ACTORS_HORIZON = 800
 # [m/sec] maximal velocity of actors and in action space
-LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 26.
+LANE_MERGE_ACTION_SPACE_MAX_VELOCITY = 30.1
 # [m/sec] velocity of empty cells on actors grid
 LANE_MERGE_ACTION_SPACE_EMPTY_CELL_VELOCITY = 25
 # [m/sec] velocity resolution in action space
