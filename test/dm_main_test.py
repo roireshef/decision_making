@@ -20,13 +20,11 @@ def main():
         [
             DmProcess(DmInitialization.create_behavioral_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
-                      name="name1"),
+                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
             DmProcess(DmInitialization.create_trajectory_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD},
-                      name="name2")
+                      trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (main) registered signal handler', getpid())
