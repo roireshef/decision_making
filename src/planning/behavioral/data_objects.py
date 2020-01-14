@@ -5,6 +5,8 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.planning.types import FrenetState2D
 
+from decision_making.src.messages.gap_setting_message import GapSettingState
+
 
 class ActionType(Enum):
     """"
@@ -24,13 +26,6 @@ class AggressivenessLevel(Enum):
     STANDARD = 1
     AGGRESSIVE = 2
 
-class GapSetting(Enum):
-    """
-    Gap setting, to be set by the driver. Affects headway that will be kept to the car ahead.
-    """
-    CLOSE = 0
-    MEDIUM = 1
-    FAR = 2
 
 class RelativeLane(Enum):
     """"
@@ -168,7 +163,7 @@ class PlannerUserOptions:
     """
     Holds the parameters that may be changed by the driver
     """
-    def __init__(self, gap_setting: GapSetting):
+    def __init__(self, gap_setting: GapSettingState):
         """
         Planner parameters
         :param target_margin: Gap setting specified by the user

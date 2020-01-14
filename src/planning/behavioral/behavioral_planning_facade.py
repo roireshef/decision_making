@@ -20,6 +20,7 @@ from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_CONTROL_STATUS
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TURN_SIGNAL
+from interface.Rte_Types.python.uc_system import UC_SYSTEM_GAP_SETTING
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES
 from interface.Rte_Types.python.uc_system.uc_system_pedal_position import UC_SYSTEM_PEDAL_POSITION
 
@@ -38,6 +39,7 @@ from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.turn_signal_message import TurnSignal, DEFAULT_MSG as DEFAULT_TURN_SIGNAL_MSG
+from decision_making.src.messages.gap_setting_message import GapSetting, GapSettingState,  DEFAULT_MSG as DEFAULT_GAP_SETTING_MSG
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
@@ -50,7 +52,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State, EgoState
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.planning.behavioral.data_objects import PlannerUserOptions, GapSetting
+from decision_making.src.planning.behavioral.data_objects import PlannerUserOptions
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 
 
@@ -123,6 +125,14 @@ class BehavioralPlanningFacade(DmModule):
             except MsgDeserializationError as e:
                 self.logger.warning("MsgDeserializationError was raised for turn signal. Overriding with default value")
                 turn_signal = DEFAULT_TURN_SIGNAL_MSG
+
+            # Get gap setting as set by the user
+            try:
+                gap_setting = self._get_current_gap_setting()
+            except MsgDeserializationError as e:
+                self.logger.warning("MsgDeserializationError was raised for Gap Setting. Overriding with Medium")
+                gap_setting = DEFAULT_GAP_SETTING_MSG
+
 
             # Control status is a signal that is used as a proxy for vehicle's Engagement status
             # Logic is to keep planning in disengaged mode, but always "re-plan" (use actual localization)
@@ -202,9 +212,8 @@ class BehavioralPlanningFacade(DmModule):
 
             self._publish_takeover(takeover_message)
 
-
-            # TODO: GET USER OPTION MESSAGE FROM VEHICLE
-            planner_user_options = PlannerUserOptions(gap_setting=GapSetting.FAR)
+            # planner_user_options = PlannerUserOptions(gap_setting=gap_setting.s_Data.e_e_gap_setting_state)
+            planner_user_options = PlannerUserOptions(gap_setting=GapSettingState.CeSYS_e_Close)
 
             # choose scenario and planner
             scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
@@ -407,6 +416,15 @@ class BehavioralPlanningFacade(DmModule):
         turn_signal = TurnSignal.deserialize(serialized_turn_signal)
         self.logger.debug("Received turn signal: %s" % turn_signal)
         return turn_signal
+
+    def _get_current_gap_setting(self) -> GapSetting:
+        is_success, serialized_gap_setting = self.pubsub.get_latest_sample(topic=UC_SYSTEM_GAP_SETTING)
+        if  serialized_gap_setting is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          UC_SYSTEM_GAP_SETTING)
+        gap_setting = GapSetting.deserialize(serialized_gap_setting)
+        self.logger.debug("Received gap setting: %s" % gap_setting)
+        return gap_setting
 
     def _get_current_tcd_status(self) -> SceneTrafficControlDevices:
         is_success, serialized_tcd_status = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_TRAFFIC_CONTROL_DEVICES)

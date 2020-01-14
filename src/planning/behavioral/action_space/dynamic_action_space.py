@@ -3,10 +3,11 @@ from typing import List, Type, Optional
 
 import numpy as np
 from decision_making.src.global_constants import LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+from decision_making.src.messages.gap_setting_message import GapSettingState
 from decision_making.src.planning.behavioral.action_space.target_action_space import TargetActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, \
-    ActionType, RelativeLongitudinalPosition, GapSetting
+    ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SV
@@ -16,7 +17,7 @@ from sklearn.utils.extmath import cartesian
 
 
 class DynamicActionSpace(TargetActionSpace):
-    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, gap_setting: Optional[GapSetting] = None):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, gap_setting: Optional[GapSettingState] = None):
         super().__init__(logger,
                          predictor=predictor,
                          recipes=[DynamicActionRecipe.from_args_list(comb)
