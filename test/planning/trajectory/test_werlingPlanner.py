@@ -29,7 +29,7 @@ from decision_making.src.utils.geometry_utils import CartesianFrame
 from rte.python.logger.AV_logger import AV_Logger
 
 
-@patch('decision_making.src.planning.trajectory.werling_planner.TD_STEPS', 5)
+#@patch('decision_making.src.planning.trajectory.werling_planner.TD_STEPS', 5)
 @patch('decision_making.src.planning.trajectory.werling_planner.SX_STEPS', 5)
 @patch('decision_making.src.planning.trajectory.werling_planner.DX_STEPS', 5)
 @patch('decision_making.src.planning.trajectory.werling_planner.SX_OFFSET_MIN', -8)

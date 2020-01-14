@@ -7,7 +7,7 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, C_A, C_K, CartesianExtendedTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.planning.trajectory.utils import WerlingVisualizer
-from rte.ctm.src import CtmService
+from gm_ctm.src import CtmService
 
 
 class OfflineTrajectoryGenerator:
