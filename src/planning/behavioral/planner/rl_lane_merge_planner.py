@@ -13,6 +13,7 @@ from decision_making.src.planning.behavioral.data_objects import StaticActionRec
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.rl_models.dual_input_conv_model import DualInputConvModel
 from decision_making.src.planning.behavioral.planner.base_planner import BasePlanner
+from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.behavioral.state.lane_merge_state_encoder import LaneMergeStateEncoder
 from decision_making.src.planning.types import ActionSpecArray, FS_1D_LEN
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -28,7 +29,7 @@ from ray.rllib.models.pytorch.model import TorchModel
 
 class RL_LaneMergePlanner(BasePlanner):
 
-    def __init__(self, logger: Logger):
+    def __init__(self, state: State, logger: Logger):
         super().__init__(logger)
         self.predictor = RoadFollowingPredictor(logger)
         self.action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
@@ -57,8 +58,8 @@ class RL_LaneMergePlanner(BasePlanner):
         model.load_state_dict(model_state_dict)
         return model
 
-    def _create_behavioral_state(self, state: State, route_plan: RoutePlan) -> LaneMergeState:
-        return LaneMergeState.create_from_state(state, route_plan, self.logger)
+    def _create_behavioral_state(self, state: State, route_plan: RoutePlan, lane_change_state: LaneChangeState) -> LaneMergeState:
+        return LaneMergeState.create_from_state(state, route_plan, lane_change_state, self.logger)
 
     def _create_action_specs(self, lane_merge_state: LaneMergeState) -> ActionSpecArray:
         """

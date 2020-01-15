@@ -261,6 +261,8 @@ LANE_MERGE_ACTION_SPACE_EMPTY_CELL_VELOCITY = 25
 LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION = 5
 # aggressiveness level (value) of lane-merge quartic actions
 LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL = 1
+# [m] distance beyond the merging lane origin, where the actual red line is defined
+LANE_MERGE_RED_LINE_EXTENTION = 40  # TODO: remove it when the map will be fixed
 
 # [m/sec] maximal velocity from which DIM may be performed
 DRIVER_INITIATED_MOTION_VELOCITY_LIMIT = 0.1

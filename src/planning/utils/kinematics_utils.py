@@ -1,16 +1,15 @@
 import numpy as np
-from decision_making.src.global_constants import FILTER_V_T_GRID, FILTER_V_0_GRID, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
+from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     LON_ACC_LIMITS, EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
-    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, LAT_ACC_LIMITS_BY_K, BP_ACTION_T_LIMITS
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
-from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
-    FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, BP_ACTION_T_LIMITS
+from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FS_SX, FS_DX, Limits2D, RangedLimits2D, \
+    FrenetTrajectories2D, LIMIT_MAX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_utils import FrenetUtils
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
 
 
@@ -297,6 +296,23 @@ class KinematicUtils:
         return poly_coefs_s, poly_coefs_d
 
     @staticmethod
+    def specify_lateral_planning_time(a_0: np.array, v_0: np.array, dx: np.array) -> np.array:
+        """
+        Calculate lateral planning times by time-jerk cost optimization. Here we choose the calmest aggressiveness level.
+        :param a_0: initial lateral acceleration in Frenet frame
+        :param v_0: initial lateral velocity in Frenet frame
+        :param dx: array or scalar lateral distance to the target in Frenet frame
+        :return: lateral planning times of the same size like dx or array of size 1 if dx is scalar.
+        """
+        # choose the calmest lateral aggressiveness level
+        weights = np.tile(BP_JERK_S_JERK_D_TIME_WEIGHTS[0], (1 if np.isscalar(dx) else dx.shape[0], 1))
+
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], a_0=a_0, v_0=v_0, v_T=0, dx=dx, T_m=0)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
+        return np.fmin.reduce(roots_d, axis=-1)
+
+    @staticmethod
     def calc_T_s(w_T: np.array, w_J: np.array, v_0: np.array, a_0: np.array, v_T: np.array, time_limit: float):
         """
         given initial & end constraints and time-jerk weights, calculate longitudinal planning time
@@ -344,7 +360,7 @@ class KinematicUtils:
             infinite distance and time
         """
         # return the biggest dimension out of weights and velocities (1 if scalar, otherwise array length)
-        max_dimension = max(np.array([w_J]).shape[-1], np.array([v_T]).shape[-1])
+        max_dimension = max(np.array([w_J]).shape[-1], np.array([v_0]).shape[-1], np.array([v_T]).shape[-1])
 
         # convert weights, velocities and acceleration to arrays if they are scalars
         w_J = NumpyUtils.set_dimension(w_J, max_dimension)
@@ -382,20 +398,3 @@ class KinematicUtils:
             T[valid_non_zero] = positive_T
 
         return distances, T
-
-    @staticmethod
-    def specify_lateral_planning_time(a_0: np.array, v_0: np.array, dx: np.array) -> np.array:
-        """
-        Calculate lateral planning times by time-jerk cost optimization. Here we choose the calmest aggressiveness level.
-        :param a_0: initial lateral acceleration in Frenet frame
-        :param v_0: initial lateral velocity in Frenet frame
-        :param dx: array or scalar lateral distance to the target in Frenet frame
-        :return: lateral planning times of the same size like dx or array of size 1 if dx is scalar.
-        """
-        # choose the calmest lateral aggressiveness level
-        weights = np.tile(BP_JERK_S_JERK_D_TIME_WEIGHTS[0], (1 if np.isscalar(dx) else dx.shape[0], 1))
-
-        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1], a_0=a_0, v_0=v_0, v_T=0, dx=dx, T_m=0)
-        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
-        return np.fmin.reduce(roots_d, axis=-1)
