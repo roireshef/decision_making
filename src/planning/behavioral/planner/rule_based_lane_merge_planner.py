@@ -313,10 +313,10 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
         front_car = state.road_occupancy_grid[cell][0] if cell in state.road_occupancy_grid and len(state.road_occupancy_grid[cell]) > 0 else None
-        v_slow = front_car.dynamic_object.velocity if front_car is not None else 5
         if front_car is None and ~np.isfinite(state.red_line_s_on_ego_gff):  # no need to brake
             return []
 
+        v_slow = front_car.dynamic_object.velocity if front_car is not None else 0
         bounds = bounds[target_v > v_slow]
         target_t = target_t[target_v > v_slow]
         target_v = target_v[target_v > v_slow]
@@ -327,7 +327,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         s_profile_coefs = QuarticPoly1D.position_profile_coefficients(0, v_slow, target_v, t_acc)
         s_acc = Math.zip_polyval2d(s_profile_coefs, t_acc[:, np.newaxis])[:, 0]
 
-        # specify aggressive stop (used if there is no front car)
+        # specify aggressive braking (used if there is no front car but red line)
         w_J_agg, _, w_T_agg = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
         s_aggr_brake, t_aggr_brake = KinematicUtils.specify_quartic_action(w_T_agg, w_J_agg, v_0, v_slow, a_0)
 
@@ -368,6 +368,8 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             valid = np.isfinite(t_brake) & (s_brake >= 0) & (t_acc[valid_idxs] + t_brake <= target_t[valid_idxs])
             orig_valid_idxs = valid_idxs[valid]
             valid_of_valid_idxs = np.where(valid)[0]
+
+            # calculate constant velocity actions
             t_slow = target_t[valid_idxs] - t_brake - t_acc[valid_idxs]
             s_slow = t_slow * v_slow
 
