@@ -3,7 +3,8 @@ from logging import Logger
 import numpy as np
 from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LANE_MERGE_STATE_FAR_AWAY_DISTANCE, MAX_FORWARD_HORIZON, \
-    MAX_BACKWARD_HORIZON, LANE_MERGE_RED_LINE_EXTENTION, LANE_MERGE_ACTORS_RELATIVE_HORIZON
+    MAX_BACKWARD_HORIZON, LANE_MERGE_RED_LINE_EXTENTION, LANE_MERGE_ACTORS_RELATIVE_HORIZON, \
+    LANE_MERGE_STATIC_BACKWARD_HORIZON
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.scene_static_enums import ManeuverType
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
@@ -129,12 +130,19 @@ class LaneMergeState(BehavioralGridState):
             actors_with_road_semantics = \
                 sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, all_gffs, projected_ego, logger),
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
-            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state,
+
+            # filter actors behind static backward horizon
+            red_line_s = merge_lane_origin_s + LANE_MERGE_RED_LINE_EXTENTION
+            actors_in_static_horizon = list(filter(
+                lambda actor: ego_on_same_gff[FS_SX] + actor.longitudinal_distance > red_line_s - LANE_MERGE_STATIC_BACKWARD_HORIZON,
+                actors_with_road_semantics))
+
+            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_in_static_horizon, ego_state,
                                                                                LANE_MERGE_ACTORS_RELATIVE_HORIZON)
 
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego,
                        merge_from_s_on_ego_gff=merge_lane_origin_s,  # TODO: change it when the map will be fixed
-                       red_line_s_on_ego_gff=merge_lane_origin_s + LANE_MERGE_RED_LINE_EXTENTION,
+                       red_line_s_on_ego_gff=red_line_s,
                        target_rel_lane=target_rel_lane, lane_change_state=lane_change_state, logger=logger)
 
         except MappingException as e:

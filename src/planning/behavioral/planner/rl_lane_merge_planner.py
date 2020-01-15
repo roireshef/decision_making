@@ -119,6 +119,8 @@ class RL_LaneMergePlanner(BasePlanner):
         torch_probabilities = torch.nn.functional.softmax(logits, dim=1)
         probabilities = torch_probabilities.detach().numpy()[0]
 
+        print('probabilities=', probabilities, 'values=', values)
+
         # mask filtered actions and return costs (1 - probability)
         costs = 1 - probabilities * action_mask.astype(int)
         return costs
