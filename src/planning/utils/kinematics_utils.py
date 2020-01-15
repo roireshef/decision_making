@@ -6,11 +6,12 @@ from decision_making.src.planning.behavioral.data_objects import AggressivenessL
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FrenetState2D, FS_SV, FS_SX, FrenetStates2D, S2, \
     FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
-from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.frenet_utils import FrenetUtils
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class KinematicUtils:
@@ -178,25 +179,24 @@ class KinematicUtils:
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_velocity_limits = np.logical_and(
             end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
-            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits, T),
+            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits),
                    axis=1))
 
         return conforms_velocity_limits
 
     @staticmethod
     def _speeding_within_allowed_limits(lon_velocity: np.array, lon_acceleration: np.array,
-                                        velocity_limits: np.ndarray, T: np.array) -> np.array:
+                                        velocity_limits: np.ndarray) -> np.array:
         """
         speeding is within allowed limits if it does not violate the speed limit for more than VIOLATION_TIME_TH.
         Furthermore it does so by no more than VIOLATION_SPEED_TH, unless starting velocity is above this value.
         Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
         :param lon_velocity: trajectories velocities
         :param lon_acceleration: trajectories accelerations
-        :param T: array of target times for ctrajectories
         :return:
         """
         # anywhere speed is below limit
-        speeding_is_within_limits = lon_velocity <= velocity_limits + EPS
+        speeding_is_within_limits = lon_velocity <= velocity_limits + NEGLIGIBLE_VELOCITY
         # or violation is limited to first SPEEDING_VIOLATION_TIME_TH seconds,last_allowed_idx
         last_allowed_idx = int(min(SPEEDING_VIOLATION_TIME_TH, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) /
                            TRAJECTORY_TIME_RESOLUTION)
@@ -263,42 +263,6 @@ class KinematicUtils:
         return frenet_lateral_movement_is_feasible
 
     @staticmethod
-    def create_linear_profile_polynomial_pair(frenet_state: FrenetState2D) -> (np.ndarray, np.ndarray):
-        """
-        Given a frenet state, create two (s, d) polynomials that assume constant velocity (we keep the same momentary
-        velocity). Those polynomials are degenerate to s(t)=v*t+x form
-        :param frenet_state: the current frenet state to pull positions and velocities from
-        :return: a tuple of (s(t), d(t)) polynomial coefficient arrays
-        """
-        poly_s, poly_d = KinematicUtils.create_linear_profile_polynomial_pairs(frenet_state[np.newaxis])
-        return poly_s[0], poly_d[0]
-
-    @staticmethod
-    def create_linear_profile_polynomial_pairs(frenet_states: FrenetStates2D) -> (np.ndarray, np.ndarray):
-        """
-        Given N frenet states, create two Nx6 matrices (s, d) of polynomials that assume constant velocity
-        (we keep the same momentary velocity). Those polynomials are degenerate to s(t)=v*t+x form
-        :param frenet_states: the current frenet states to pull positions and velocities from
-        :return: a tuple of Nx6 matrices (s(t), d(t)) polynomial coefficient arrays
-        """
-        # zero 4 highest coefficients of poly_s: from x^5 until x^2 (including)
-        poly_s = np.c_[np.zeros((frenet_states.shape[0], S2+1)), frenet_states[:, FS_SV], frenet_states[:, FS_SX]]
-        # We zero out the lateral polynomial because we strive for being in the lane center with zero lateral velocity
-        poly_d = np.zeros((frenet_states.shape[0], QuinticPoly1D.num_coefs()))
-        return poly_s, poly_d
-
-    @staticmethod
-    def create_ego_by_goal_state(goal_frenet_state: FrenetState2D, ego_to_goal_time: float) -> FrenetState2D:
-        """
-        calculate Frenet state in ego time, such that its constant-velocity prediction in goal time is goal_frenet_state
-        :param goal_frenet_state: goal Frenet state
-        :param ego_to_goal_time: the difference between the goal time and ego time
-        :return: ego by goal frenet state
-        """
-        return np.array([goal_frenet_state[FS_SX] - ego_to_goal_time * goal_frenet_state[FS_SV],
-                         goal_frenet_state[FS_SV], 0, 0, 0, 0])
-
-    @staticmethod
     def calc_poly_coefs(T: np.array, initial_fstates, terminal_fstates, padding_mode: np.array) -> [np.array, np.array]:
         """
         Given initial and end constraints for multiple actions and their time horizons, calculate polynomials,
@@ -329,7 +293,7 @@ class KinematicUtils:
                 poly_coefs_d[not_padding_mode] = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
         # create linear polynomials for padding mode
-        poly_coefs_s[padding_mode], _ = KinematicUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
+        poly_coefs_s[padding_mode], _ = FrenetUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
         return poly_coefs_s, poly_coefs_d
 
     @staticmethod
@@ -419,23 +383,19 @@ class KinematicUtils:
 
         return distances, T
 
-
-class BrakingDistances:
-    """
-    Calculates braking distances
-    """
     @staticmethod
-    def create_braking_distances(aggressiveness_level: AggressivenessLevel) -> np.array:
+    def specify_lateral_planning_time(a_0: np.array, v_0: np.array, dx: np.array) -> np.array:
         """
-        Creates distances of all follow_lane with the given aggressiveness_level.
-        Actions violating acceleration limits get infinite distance.
-        :return: the actions' distances
+        Calculate lateral planning times by time-jerk cost optimization. Here we choose the calmest aggressiveness level.
+        :param a_0: initial lateral acceleration in Frenet frame
+        :param v_0: initial lateral velocity in Frenet frame
+        :param dx: array or scalar lateral distance to the target in Frenet frame
+        :return: lateral planning times of the same size like dx or array of size 1 if dx is scalar.
         """
-        # create v0 & vT arrays for all braking actions
-        v0, vT = np.meshgrid(FILTER_V_0_GRID.array, FILTER_V_T_GRID.array, indexing='ij')
-        v0, vT = np.ravel(v0), np.ravel(vT)
-        # calculate distances for braking actions
-        w_J, _, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness_level.value]
-        distances = np.zeros_like(v0)
-        distances[v0 > vT], _ = KinematicUtils.specify_quartic_actions(w_T, w_J, v0[v0 > vT], vT[v0 > vT], action_horizon_limit=np.inf)
-        return distances.reshape(len(FILTER_V_0_GRID), len(FILTER_V_T_GRID))
+        # choose the calmest lateral aggressiveness level
+        weights = np.tile(BP_JERK_S_JERK_D_TIME_WEIGHTS[0], (1 if np.isscalar(dx) else dx.shape[0], 1))
+
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], a_0=a_0, v_0=v_0, v_T=0, dx=dx, T_m=0)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
+        return np.fmin.reduce(roots_d, axis=-1)

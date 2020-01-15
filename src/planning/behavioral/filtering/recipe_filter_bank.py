@@ -1,14 +1,13 @@
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from typing import List
 
-from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel, StaticActionRecipe, \
     RoadSignActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
-from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GFFType
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
@@ -100,7 +99,7 @@ class FilterLaneChangingIfNotAugmentedOrLaneChangeDesired(RecipeFilter):
     """
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         lane_change_desired = behavioral_state.lane_change_state.is_safe_to_start_lane_change() or \
-                              (behavioral_state.lane_change_state.status == LaneChangeStatus.LaneChangeActiveInSourceLane)
+                              (behavioral_state.lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE)
 
         return [recipe.relative_lane == RelativeLane.SAME_LANE
                 or behavioral_state.extended_lane_frames[recipe.relative_lane].gff_type in [GFFType.Augmented, GFFType.AugmentedPartial]
@@ -126,7 +125,7 @@ class FilterSpeedingOverDesiredVelocityStatic(RecipeFilter):
     This will be tested at the action spec filter FilterForLaneSpeedLimits
     """
     def filter(self, recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [recipe.velocity <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+        return [recipe.velocity <= behavioral_state.max_speed_limit
                 if recipe is not None else False for recipe in recipes]
 
 
@@ -137,7 +136,6 @@ class FilterSpeedingOverDesiredVelocityDynamic(RecipeFilter):
     """
     def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [behavioral_state.road_occupancy_grid
-                [(recipe.relative_lane, recipe.relative_lon)][0].dynamic_object.velocity
-                <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+                [(recipe.relative_lane, recipe.relative_lon)][0].dynamic_object.velocity <= behavioral_state.max_speed_limit
                 if recipe is not None else False for recipe in recipes]
 
