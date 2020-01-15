@@ -44,7 +44,7 @@ class DriverInitiatedMotionState(PUBSUB_MSG_IMPL):
         self._reset()
 
     def to_dict(self, left_out_fields=None):
-        return {k: self._serialize_element(v) for k, v in self.__dict__.items() if k != 'logger'}
+        return {k: self._serialize_element(v) for k, v in self.__dict__.items() if k != 'logger' and k != 'visualizer_queue'}
 
     def update_state(self, timestamp_in_sec: float, ego_lane_fstate: FrenetState2D,
                      ego_s: float, closestTCB: Tuple[TrafficControlBar, float], ignored_TCB_distance: float) -> None:

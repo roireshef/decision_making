@@ -1,6 +1,7 @@
 import numpy as np
-from decision_making.src.global_constants import EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
-    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH
+from decision_making.src.global_constants import EPS, NEGLIGIBLE_VELOCITY, TRAJECTORY_TIME_RESOLUTION, \
+    MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON, \
+    SPEEDING_VIOLATION_TIME_TH, SPEEDING_SPEED_TH, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_LIMITS
 from decision_making.src.planning.types import C_V, C_A, C_K, Limits, FS_SX, FS_DX, Limits2D, RangedLimits2D, FrenetTrajectories2D, LIMIT_MAX
 from decision_making.src.planning.types import CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_utils import FrenetUtils
@@ -176,25 +177,24 @@ class KinematicUtils:
         # TODO: velocity comparison is temporarily done with an EPS margin, due to numerical issues
         conforms_velocity_limits = np.logical_and(
             end_velocities <= end_velocity_limits + NEGLIGIBLE_VELOCITY,  # final speed must comply with limits
-            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits, T),
+            np.all(KinematicUtils._speeding_within_allowed_limits(lon_velocity, lon_acceleration, velocity_limits),
                    axis=1))
 
         return conforms_velocity_limits
 
     @staticmethod
     def _speeding_within_allowed_limits(lon_velocity: np.array, lon_acceleration: np.array,
-                                        velocity_limits: np.ndarray, T: np.array) -> np.array:
+                                        velocity_limits: np.ndarray) -> np.array:
         """
         speeding is within allowed limits if it does not violate the speed limit for more than VIOLATION_TIME_TH.
         Furthermore it does so by no more than VIOLATION_SPEED_TH, unless starting velocity is above this value.
         Note: This method assumes velocities beyond the spec.t are set below the limit (e.g. to 0) by the callee
         :param lon_velocity: trajectories velocities
         :param lon_acceleration: trajectories accelerations
-        :param T: array of target times for ctrajectories
         :return:
         """
         # anywhere speed is below limit
-        speeding_is_within_limits = lon_velocity <= velocity_limits + EPS
+        speeding_is_within_limits = lon_velocity <= velocity_limits + NEGLIGIBLE_VELOCITY
         # or violation is limited to first SPEEDING_VIOLATION_TIME_TH seconds,last_allowed_idx
         last_allowed_idx = int(min(SPEEDING_VIOLATION_TIME_TH, MINIMUM_REQUIRED_TRAJECTORY_TIME_HORIZON) /
                            TRAJECTORY_TIME_RESOLUTION)
@@ -293,3 +293,20 @@ class KinematicUtils:
         # create linear polynomials for padding mode
         poly_coefs_s[padding_mode], _ = FrenetUtils.create_linear_profile_polynomial_pairs(terminal_fstates[padding_mode])
         return poly_coefs_s, poly_coefs_d
+
+    @staticmethod
+    def specify_lateral_planning_time(a_0: np.array, v_0: np.array, dx: np.array) -> np.array:
+        """
+        Calculate lateral planning times by time-jerk cost optimization. Here we choose the calmest aggressiveness level.
+        :param a_0: initial lateral acceleration in Frenet frame
+        :param v_0: initial lateral velocity in Frenet frame
+        :param dx: array or scalar lateral distance to the target in Frenet frame
+        :return: lateral planning times of the same size like dx or array of size 1 if dx is scalar.
+        """
+        # choose the calmest lateral aggressiveness level
+        weights = np.tile(BP_JERK_S_JERK_D_TIME_WEIGHTS[0], (1 if np.isscalar(dx) else dx.shape[0], 1))
+
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], a_0=a_0, v_0=v_0, v_T=0, dx=dx, T_m=0)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, BP_ACTION_T_LIMITS)
+        return np.fmin.reduce(roots_d, axis=-1)
