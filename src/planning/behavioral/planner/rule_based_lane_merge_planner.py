@@ -311,37 +311,45 @@ class RuleBasedLaneMergePlanner(BasePlanner):
 
         return actions
 
-    # @staticmethod
-    # def _get_strongest_braking(a_0: float, a_max: float, j_max: float) -> [float, float]:
-    #     T = 2*(a_max + a_0 + np.sqrt(a_max*(a_max + a_0))) / j_max
-    #     delta_v = (T*T*j_max - 4*T*a_0)/6
-    #     return delta_v, T
     @staticmethod
-    def _create_strongest_action(v0: float, a0: float, vT: float, A: float, J: float):
+    def _create_strongest_action(v0: float, a0: float, vT: float, A: float, J: float, target_lane: RelativeLane) -> \
+            LaneMergeSequence:
         """
-        perform triple action: constant jerk J, constant acceleration A, constant jerk -J until
-        acceleration 0 and velocity vT
+        perform triple action: constant jerk J, constant acceleration A, constant jerk -J until acceleration 0 and
+        velocity vT
         :param v0:
         :param a0:
         :param vT:
-        :param A: maximal acceleration; signed
-        :param J: maximal jerk; signed
-        :return:
+        :param A: signed; maximal acceleration
+        :param J: signed; maximal jerk
+        :return: LaneMergeSequence of 3 specs
         """
+        sgn = np.sign(A)
         # acceleration from a0 to A with constant jerk J
         T1 = (A - a0) / J
-        s1 = v0 * T1 + a0 * T1*T1 + J * T1**3
-        v1 = v0 + 2 * a0 * T1 + 3 * J * T1*T1
+        s1 = v0 * T1 + 0.5 * a0 * T1*T1 + J * T1**3 / 6
+        v1 = v0 + a0 * T1 + 0.5 * J * T1*T1
 
         # acceleration from A to 0 with constant jerk -J
         T3 = A / J
-        v2 = vT - 2 * A * T3 + 3 * J * T3*T3
-        s3 = v2 * T3 + A * T3*T3 - J * T3**3
+        v2 = vT - A * T3 + 0.5 * J * T3*T3
+        s3 = v2 * T3 + 0.5 * A * T3*T3 - J * T3**3 / 6
 
         # constant acceleration A
         T2 = (v2 - v1) / A
-        s2 = v1 * T2 + A * T2*T2
+        s2 = v1 * T2 + 0.5 * A * T2*T2
 
+        action1 = LaneMergeSpec(T1, v0, a0, v1, s1, poly_coefs_num=4)
+        action2 = LaneMergeSpec(T2, v1, A, v2, s2, poly_coefs_num=3)
+        action3 = LaneMergeSpec(T3, v2, A, vT, s3, poly_coefs_num=4)
+
+        actions = []
+        if sgn*a0 < sgn*A and sgn*v1 < sgn*vT:
+            actions.append(action1)
+        else:
+            
+
+        return LaneMergeSequence(actions, target_lane)
 
     @staticmethod
     def _create_braking_actions(state: LaneMergeState, target_v: np.array, target_t: np.array, bounds: np.array) -> \
