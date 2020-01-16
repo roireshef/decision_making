@@ -248,10 +248,16 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
 
         # filter actions violating velocity or acceleration limits
-        valid_idxs = RuleBasedLaneMergePlanner._validate_vel_acc_limits(a_0, v_0, v_T, ds, T)
+        valid_idxs, including_negative_vel = RuleBasedLaneMergePlanner._validate_vel_acc_limits(a_0, v_0, v_T, ds, T)
 
-        actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())], state.target_rel_lane)
-                   for t, vT, s in zip(T[valid_idxs], v_T[valid_idxs], ds[valid_idxs])]
+        if len(valid_idxs) == 0 and including_negative_vel:
+            # TODO: use action with constant jerk and then constant acceleration
+            wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.AGGRESSIVE.value]
+            s_brake, t_brake = KinematicUtils.specify_quartic_action(wT, wJ, v_0, 0, a_0)  # brake strongly until stop
+            actions = [LaneMergeSequence([LaneMergeSpec(t_brake, v_0, a_0, 0, s_brake, QuarticPoly1D.num_coefs())], state.target_rel_lane)]
+        else:
+            actions = [LaneMergeSequence([LaneMergeSpec(t, v_0, a_0, vT, s, QuinticPoly1D.num_coefs())], state.target_rel_lane)
+                       for t, vT, s in zip(T[valid_idxs], v_T[valid_idxs], ds[valid_idxs])]
         return actions
 
     @staticmethod
@@ -295,7 +301,7 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         v_T, T, ds = vts.T
 
         # filter actions violating velocity or acceleration limits
-        valid_idxs = RuleBasedLaneMergePlanner._validate_vel_acc_limits(0, v_max, v_T, ds, T)
+        valid_idxs, including_negative_vel = RuleBasedLaneMergePlanner._validate_vel_acc_limits(0, v_max, v_T, ds, T)
 
         actions = []
         for t2, s2, v_t in zip(T[valid_idxs], ds[valid_idxs], v_T[valid_idxs]):
@@ -304,6 +310,38 @@ class RuleBasedLaneMergePlanner(BasePlanner):
             actions.append(LaneMergeSequence([action1, action2], state.target_rel_lane))
 
         return actions
+
+    # @staticmethod
+    # def _get_strongest_braking(a_0: float, a_max: float, j_max: float) -> [float, float]:
+    #     T = 2*(a_max + a_0 + np.sqrt(a_max*(a_max + a_0))) / j_max
+    #     delta_v = (T*T*j_max - 4*T*a_0)/6
+    #     return delta_v, T
+    @staticmethod
+    def _create_strongest_action(v0: float, a0: float, vT: float, A: float, J: float):
+        """
+        perform triple action: constant jerk J, constant acceleration A, constant jerk -J until
+        acceleration 0 and velocity vT
+        :param v0:
+        :param a0:
+        :param vT:
+        :param A: maximal acceleration; signed
+        :param J: maximal jerk; signed
+        :return:
+        """
+        # acceleration from a0 to A with constant jerk J
+        T1 = (A - a0) / J
+        s1 = v0 * T1 + a0 * T1*T1 + J * T1**3
+        v1 = v0 + 2 * a0 * T1 + 3 * J * T1*T1
+
+        # acceleration from A to 0 with constant jerk -J
+        T3 = A / J
+        v2 = vT - 2 * A * T3 + 3 * J * T3*T3
+        s3 = v2 * T3 + A * T3*T3 - J * T3**3
+
+        # constant acceleration A
+        T2 = (v2 - v1) / A
+        s2 = v1 * T2 + A * T2*T2
+
 
     @staticmethod
     def _create_braking_actions(state: LaneMergeState, target_v: np.array, target_t: np.array, bounds: np.array) -> \
@@ -543,16 +581,19 @@ class RuleBasedLaneMergePlanner(BasePlanner):
         return np.c_[target_v[actions_with_valid_bounds], target_t[actions_with_valid_bounds], bounds[actions_with_valid_bounds]]
 
     @staticmethod
-    def _validate_vel_acc_limits(a_0: float, v_0: float, v_T: np.array, ds: np.array, T: np.array):
+    def _validate_vel_acc_limits(a_0: float, v_0: float, v_T: np.array, ds: np.array, T: np.array) -> [np.array, bool]:
         poly_coefs = QuinticPoly1D.position_profile_coefficients(a_0, v_0, v_T, ds, T)
         # the fast analytic kinematic filter reduce the load on the regular kinematic filter
         # calculate actions that don't violate acceleration limits
         valid_acc = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS * 0.9)
         if not valid_acc.any():
-            return []
+            return np.array([]), False
         velocity_limits = np.array([0, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY + SPEEDING_SPEED_TH])
         valid_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], velocity_limits)
-        return np.where(valid_acc)[0][valid_vel]
+        including_negative_vel = valid_vel
+        if not valid_vel.any():
+            including_negative_vel = QuinticPoly1D.are_velocities_in_limits(poly_coefs[valid_acc], T[valid_acc], np.array([-np.inf, velocity_limits[1]]))
+        return np.where(valid_acc)[0][valid_vel], including_negative_vel.any()
 
     @staticmethod
     def _caclulate_RSS_bounds(actors_s: np.array, actors_v: np.array, margins: np.array,
