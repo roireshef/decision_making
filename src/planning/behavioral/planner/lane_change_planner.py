@@ -6,7 +6,7 @@ from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS,
     LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, \
     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, SPEEDING_SPEED_TH, \
     LANE_CHANGE_TIME_COMPLETION_TARGET, BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS, \
-    PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON
+    PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, SPECIFICATION_HEADWAY, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, RelativeLane, \
     StaticActionRecipe, RelativeLongitudinalPosition
@@ -319,18 +319,24 @@ class LaneChangePlanner(BasePlanner):
         :param J: positive; jerk limit
         :return:
         """
+        # limit action time by acceleration            
         if a0 != 0:
             T_acc = 3 * (vT - v0) * (a0 + A0 - np.sign(A0) * np.sqrt(A0 * (A0 - a0))) / (a0 * (a0 + 3 * A0))
         else:
             T_acc = 1.5 * (vT - v0) / A0
+
+        # limit action time by jerk            
         JdV = 6 * J * (v0 - vT)
         t0_neg_J = (2 * a0 + np.sqrt(4 * a0 * a0 + JdV)) / J
         t0_pos_J = (-2 * a0 + np.sqrt(4 * a0 * a0 - JdV)) / J
         tT_neg_J = (-a0 + np.sqrt(a0 * a0 - JdV)) / J
         tT_pos_J = (a0 + np.sqrt(a0 * a0 + JdV)) / J
+
+        # pick the maximal time        
         t0 = np.maximum(np.nan_to_num(t0_neg_J), np.nan_to_num(t0_pos_J))
         tT = np.maximum(np.nan_to_num(tT_neg_J), np.nan_to_num(tT_pos_J))
         T = np.maximum(np.maximum(tT, t0), np.nan_to_num(T_acc))
+        
         s = QuarticPoly1D.distance_profile_function(a0, v0, vT, T)(T)
         return T, s
 
@@ -696,35 +702,37 @@ class LaneChangePlanner(BasePlanner):
         if front_v >= target_v:
             return None
 
-        ego_fstate = state.ego_fstate_1d
-        v_0, a_0 = ego_fstate[FS_SV], ego_fstate[FS_SA]
+        return LaneChangePlanner.calc_headway_margin(target_v, front_v)
 
-        margin = 0.5 * (state.ego_length + front_car.dynamic_object.size.length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
-        # safe_dist = RSS distance + half lane change
-        safe_dist = margin + SAFETY_HEADWAY * target_v + (target_v * target_v - front_v * front_v) / (-2 * LON_ACC_LIMITS[0])
-        # + 0.5 * LANE_CHANGE_TIME_COMPLETION_TARGET * (target_v - front_v)
-
-        # suppose we are allowed to stop (vS = 0)
-        v_S = 0
-        T_dec, s_dec = LaneChangePlanner._create_quartic_actions(v_0, a_0, vT=v_S, A0=-4, J=5)
+    @staticmethod
+    def calc_headway_margin(target_v: float, front_v: float, v_S: float=0):
+        """
+        calculate margin from a slow front car in addition to the regular margin that enables deceleration + acceleration
+        :param target_v: target velocity = convoy velocity
+        :param front_v: front car velocity
+        :param v_S: minimal permitted velocity after deceleration
+        :return: margin from F
+        """
+        # we are allowed to decelerate to vS
+        T_dec, s_dec = LaneChangePlanner._create_quartic_actions(front_v, 0, vT=v_S, A0=-4, J=5)
         T_acc, s_acc = LaneChangePlanner._create_quartic_actions(v_S, 0, target_v, A0=2, J=5)
 
-        half_min_gap = target_v * SAFETY_HEADWAY + \
-                       state.ego_state.size.length + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
-                       2 * LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS
-        # calculate full action time T_C
-        T_C = (s_dec + s_acc + MAX_BACKWARD_HORIZON - half_min_gap - (T_dec + T_acc)*v_S) / (target_v - v_S)
-        if T_C > T_dec + T_acc:  # then use constant velocity v_S between dec & acc
-            return -MAX_BACKWARD_HORIZON + half_min_gap + T_C * (target_v - front_v) + safe_dist
-        else:
-
-        # print('rear_v', [actor.velocity for actor in rear_actors], 'front_v', front_v, 'hw=', margin + SAFETY_HEADWAY * target_v,
-        #       'sq=', (target_v * target_v - front_v * front_v) / (-2 * LON_ACC_LIMITS[0]))
-
-        # calculate acceleration distance
-        # a_max = LON_ACC_LIMITS[1] * 0.9  # decrease because of TP
-        # t_acc = 3*(target_v - front_v) / (2*a_max)  # quartic acceleration for a_0 = 0
-        # s_profile_coefs = QuarticPoly1D.position_profile_coefficients(0, front_v, target_v, t_acc)
-        # s_acc = Math.polyval2d(s_profile_coefs, np.array([t_acc]))[0, 0]
-        # return min(PLANNING_LOOKAHEAD_DIST, s_acc + safe_dist)
-        return min(PLANNING_LOOKAHEAD_DIST, front_car.dynamic_object.velocity)
+        half_min_gap = target_v * SAFETY_HEADWAY + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + 2 * LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS
+        # calculate full action time T
+        T = (s_dec + s_acc + MAX_BACKWARD_HORIZON - half_min_gap - (T_dec + T_acc)*v_S) / (target_v - v_S)
+        if T > T_dec + T_acc:  # then use constant velocity v_S between dec & acc
+            s = s_dec + s_acc + (T - T_dec - T_acc) * v_S
+        else:  # find a higher v_S, without constant velocity
+            v_S_arr = np.flip(np.arange(v_S, front_v, 0.1))
+            T_dec, s_dec = LaneChangePlanner._create_quartic_actions(front_v, 0, vT=v_S_arr, A0=-4, J=5)
+            T_acc, s_acc = LaneChangePlanner._create_quartic_actions(v_S_arr, 0, target_v, A0=2, J=5)
+            
+            v_S_idx = np.argmin(np.abs(s_dec + s_acc + MAX_BACKWARD_HORIZON - half_min_gap - (T_dec + T_acc) * target_v))
+            T, s = T_dec[v_S_idx] + T_acc[v_S_idx], s_dec[v_S_idx] + s_acc[v_S_idx]
+    
+        # the margin should not include cars size since it's added in specify
+        safe_dist = LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + SAFETY_HEADWAY * target_v + \
+                    (target_v * target_v - front_v * front_v) / (-2 * LON_ACC_LIMITS[0])
+        # here we distract specification headway from the margin since it's added in specify
+        margin = s - T * front_v + safe_dist - SPECIFICATION_HEADWAY * front_v  
+        return float(np.clip(margin, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, PLANNING_LOOKAHEAD_DIST))

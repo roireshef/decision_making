@@ -37,3 +37,8 @@ def test_createSafeActions():
     best_idx = np.argmin(costs)
     print('best_idx=', best_idx)
     [print(spec) for spec in actions[best_idx].action_specs]
+
+
+def test_calc_margin():
+    margin = LaneChangePlanner.calc_headway_margin(target_v=20, front_v=8, v_S=0)
+    margin = margin
