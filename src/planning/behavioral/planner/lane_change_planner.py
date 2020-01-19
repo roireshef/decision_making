@@ -603,7 +603,7 @@ class LaneChangePlanner(BasePlanner):
 
         # find actions for which optimal_s is safe
         if safety_bounds is None:
-            return np.c_[target_v, target_t, optimal_s]
+            return np.c_[target_v, target_t, optimal_s], np.arange(target_t.shape[0])
 
         above_optimal_bound_idxs = np.sum(safety_bounds < optimal_s[:, np.newaxis], axis=-1)
         # optimal_s is safe if number of important bounds under optimal_s is even
