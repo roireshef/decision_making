@@ -129,8 +129,7 @@ class LaneMergeState(BehavioralGridState):
             actors_with_road_semantics = \
                 sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, all_gffs, projected_ego, logger),
                        key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
-            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state,
-                                                                               LANE_MERGE_ACTORS_HORIZON)
+            road_occupancy_grid = BehavioralGridState._project_objects_on_grid(actors_with_road_semantics, ego_state)
 
             return cls(road_occupancy_grid, ego_state, all_gffs, projected_ego,
                        merge_from_s_on_ego_gff=merge_lane_origin_s,  # TODO: change it when the map will be fixed

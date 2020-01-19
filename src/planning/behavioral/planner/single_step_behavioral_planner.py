@@ -9,7 +9,7 @@ from decision_making.src.planning.behavioral.evaluators.augmented_lane_action_sp
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import \
     FilterForSafetyTowardsTargetVehicle, FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner
+from decision_making.src.planning.behavioral.planner.lane_change_planner import LaneChangePlanner
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, \
@@ -82,7 +82,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
 
         # perform RB optimization on the same lane
         lane_merge_state = LaneMergeState.create_from_behavioral_state(behavioral_state, target_lane)
-        planner = RuleBasedLaneMergePlanner(None, self.logger)
+        planner = LaneChangePlanner(None, self.logger)
         actions = planner._create_action_specs(lane_merge_state, route_plan)
         filtered_actions = planner._filter_actions(lane_merge_state, actions)
         costs = planner._evaluate_actions(lane_merge_state, route_plan, filtered_actions)
@@ -90,7 +90,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
 
         if RB_chosen_action is None:  # if we can not change lane
             behavioral_state.lane_change_state.margin_to_keep_from_targets = \
-                RuleBasedLaneMergePlanner.calculate_margin_to_keep_from_front(lane_merge_state)
+                LaneChangePlanner.calculate_margin_to_keep_from_front(lane_merge_state)
             print('target_lane = ', target_lane, 'No actions found by search. Margin =', behavioral_state.lane_change_state.margin_to_keep_from_targets)
             return self._specify_actions(behavioral_state, RelativeLane.SAME_LANE)  # use UC action space
         else:

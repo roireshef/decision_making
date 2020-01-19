@@ -5,7 +5,7 @@ from decision_making.src.planning.behavioral.action_space.road_sign_action_space
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_ROAD_SIGN_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.planner.rule_based_lane_merge_planner import RuleBasedLaneMergePlanner
+from decision_making.src.planning.behavioral.planner.lane_change_planner import LaneChangePlanner
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeActorState, LaneMergeState
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
@@ -29,9 +29,9 @@ def test_createSafeActions():
     front_actor = LaneMergeActorState(135.340492248535156, 0, ego_len)
     state = LaneMergeState.create_thin_state(ego_len, ego_fstate, actors, front_actor, merge_from_s, red_line_s)
 
-    margin = RuleBasedLaneMergePlanner.calculate_margin_to_keep_from_front(state)
+    margin = LaneChangePlanner.calculate_margin_to_keep_from_front(state)
 
-    planner = RuleBasedLaneMergePlanner(logger)
+    planner = LaneChangePlanner(logger)
     actions = planner._create_action_specs(state, None)
     costs = planner._evaluate_actions(state, None, actions)
     best_idx = np.argmin(costs)

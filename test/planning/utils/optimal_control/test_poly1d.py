@@ -1,3 +1,4 @@
+from decision_making.src.planning.behavioral.planner.lane_change_planner import LaneChangePlanner
 from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D, QuinticPoly1D, QuarticPoly1D
 import numpy as np
 
@@ -58,3 +59,9 @@ def test_inverseTimeConstraintsTensor_compareWithLingAlgInv_isClose():
     A1_quartic_inv = np.linalg.inv(QuarticPoly1D.time_constraints_tensor(T_vals))
     A2_quartic_inv = QuarticPoly1D.inverse_time_constraints_tensor(T_vals)
     assert np.isclose(A1_quartic_inv, A2_quartic_inv).all()
+
+
+def test_create_braking_actions():
+    T1, s1 = LaneChangePlanner._create_triple_cubic_actions(10., 0.5, 9., -4., -5., 5.)
+    T2, s2 = LaneChangePlanner._create_quartic_actions(10., 0.5, 9., -4., 5.)
+    print(T1, T2, 's:', s1, s2)
