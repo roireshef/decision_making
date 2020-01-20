@@ -5,7 +5,7 @@ from decision_making.src.exceptions import NoActionsLeftForBPError
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, \
     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_ACTION_SPACE_VELOCITY_RESOLUTION, \
     LANE_MERGE_ACTION_SPACE_AGGRESSIVENESS_LEVEL, LANE_MERGE_STATE_OCCUPANCY_GRID_RESOLUTION, \
-    LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH
+    LANE_MERGE_STATE_OCCUPANCY_GRID_ONESIDED_LENGTH, LANE_MERGE_STATE_FAR_AWAY_DISTANCE
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, ActionSpec, RelativeLane, \
@@ -112,6 +112,10 @@ class RL_LaneMergePlanner(BasePlanner):
         encoded_state: GymTuple = (torch.from_numpy(host_state[np.newaxis, :]).float(),
                                    torch.from_numpy(actors_state[np.newaxis, :]).float())
 
+        # print('\nactors_s:', [actor.s_relative_to_ego for actor in lane_merge_state.actors_states])
+        # print('encoded host_state:', host_state * np.array([LANE_MERGE_STATE_FAR_AWAY_DISTANCE, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, 1]))
+        # print('encoded actors_state:', actors_state * np.array([1, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY])[..., np.newaxis])
+
         # call RL inference
         logits, _, values, _ = self.model._forward({SampleBatch.CUR_OBS: encoded_state})
 
@@ -119,7 +123,7 @@ class RL_LaneMergePlanner(BasePlanner):
         torch_probabilities = torch.nn.functional.softmax(logits, dim=1)
         probabilities = torch_probabilities.detach().numpy()[0]
 
-        print('probabilities=', probabilities, 'values=', values)
+        # print('probabilities=', probabilities, 'values=', values)
 
         # mask filtered actions and return costs (1 - probability)
         costs = 1 - probabilities * action_mask.astype(int)
@@ -127,4 +131,5 @@ class RL_LaneMergePlanner(BasePlanner):
 
     def _choose_action(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray, costs: np.array) -> \
             ActionSpec:
+        print('chosen_action:', np.argmin(costs))
         return action_specs[np.argmin(costs)]
