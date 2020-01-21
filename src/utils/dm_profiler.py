@@ -31,6 +31,5 @@ class DMProfiler:
             current_time = time.time()
             DMProfiler.logger.debug("%s{'current_time': %s, 'label': '%s', 'running_time': %s}" %
                               (LOG_MSG_PROFILER_PREFIX, current_time, str(func), current_time - start_time))
-            print(str(current_time - start_time))
             return result
         return wrapper
