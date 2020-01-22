@@ -1,6 +1,5 @@
-import os
 from multiprocessing import Queue, Process
-from typing import Callable
+from typing import Callable, Tuple
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 from rte.python.os import catch_interrupt_signals
@@ -11,13 +10,16 @@ from rte.python.profiler import cleanup as profiler_cleanup
 
 class DmProcess:
 
-    def __init__(self, module_creation_method: Callable[[], DmModule], trigger_type: DmTriggerType, trigger_args: dict,
-                 name: str):
+    def __init__(self, module_creation_method: Callable[[Tuple], DmModule], trigger_type: DmTriggerType, trigger_args: dict,
+                 name: str, is_daemon: bool = True, process_args: Tuple = ()):
         """
         Manager for a single DM module running in a separate process
         :param module_creation_method: the method to create an instance of the DM module to run in a separate process
         :param trigger_type: the type of trigger to use
         :param trigger_args: dictionary containing keyword arguments for initializing the trigger
+        :param is_daemon: True if this process is run as daemon
+        :param process_args: Arguments passed to process on startup, these arguments are also passed to
+            module_creation_method
         """
 
         self._module_creation_method = module_creation_method
@@ -27,7 +29,10 @@ class DmProcess:
         self.name = name
 
         self._process_name = "DM_process_{}".format(self.name)
-        self.process = Process(target=self._module_process_entry, name=self._process_name, daemon=True)
+        self.process = Process(target=self._module_process_entry,
+                               name=self._process_name,
+                               daemon=is_daemon,
+                               args=process_args)
 
         self._trigger = None
         self._module_instance = None
@@ -52,7 +57,7 @@ class DmProcess:
         self.logger.debug('%d: caught signal %d', self._pid, signal)
         self.stop_process()
 
-    def _module_process_entry(self) -> None:
+    def _module_process_entry(self, *args) -> None:
         """
         Entry method to the process created for the DM module.
         This is the first code the new process will call, it starts the module, activates the trigger, and waits
@@ -70,7 +75,7 @@ class DmProcess:
         elif self._trigger_type == DmTriggerType.DM_TRIGGER_NONE:
             self._trigger = DmNullTrigger()
 
-        self._module_instance = self._module_creation_method()
+        self._module_instance = self._module_creation_method(*args)
 
         # create the sub module
         self._module_instance.start()
