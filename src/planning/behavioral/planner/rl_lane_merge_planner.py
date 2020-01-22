@@ -1,3 +1,4 @@
+import pickle
 from logging import Logger
 import numpy as np
 from decision_making.paths import Paths
@@ -112,9 +113,18 @@ class RL_LaneMergePlanner(BasePlanner):
         encoded_state: GymTuple = (torch.from_numpy(host_state[np.newaxis, :]).float(),
                                    torch.from_numpy(actors_state[np.newaxis, :]).float())
 
+        # TODO: DELETE IT!!!
         # print('\nactors_s:', [actor.s_relative_to_ego for actor in lane_merge_state.actors_states])
         # print('encoded host_state:', host_state * np.array([LANE_MERGE_STATE_FAR_AWAY_DISTANCE, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, 1]))
         # print('encoded actors_state:', actors_state * np.array([1, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY])[..., np.newaxis])
+
+
+
+        # TODO: DELETE IT!!!
+        with open('/home/mz8cj6/projects/uc_workspace/ultracruise/decision_making/src/planning/behavioral/planner/test.pkl', 'rb') as f:
+            encoded_state_from_test = pickle.load(f)
+
+
 
         # call RL inference
         logits, _, values, _ = self.model._forward({SampleBatch.CUR_OBS: encoded_state})
@@ -131,5 +141,6 @@ class RL_LaneMergePlanner(BasePlanner):
 
     def _choose_action(self, lane_merge_state: LaneMergeState, action_specs: ActionSpecArray, costs: np.array) -> \
             ActionSpec:
+        # TODO: DELETE IT!!!
         print('chosen_action:', np.argmin(costs))
         return action_specs[np.argmin(costs)]
