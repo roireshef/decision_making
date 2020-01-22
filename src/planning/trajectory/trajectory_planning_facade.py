@@ -4,6 +4,7 @@ import numpy as np
 import traceback
 
 from decision_making.src.messages.control_status_message import ControlStatus
+from decision_making.src.planning.trajectory.emergency_planner import EmergencyPlanner
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
@@ -18,7 +19,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, REPLANNING_LAT, REPLANNING_LON, \
-    LOG_MSG_SCENE_DYNAMIC_RECEIVED, LOG_MSG_CONTROL_STATUS
+    LOG_MSG_SCENE_DYNAMIC_RECEIVED, LOG_MSG_CONTROL_STATUS, EPS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
@@ -29,7 +30,7 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianTrajectories, FP_SX, C_Y, FS_DX,  FS_SX
+from decision_making.src.planning.types import CartesianTrajectories, FP_SX, C_Y, FS_DX, FS_SX, FS_2D_LEN
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -37,7 +38,7 @@ from decision_making.src.state.state import State
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
 from logging import Logger
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 import rte.python.profiler as prof
 
 
@@ -61,6 +62,7 @@ class TrajectoryPlanningFacade(DmModule):
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
         self._started_receiving_states = False
+        self.emergency_planner = EmergencyPlanner(self.logger, None)
 
     def _start_impl(self):
         self.pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PARAMS)
@@ -123,6 +125,16 @@ class TrajectoryPlanningFacade(DmModule):
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
+        except StateHasNotArrivedYet:
+            self.logger.warning("StateHasNotArrivedYet was raised. skipping planning.")
+        except MsgDeserializationError:
+            self.logger.warning("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
+                                traceback.format_exc())
+        except Exception:
+            self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
+                                 traceback.format_exc())
+
+        try:
             # plan a trajectory according to specification from upper DM level
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 samplable_trajectory, ctrajectories, _ = self._strategy_handlers[params.strategy].plan(
@@ -132,34 +144,53 @@ class TrajectoryPlanningFacade(DmModule):
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory, is_engaged=is_engaged)
 
-            self._publish_trajectory(trajectory_msg)
-            self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
-
-            # publish visualization/debug data - based on short term prediction aligned state!
-            debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, ctrajectories, max(T_target_horizon, T_trajectory_end_horizon),
-                self._strategy_handlers[params.strategy].predictor, params.reference_route)
-
-            self._publish_debug(debug_results)
-
-            self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
-            MetricLogger.get_logger().report()
-
-        except StateHasNotArrivedYet:
-            self.logger.warning("StateHasNotArrivedYet was raised. skipping planning.")
-
-        except MsgDeserializationError:
-            self.logger.warning("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
-                                traceback.format_exc())
-
-        # TODO - we need to handle this as an emergency.
         except CartesianLimitsViolated:
-            self.logger.critical("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s",
-                                 traceback.format_exc())
+            self.logger.warning(
+                "TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. resorting to emergency policy. %s",
+                traceback.format_exc())
+
+            samplable_trajectories = self.emergency_planner.plan(state, params.reference_route)
+            trajectory_msg = self.generate_emergency_plan(timestamp=state.ego_state.timestamp_in_sec,
+                                                          samplable_trajectories=samplable_trajectories)
+            self._last_trajectory = None
 
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
+
+        finally:
+            self._publish_trajectory(trajectory_msg)
+            self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
+            self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
+            MetricLogger.get_logger().report()
+
+    def generate_emergency_plan(self, timestamp: float, samplable_trajectories: List[SamplableTrajectory]):
+        last_time_point = samplable_trajectories[-1].max_sample_time
+        time_points = np.arange(timestamp, last_time_point+EPS, self.dt)
+        trajectory_points = np.array([traj.sample(time_points[time_points <= traj.max_sample_time])
+                                  for traj in samplable_trajectories]).reshape(-1, FS_2D_LEN)
+
+        trajectory_num_points = trajectory_points.shape[0]
+
+        allowed_tracking_errors = np.ones(shape=[trajectory_num_points, 4]) * [REPLANNING_LAT,  # left
+                                                                               REPLANNING_LAT,  # right
+                                                                               REPLANNING_LON,  # front
+                                                                               REPLANNING_LON]  # rear
+
+        waypoints = np.hstack((trajectory_points, allowed_tracking_errors,
+                               np.zeros(shape=[trajectory_num_points, TRAJECTORY_WAYPOINT_SIZE -
+                                               trajectory_points.shape[1] - allowed_tracking_errors.shape[1]])))
+
+        timestamp_object = Timestamp.from_seconds(timestamp)
+        map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp_object)
+
+        trajectory_plan = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,
+                                                         e_Cnt_version=0),
+                                         s_Data=DataTrajectoryPlan(s_Timestamp=timestamp_object, s_MapOrigin=map_origin,
+                                                                   a_TrajectoryWaypoints=waypoints,
+                                                                   e_Cnt_NumValidTrajectoryWaypoints=trajectory_num_points))
+
+        return trajectory_plan
 
     # TODO: add map_origin that is sent from the outside
     @prof.ProfileFunction()
