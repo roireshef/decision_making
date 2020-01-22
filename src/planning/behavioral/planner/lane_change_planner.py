@@ -265,48 +265,49 @@ class LaneChangePlanner(BasePlanner):
         return actions
 
     @staticmethod
-    def _create_triple_cubic_actions(v0: np.array, a0: float, vT: np.array, A0: float, AT: np.array, J: float) -> [np.array, np.array]:
+    def _create_triple_cubic_actions(v0: np.array, a0: float, vT: np.array, a0_limit: float, aT_limits: np.array,
+                                     J_max: float) -> [np.array, np.array]:
         """
         Perform 3 cubic actions:
-            constant jerk J and acceleration a0 -> A0 from velocity v0
-            constant jerk and acceleration A0 -> AT,
-            constant jerk -J acceleration AT -> 0 to velocity vT
+            constant jerk J_max and acceleration a0 -> a0_limit from velocity v0
+            constant jerk and acceleration a0_limit -> aT_limit,
+            constant jerk -J_max acceleration aT_limit -> 0 (to zero acceleration) and velocity vT
         :param v0: initial velocity
         :param a0: initial acceleration
         :param vT: array of target velocities
-        :param A0: signed: negative for deceleration; maximal acceleration at v0
-        :param AT: signed: negative for deceleration; array of maximal accelerations at vT
-        :param J: unsigned: maximal jerk (absolute value)
+        :param a0_limit: signed: negative for deceleration; acceleration limit at v0
+        :param aT_limits: signed: negative for deceleration; array of acceleration limits for all vT
+        :param J_max: unsigned: maximal jerk (absolute value)
         :return: array of full times of the triple actions and array of full distances
         """
-        sgn = np.sign(A0)
-        # acceleration from a0 to A0 with constant jerk J
-        T1 = np.full(vT.shape, (a0 - A0) / J) if not np.isscalar(vT) else (a0 - A0) / J
-        s1 = v0 * T1 + 0.5 * a0 * T1 * T1 - J * T1 ** 3 / 6
-        v1 = v0 + a0 * T1 - 0.5 * J * T1 * T1
-        if not np.isscalar(T1):
-            T1[(T1 < 0) | (sgn * (vT - v1) < 0)] = np.nan
-        elif (T1 < 0) or (sgn * (vT - v1) < 0):
-            T1 = np.nan
+        action_sgn = np.sign(a0_limit)
 
-        # acceleration from AT to 0 with constant jerk -J
-        T3 = -AT / J
-        v2 = vT - 0.5 * AT * T3
-        if not np.isscalar(T3):
-            T3[(T3 < 0) | (sgn * (v2 - v1) < 0)] = np.nan
-        elif (T3 < 0) or (sgn * (v2 - v1) < 0):
-            T3 = np.nan
-        s3 = v2 * T3 + 0.5 * AT * T3 * T3 + J * T3 ** 3 / 6
+        # cubic action #1: acceleration from a0 to a0_limit with constant jerk J_max
+        T_to_a0_limit = np.full(vT.shape, (a0 - a0_limit) / J_max) if not np.isscalar(vT) else (a0 - a0_limit) / J_max
+        s_to_a0_limit = v0 * T_to_a0_limit + 0.5 * a0 * T_to_a0_limit ** 2 - J_max * T_to_a0_limit ** 3 / 6
+        v_at_a0_limit = v0 + a0 * T_to_a0_limit - 0.5 * J_max * T_to_a0_limit ** 2
+        if not np.isscalar(T_to_a0_limit):
+            T_to_a0_limit[(T_to_a0_limit < 0) | (action_sgn * (vT - v_at_a0_limit) < 0)] = np.nan
+        elif (T_to_a0_limit < 0) or (action_sgn * (vT - v_at_a0_limit) < 0):
+            T_to_a0_limit = np.nan
 
-        # acceleration from A0 to AT
-        T2 = 2 * (v2 - v1) / (A0 + AT)
-        J2 = 0.5 * (AT * AT - A0 * A0) / (v2 - v1)
-        s2 = v1 * T2 + 0.5 * A0 * T2 * T2 + J2 * T2 ** 3 / 6
+        # cubic action #3: acceleration from aT_limit to 0 with constant jerk -J_max
+        T_to_zero_acc = -aT_limits / J_max
+        v_at_aT_limit = vT - 0.5 * aT_limits * T_to_zero_acc
+        if not np.isscalar(T_to_zero_acc):
+            T_to_zero_acc[(T_to_zero_acc < 0) | (action_sgn * (v_at_aT_limit - v_at_a0_limit) < 0)] = np.nan
+        elif (T_to_zero_acc < 0) or (action_sgn * (v_at_aT_limit - v_at_a0_limit) < 0):
+            T_to_zero_acc = np.nan
+        s_to_zero_acc = v_at_aT_limit * T_to_zero_acc + 0.5 * aT_limits * T_to_zero_acc ** 2 + J_max * T_to_zero_acc ** 3 / 6
 
-        # action1 = LaneMergeSpec(T1, v0, a0, v1, s1, poly_coefs_num=4)
-        # action2 = LaneMergeSpec(T2, v1, A0, v2, s2, poly_coefs_num=4)
-        # action3 = LaneMergeSpec(T3, v2, AT, vT, s3, poly_coefs_num=4)
-        return T1 + T2 + T3, s1 + s2 + s3
+        # cubic action #2: acceleration from a0_limit to aT_limit with constant jerk (J_to_aT_limit)
+        T_to_aT_limit = 2 * (v_at_aT_limit - v_at_a0_limit) / (a0_limit + aT_limits)
+        J_to_aT_limit = 0.5 * (aT_limits ** 2 - a0_limit ** 2) / (v_at_aT_limit - v_at_a0_limit)
+        s_to_aT_limit = v_at_a0_limit * T_to_aT_limit + 0.5 * a0_limit * T_to_aT_limit ** 2 + J_to_aT_limit * T_to_aT_limit ** 3 / 6
+
+        # In order to compute polynomials for each cubic action use QuarticPoly1D.solve(A_inv, constraints)
+
+        return T_to_a0_limit + T_to_aT_limit + T_to_zero_acc, s_to_a0_limit + s_to_aT_limit + s_to_zero_acc
 
     @staticmethod
     def _create_quartic_actions(v0: np.array, a0: float, vT: np.array, A0: float, J: float) -> [np.array, np.array]:
