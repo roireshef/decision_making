@@ -178,8 +178,9 @@ class LaneChangePlanner(BasePlanner):
             spec_jerks = poly1d.cumulative_jerk(poly_coefs, T)
 
             # calculate acceleration times from v_T to max velocity
-            accel_to_max_vel_s, accel_to_max_vel_T = KinematicUtils.specify_quartic_actions(
-                calm_weights[2], calm_weights[0], v_T, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, action_horizon_limit=np.inf)
+            accel_to_max_vel_s, accel_to_max_vel_T, _ = KinematicUtils.specify_quartic_actions(
+                calm_weights[2], calm_weights[0], v_0=v_T, v_T=LANE_MERGE_ACTION_SPACE_MAX_VELOCITY,
+                action_horizon_limit=np.inf)
 
             # collect actions jerks, times and distances
             for action_idx, spec_jerk, spec_t, spec_v, spec_s, acc_t, acc_s in \

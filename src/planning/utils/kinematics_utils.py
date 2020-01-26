@@ -346,8 +346,8 @@ class KinematicUtils:
         return T
 
     @staticmethod
-    def specify_quartic_actions(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array, a_0: np.array = 0,
-                                action_horizon_limit: float = BP_ACTION_T_LIMITS[1],
+    def specify_quartic_actions(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
+                                a_0: np.array = 0, action_horizon_limit: float = BP_ACTION_T_LIMITS[1],
                                 acc_limits: np.array = LON_ACC_LIMITS) -> [np.array, np.array]:
         """
         Calculate the distances and times for the given actions' weights and scenario params.
@@ -385,13 +385,15 @@ class KinematicUtils:
         # for invalid actions set distances to infinity
         distances[~np.isfinite(T)] = np.inf
 
-        s_profile_coefs = QuarticPoly1D.position_profile_coefficients(a_0[valid_non_zero], v_0[valid_non_zero],
-                                                                      v_T[valid_non_zero], positive_T)
-        distances[valid_non_zero] = Math.zip_polyval2d(s_profile_coefs, positive_T[:, np.newaxis])[:, 0]
+        s_profile_coefs = np.zeros(list(T.shape) + [QuarticPoly1D.num_coefs()])
+        s_profile_coefs[valid_non_zero] = \
+            QuarticPoly1D.position_profile_coefficients(a_0[valid_non_zero], v_0[valid_non_zero],
+                                                        v_T[valid_non_zero], positive_T)
+        distances[valid_non_zero] = Math.zip_polyval2d(s_profile_coefs[valid_non_zero], positive_T[:, np.newaxis])[:, 0]
 
         if acc_limits is not None:
             # check acceleration limits
-            in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs, positive_T, acc_limits)
+            in_limits = QuarticPoly1D.are_accelerations_in_limits(s_profile_coefs[valid_non_zero], positive_T, acc_limits)
 
             # distances for accelerations which are not in limits get infinity
             non_zero_distances = distances[valid_non_zero]
@@ -402,11 +404,11 @@ class KinematicUtils:
             positive_T[~in_limits] = np.inf
             T[valid_non_zero] = positive_T
 
-        return distances, T
+        return distances, T, s_profile_coefs
 
     @staticmethod
     def specify_quartic_action(w_T: float, w_J: float, v_0: float, v_T: float, a_0: float = 0,
                                action_horizon_limit: float = BP_ACTION_T_LIMITS[1],
                                acc_limits: np.array = LON_ACC_LIMITS) -> [float, float]:
-        ds, T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0, action_horizon_limit, acc_limits)
-        return ds[0], T[0]
+        ds, T, poly_s = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0, action_horizon_limit, acc_limits)
+        return ds[0], T[0], poly_s[0]
