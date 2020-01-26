@@ -1,7 +1,7 @@
 from typing import List, Optional
 import numpy as np
 from decision_making.src.global_constants import LAT_ACC_LIMITS, LAT_ACC_LIMITS_BY_K, LON_ACC_LIMITS, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, EPS
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.types import FrenetState2D, FS_DX, FS_SX, FrenetState1D, FS_SV, FS_SA
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -25,6 +25,7 @@ class CurveRoutePlanner:
 
         for w_J in w_J_arr:
 
+            full_vts = np.empty((0, 3))
             source = ego_state[:FS_DX]
             for interval in intervals:
                 if interval[1] < len(self.pointwise_vel_limits) - 1:
@@ -36,16 +37,20 @@ class CurveRoutePlanner:
                 target = np.array([interval_target_s, interval_target_v, 0])
 
                 v_T = self.vel_grid[self.vel_grid >= source[FS_SV]] if source[FS_SX] > ego_state[FS_SX] else self.vel_grid
-                forward_actions = CurveRoutePlanner.create_accelerations_sequence(
+                forward_vts = CurveRoutePlanner.create_accelerations_sequence(
                     ds, source, target, self.pointwise_vel_limits[interval[0], interval[1]],
                     v_T, LON_ACC_LIMITS, w_J)
 
                 inv_v_T = self.vel_grid[self.vel_grid >= target[FS_SV]]
                 inv_origin = np.array([self.route.s_max - target[FS_SX], target[FS_SV], -target[FS_SA]])
                 inv_target = np.array([self.route.s_max - source[FS_SX], source[FS_SV], -source[FS_SA]])
-                backward_actions = CurveRoutePlanner.create_accelerations_sequence(
+                backward_vts = CurveRoutePlanner.create_accelerations_sequence(
                     ds, inv_origin, inv_target, self.pointwise_vel_limits[interval[0], interval[1]],
                     inv_v_T, -LON_ACC_LIMITS, w_J)
+
+                interval_vts = CurveRoutePlanner.sew_forward_backward_vts(
+                    source, target, forward_vts, backward_vts, self.vel_grid, target[FS_SX] - source[FS_SX])
+                full_vts = np.concatenate((full_vts, interval_vts), axis=0)
 
                 source = target
 
@@ -69,11 +74,11 @@ class CurveRoutePlanner:
     @staticmethod
     def create_accelerations_sequence(ds: float, source: FrenetState1D, target: FrenetState1D,
                                       vel_limits: np.array, v_T: np.array,
-                                      acc_limits: np.array, w_J: float) -> List[ActionSpec]:
+                                      acc_limits: np.array, w_J: float) -> np.array:
 
         w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[0, 2]
 
-        action_specs = []
+        vts = []
         current_state = source
         while current_state[FS_SX] < target[FS_SX]:
             v_0, a_0 = current_state[[FS_SV, FS_SA]]
@@ -94,7 +99,48 @@ class CurveRoutePlanner:
             current_state[FS_SX] += s[fastest_vel_idx]
             current_state[FS_SV] = v_T[fastest_vel_idx]
             current_state[FS_SA] = 0
-            action_specs.append(ActionSpec(T[fastest_vel_idx], T[fastest_vel_idx], v_T[fastest_vel_idx],
-                                           s[fastest_vel_idx], 0, None))
 
-        return action_specs
+            vts.append(np.array([v_T[fastest_vel_idx], T[fastest_vel_idx]], s[fastest_vel_idx]))
+
+        return np.array(vts)
+
+    @staticmethod
+    def sew_forward_backward_vts(init_state: FrenetState1D, end_state: FrenetState1D,
+                                 forward_vts: np.array, backward_vts: np.array,
+                                 vel_grid: np.array, distance: float) -> np.array:
+        forward_cum_s = np.concatenate(([0], np.cumsum(forward_vts[:, 2])))
+        backward_cum_s = np.concatenate(([0], np.cumsum(backward_vts[:, 2])))
+        forward_v = np.concatenate((init_state[FS_SV], forward_vts[:, 0]))
+        backward_v = np.concatenate((end_state[FS_SV], backward_vts[:, 0]))
+        fi = bi = 0
+        dv = None
+        while forward_cum_s[fi] + backward_cum_s[bi] < distance:
+            dv = int(forward_v[fi] < backward_v[bi])
+            fi += dv
+            bi += 1 - dv
+
+            if abs(a_0 - a_T) > EPS:
+                sew_action_T = (-3*(v_0 + v_T) + np.sqrt(12*s*(a_0 - a_T) + 9*(v_0 + v_T)**2)) / (a_0 - a_T)
+            else:
+                sew_action_T = 2*s/(v_0 + v_T)
+
+            # verify acceleration is in limit
+
+
+        if dv is not None:
+            fi -= dv
+            bi -= 1 - dv
+
+        v_0, v_T = forward_v[fi], backward_v[bi]
+        a_0, a_T = init_state[FS_SA], end_state[FS_SA]
+        s = distance - (forward_cum_s[fi] + backward_cum_s[bi])
+
+        if abs(a_0 - a_T) > EPS:
+            sew_action_T = (-3*(v_0 + v_T) + np.sqrt(12*s*(a_0 - a_T) + 9*(v_0 + v_T)**2)) / (a_0 - a_T)
+        else:
+            sew_action_T = 2*s/(v_0 + v_T)
+        sew_action = np.array([backward_v[bi], sew_action_T, s])
+
+        reversed_backward = np.c_[backward_v[bi-1:-1:-1], np.flip(backward_vts[:bi, 1]), np.flip(backward_vts[:bi, 2])]
+
+        return np.concatenate((forward_vts[:fi], [sew_action], reversed_backward), axis=0)
