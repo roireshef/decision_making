@@ -212,8 +212,8 @@ class BehavioralPlanningFacade(DmModule):
 
             self._publish_takeover(takeover_message)
 
-            # planner_user_options = PlannerUserOptions(gap_setting=gap_setting.s_Data.e_e_gap_setting_state)
-            planner_user_options = PlannerUserOptions(gap_setting=GapSettingState.CeSYS_e_Close)
+            planner_user_options = PlannerUserOptions(gap_setting=gap_setting.s_Data.e_e_gap_setting_state)
+            # planner_user_options = PlannerUserOptions(gap_setting=GapSettingState.CeSYS_e_Close)
 
             # choose scenario and planner
             scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)

@@ -1,6 +1,7 @@
 from abc import abstractmethod
 
 import numpy as np
+from scipy.interpolate.interpolate import interp1d
 from logging import Logger
 from typing import Optional, List
 
@@ -98,7 +99,11 @@ class TargetActionSpace(ActionSpace):
         gap_setting_idx = self.gap_setting.value
         speed_points = GAP_SETTING_MARGIN_BY_SPEED[0]
         margin_points = GAP_SETTING_MARGIN_BY_SPEED[gap_setting_idx + 1]
-        return np.interp(host_velocity, speed_points, margin_points)
+
+        f = interp1d(speed_points, margin_points, kind='quadratic', fill_value=(margin_points[0], margin_points[-1]))
+
+        # return np.interp(host_velocity, speed_points, margin_points)
+        return f(host_velocity)
 
 
     @prof.ProfileFunction()
