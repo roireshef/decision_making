@@ -50,7 +50,7 @@ class CurveRoutePlanner:
                     inv_v_T, -LON_ACC_LIMITS, w_J)
 
                 interval_vts = CurveRoutePlanner.sew_forward_backward_vts(
-                    source, target, forward_vts, backward_vts, target[FS_SX] - source[FS_SX], w_J)
+                    source, target, forward_vts, backward_vts, target[FS_SX] - source[FS_SX], w_J, self.vel_grid[1] - self.vel_grid[0])
                 full_vts = np.concatenate((full_vts, interval_vts), axis=0)
 
                 source = target
@@ -112,7 +112,8 @@ class CurveRoutePlanner:
 
     @staticmethod
     def sew_forward_backward_vts(init_state: FrenetState1D, end_state: FrenetState1D,
-                                 forward_vts: np.array, backward_vts: np.array, total_s: float, w_J: float) -> np.array:
+                                 forward_vts: np.array, backward_vts: np.array, total_s: float, w_J: float,
+                                 vel_grid_step: float) -> np.array:
         forward_cum_s = np.concatenate(([0], np.cumsum(forward_vts[:, 2])))
         backward_cum_s = np.concatenate(([0], np.cumsum(backward_vts[:, 2])))
         forward_v = np.concatenate((init_state[FS_SV], forward_vts[:, 0]))
@@ -128,7 +129,7 @@ class CurveRoutePlanner:
             bi -= 1 - dv
 
         sew_T, sew_s, fi, bi = CurveRoutePlanner.calc_sew_action_time(
-            forward_v, backward_v, forward_cum_s, backward_cum_s, init_state[FS_SA], total_s, fi, bi, w_J)
+            forward_v, backward_v, forward_cum_s, backward_cum_s, init_state[FS_SA], total_s, fi, bi, w_J, vel_grid_step)
 
         if sew_T is None:
             return np.empty((0, 3))
@@ -139,7 +140,7 @@ class CurveRoutePlanner:
         return np.concatenate((forward_vts[:fi], [sew_action], reversed_backward), axis=0)
 
     @staticmethod
-    def calc_sew_action_time(forward_v, backward_v, forward_cum_s, backward_cum_s, init_a, total_s, fi, bi, w_J):
+    def calc_sew_action_time(forward_v, backward_v, forward_cum_s, backward_cum_s, init_a, total_s, fi, bi, w_J, vel_grid_step):
         if fi < 0 or bi < 0:
             return None, None, None, None
 
@@ -156,10 +157,28 @@ class CurveRoutePlanner:
 
         # if the sew action is calm enough, then return it as is
         w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[0, 2]
-        _, desired_T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0, acc_limits=LON_ACC_LIMITS)
+        _, desired_T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0)
         if desired_T <= sew_T:
             return sew_T, sew_s, fi, bi
 
+        CurveRoutePlanner.reduce_last_velocity()
+
         # otherwise remove an existing action (the faster between forward & backward) and call recursively the function
         return CurveRoutePlanner.calc_sew_action_time(forward_v, backward_v, forward_cum_s, backward_cum_s,
-                                                      init_a, total_s, fi - (v_0 >= v_T), bi - (v_0 < v_T), w_J)
+                                                      init_a, total_s, fi - (v_0 >= v_T), bi - (v_0 < v_T), w_J, vel_grid_step)
+
+    @staticmethod
+    def reduce_last_velocity(v_0: float, a_0: float, vts: np.array, v_T: float, w_J: float, vel_grid_step):
+        """
+        Given action vts starting from v_0, reduce its velocity such that there is a next action to v_T
+        :param v_0:
+        :param vts:
+        :param v_T:
+        :param w_J:
+        :return:
+        """
+        w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[0, 2]
+        while v_0 < vts[0]:
+            vts[0] -= vel_grid_step
+            s1, T1 = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, vts[0], a_0)
+            s2, T2 = KinematicUtils.specify_quartic_actions(w_T, w_J, vts[0], v_T, 0)
