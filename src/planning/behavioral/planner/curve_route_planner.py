@@ -2,7 +2,6 @@ from typing import List, Optional
 import numpy as np
 from decision_making.src.global_constants import LAT_ACC_LIMITS, LAT_ACC_LIMITS_BY_K, LON_ACC_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_LIMITS, TRAJECTORY_TIME_RESOLUTION, EPS
-from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.types import FrenetState2D, FS_DX, FS_SX, FrenetState1D, FS_SV, FS_SA
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
@@ -18,10 +17,12 @@ class CurveRoutePlanner:
         # lat_jerk = da/dt = (v^2*k)/dt = 2v*k + v^2*(dk/dt) = 2v*k + v^2*(dk/ds * ds/dt) = 2v*k + v^2*(k'*v) = 2v*k + v^3*k'
         self.vel_grid = np.flip(np.arange(0, np.max(self.pointwise_vel_limits)))
 
-    def choose_actions_sequence(self, ego_state: FrenetState2D, target_s: float):
+    def choose_actions_sequence(self, ego_state: FrenetState2D, target_s: float) -> List[np.array]:
         intervals = list(CurveRoutePlanner.calc_velocity_intervals(self.pointwise_vel_limits, self.route))
         w_J_arr = BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 0]
         ds = self.route.ds
+
+        sequences = []
 
         for w_J in w_J_arr:
 
@@ -49,10 +50,15 @@ class CurveRoutePlanner:
                     inv_v_T, -LON_ACC_LIMITS, w_J)
 
                 interval_vts = CurveRoutePlanner.sew_forward_backward_vts(
-                    source, target, forward_vts, backward_vts, self.vel_grid, target[FS_SX] - source[FS_SX])
+                    source, target, forward_vts, backward_vts, target[FS_SX] - source[FS_SX], w_J)
                 full_vts = np.concatenate((full_vts, interval_vts), axis=0)
 
                 source = target
+
+            if full_vts.shape[0] > 0:
+                sequences.append(full_vts)
+
+        return sequences
 
     @staticmethod
     def calc_velocity_intervals(vel_limits: np.array, route: FrenetSerret2DFrame) -> np.array:
@@ -106,41 +112,54 @@ class CurveRoutePlanner:
 
     @staticmethod
     def sew_forward_backward_vts(init_state: FrenetState1D, end_state: FrenetState1D,
-                                 forward_vts: np.array, backward_vts: np.array,
-                                 vel_grid: np.array, distance: float) -> np.array:
+                                 forward_vts: np.array, backward_vts: np.array, total_s: float, w_J: float) -> np.array:
         forward_cum_s = np.concatenate(([0], np.cumsum(forward_vts[:, 2])))
         backward_cum_s = np.concatenate(([0], np.cumsum(backward_vts[:, 2])))
         forward_v = np.concatenate((init_state[FS_SV], forward_vts[:, 0]))
         backward_v = np.concatenate((end_state[FS_SV], backward_vts[:, 0]))
         fi = bi = 0
         dv = None
-        while forward_cum_s[fi] + backward_cum_s[bi] < distance:
+        while forward_cum_s[fi] + backward_cum_s[bi] < total_s:
             dv = int(forward_v[fi] < backward_v[bi])
             fi += dv
             bi += 1 - dv
-
-            if abs(a_0 - a_T) > EPS:
-                sew_action_T = (-3*(v_0 + v_T) + np.sqrt(12*s*(a_0 - a_T) + 9*(v_0 + v_T)**2)) / (a_0 - a_T)
-            else:
-                sew_action_T = 2*s/(v_0 + v_T)
-
-            # verify acceleration is in limit
-
-
         if dv is not None:
             fi -= dv
             bi -= 1 - dv
 
-        v_0, v_T = forward_v[fi], backward_v[bi]
-        a_0, a_T = init_state[FS_SA], end_state[FS_SA]
-        s = distance - (forward_cum_s[fi] + backward_cum_s[bi])
+        sew_T, sew_s, fi, bi = CurveRoutePlanner.calc_sew_action_time(
+            forward_v, backward_v, forward_cum_s, backward_cum_s, init_state[FS_SA], total_s, fi, bi, w_J)
 
-        if abs(a_0 - a_T) > EPS:
-            sew_action_T = (-3*(v_0 + v_T) + np.sqrt(12*s*(a_0 - a_T) + 9*(v_0 + v_T)**2)) / (a_0 - a_T)
-        else:
-            sew_action_T = 2*s/(v_0 + v_T)
-        sew_action = np.array([backward_v[bi], sew_action_T, s])
+        if sew_T is None:
+            return np.empty((0, 3))
 
         reversed_backward = np.c_[backward_v[bi-1:-1:-1], np.flip(backward_vts[:bi, 1]), np.flip(backward_vts[:bi, 2])]
+        sew_action = np.array([backward_v[bi], sew_T, sew_s])
 
         return np.concatenate((forward_vts[:fi], [sew_action], reversed_backward), axis=0)
+
+    @staticmethod
+    def calc_sew_action_time(forward_v, backward_v, forward_cum_s, backward_cum_s, init_a, total_s, fi, bi, w_J):
+        if fi < 0 or bi < 0:
+            return None, None, None, None
+
+        v_0, v_T = forward_v[fi], backward_v[bi]
+        a_0 = init_a * (fi == 0)
+        a_T = 0
+        sew_s = total_s - (forward_cum_s[fi] + backward_cum_s[bi])
+
+        # calculate time sew_T for quartic action given all constraints including s
+        if abs(a_0 - a_T) > EPS:
+            sew_T = (-3*(v_0 + v_T) + np.sqrt(12*sew_s*(a_0 - a_T) + 9*(v_0 + v_T)**2)) / (a_0 - a_T)
+        else:
+            sew_T = 2*sew_s/(v_0 + v_T)
+
+        # if the sew action is calm enough, then return it as is
+        w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[0, 2]
+        _, desired_T = KinematicUtils.specify_quartic_actions(w_T, w_J, v_0, v_T, a_0, acc_limits=LON_ACC_LIMITS)
+        if desired_T <= sew_T:
+            return sew_T, sew_s, fi, bi
+
+        # otherwise remove an existing action (the faster between forward & backward) and call recursively the function
+        return CurveRoutePlanner.calc_sew_action_time(forward_v, backward_v, forward_cum_s, backward_cum_s,
+                                                      init_a, total_s, fi - (v_0 >= v_T), bi - (v_0 < v_T), w_J)
