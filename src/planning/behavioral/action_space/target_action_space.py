@@ -8,8 +8,7 @@ from typing import Optional, List
 import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, \
-    GAP_SETTING_HEADWAY, GAP_SETTING_COMFORT_HDW_MAX, GAP_SETTING_COMFORT_HDW_MIN, GAP_SETTING_MARGIN_BY_SPEED, \
-    ZERO_SPEED, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+    ZERO_SPEED, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, GAP_SETTING_COMFORT_ZONE_JERK_WEIGHT_MULTIPLIER
 
 from decision_making.src.messages.gap_setting_message import GapSettingState
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -122,6 +121,18 @@ class TargetActionSpace(ActionSpace):
         # irrelevant due to 0 velocity
         ds = longitudinal_differences + margin_sign * (
                 margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
+
+        # If headway is already within [Gap_Setting - Comfort_Hdw_Min, Gap_Setting + Comfort_Hdw_Max], leave it as is since the headway can "float" for comfort
+        # If out of this range, replace it with the designated gap_setting headway
+        if behavioral_state.ego_state.velocity > ZERO_SPEED:  # avoid dividing by 0
+            T_m = ds / behavioral_state.ego_state.velocity    # this represents the current headways
+            # T_m[np.where(np.logical_not(np.logical_and(T_m > min_headway, T_m < max_headway)))] = headway
+            # Force higher jerk weight in comfort zone
+            multipliers = np.interp(T_m[np.where(np.logical_and(T_m > min_headway, T_m < max_headway))],
+                                    [min_headway, headway, max_headway],
+                                    [1.0, GAP_SETTING_COMFORT_ZONE_JERK_WEIGHT_MULTIPLIER, 1.0])
+            weights[np.where(np.logical_and(T_m > min_headway, T_m < max_headway)), 0] *= multipliers
+
 
         T_m = headway
 

@@ -68,6 +68,7 @@ class PlannerUserOptionState(PUBSUB_MSG_IMPL):
             comfort_hdw_min = GAP_SETTING_COMFORT_HDW_MIN[self.previous_gap_setting_state.value]
             comfort_hdw_max = GAP_SETTING_COMFORT_HDW_MAX[self.previous_gap_setting_state.value]
 
+
         return (headway, headway + comfort_hdw_min, headway + comfort_hdw_max)
 
 
