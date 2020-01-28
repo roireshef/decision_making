@@ -40,7 +40,7 @@ class PlannerUserOptionState(PUBSUB_MSG_IMPL):
         """
         Gets headway as specified by the user settings.
         A delay is forced before a change will take effect.
-        When changing between settings, a slew time is used to smooth the transition.
+        When changing between settings, the headway will gradually change to the desired one over a set time.
         :return: (gap_setting_headway, gap_setting_headway_min, gap_setting_headway_max)
         """
 

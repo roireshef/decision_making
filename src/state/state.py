@@ -246,10 +246,6 @@ class EgoState(DynamicObject):
             self._dim_state.update_state(self.timestamp_in_sec, self._cached_map_state.lane_fstate, ego_s, closestTCB,
                                          ignored_TCB_distance)
 
-    def update_planner_user_option_state(self):
-        if self._planner_user_option_state is not None:
-            self._planner_user_option_state.update_timestamp(self.timestamp_in_sec)
-
     def get_stop_bar_to_ignore(self):
         """
         Used by driver initiated motion: return stop bar id to ignore if acceleration pedal was pressed
