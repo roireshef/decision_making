@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.messages.gap_setting_message import GapSettingState
-from decision_making.src.global_constants import SPECIFICATION_HEADWAY, GAP_SETTING_HEADWAY
+from decision_making.src.global_constants import SPECIFICATION_HEADWAY, GAP_SETTING_HEADWAY, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.state.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, RelativeLane
@@ -49,7 +49,7 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
         objects_longitudes.append(target_gff_fstate[FS_SX])
 
 
-    margin_from_object = dynamic_action_space._get_margin_by_speed(behavioral_grid_state.ego_state.velocity)
+    margin_from_object = LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
     gap_setting_headway = GAP_SETTING_HEADWAY[GapSettingState.CeSYS_e_Medium.value]
 
     # terminal action-spec longitude equals the terminal longitude of target vehicle

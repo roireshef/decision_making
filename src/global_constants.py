@@ -124,9 +124,12 @@ GAP_SETTING_MARGIN_BY_SPEED  = [[0.0, 0.5, 4.0, 10.0, 13.9, 19.4, 25.0, 33.3, 41
                                 [3.0, 2.9, 2.42, 1.88, 1.4,  1.3, 1.05, 0.71,  0.4,  0.0],
                                 [3.0, 2.95, 2.4, 1.42, 1.0, 0.68, 0.47,  0.0,  0.0,  0.0]]
 
+GAP_SETTING_DELAY_TIME = 0.5
+GAP_SETTING_SLEW_TIME = 1
+
 # Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
 # safety checks accordingly
-LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
+LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 3.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
 LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 

@@ -91,7 +91,7 @@ class GapSetting(PUBSUB_MSG_IMPL):
         return cls(Header.deserialize(pubsubMsg.s_Header),
                    TsSYSGapSetting.deserialize(pubsubMsg.s_Data))
 
-DEFAULT_MSG = GapSetting(s_Header=None, s_Data=DataGapSetting(e_b_valid=False, s_RecvTimestamp=None,
+DEFAULT_MSG = GapSetting(s_Header=None, s_Data=DataGapSetting(e_b_valid=False, s_RecvTimestamp=Timestamp(np.inf, np.inf),
                                                               e_b_RawGapDownPressed=False,
                                                               e_b_RawGapUpPressed=False,
                                                               e_e_gap_setting_state=GapSettingState.CeSYS_e_Medium,

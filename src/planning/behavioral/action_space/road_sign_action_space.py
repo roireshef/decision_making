@@ -17,7 +17,7 @@ from sklearn.utils.extmath import cartesian
 
 
 class RoadSignActionSpace(TargetActionSpace):
-    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering, gap_setting: Optional[GapSettingState] = None):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering):
         super().__init__(logger,
                          predictor=predictor,
                          recipes=[RoadSignActionRecipe.from_args_list(comb)
@@ -26,8 +26,7 @@ class RoadSignActionSpace(TargetActionSpace):
                                                          [ActionType.FOLLOW_ROAD_SIGN],
                                                          AggressivenessLevel])
                                   ],
-                         filtering=filtering,
-                         gap_setting=gap_setting)
+                         filtering=filtering)
     @property
     def recipe_classes(self) -> List[Type]:
         return [RoadSignActionRecipe]

@@ -29,11 +29,10 @@ from decision_making.src.utils.map_utils import MapUtils
 
 @six.add_metaclass(ABCMeta)
 class BasePlanner:
-    def __init__(self, user_options: PlannerUserOptions, logger: Logger):
+    def __init__(self, logger: Logger):
         """
         :param logger:
         """
-        self.user_options = user_options
         self.logger = logger
 
     @prof.ProfileFunction()

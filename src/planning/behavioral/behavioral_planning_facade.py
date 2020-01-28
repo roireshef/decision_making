@@ -45,6 +45,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.default_config import DEFAULT_ACTION_SPEC_FILTERING
 from decision_making.src.planning.behavioral.scenario import Scenario
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
+from decision_making.src.planning.behavioral.state.planner_user_option_state import PlannerUserOptionState
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -75,6 +76,7 @@ class BehavioralPlanningFacade(DmModule):
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
         self.last_log_time = -1.0
         self._lane_change_state = LaneChangeState(visualizer_queue=visualizer_queue)
+        self._planner_user_option_state = PlannerUserOptionState()
 
     def _write_filters_to_log_if_required(self, now: float):
         """
@@ -126,7 +128,7 @@ class BehavioralPlanningFacade(DmModule):
                 self.logger.warning("MsgDeserializationError was raised for turn signal. Overriding with default value")
                 turn_signal = DEFAULT_TURN_SIGNAL_MSG
 
-            # Get gap setting as set by the user
+            # Get gap setting as set by the user, update it in the planner_user_option_state
             try:
                 gap_setting = self._get_current_gap_setting()
             except MsgDeserializationError as e:
@@ -159,6 +161,10 @@ class BehavioralPlanningFacade(DmModule):
 
             with DMProfiler(self.__class__.__name__ + '._get_current_scene_dynamic'):
                 scene_dynamic = self._get_current_scene_dynamic()
+
+                # update planner_user_options
+                self._planner_user_option_state.update(scene_dynamic.s_Data.s_RecvTimestamp, gap_setting)
+
                 SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(
                     self._get_current_tcd_status().s_Data.as_dynamic_traffic_control_device_status)
                 state = State.create_state_from_scene_dynamic(scene_dynamic=scene_dynamic,
@@ -166,7 +172,8 @@ class BehavioralPlanningFacade(DmModule):
                                                               route_plan_dict=route_plan_dict,
                                                               logger=self.logger,
                                                               turn_signal=turn_signal,
-                                                              dim_state=self._driver_initiated_motion_state)
+                                                              dim_state=self._driver_initiated_motion_state,
+                                                              planner_user_option_state=self._planner_user_option_state)
 
                 state.handle_negative_velocities(self.logger)
 
@@ -206,19 +213,15 @@ class BehavioralPlanningFacade(DmModule):
                 updated_state = state
 
             self._lane_change_state.update_pre_iteration(updated_state.ego_state)
-
             # calculate the takeover message
             takeover_message = self._set_takeover_message(route_plan_data=route_plan.s_Data, ego_state=updated_state.ego_state)
 
             self._publish_takeover(takeover_message)
 
-            planner_user_options = PlannerUserOptions(gap_setting=gap_setting.s_Data.e_e_gap_setting_state)
-            # planner_user_options = PlannerUserOptions(gap_setting=GapSettingState.CeSYS_e_Close)
-
             # choose scenario and planner
             scenario = Scenario.identify_scenario(updated_state, route_plan, self.logger)
             planner_class = scenario.choose_planner(updated_state, route_plan, self.logger)
-            planner = planner_class(updated_state, planner_user_options, self.logger)
+            planner = planner_class(updated_state, self.logger)
 
             with DMProfiler(self.__class__.__name__ + '.plan'):
                 trajectory_params, samplable_trajectory, behavioral_visualization_message, behavioral_state, selected_action_spec = \

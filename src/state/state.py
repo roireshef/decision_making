@@ -11,6 +11,7 @@ from decision_making.src.messages.scene_static_message import TrafficControlBar
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.messages.turn_signal_message import TurnSignal
 from decision_making.src.planning.behavioral.state.driver_initiated_motion_state import DriverInitiatedMotionState
+from decision_making.src.planning.behavioral.state.planner_user_option_state import PlannerUserOptionState
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FS_SV, FS_SA
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 from decision_making.src.planning.utils.math_utils import Math
@@ -212,7 +213,7 @@ class EgoState(DynamicObject):
 
     def __init__(self, obj_id: int, timestamp: int, cartesian_state: CartesianExtendedState, map_state: MapState,
                  size: ObjectSize, confidence: float, off_map: bool, turn_signal: Optional[TurnSignal] = None,
-                 dim_state: DriverInitiatedMotionState = None):
+                 dim_state: DriverInitiatedMotionState = None, planner_user_option_state: PlannerUserOptionState = None):
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -226,11 +227,13 @@ class EgoState(DynamicObject):
         :param off_map: indicates if the object is off map
         :param turn_signal: turn signal status
         :param dim_state: driver initiated motion state
+        :param planner_user_option_state: user selectable option states
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
                                              map_state=map_state, size=size, confidence=confidence, off_map=off_map,
                                              turn_signal=turn_signal)
         self._dim_state = dim_state
+        self._planner_user_option_state = planner_user_option_state
 
     def update_dim_state(self, ego_s: float, closestTCB: Tuple[TrafficControlBar, float], ignored_TCB_distance: float) -> None:
         """
@@ -243,12 +246,23 @@ class EgoState(DynamicObject):
             self._dim_state.update_state(self.timestamp_in_sec, self._cached_map_state.lane_fstate, ego_s, closestTCB,
                                          ignored_TCB_distance)
 
+    def update_planner_user_option_state(self):
+        if self._planner_user_option_state is not None:
+            self._planner_user_option_state.update_timestamp(self.timestamp_in_sec)
+
     def get_stop_bar_to_ignore(self):
         """
         Used by driver initiated motion: return stop bar id to ignore if acceleration pedal was pressed
         :return: stop bar id that should be ignored
         """
         return self._dim_state.stop_bar_to_ignore() if self._dim_state is not None else None
+
+    def get_planner_user_option_state(self):
+        # Create defualt planner user option state if not instantiated (for unit tests)
+        if self._planner_user_option_state is None:
+            return PlannerUserOptionState()
+
+        return self._planner_user_option_state
 
 
 T = TypeVar('T', bound='State')
@@ -345,7 +359,8 @@ class State(PUBSUB_MSG_IMPL):
                                         logger: Logger,
                                         route_plan_dict: Optional[Dict[LaneSegmentID, Tuple[LaneOccupancyCost, LaneEndCost]]] = None,
                                         turn_signal: Optional[TurnSignal] = None,
-                                        dim_state: DriverInitiatedMotionState = None):
+                                        dim_state: DriverInitiatedMotionState = None,
+                                        planner_user_option_state: PlannerUserOptionState = None):
         """
         This methods takes an already deserialized SceneDynamic message and converts it to a State object
         :param scene_dynamic: scene dynamic data
@@ -376,7 +391,8 @@ class State(PUBSUB_MSG_IMPL):
                              cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
                              map_state=ego_map_state,
                              size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                             confidence=1.0, off_map=False, turn_signal=turn_signal,  dim_state=dim_state)
+                             confidence=1.0, off_map=False, turn_signal=turn_signal,  dim_state=dim_state,
+                             planner_user_option_state=planner_user_option_state)
 
         dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
                                           objects_localization=scene_dynamic.s_Data.as_object_localization,

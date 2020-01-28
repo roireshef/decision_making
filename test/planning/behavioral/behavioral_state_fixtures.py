@@ -21,6 +21,7 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
+from decision_making.src.planning.behavioral.state.planner_user_option_state import PlannerUserOptionState
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
@@ -546,6 +547,7 @@ def state_with_objects_for_acceleration_towards_vehicle():
     # set a positive initial acceleration to create a scene where the vehicle is forced to exceed the desired velocity
     scene_dynamic.ego_state.cartesian_state[C_A] = 1
     scene_dynamic.ego_state._dim_state = DriverInitiatedMotionState(logger)
+    scene_dynamic.ego_state._planner_user_option_state = PlannerUserOptionState()
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status({})
     yield scene_dynamic
 
