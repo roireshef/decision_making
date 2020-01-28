@@ -91,7 +91,7 @@ class TargetActionSpace(ActionSpace):
         :return: a tuple of (min_headway, max_headway)
         """
         gap_setting_idx = self.gap_setting.value
-        return (GAP_SETTING_HEADWAY[gap_setting_idx] - GAP_SETTING_COMFORT_HDW_MIN[gap_setting_idx],
+        return (GAP_SETTING_HEADWAY[gap_setting_idx] + GAP_SETTING_COMFORT_HDW_MIN[gap_setting_idx],
                 GAP_SETTING_HEADWAY[gap_setting_idx] + GAP_SETTING_COMFORT_HDW_MAX[gap_setting_idx])
 
 
@@ -103,7 +103,8 @@ class TargetActionSpace(ActionSpace):
         f = interp1d(speed_points, margin_points, kind='quadratic', fill_value=(margin_points[0], margin_points[-1]))
 
         # return np.interp(host_velocity, speed_points, margin_points)
-        return f(host_velocity)
+        # return f(host_velocity)
+        return margin_points[0]
 
 
     @prof.ProfileFunction()
