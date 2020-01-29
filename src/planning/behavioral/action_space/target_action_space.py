@@ -6,9 +6,9 @@ from logging import Logger
 from typing import Optional, List
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SPECIFICATION_HEADWAY, \
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, MAX_IMMEDIATE_DECEL, SLOW_DOWN_FACTOR, CLOSE_TO_ZERO_NEGATIVE_VELOCITY, \
-    ZERO_SPEED, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, GAP_SETTING_COMFORT_ZONE_JERK_WEIGHT_MULTIPLIER
+    ZERO_SPEED, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
 
 from decision_making.src.messages.gap_setting_message import GapSettingState
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -122,23 +122,11 @@ class TargetActionSpace(ActionSpace):
         ds = longitudinal_differences + margin_sign * (
                 margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
 
-        # If headway is already within [Gap_Setting - Comfort_Hdw_Min, Gap_Setting + Comfort_Hdw_Max], leave it as is since the headway can "float" for comfort
-        # If out of this range, replace it with the designated gap_setting headway
-        if behavioral_state.ego_state.velocity > ZERO_SPEED:  # avoid dividing by 0
-            T_m = ds / behavioral_state.ego_state.velocity    # this represents the current headways
-            # T_m[np.where(np.logical_not(np.logical_and(T_m > min_headway, T_m < max_headway)))] = headway
-            # Force higher jerk weight in comfort zone
-            multipliers = np.interp(T_m[np.where(np.logical_and(T_m > min_headway, T_m < max_headway))],
-                                    [min_headway, headway, max_headway],
-                                    [1.0, GAP_SETTING_COMFORT_ZONE_JERK_WEIGHT_MULTIPLIER, 1.0])
-            weights[np.where(np.logical_and(T_m > min_headway, T_m < max_headway)), 0] *= multipliers
-
-
         T_m = headway
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         v_0 = projected_ego_fstates[:, FS_SV]
-        v_T_mod = self._modify_target_speed_if_ego_is_faster_than_target(behavioral_state, ds, v_0, v_T)
+        v_T_mod = self._modify_target_speed_if_ego_is_faster_than_target(behavioral_state, ds, v_0, v_T, headway)
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds, a_0=projected_ego_fstates[:, FS_SA],
             v_0=projected_ego_fstates[:, FS_SV], v_T=v_T_mod, T_m=T_m)
@@ -180,7 +168,7 @@ class TargetActionSpace(ActionSpace):
         return action_specs
 
     def _modify_target_speed_if_ego_is_faster_than_target(self, behavioral_state: BehavioralGridState, ds: np.ndarray,
-                                                          v_0: np.ndarray, v_T: np.ndarray):
+                                                          v_0: np.ndarray, v_T: np.ndarray, headway: float):
         """
         If the speed of the ego is higher than that of the leading vehicle, set the v_T to be lower than the real v_T.
         This will limit the ego's speed and help in case of sudden brake by the leading vehicle.
@@ -213,7 +201,7 @@ class TargetActionSpace(ActionSpace):
         mod_idx = np.where(v_diff < CLOSE_TO_ZERO_NEGATIVE_VELOCITY)[0]
         v_T_mod = v_T.copy()
         lower_root = Math.solve_quadratic(np.c_[np.ones(len(mod_idx)),
-                                                2 * (MAX_IMMEDIATE_DECEL * SPECIFICATION_HEADWAY - v_0[mod_idx]),
+                                                2 * (MAX_IMMEDIATE_DECEL * headway - v_0[mod_idx]),
                                                 v_0[mod_idx] * v_0[mod_idx] - 2 * MAX_IMMEDIATE_DECEL * ds[mod_idx]])[:, 0]
         valid_root_idx = np.where(~np.isnan(lower_root) & (lower_root < v_T[mod_idx]))[0]
         valid_idx = mod_idx[valid_root_idx]
