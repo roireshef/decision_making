@@ -126,7 +126,7 @@ GAP_SETTING_MARGIN_BY_SPEED  = [[0.0, 0.5, 4.0, 10.0, 13.9, 19.4, 25.0, 33.3, 41
 
 GAP_SETTING_DELAY_TIME = 0.5
 GAP_SETTING_SLEW_TIME = 1
-GAP_SETTING_COMFORT_ZONE_JERK_WEIGHT_MULTIPLIER = 2.0
+GAP_SETTING_COMFORT_ZONE_JERK_WEIGHT_MULTIPLIER = 1.2
 
 # Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
 # safety checks accordingly
