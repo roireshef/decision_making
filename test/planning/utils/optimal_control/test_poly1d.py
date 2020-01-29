@@ -65,3 +65,19 @@ def test_create_braking_actions():
     T1, s1 = LaneChangePlanner._create_triple_cubic_actions(10., 0.5, 9., -4., -5., 5.)
     T2, s2 = LaneChangePlanner._create_quartic_actions(10., 0.5, 9., -4., 5.)
     print(T1, T2, 's:', s1, s2)
+
+
+import matplotlib.pyplot as plt
+
+def test_():
+    A_inv = QuinticPoly1D.inverse_time_constraints_matrix(6)
+    constraints = np.array([0, 0, 0, 3.6, 0, 0])
+    x_t = QuinticPoly1D.solve(A_inv, constraints)
+    v_t = np.polyder(x_t)
+    a_t = np.polyder(v_t)
+    j_t = np.polyder(a_t)
+    times = np.arange(0,6.001,0.1)
+    a = np.polyval(a_t, times)
+    j = np.polyval(j_t, times)
+    plt.plot(times, a)
+    a=0
