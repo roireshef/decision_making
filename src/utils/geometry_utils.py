@@ -28,21 +28,38 @@ class Euclidean:
         num_segments = len(segments_start)
 
         # points reshaped to 2D
-        points_matrix = points.reshape(np.prod(points.shape[:-1]).astype(np.int), points.shape[-1])
-
+        points_matrix = points.reshape(np.prod(points.shape[:-1]).astype(np.int), points.shape[-1]).astype(np.float64)
         # matrix that holds the progress of projection of each point [rows] on each segment [columns]
-        progress_matrix = np.apply_along_axis(
-            lambda point_i: np.sum((point_i - segments_start) * segments_vec, axis=1) / segments_length ** 2, -1, points_matrix)
+
+        # Instead of doing the following code, we improve its time by doing some math and avoiding the apply_along_axis()
+        """
+        # progress_matrix = np.apply_along_axis(
+        #     lambda point_i: np.sum((point_i - segments_start) * segments_vec, axis=1) / segments_length ** 2, -1, points_matrix)
+        """
+        progress_matrix = (np.dot(points_matrix, segments_vec.T) - np.sum(segments_start * segments_vec, axis=1)) / (
+                    segments_length * segments_length)
 
         # clips projections to the range [0,1]
         clipped_progress = np.clip(progress_matrix, a_min=0, a_max=1)
 
+
+        # Instead of doing the following code, we apply, again, some math and avoid using 3D tensors
+        """
         # 3D tensor of [points, segments, clipped projection coordinates]
-        clipped_projections = segments_start[np.newaxis, :, :] + np.einsum('ij,jk->ijk', clipped_progress, segments_vec)
+        # clipped_projections = segments_start[np.newaxis, :, :] + np.einsum('ij,jk->ijk', clipped_progress, segments_vec)
 
         # euclidean distance from each point [rows] to the corresponding clipped-projection on each segment [columns]
-        distances_to_clipped_projections = np.linalg.norm(points_matrix[..., np.newaxis, :] - clipped_projections, axis=-1)
+        # distances_to_clipped_projections = np.linalg.norm(points_matrix[..., np.newaxis, :] - clipped_projections, axis=-1)
+        """
+        distances_to_clipped_projections = np.sum(points_matrix * points_matrix, axis=-1)[:, None] + \
+                                           np.sum(segments_start * segments_start, axis=-1)[None, :] + \
+                                           clipped_progress * clipped_progress * np.sum(segments_vec * segments_vec, axis=-1)[None, :] - \
+                                           2 * np.dot(points_matrix, segments_start.T) + \
+                                           2 * clipped_progress * np.sum(segments_start * segments_vec, axis=-1)[None, :] - \
+                                           2 * clipped_progress * np.dot(points_matrix, segments_vec.T)
 
+        # assert np.all(np.abs(distances_to_clipped_projections_ - distances_to_clipped_projections ** 2) < 1e-3)
+        #
         # 1D for each point, hold the index of the closest segment
         closest_segment_idxs = np.argmin(distances_to_clipped_projections, axis=-1)
 
