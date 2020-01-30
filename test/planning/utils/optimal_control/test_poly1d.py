@@ -67,17 +67,50 @@ def test_create_braking_actions():
     print(T1, T2, 's:', s1, s2)
 
 
+import sympy as sp
+from sympy import symbols
+from sympy.matrices import *
+from typing import List
 import matplotlib.pyplot as plt
+from sympy.solvers import solve
 
 def test_():
-    A_inv = QuinticPoly1D.inverse_time_constraints_matrix(6)
-    constraints = np.array([0, 0, 0, 3.6, 0, 0])
-    x_t = QuinticPoly1D.solve(A_inv, constraints)
-    v_t = np.polyder(x_t)
-    a_t = np.polyder(v_t)
-    j_t = np.polyder(a_t)
-    times = np.arange(0,6.001,0.1)
+    T = symbols('T')
+    t = symbols('t')
+    d = symbols('d')
+    D = symbols('D')
+    e = symbols('e')
+    E = symbols('E')
+    c = symbols('c')
+
+    #T = 3
+    #d = 3.6
+    A = Matrix([
+        [0, 0, 0, 0, 0, 1],
+        [0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 2, 0, 0],
+        [T ** 5, T ** 4, T ** 3, T ** 2, T, 1],
+        [5 * T ** 4, 4 * T ** 3, 3 * T ** 2, 2 * T, 1, 0],
+        [20 * T ** 3, 12 * T ** 2, 6 * T, 2, 0, 0]]
+    )
+    [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([0, 0, 0, d, 0, 0])
+
+    x_t = (c5 * t ** 5 + c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
+    v_t = sp.diff(x_t, t).simplify()
+    a_t = sp.diff(v_t, t).simplify()
+    j_t = sp.diff(a_t, t).simplify()
+    j_max = j_t.subs(t, 0)
+
+    solution = solve(2*E**4 - e*E**3 - c, E)
+    solution = solve((D - 0.5)**3 * (2*D - d) - c, D)
+
+    # constraints = np.array([0, 0, 0, d, 0, 0])
+    # QuinticPoly1D.solve(A_inv, np.array([constraints]))[0]
+    # v_t = np.polyder(x_t)
+    # a_t = np.polyder(v_t)
+    # j_t = np.polyder(a_t)
+    times = np.arange(0, T + 0.001, 0.1)
     a = np.polyval(a_t, times)
     j = np.polyval(j_t, times)
-    plt.plot(times, a)
+    plt.plot(times, a, times, j)
     a=0
