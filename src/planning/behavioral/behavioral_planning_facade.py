@@ -4,6 +4,7 @@ import time
 import traceback
 from logging import Logger
 from typing import Optional
+import rte.python.profiler as prof
 
 import numpy as np
 from decision_making.src.messages.control_status_message import ControlStatus
@@ -353,6 +354,7 @@ class BehavioralPlanningFacade(DmModule):
                            pedal_position.s_Data.e_Pct_AcceleratorPedalPosition))
         return pedal_position
 
+    @prof.ProfileFunction()
     def _get_current_scene_static(self) -> SceneStatic:
         with DMProfiler(self.__class__.__name__ + '.get_latest_sample'):
             is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
@@ -367,6 +369,7 @@ class BehavioralPlanningFacade(DmModule):
         self.logger.debug("%s: %f" % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
 
+    @prof.ProfileFunction()
     def _get_current_scene_dynamic(self) -> SceneDynamic:
         is_success, serialized_scene_dynamic = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_DYNAMIC)
 
