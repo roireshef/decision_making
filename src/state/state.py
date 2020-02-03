@@ -202,7 +202,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def clone_from_map_state(self, map_state, timestamp_in_sec=None):
         # type: (MapState, Optional[float]) -> DynamicObject
         """clones self while overriding map_state and optionally timestamp"""
-        return self.create_from_map_state(self.obj_id,
+        return self.__class__.create_from_map_state(self.obj_id,
                                           Math.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
                                           self.size, self.confidence, self.off_map, self.turn_signal)
@@ -260,6 +260,47 @@ class EgoState(DynamicObject):
 
         return self._planner_user_option_state
 
+    @classmethod
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, off_map, turn_signal = None,
+                                    planner_user_options: PlannerUserOptionState = None):
+        ego_state = super().create_from_cartesian_state(obj_id, timestamp, cartesian_state, size, confidence, off_map, turn_signal)
+        ego_state._planner_user_option_state = planner_user_options
+        return ego_state
+
+    @classmethod
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, off_map, turn_signal=None,
+                              planner_user_options: PlannerUserOptionState = None):
+        """
+        Constructor that gets only map-state (without cartesian-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        :param off_map: is the vehicle is off the map
+        :param turn_signal: turn signal status
+        """
+        ego_state = super().create_from_map_state(obj_id, timestamp, None, map_state, size, confidence, off_map, turn_signal)
+        ego_state._planner_user_option_state = planner_user_options
+        return ego_state
+
+    def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
+        # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
+        """clones self while overriding cartesian_state and optionally timestamp"""
+        return self.__class__.create_from_cartesian_state(self.obj_id,
+                                                          Math.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
+                                                          cartesian_state,
+                                                          self.size, self.confidence, self.off_map, self.turn_signal,
+                                                          self._planner_user_option_state)
+
+    def clone_from_map_state(self, map_state, timestamp_in_sec=None):
+        # type: (MapState, Optional[float]) -> DynamicObject
+        """clones self while overriding map_state and optionally timestamp"""
+        return self.__class__.create_from_map_state(self.obj_id,
+                                                    Math.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
+                                                    map_state,
+                                                    self.size, self.confidence, self.off_map, self.turn_signal,
+                                                    self._planner_user_option_state)
 
 T = TypeVar('T', bound='State')
 
