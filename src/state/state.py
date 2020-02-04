@@ -280,7 +280,7 @@ class EgoState(DynamicObject):
         :param off_map: is the vehicle is off the map
         :param turn_signal: turn signal status
         """
-        ego_state = super().create_from_map_state(obj_id, timestamp, None, map_state, size, confidence, off_map, turn_signal)
+        ego_state = super().create_from_map_state(obj_id, timestamp, map_state, size, confidence, off_map, turn_signal)
         ego_state._planner_user_option_state = planner_user_options
         return ego_state
 
