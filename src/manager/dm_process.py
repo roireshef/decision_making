@@ -6,7 +6,7 @@ from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTime
 from rte.python.os import catch_interrupt_signals
 from rte.python.logger.AV_logger import AV_Logger
 from os import getpid
-from rte.python.profiler import cleanup as profiler_cleanup
+import rte.python.profiler as prof
 
 
 class DmProcess:
@@ -64,6 +64,9 @@ class DmProcess:
         self._pid = getpid()
         self.logger.debug('%d: started "%s"', self._pid, self.name)
 
+        # init profiling if enabled
+        prof.start()
+
         # create the trigger and activate it.
         if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
             self._trigger = DmPeriodicTimerTrigger(self._trigger_callback, self._process_name, **self._trigger_args)
@@ -99,7 +102,7 @@ class DmProcess:
         if self._trigger.is_active():
             self._trigger.deactivate()
         self._module_instance.stop()
-        profiler_cleanup()
+        prof.cleanup()
 
     def _trigger_callback(self) -> None:
         """
