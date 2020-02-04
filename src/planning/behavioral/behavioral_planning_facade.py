@@ -165,7 +165,7 @@ class BehavioralPlanningFacade(DmModule):
                 scene_dynamic = self._get_current_scene_dynamic()
 
                 # update planner_user_options
-                self._planner_user_option_state.update(scene_dynamic.s_Data.s_RecvTimestamp, gap_setting)
+                self._planner_user_option_state.update(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds, gap_setting)
 
                 SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(
                     self._get_current_tcd_status().s_Data.as_dynamic_traffic_control_device_status)
