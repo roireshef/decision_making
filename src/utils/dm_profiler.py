@@ -13,7 +13,7 @@ class DMProfiler:
 
     def __init__(self, label):
         self.label = label.replace(' ', '_')
-        self.profrange = prof.TimeRange("[DMProfiler] " + label)
+        self.profrange = prof.TimeRange("[DMProfiler] %s", label)
 
     def __enter__(self):
         self.start_time = time.time()
