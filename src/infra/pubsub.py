@@ -44,7 +44,7 @@ class PubSub:
         :return:
         """
         data = topic.get_latest_sample(timeout*1000)
-        with prof.time_range("[message] " + str(topic.msg_type.__name__), category=prof.Category.Communication):
+        with prof.time_range("[message] %s", topic.msg_type.__name__, category=prof.Category.Communication):
             pass
         return data
 
