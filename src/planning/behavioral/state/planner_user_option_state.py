@@ -33,8 +33,11 @@ class PlannerUserOptionState(PUBSUB_MSG_IMPL):
         # update gap settings if changed
         if gap_setting_state != self.gap_setting_state:
             self.previous_gap_setting_state = self.gap_setting_state
+            if not self.previous_gap_setting_state:
+                self.previous_gap_setting_state = self.gap_setting_state
+
             self.gap_setting_state = gap_setting_state
-            self.gap_setting_change_time = gap_setting.s_Data.s_RecvTimestamp.timestamp_in_seconds - self.current_time
+            self.gap_setting_change_time = self.current_time
 
     def get_headway(self) -> Tuple[float, float, float]:
         """
@@ -45,7 +48,7 @@ class PlannerUserOptionState(PUBSUB_MSG_IMPL):
         """
 
         # Return default value if object was not initialized
-        if self.gap_setting_state is None:
+        if self.gap_setting_state is None or self.previous_gap_setting_state is None:
             headway = GAP_SETTING_HEADWAY[GapSettingState.CeSYS_e_Medium.value]
             comfort_hdw_min = GAP_SETTING_COMFORT_HDW_MIN[GapSettingState.CeSYS_e_Medium.value]
             comfort_hdw_max = GAP_SETTING_COMFORT_HDW_MAX[GapSettingState.CeSYS_e_Medium.value]

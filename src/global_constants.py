@@ -119,10 +119,10 @@ GAP_SETTING_COMFORT_HDW_MAX = np.array([0.1, 0.2, 0.3])
 
 # Gap margin as a function of speed in order to maintain a time based following ratio at low speeds
 # [[Speeds (m/s)], [Far], [Medium], [Close]]
-GAP_SETTING_MARGIN_BY_SPEED  = [[0.0, 0.5, 4.0, 10.0, 13.9, 19.4, 25.0, 33.3, 41.7, 55.6],
-                                [3.0, 2.9, 2.45, 1.78, 1.14, 1.0,  0.7,  0.3,  0.0,  0.0],
-                                [3.0, 2.9, 2.42, 1.88, 1.4,  1.3, 1.05, 0.71,  0.4,  0.0],
-                                [3.0, 2.95, 2.4, 1.42, 1.0, 0.68, 0.47,  0.0,  0.0,  0.0]]
+# GAP_SETTING_MARGIN_BY_SPEED  = [[0.0, 0.5, 4.0, 10.0, 13.9, 19.4, 25.0, 33.3, 41.7, 55.6],
+#                                 [3.0, 2.9, 2.45, 1.78, 1.14, 1.0,  0.7,  0.3,  0.0,  0.0],
+#                                 [3.0, 2.9, 2.42, 1.88, 1.4,  1.3, 1.05, 0.71,  0.4,  0.0],
+#                                 [3.0, 2.95, 2.4, 1.42, 1.0, 0.68, 0.47,  0.0,  0.0,  0.0]]
 
 # Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
 # safety checks accordingly

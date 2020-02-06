@@ -123,7 +123,7 @@ class TargetActionSpace(ActionSpace):
                 margin_to_keep_from_targets + behavioral_state.ego_length / 2 + target_lengths / 2)
 
         T_m = headway
-        self.logger.debug(f"Planner Setting Headway: {behavioral_state}")
+        self.logger.debug(f"Planner Setting Headway: {behavioral_state.ego_state.get_planner_user_option_state().gap_setting_state}")
         self.logger.debug(f"Using Headway: {headway}")
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
