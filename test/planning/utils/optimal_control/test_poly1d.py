@@ -1,4 +1,3 @@
-from decision_making.src.planning.behavioral.planner.lane_change_planner import LaneChangePlanner
 from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D, QuinticPoly1D, QuarticPoly1D
 import numpy as np
 
@@ -61,56 +60,63 @@ def test_inverseTimeConstraintsTensor_compareWithLingAlgInv_isClose():
     assert np.isclose(A1_quartic_inv, A2_quartic_inv).all()
 
 
-def test_create_braking_actions():
-    T1, s1 = LaneChangePlanner._create_triple_cubic_actions(10., 0.5, 9., -4., -5., 5.)
-    T2, s2 = LaneChangePlanner._create_quartic_actions(10., 0.5, 9., -4., 5.)
-    print(T1, T2, 's:', s1, s2)
-
-
-import sympy as sp
-from sympy import symbols
-from sympy.matrices import *
-from typing import List
-import matplotlib.pyplot as plt
-from sympy.solvers import solve
-
-def test_():
-    T = symbols('T')
-    t = symbols('t')
-    d = symbols('d')
-    D = symbols('D')
-    e = symbols('e')
-    E = symbols('E')
-    c = symbols('c')
-
-    #T = 3
-    #d = 3.6
-    A = Matrix([
-        [0, 0, 0, 0, 0, 1],
-        [0, 0, 0, 0, 1, 0],
-        [0, 0, 0, 2, 0, 0],
-        [T ** 5, T ** 4, T ** 3, T ** 2, T, 1],
-        [5 * T ** 4, 4 * T ** 3, 3 * T ** 2, 2 * T, 1, 0],
-        [20 * T ** 3, 12 * T ** 2, 6 * T, 2, 0, 0]]
-    )
-    [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([0, 0, 0, d, 0, 0])
-
-    x_t = (c5 * t ** 5 + c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
-    v_t = sp.diff(x_t, t).simplify()
-    a_t = sp.diff(v_t, t).simplify()
-    j_t = sp.diff(a_t, t).simplify()
-    j_max = j_t.subs(t, 0)
-
-    solution = solve(2*E**4 - e*E**3 - c, E)
-    solution = solve((D - 0.5)**3 * (2*D - d) - c, D)
-
-    # constraints = np.array([0, 0, 0, d, 0, 0])
-    # QuinticPoly1D.solve(A_inv, np.array([constraints]))[0]
-    # v_t = np.polyder(x_t)
-    # a_t = np.polyder(v_t)
-    # j_t = np.polyder(a_t)
-    times = np.arange(0, T + 0.001, 0.1)
-    a = np.polyval(a_t, times)
-    j = np.polyval(j_t, times)
-    plt.plot(times, a, times, j)
-    a=0
+# def test_create_braking_actions():
+#     T1, s1 = LaneChangePlanner._create_triple_cubic_actions(10., 0.5, 9., -4., -5., 5.)
+#     T2, s2 = LaneChangePlanner._create_quartic_actions(10., 0.5, 9., -4., 5.)
+#     print(T1, T2, 's:', s1, s2)
+#
+#
+# import sympy as sp
+# from sympy import symbols
+# from sympy.matrices import *
+# from typing import List
+# import matplotlib.pyplot as plt
+# from sympy.solvers import solve
+#
+# def test_():
+#     T = symbols('T')
+#     t = symbols('t')
+#     v0 = symbols('v0')
+#     a0 = symbols('a0')
+#     d1 = symbols('d1')
+#     d2 = symbols('d2')
+#     s1 = symbols('s1')
+#     s2 = symbols('s2')
+#     D = symbols('D')
+#     e = symbols('e')
+#     E = symbols('E')
+#     c = symbols('c')
+#
+#     #T = 3
+#     #d = 3.6
+#     A = Matrix([
+#         [0, 0, 0, 0, 0, 1],
+#         [0, 0, 0, 0, 1, 0],
+#         [0, 0, 0, 2, 0, 0],
+#         [T ** 5, T ** 4, T ** 3, T ** 2, T, 1],
+#         [5 * T ** 4, 4 * T ** 3, 3 * T ** 2, 2 * T, 1, 0],
+#         [20 * T ** 3, 12 * T ** 2, 6 * T, 2, 0, 0]]
+#     )
+#     [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([0, v0, a0, d2 + D, 0, 0])
+#
+#     x_t = (c5 * t ** 5 + c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
+#     v_t = sp.diff(x_t, t).simplify()
+#     a_t = sp.diff(v_t, t).simplify()
+#     j_t = sp.diff(a_t, t).simplify()
+#     j_max = j_t.subs(t, 0)  # or .subs(t, T)
+#
+#     solution = solve(x_t.subs(T, s2).subs(t, s1) - (d1 - D), D)[0].simplify()
+#
+#     solution = solve(2*E**4 - e*E**3 - c, E)
+#     solution = solve((D - 0.5)**3 * (2*D - d) - c, D)
+#
+#     # constraints = np.array([0, 0, 0, d, 0, 0])
+#     # QuinticPoly1D.solve(A_inv, np.array([constraints]))[0]
+#     # v_t = np.polyder(x_t)
+#     # a_t = np.polyder(v_t)
+#     # j_t = np.polyder(a_t)
+#     times = np.arange(0, T + 0.001, 0.1)
+#     a = np.polyval(a_t, times)
+#     j = np.polyval(j_t, times)
+#     plt.plot(times, a, times, j)
+#     a=0
