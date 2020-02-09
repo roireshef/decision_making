@@ -11,7 +11,7 @@ from decision_making.src.utils.serialization_utils import SerializationUtils
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.exceptions import OutOfSegmentFront
+from decision_making.src.exceptions import OutOfSegmentFront, OutOfSegmentBack
 from decision_making.src.utils.geometry_utils import Euclidean
 import rte.python.profiler as prof
 
@@ -329,6 +329,12 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :return: approximate s value on the frame that will be created using self.O
         """
         segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(O_idx, delta_s)) - 1
+        if (segment_idx_per_point >= len(self._segments_ds)).any():
+            raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." %
+                                    (np.add(O_idx, delta_s), self.s_max))
+        if (segment_idx_per_point < 0).any():
+            raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % np.add(O_idx, delta_s))
+
         # get ds of every point based on the ds of the segment
         ds = self._segments_ds[segment_idx_per_point]
 
