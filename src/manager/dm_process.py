@@ -1,5 +1,5 @@
-import os
-from multiprocessing import Queue, Process
+import time
+from multiprocessing import Process
 from typing import Callable
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
@@ -23,7 +23,6 @@ class DmProcess:
         self._module_creation_method = module_creation_method
         self._trigger_type = trigger_type
         self._trigger_args = trigger_args
-        self._queue = Queue()
         self.name = name
 
         self._process_name = "DM_process_{}".format(self.name)
@@ -41,17 +40,6 @@ class DmProcess:
         """
         self.process.start()
 
-    def stop_process(self) -> None:
-        """
-        API for signaling to the DM module's process to stop
-        :return: None
-        """
-        self._queue.put(0)
-
-    def interrupt_signal_handler(self, signal: int, frame) -> None:
-        self.logger.debug('%d: caught signal %d', self._pid, signal)
-        self.stop_process()
-
     def _module_process_entry(self) -> None:
         """
         Entry method to the process created for the DM module.
@@ -63,6 +51,9 @@ class DmProcess:
         # store process id (pid) used for tracking process activity in log
         self._pid = getpid()
         self.logger.debug('%d: started "%s"', self._pid, self.name)
+
+        # stop process if an interrupt OS signal is received
+        catch_interrupt_signals()
 
         # init profiling if enabled
         prof.start()
@@ -78,21 +69,20 @@ class DmProcess:
         # create the sub module
         self._module_instance.start()
 
-        # stop process if an interrupt OS signal is received
-        catch_interrupt_signals(self.interrupt_signal_handler)
-
         # activate method can be blocking, depending on the trigger type
         self._trigger.activate()
 
         # wait until a stop signal is received on the queue to stop the module
         self._module_process_wait_for_signal()
 
-        # after a stop signal was received we should perform the exit flow
-        self._module_process_exit()
-
     def _module_process_wait_for_signal(self) -> None:
-        self._queue.get()
-        self.logger.debug('%d: stop signal received', self._pid)
+        try:
+            while True:
+                time.sleep(1.)
+        except KeyboardInterrupt:
+            self.logger.debug('%d: stop signal received', self._pid)
+            # after a stop signal was received we should perform the exit flow
+            self._module_process_exit()
 
     def _module_process_exit(self) -> None:
         """
@@ -109,7 +99,9 @@ class DmProcess:
         __timer_callback - this method runs in the module's process
         :return: None
         """
-        self._module_instance.periodic_action()
-        # check if a stop signal was received (necessary in case the trigger method is blocking)
-        if not self._queue.empty():
+        try:
+            self._module_instance.periodic_action()
+        except KeyboardInterrupt:
+            self.logger.debug('%d: stop signal received', self._pid)
+            # after a stop signal was received we should perform the exit flow
             self._module_process_exit()
