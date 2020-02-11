@@ -1,5 +1,5 @@
 import time
-from multiprocessing import Process
+from multiprocessing import Process, Event
 from typing import Callable
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
@@ -24,6 +24,7 @@ class DmProcess:
         self._trigger_type = trigger_type
         self._trigger_args = trigger_args
         self.name = name
+        self._stop_event = Event()
 
         self._process_name = "DM_process_{}".format(self.name)
         self.process = Process(target=self._module_process_entry, name=self._process_name, daemon=True)
@@ -39,6 +40,13 @@ class DmProcess:
         :return:
         """
         self.process.start()
+
+    def stop_process(self) -> None:
+        """
+        API for signaling to the DM module's process to stop
+        :return: None
+        """
+        self._stop_event.set()
 
     def _module_process_entry(self) -> None:
         """
@@ -77,8 +85,7 @@ class DmProcess:
 
     def _module_process_wait_for_signal(self) -> None:
         try:
-            while True:
-                time.sleep(1.)
+            self._stop_event.wait()
         except KeyboardInterrupt:
             self.logger.debug('%d: stop signal received', self._pid)
             # after a stop signal was received we should perform the exit flow
