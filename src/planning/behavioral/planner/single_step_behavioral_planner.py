@@ -99,7 +99,7 @@ class SingleStepBehavioralPlanner(BasePlanner):
         # try to start lane change by checking safety of UC actions toward target_lane
         target_action_specs = self._specify_actions(behavioral_state, target_lane)  # specs to target_lane
         # check safety for all UC actions to target_lane
-        action_spec_filter = ActionSpecFiltering(filters=[FilterIfNone(), FilterForSafetyTowardsTargetVehicle(None)], logger=None)
+        action_spec_filter = ActionSpecFiltering(filters=[FilterIfNone(), FilterForSafetyTowardsTargetVehicle(None)], logger=self.logger)
         UC_safe_actions = action_spec_filter.filter_action_specs(list(target_action_specs), behavioral_state)
 
         if UC_safe_actions.any() and RB_chosen_action.t < 5:  # there is a safe non-delayed UC action

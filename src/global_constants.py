@@ -111,8 +111,8 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 
 # Additional margin to keep from leading vehicle, in addition to the headway, used for specification target and
 # safety checks accordingly
-LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 5.0
-LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 3.0
+LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 3.0
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 1.0
 LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
 LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS = 3.
 

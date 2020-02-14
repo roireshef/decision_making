@@ -202,7 +202,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             front_safety_dist = FilterForSafetyTowardsTargetVehicle._check_safety_for_actor(
                 behavioral_state, ego_ftrajectories, trajectory_lengths, target_lane,
                 RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT, lane_width, self._logger)
-            are_safe[indices_by_rel_lane[target_lane]] = (front_safety_dist > 0)
+            are_safe[indices_by_rel_lane[target_lane]] = (front_safety_dist >= 0)
 
             if target_lane != RelativeLane.SAME_LANE and behavioral_state.lane_change_state.status==LaneChangeStatus.ACTIVE_IN_SOURCE_LANE and \
                     selected_action_idx is not None:
@@ -221,7 +221,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             target_safety_dist = FilterForSafetyTowardsTargetVehicle._check_safety_for_actor(
                 behavioral_state, ego_ftrajectories, trajectory_lengths, target_lane,
                 target_lane, RelativeLongitudinalPosition.FRONT, lane_width, self._logger)
-            are_safe[indices_by_rel_lane[target_lane]] &= (target_safety_dist > 0)
+            are_safe[indices_by_rel_lane[target_lane]] &= (target_safety_dist >= 0)
 
             if behavioral_state.lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE and \
                     selected_action_idx is not None:
@@ -236,7 +236,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
             rear_safety_dist = FilterForSafetyTowardsTargetVehicle._check_safety_for_actor(
                 behavioral_state, ego_ftrajectories, trajectory_lengths, target_lane,
                 target_lane, RelativeLongitudinalPosition.REAR, lane_width, self._logger)
-            are_safe[indices_by_rel_lane[target_lane]] &= (rear_safety_dist > 0)
+            are_safe[indices_by_rel_lane[target_lane]] &= (rear_safety_dist >= 0)
 
             if behavioral_state.lane_change_state.status == LaneChangeStatus.ACTIVE_IN_SOURCE_LANE and \
                     selected_action_idx is not None:
@@ -305,7 +305,11 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
         # if idx is not None:
         #     print('actor_lon =', actor_lon, 'safety_dist =', np.min(safety_dist[idx]))
 
-        return np.min(safety_dist, axis=1)
+        # zero all safety_dist beyond trajectory_lengths
+        len = max_trajectory_length - from_time_idx
+        safety_mask = np.full((ego_ftrajectories.shape[0], len), np.arange(len)) < trajectory_lengths[:, np.newaxis]
+
+        return np.min(safety_dist * safety_mask, axis=1)
 
 
 class StaticTrafficFlowControlFilter(ActionSpecFilter):

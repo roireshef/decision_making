@@ -684,10 +684,10 @@ class LaneChangePlanner(BasePlanner):
         back_s = actors_s + 0.5 * (actors_v + back_v) * back_accel_time + LANE_MERGE_ACTORS_MAX_VELOCITY * back_max_vel_time
 
         # calculate target_s bounds according to the longitudinal RSS formula
-        front_bounds = front_s - margins - (np.maximum(0, target_v * target_v - front_v * front_v) /
-                                            (-2 * LON_ACC_LIMITS[0]) + SAFETY_HEADWAY * target_v)
-        back_bounds = back_s + margins + (np.maximum(0, back_v * back_v - target_v * target_v) /
-                                          (2 * LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL) + SAFETY_HEADWAY * back_v)
+        front_bounds = front_s - margins - np.maximum(
+            0, (target_v * target_v - front_v * front_v) / (-2 * LON_ACC_LIMITS[0]) + SAFETY_HEADWAY * target_v)
+        back_bounds = back_s + margins + np.maximum(
+            0, (back_v * back_v - target_v * target_v) / (2 * LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL) + SAFETY_HEADWAY * back_v)
         return front_bounds, back_bounds
 
     @staticmethod
