@@ -563,6 +563,9 @@ class LaneChangePlanner(BasePlanner):
         # ego can't be ahead of the front car (last in actors_states)
         if front_car is not None:
             back_bounds[:, -1] = np.inf
+            # verify safety wrt front_car until lateral safety
+            time_between_target_lane_touch_and_lateral_safety_wrt_front = 1.5
+            front_bounds[:, -1] -= np.maximum(0, target_v - actors_v[-1]) * time_between_target_lane_touch_and_lateral_safety_wrt_front
 
         # concatenate s_min & s_max to front and back bounds
         front_bounds = np.c_[front_bounds, np.full(front_bounds.shape[0], -np.inf), np.full(front_bounds.shape[0], s_max)]
