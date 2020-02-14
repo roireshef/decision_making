@@ -114,7 +114,7 @@ SAFETY_HEADWAY = 0.7  # Should correspond to assumed delay in response (end-to-e
 LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT = 3.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 1.0
 LONGITUDINAL_SPECIFY_MARGIN_FROM_STOP_BAR = 1.0
-LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS = 3.
+LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS = 1.
 
 # Additional distance after stop bar, where vehicle still considers bar as active, until DIM is active
 DIM_MARGIN_TO_STOP_BAR = 10.0
