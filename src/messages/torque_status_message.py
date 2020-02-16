@@ -25,6 +25,16 @@ class DataActuatorStatus(PUBSUB_MSG_IMPL):
                  e_min_trq_avail: float, e_max_trq_avail: float, e_ACCATCSLmtgStat: TeSYS_ACCATCSLmtgStatType):
         """
         Initialize message containing actuator status
+        :param e_accel_pedal_pos: Accelerator pedal position (percent)
+        :param e_brake_pedal_pos: Brake pedal position (percent)
+        :param e_steering_wheel_angle: Steering wheel angle - actual
+        :param e_actual_axle_torque: Actual axle torque
+        :param e_brake_status: Brake status
+        :param e_torque_req_status: Torque request status, e.g. suspended or honored
+        :param e_steering_status: Steering status
+        :param e_min_trq_avail: Minimum torque available
+        :param e_max_trq_avail: Maximum torque available
+        :param e_ACCATCSLmtgStat: ACCATCS Limiting status
         """
         self.e_accel_pedal_pos = e_accel_pedal_pos
         self.e_brake_pedal_pos = e_brake_pedal_pos
