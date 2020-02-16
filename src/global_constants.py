@@ -272,6 +272,9 @@ LANE_MERGE_ACTION_T_LIMITS = BP_ACTION_T_LIMITS
 # [m] distance beyond the merging lane origin, where the actual red line is defined
 LANE_MERGE_RED_LINE_EXTENTION = 40  # TODO: remove it when the map will be fixed
 
+# [sec] time
+PREDICTED_ACCELERATION_TIME = 3.
+
 # [m/sec] maximal velocity from which DIM may be performed
 DRIVER_INITIATED_MOTION_VELOCITY_LIMIT = 0.1
 # [sec] maximal time to reach the next stop bar (keeping current ego velocity)

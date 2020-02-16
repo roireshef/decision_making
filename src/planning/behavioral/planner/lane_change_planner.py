@@ -3,10 +3,10 @@ from typing import List, Optional
 import numpy as np
 from decision_making.src.global_constants import SAFETY_HEADWAY, LON_ACC_LIMITS, EPS, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_JERK_S_JERK_D_TIME_WEIGHTS, LANE_MERGE_ACTION_T_LIMITS, \
-    LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, \
-    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, SPEEDING_SPEED_TH, \
-    LANE_CHANGE_TIME_COMPLETION_TARGET, BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS, \
-    PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, SPECIFICATION_HEADWAY, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT
+    LANE_MERGE_ACTORS_MAX_VELOCITY, LANE_MERGE_ACTION_SPACE_MAX_VELOCITY, LANE_MERGE_YIELD_BACK_ACTOR_RSS_DECEL, \
+    SPEEDING_SPEED_TH, LANE_CHANGE_TIME_COMPLETION_TARGET, BP_ACTION_T_LIMITS, LONGITUDINAL_SAFETY_MARGIN_HYSTERESIS, \
+    PLANNING_LOOKAHEAD_DIST, MAX_BACKWARD_HORIZON, SPECIFICATION_HEADWAY, LONGITUDINAL_SPECIFY_MARGIN_FROM_OBJECT, \
+    PREDICTED_ACCELERATION_TIME
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec, RelativeLane, \
     StaticActionRecipe, RelativeLongitudinalPosition
@@ -15,9 +15,8 @@ from decision_making.src.planning.behavioral.planner.base_planner import BasePla
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState, LaneChangeStatus
 from decision_making.src.planning.behavioral.state.lane_merge_actor_state import LaneMergeActorState
 from decision_making.src.planning.behavioral.state.lane_merge_state import LaneMergeState
-from decision_making.src.planning.types import BoolArray, FS_SX, FS_SA, FS_SV
+from decision_making.src.planning.types import BoolArray, FS_SX, FS_SA, FS_SV, C_A
 from decision_making.src.planning.utils.kinematics_utils import KinematicUtils
-from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, QuinticPoly1D
 from decision_making.src.state.state import State
 
@@ -520,12 +519,13 @@ class LaneChangePlanner(BasePlanner):
         # insert dummy back actor at PLANNING_LOOKAHEAD_DIST behind ego
         if len(actors_states) > 0:
             back_v = actors_states[np.argmin(np.array([actor.s_relative_to_ego for actor in actors_states]))].velocity
-            actors_states.insert(0, LaneMergeActorState(-PLANNING_LOOKAHEAD_DIST, back_v, 0))
+            actors_states.insert(0, LaneMergeActorState(-PLANNING_LOOKAHEAD_DIST, back_v, acceleration=0, length=0))
 
         cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
         front_car = state.road_occupancy_grid[cell][0] if cell in state.road_occupancy_grid and len(state.road_occupancy_grid[cell]) > 0 else None
         if front_car is not None:
             actors_states.append(LaneMergeActorState(front_car.longitudinal_distance, front_car.dynamic_object.velocity,
+                                                     front_car.dynamic_object.cartesian_state[C_A],
                                                      front_car.dynamic_object.size.length))
         if len(actors_states) == 0:
             return None
@@ -541,8 +541,9 @@ class LaneChangePlanner(BasePlanner):
         # state.ego_state.cartesian_state[3] = front_v
         # state.projected_ego_fstates[RelativeLane.SAME_LANE][FS_SV] = front_v
 
-        actors_s, actors_v, actors_length = np.array([[actor.s_relative_to_ego, actor.velocity, actor.length]
-                                                      for actor in actors_states]).T
+        actors_s, actors_v, actors_a, actors_length = \
+            np.array([[actor.s_relative_to_ego, actor.velocity, actor.acceleration, actor.length]
+                     for actor in actors_states]).T
         # add extra margin for longer actions to enable comfort short actions and another extra margin for smooth
         # switching with the single_step_planner
         margins = 0.5 * (actors_length + state.ego_length) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + \
@@ -556,7 +557,7 @@ class LaneChangePlanner(BasePlanner):
         # calculate planning time bounds given target_s
         # 2D matrix with 3 columns of safe actions: target velocities, planning times and distances
         front_bounds, back_bounds = LaneChangePlanner._caclulate_RSS_bounds(
-            actors_s, actors_v, margins, target_v[:, np.newaxis], target_t[:, np.newaxis])
+            actors_s, actors_v, actors_a, margins, target_v[:, np.newaxis], target_t[:, np.newaxis])
 
         # ego can't be behind the dummy back actor (first in actors_states)
         front_bounds[:, 0] = -np.inf
@@ -659,7 +660,7 @@ class LaneChangePlanner(BasePlanner):
         return np.where(valid_acc)[0][valid_vel]
 
     @staticmethod
-    def _caclulate_RSS_bounds(actors_s: np.array, actors_v: np.array, margins: np.array,
+    def _caclulate_RSS_bounds(actors_s: np.array, actors_v: np.array, actors_a: np.array, margins: np.array,
                               target_v: np.array, target_t: np.array) -> [np.array, np.array]:
         """
         Given actors on the main road and actions (planning times and target velocities), create two 2D matrices
@@ -670,21 +671,23 @@ class LaneChangePlanner(BasePlanner):
         and the given action.
         :param actors_s: current s of actor relatively to the merge point (negative or positive)
         :param actors_v: current actor's velocity
+        :param actors_a: current actor's acceleration
         :param margins: half sum of cars' lengths + safety margin
         :param target_t: array of planning times
         :param target_v: array of target velocities, of the same shape as target_t
         :return: two 2D matrices of shape: actions_num x actors_num.
         """
-        front_braking_time = np.minimum(actors_v / LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL, target_t) \
-            if LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL > 0 else target_t
-        front_v = actors_v - front_braking_time * LANE_MERGE_WORST_CASE_FRONT_ACTOR_DECEL  # target velocity of the front actor
-        front_s = actors_s + 0.5 * (actors_v + front_v) * front_braking_time
+        front_acc_time = np.minimum(target_t, PREDICTED_ACCELERATION_TIME)
+        front_acc_time[:, actors_a < 0] = np.minimum(actors_v[actors_a < 0] / -actors_a[actors_a < 0],
+                                                     np.minimum(target_t, PREDICTED_ACCELERATION_TIME))
+        front_v = actors_v + front_acc_time * actors_a  # target velocity of the front actor
+        front_s = actors_s + 0.5 * (actors_v + front_v) * front_acc_time + (target_t - front_acc_time) * front_v
 
-        back_accel_time = np.minimum((LANE_MERGE_ACTORS_MAX_VELOCITY - actors_v) / LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL, target_t) \
-            if LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL > 0 else target_t
-        back_max_vel_time = target_t - back_accel_time  # time of moving with maximal velocity of the back actor
-        back_v = actors_v + back_accel_time * LANE_MERGE_WORST_CASE_BACK_ACTOR_ACCEL  # target velocity of the back actor
-        back_s = actors_s + 0.5 * (actors_v + back_v) * back_accel_time + LANE_MERGE_ACTORS_MAX_VELOCITY * back_max_vel_time
+        back_acc_time = np.empty((target_t.shape[0], actors_v.shape[0]))
+        back_acc_time[:, actors_a > 0] = np.minimum((LANE_MERGE_ACTORS_MAX_VELOCITY - actors_v[actors_a > 0]) / actors_a[actors_a > 0],
+                                                    np.minimum(target_t, PREDICTED_ACCELERATION_TIME))
+        back_v = actors_v + back_acc_time * actors_a  # target velocity of the back actor
+        back_s = actors_s + 0.5 * (actors_v + back_v) * back_acc_time + (target_t - back_acc_time) * back_v
 
         # calculate target_s bounds according to the longitudinal RSS formula
         front_bounds = front_s - margins - np.maximum(

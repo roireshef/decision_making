@@ -11,7 +11,8 @@ from decision_making.src.planning.behavioral.state.behavioral_grid_state import 
     RoadSemanticOccupancyGrid, DynamicObjectWithRoadSemantics
 from decision_making.src.planning.behavioral.state.lane_change_state import LaneChangeState
 from decision_making.src.planning.behavioral.state.lane_merge_actor_state import LaneMergeActorState
-from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN, FrenetState1D, FS_1D_LEN, FrenetState2D, FS_SV
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_2D_LEN, FrenetState1D, FS_1D_LEN, FrenetState2D, FS_SV, \
+    C_A
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
@@ -56,7 +57,8 @@ class LaneMergeState(BehavioralGridState):
 
     @property
     def actors_states(self) -> List[LaneMergeActorState]:
-        return [LaneMergeActorState(obj.longitudinal_distance, obj.dynamic_object.velocity, obj.dynamic_object.size.length)
+        return [LaneMergeActorState(obj.longitudinal_distance, obj.dynamic_object.velocity,
+                                    obj.dynamic_object.cartesian_state[C_A], obj.dynamic_object.size.length)
                 for lon_pos in RelativeLongitudinalPosition if (self.target_rel_lane, lon_pos) in self.road_occupancy_grid
                 for obj in self.road_occupancy_grid[(self.target_rel_lane, lon_pos)]]
 
