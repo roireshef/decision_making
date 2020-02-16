@@ -247,10 +247,11 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
     a_cartesian_pose = np.ndarray
     e_Cnt_obj_hypothesis_count = int
     as_object_hypothesis = List[ObjectHypothesis]
+    s_LastTimeSeenMoving = Timestamp
 
     def __init__(self, e_Cnt_object_id, e_e_object_type, s_bounding_box, a_cartesian_pose,
-                 e_Cnt_obj_hypothesis_count, as_object_hypothesis):
-        # type: (int, ObjectClassification, BoundingBoxSize, np.ndarray, int, List[ObjectHypothesis]) -> None
+                 e_Cnt_obj_hypothesis_count, as_object_hypothesis, s_LastTimeSeenMoving):
+        # type: (int, ObjectClassification, BoundingBoxSize, np.ndarray, int, List[ObjectHypothesis], Timestamp) -> None
         """
         Actors' localization information
         :param e_Cnt_object_id: Actor's id
@@ -259,6 +260,7 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
         :param a_cartesian_pose: The pose of this actor-hypothesis, expressed in the Map (ENU) frame
         :param e_Cnt_obj_hypothesis_count: Total number of localization hypotheses for this actor
         :param as_object_hypothesis: Localization-hypotheses for this actor
+        :param s_LastTimeSeenMoving: last time the object was seen moving
         """
         self.e_Cnt_object_id = e_Cnt_object_id
         self.e_e_object_type = e_e_object_type
@@ -266,6 +268,7 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
         self.a_cartesian_pose = a_cartesian_pose
         self.e_Cnt_obj_hypothesis_count = e_Cnt_obj_hypothesis_count
         self.as_object_hypothesis = as_object_hypothesis
+        self.s_LastTimeSeenMoving = s_LastTimeSeenMoving
 
     def serialize(self):
         # type: () -> TsSYSObjectLocalization
@@ -276,6 +279,7 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
         pubsub_msg.s_bounding_box = self.s_bounding_box.serialize()
         pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
         pubsub_msg.e_Cnt_obj_hypothesis_count = self.e_Cnt_obj_hypothesis_count
+        pubsub_msg.s_LastTimeSeenMoving = self.s_LastTimeSeenMoving.serialize()
         for i in range(pubsub_msg.e_Cnt_obj_hypothesis_count):
             pubsub_msg.as_object_hypothesis[i] = self.as_object_hypothesis[i].serialize()
 
@@ -292,7 +296,8 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_Cnt_object_id, ObjectClassification(pubsubMsg.e_e_object_type),
                    BoundingBoxSize.deserialize(pubsubMsg.s_bounding_box),
                    (pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS]),
-                   pubsubMsg.e_Cnt_obj_hypothesis_count, obj_hypotheses)
+                   pubsubMsg.e_Cnt_obj_hypothesis_count, obj_hypotheses,
+                   Timestamp.deserialize(pubsubMsg.s_LastTimeSeenMoving))
 
 
 class DataSceneDynamic(PUBSUB_MSG_IMPL):
