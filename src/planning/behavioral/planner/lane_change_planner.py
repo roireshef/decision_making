@@ -677,15 +677,16 @@ class LaneChangePlanner(BasePlanner):
         :param target_v: array of target velocities, of the same shape as target_t
         :return: two 2D matrices of shape: actions_num x actors_num.
         """
-        front_acc_time = np.minimum(target_t, PREDICTED_ACCELERATION_TIME)
+        front_acc_time = np.full((actors_v.shape[0], target_t.shape[0]), np.minimum(target_t, PREDICTED_ACCELERATION_TIME)).T
+        back_acc_time = np.copy(front_acc_time)
+
         front_acc_time[:, actors_a < 0] = np.minimum(actors_v[actors_a < 0] / -actors_a[actors_a < 0],
-                                                     np.minimum(target_t, PREDICTED_ACCELERATION_TIME))
+                                                     front_acc_time[:, actors_a < 0])
         front_v = actors_v + front_acc_time * actors_a  # target velocity of the front actor
         front_s = actors_s + 0.5 * (actors_v + front_v) * front_acc_time + (target_t - front_acc_time) * front_v
 
-        back_acc_time = np.empty((target_t.shape[0], actors_v.shape[0]))
         back_acc_time[:, actors_a > 0] = np.minimum((LANE_MERGE_ACTORS_MAX_VELOCITY - actors_v[actors_a > 0]) / actors_a[actors_a > 0],
-                                                    np.minimum(target_t, PREDICTED_ACCELERATION_TIME))
+                                                    back_acc_time[:, actors_a > 0])
         back_v = actors_v + back_acc_time * actors_a  # target velocity of the back actor
         back_s = actors_s + 0.5 * (actors_v + back_v) * back_acc_time + (target_t - back_acc_time) * back_v
 
