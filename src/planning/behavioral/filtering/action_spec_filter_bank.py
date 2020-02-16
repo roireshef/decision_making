@@ -307,7 +307,7 @@ class FilterForSafetyTowardsTargetVehicle(ActionSpecFilter):
 
         # zero all safety_dist beyond trajectory_lengths
         len = max_trajectory_length - from_time_idx
-        safety_mask = np.full((ego_ftrajectories.shape[0], len), np.arange(len)) < trajectory_lengths[:, np.newaxis]
+        safety_mask = np.full((ego_ftrajectories.shape[0], len), np.arange(len)) < trajectory_lengths[:, np.newaxis] - from_time_idx
 
         return np.min(safety_dist * safety_mask, axis=1)
 
