@@ -81,3 +81,5 @@ class DmPeriodicTimerTrigger(DmTrigger):
         else:
             raise DmTriggerActivationException('trying to deactivate an already inactive DmPeriodicTimerTrigger')
 
+    def period(self):
+        return self._period
