@@ -306,7 +306,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
                              the closest point chosen (can be negative))
         """
         progress_ds = s / self.ds
-        O_idx = np.round(progress_ds).astype(np.int)
+        O_idx = np.clip(np.round(progress_ds).astype(np.int), 0, self.points.shape[0]-1)
         delta_s = np.expand_dims((progress_ds - O_idx) * self.ds, axis=len(s.shape))
         return O_idx, delta_s
 
@@ -370,10 +370,10 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        if (s < 0).any():
-            raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
-        if (s > self.s_max).any():
-            raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
+        # if (s < 0).any():
+        #     raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
+        # if (s > self.s_max).any():
+        #     raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
 
         O_idx, delta_s = self.get_closest_index_on_frame(s)
         O = self.O[O_idx]
