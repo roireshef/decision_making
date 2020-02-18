@@ -307,7 +307,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         """
         progress_ds = s / self.ds
         O_idx = np.clip(np.round(progress_ds).astype(np.int), 0, self.points.shape[0]-1)
-        delta_s = np.expand_dims((progress_ds - O_idx) * self.ds, axis=len(s.shape))
+        delta_s = np.expand_dims(s - O_idx * self.ds, axis=len(s.shape))
         return O_idx, delta_s
 
     def _project_cartesian_points(self, points: np.ndarray) -> \
@@ -370,11 +370,12 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        if not enable_extrapolation:
-            if (s < 0).any():
-                raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
-            if (s > self.s_max).any():
-                raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
+        # if extrapolation is enabled, the maximal permitted extrapolation is 1 meter
+        permitted_extrapolation = 1 if enable_extrapolation else 0
+        if (s < -permitted_extrapolation).any():
+            raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
+        if (s > self.s_max + permitted_extrapolation).any():
+            raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
 
         O_idx, delta_s = self.get_closest_index_on_frame(s)
         O = self.O[O_idx]
