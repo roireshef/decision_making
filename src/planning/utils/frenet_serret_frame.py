@@ -358,7 +358,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 
-    def _taylor_interp(self, s: np.ndarray) -> \
+    def _taylor_interp(self, s: np.ndarray, enable_extrapolation: bool = False) -> \
             (CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
         """Given arbitrary s tensor (of shape D) of progresses along the curve (in the range [0, self.s_max]),
         this function uses taylor approximation to return curve parameters at each progress. For derivations of
@@ -370,10 +370,11 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        # if (s < 0).any():
-        #     raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
-        # if (s > self.s_max).any():
-        #     raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
+        if not enable_extrapolation:
+            if (s < 0).any():
+                raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
+            if (s > self.s_max).any():
+                raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
 
         O_idx, delta_s = self.get_closest_index_on_frame(s)
         O = self.O[O_idx]
