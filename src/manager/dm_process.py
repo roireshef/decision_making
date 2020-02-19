@@ -75,9 +75,9 @@ class DmProcess:
         self._module_instance = self._module_creation_method()
 
         # emit marker with module's period for performance report
-        if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
-            prof.set_marker("[periodic:set] '%s' every %s ms", self._module_instance.__class__.__name__,
-                            self._trigger.period() * 1000, category=prof.Category.Module)
+        # if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
+        #     prof.set_marker("[periodic:set] '%s' every %s ms", self._module_instance.__class__.__name__,
+        #                     self._trigger.period() * 1000, category=prof.Category.Module)
 
         # create the sub module
         self._module_instance.start()
