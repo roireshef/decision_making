@@ -39,6 +39,12 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSFrenetSubsegment):
         return cls(pubsubMsg.e_i_SegmentID, pubsubMsg.e_i_SStart, pubsubMsg.e_i_SEnd)
 
+    def __eq__(self, other: 'FrenetSubSegment'):
+        return self.e_i_SegmentID == other.e_i_SStart and self.e_i_SStart == other.e_i_SStart
+
+    def __hash__(self):
+        return hash((self.e_i_SegmentID, self.e_i_SStart, self.e_i_SEnd))
+
 
 class GFFType(Enum):
     Normal = 0
@@ -135,6 +141,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                                  s_start=segments_start[idx],
                                  s_end=segments_end[idx])
                 for idx in range(len(self._segment_ids))]
+
+    def __eq__(self, other: 'GeneralizedFrenetSerretFrame'):
+        """
+        Overload equality in GFFs to be equality of all sub-segments
+        """
+        return all(self_segment == other_segment for self_segment, other_segment in zip(self.segments, other.segments))
+
+    def __hash__(self):
+        return hash(tuple(hash(segment) for segment in self.segments))
 
     @property
     def ds(self):
