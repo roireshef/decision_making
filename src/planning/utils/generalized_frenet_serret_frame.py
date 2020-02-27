@@ -40,6 +40,8 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_i_SegmentID, pubsubMsg.e_i_SStart, pubsubMsg.e_i_SEnd)
 
     def __eq__(self, other: 'FrenetSubSegment'):
+        if self is other:
+            return True
         return self.e_i_SegmentID == other.e_i_SStart and self.e_i_SStart == other.e_i_SStart
 
     def __hash__(self):
@@ -146,6 +148,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         Overload equality in GFFs to be equality of all sub-segments
         """
+        if self is other:
+            return True
         return all(self_segment == other_segment for self_segment, other_segment in zip(self.segments, other.segments))
 
     def __hash__(self):
