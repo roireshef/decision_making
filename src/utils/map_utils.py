@@ -421,6 +421,60 @@ class MapUtils:
 
         downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
+        # Handle closed splits
+        straight_connections = [downstream_lane_id
+                                for downstream_lane_id in valid_downstream_lane_ids
+                                if downstream_lane_maneuver_types[downstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION]
+
+        if len(straight_connections) > 1:
+            # In this case we have a closed split. Until there is a specific marking for it on the map, choose the one
+            # that corresponds to driving straight
+            if len(MapUtils.get_adjacent_lane_ids(current_lane_id, RelativeLane.RIGHT_LANE)) == 0 and \
+                    len(MapUtils.get_adjacent_lane_ids(current_lane_id, RelativeLane.LEFT_LANE)) > 0:
+                # We're driving on the rightmost lane currently, we choose the leftmost straight connection (we assume
+                # the split is to the right
+                initial_downstream_lanes_num = len(valid_downstream_lane_ids)
+                for downstream_lane_id in straight_connections:
+                    if len(MapUtils.get_adjacent_lane_ids(downstream_lane_id, RelativeLane.RIGHT_LANE)) != len(straight_connections) - 1:
+                        valid_downstream_lane_ids.remove(downstream_lane_id)
+                assert initial_downstream_lanes_num - len(valid_downstream_lane_ids) == len(straight_connections) - 1, \
+                    "Invalid assumption, no leftmost straight connection was found for lane_id: {}, valid_lane_ids: {}"\
+                        .format(current_lane_id, valid_downstream_lane_ids)
+            elif len(MapUtils.get_adjacent_lane_ids(current_lane_id, RelativeLane.RIGHT_LANE)) > 0 and \
+                len(MapUtils.get_adjacent_lane_ids(current_lane_id, RelativeLane.LEFT_LANE)) == 0:
+                # We're driving on the leftmost lane currently, we choose the rightmost straight connection (we assume
+                # the split is to the right
+                initial_downstream_lanes_num = len(valid_downstream_lane_ids)
+                for downstream_lane_id in straight_connections:
+                    if len(MapUtils.get_adjacent_lane_ids(downstream_lane_id, RelativeLane.LEFT_LANE)) != len(straight_connections) - 1:
+                        valid_downstream_lane_ids.remove(downstream_lane_id)
+                assert initial_downstream_lanes_num - len(valid_downstream_lane_ids) == len(straight_connections) - 1, \
+                    "Invalid assumption, no rightmost straight connection was found for lane_id: {}, valid_lane_ids: {}"\
+                        .format(current_lane_id, valid_downstream_lane_ids)
+            else:
+                # We're driving on a single lane road, in this case, if there is a split to an odd number of lanes, we
+                # pick the center one, if there is an even number of lane we pick the left most as we assume the splits
+                # occur to the right
+                if len(straight_connections) % 2 == 1:
+                    initial_downstream_lanes_num = len(valid_downstream_lane_ids)
+                    for downstream_lane_id in straight_connections:
+                        if len(MapUtils.get_adjacent_lane_ids(downstream_lane_id, RelativeLane.LEFT_LANE)) != (len(straight_connections) - 1) // 2 or \
+                                len(MapUtils.get_adjacent_lane_ids(downstream_lane_id, RelativeLane.RIGHT_LANE)) != (len(straight_connections) - 1) // 2:
+                            valid_downstream_lane_ids.remove(downstream_lane_id)
+                    assert initial_downstream_lanes_num - len(valid_downstream_lane_ids) == len(straight_connections) - 1, \
+                        "Invalid assumption, no center straight connection was found for lane_id: {}, valid_lane_ids: {}" \
+                            .format(current_lane_id, valid_downstream_lane_ids)
+                else:
+                    initial_downstream_lanes_num = len(valid_downstream_lane_ids)
+                    for downstream_lane_id in straight_connections:
+                        if len(MapUtils.get_adjacent_lane_ids(downstream_lane_id, RelativeLane.RIGHT_LANE)) != len(
+                                straight_connections) - 1:
+                            valid_downstream_lane_ids.remove(downstream_lane_id)
+                    assert initial_downstream_lanes_num - len(valid_downstream_lane_ids) == len(
+                        straight_connections) - 1, \
+                        "Invalid assumption, no leftmost straight connection was found for lane_id: {}, valid_lane_ids: {}" \
+                            .format(current_lane_id, valid_downstream_lane_ids)
+
         return {downstream_lane_maneuver_types[downstream_lane_id]: downstream_lane_id
                 for downstream_lane_id in valid_downstream_lane_ids}
 
