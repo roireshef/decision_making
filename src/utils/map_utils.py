@@ -421,10 +421,26 @@ class MapUtils:
 
         downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
+        valid_downstream_lane_ids = MapUtils._fix_closed_splits(
+            current_lane_id=current_lane_id,
+            valid_downstream_lane_ids=valid_downstream_lane_ids,
+            downstream_lane_maneuver_types=downstream_lane_maneuver_types
+        )
+
+        return {downstream_lane_maneuver_types[downstream_lane_id]: downstream_lane_id
+                for downstream_lane_id in valid_downstream_lane_ids}
+
+    @staticmethod
+    def _fix_closed_splits(current_lane_id: int,
+                           valid_downstream_lane_ids: List[int],
+                           downstream_lane_maneuver_types: Dict[LaneSegmentID, ManeuverType]) -> List[int]:
         # Handle closed splits
         straight_connections = [downstream_lane_id
                                 for downstream_lane_id in valid_downstream_lane_ids
                                 if downstream_lane_maneuver_types[downstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION]
+
+        if len(straight_connections) == 0:
+            return valid_downstream_lane_ids
 
         chosen_straight_connection = straight_connections[0]
         if len(straight_connections) > 1:
@@ -435,7 +451,7 @@ class MapUtils:
 
             # Get a sorted list of the downstream straight connections, from left to right.
             sorted_straight_connections = sorted(
-                iterable=straight_connections,
+                straight_connections,
                 key=lambda lane_id: len(MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE))
             )
 
@@ -462,8 +478,7 @@ class MapUtils:
 
         valid_downstream_lane_ids.append(chosen_straight_connection)
 
-        return {downstream_lane_maneuver_types[downstream_lane_id]: downstream_lane_id
-                for downstream_lane_id in valid_downstream_lane_ids}
+        return valid_downstream_lane_ids
 
     @staticmethod
     @raises(UpstreamLaneNotFound)
