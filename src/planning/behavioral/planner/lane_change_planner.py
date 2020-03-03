@@ -677,7 +677,7 @@ class LaneChangePlanner(BasePlanner):
         :param target_v: array of target velocities, of the same shape as target_t
         :return: two 2D matrices of shape: actions_num x actors_num.
         """
-        front_acc_time = np.full((actors_v.shape[0], target_t.shape[0]), np.minimum(target_t, PREDICTED_ACCELERATION_TIME)).T
+        front_acc_time = np.full((target_t.shape[0], actors_v.shape[0]), np.minimum(target_t, PREDICTED_ACCELERATION_TIME))
         back_acc_time = np.copy(front_acc_time)
 
         front_acc_time[:, actors_a < 0] = np.minimum(actors_v[actors_a < 0] / -actors_a[actors_a < 0],
