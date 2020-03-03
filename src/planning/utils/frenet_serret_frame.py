@@ -306,8 +306,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
                              the closest point chosen (can be negative))
         """
         progress_ds = s / self.ds
-        O_idx = np.round(progress_ds).astype(np.int)
-        delta_s = np.expand_dims((progress_ds - O_idx) * self.ds, axis=len(s.shape))
+        O_idx = np.clip(np.round(progress_ds).astype(np.int), 0, self.points.shape[0]-1)
+        delta_s = np.expand_dims(s - O_idx * self.ds, axis=len(s.shape))
         return O_idx, delta_s
 
     def _project_cartesian_points(self, points: np.ndarray) -> \
@@ -358,7 +358,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 
-    def _taylor_interp(self, s: np.ndarray) -> \
+    def _taylor_interp(self, s: np.ndarray, enable_extrapolation: bool = False) -> \
             (CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
         """Given arbitrary s tensor (of shape D) of progresses along the curve (in the range [0, self.s_max]),
         this function uses taylor approximation to return curve parameters at each progress. For derivations of
@@ -370,9 +370,11 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        if (s < 0).any():
+        # if extrapolation is enabled, the maximal permitted extrapolation is 1 meter
+        permitted_extrapolation = 1 if enable_extrapolation else 0
+        if (s < -permitted_extrapolation).any():
             raise OutOfSegmentBack("Cannot extrapolate, desired progress (%s) is out of the curve" % s)
-        if (s > self.s_max).any():
+        if (s > self.s_max + permitted_extrapolation).any():
             raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max))
 
         O_idx, delta_s = self.get_closest_index_on_frame(s)

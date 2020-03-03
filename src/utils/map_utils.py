@@ -422,8 +422,64 @@ class MapUtils:
 
         downstream_lane_maneuver_types = MapUtils.get_downstream_lane_maneuver_types(current_lane_id)
 
+        valid_downstream_lane_ids = MapUtils._fix_closed_splits(
+            current_lane_id=current_lane_id,
+            valid_downstream_lane_ids=valid_downstream_lane_ids,
+            downstream_lane_maneuver_types=downstream_lane_maneuver_types
+        )
+
         return {downstream_lane_maneuver_types[downstream_lane_id]: downstream_lane_id
                 for downstream_lane_id in valid_downstream_lane_ids}
+
+    @staticmethod
+    def _fix_closed_splits(current_lane_id: int,
+                           valid_downstream_lane_ids: List[int],
+                           downstream_lane_maneuver_types: Dict[LaneSegmentID, ManeuverType]) -> List[int]:
+        # Handle closed splits
+        straight_connections = [downstream_lane_id
+                                for downstream_lane_id in valid_downstream_lane_ids
+                                if downstream_lane_maneuver_types[downstream_lane_id] == ManeuverType.STRAIGHT_CONNECTION]
+
+        if len(straight_connections) == 0:
+            return valid_downstream_lane_ids
+
+        chosen_straight_connection = straight_connections[0]
+        if len(straight_connections) > 1:
+            # In this case we have a closed split. Until there is a specific marking for it on the map, choose the one
+            # that corresponds to driving straight
+            current_right_adjacent_lanes = MapUtils.get_adjacent_lane_ids(current_lane_id, RelativeLane.RIGHT_LANE)
+            current_left_adjacent_lanes = MapUtils.get_adjacent_lane_ids(current_lane_id, RelativeLane.LEFT_LANE)
+
+            # Get a sorted list of the downstream straight connections, from left to right.
+            sorted_straight_connections = sorted(
+                straight_connections,
+                key=lambda lane_id: len(MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE))
+            )
+
+            if len(current_right_adjacent_lanes) == 0 and len(current_left_adjacent_lanes) > 0:
+                # We're driving on the rightmost lane currently, we choose the leftmost straight connection (we assume
+                # the split is to the right
+                chosen_straight_connection = sorted_straight_connections[0]
+            elif len(current_right_adjacent_lanes) > 0 and len(current_left_adjacent_lanes) == 0:
+                # We're driving on the leftmost lane currently, we choose the rightmost straight connection (we assume
+                # the split is to the right
+                chosen_straight_connection = sorted_straight_connections[-1]
+            else:
+                # We're driving on a single lane road, in this case, if there is a split to an odd number of lanes, we
+                # pick the center one, if there is an even number of lane we pick the left most as we assume the splits
+                # occur to the right
+                if len(sorted_straight_connections) % 2 == 1:
+                    chosen_straight_connection = sorted_straight_connections[len(sorted_straight_connections) // 2]
+                else:
+                    chosen_straight_connection = sorted_straight_connections[0]
+
+        # Remove all straight connnections and then re-add only the chosen straight connection
+        for lane_id in straight_connections:
+            valid_downstream_lane_ids.remove(lane_id)
+
+        valid_downstream_lane_ids.append(chosen_straight_connection)
+
+        return valid_downstream_lane_ids
 
     @staticmethod
     @raises(UpstreamLaneNotFound)

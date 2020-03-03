@@ -1,3 +1,12 @@
+import sys
+import ctypes
+
+PROC_NAME = b"Planning"
+
+if sys.platform.startswith('linux'):
+    libc = ctypes.cdll.LoadLibrary('libc.so.6')
+    libc.prctl(15, PROC_NAME, 0, 0, 0)
+
 import os
 
 from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
