@@ -253,7 +253,7 @@ def scene_dynamic(scene_static_short_testable) -> SceneDynamic:
 
     timestamp = Timestamp.from_seconds(5.0)
     header = Header(0, timestamp, 0)
-    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    data = DataSceneDynamic(True, timestamp, timestamp, timestamp, timestamp, 0, [], ego_localization)
     scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
 
     yield scene_dynamic
@@ -286,7 +286,7 @@ def scene_dynamic_fix_single_host_hypothesis(scene_static_pg_split):
 
     timestamp = Timestamp.from_seconds(5.0)
     header = Header(0, timestamp, 0)
-    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    data = DataSceneDynamic(True, timestamp, timestamp, timestamp, timestamp, 0, [], ego_localization)
     scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
 
     yield scene_dynamic
@@ -315,7 +315,7 @@ def scene_dynamic_fix_two_host_hypotheses(scene_static_pg_split):
 
     timestamp = Timestamp.from_seconds(5.0)
     header = Header(0, timestamp, 0)
-    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    data = DataSceneDynamic(True, timestamp, timestamp, timestamp, timestamp, 0, [], ego_localization)
     scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
 
     yield scene_dynamic
@@ -349,7 +349,7 @@ def scene_dynamic_fix_three_host_hypotheses(scene_static_oval_with_splits):
 
     timestamp = Timestamp.from_seconds(5.0)
     header = Header(0, timestamp, 0)
-    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
+    data = DataSceneDynamic(True, timestamp, timestamp, timestamp, timestamp, 0, [], ego_localization)
     scene_dynamic = SceneDynamic(s_Header=header, s_Data=data)
 
     yield scene_dynamic
