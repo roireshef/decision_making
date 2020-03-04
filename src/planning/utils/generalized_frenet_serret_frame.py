@@ -39,6 +39,16 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSFrenetSubsegment):
         return cls(pubsubMsg.e_i_SegmentID, pubsubMsg.e_i_SStart, pubsubMsg.e_i_SEnd)
 
+    def __eq__(self, other: 'FrenetSubSegment'):
+        if self is other:
+            return True
+        return self.e_i_SegmentID == other.e_i_SegmentID and \
+               self.e_i_SStart == other.e_i_SStart and \
+               self.e_i_SEnd == other.e_i_SEnd
+
+    def __hash__(self):
+        return hash((self.e_i_SegmentID, self.e_i_SStart, self.e_i_SEnd))
+
 
 class GFFType(Enum):
     Normal = 0
