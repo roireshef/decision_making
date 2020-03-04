@@ -118,8 +118,10 @@ class TrajectoryPlanningFacade(DmModule):
                     state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = LocalizationUtils.get_state_with_expected_ego(
                     state, self._last_trajectory, self.logger, self.__class__.__name__, params.reference_route)
+                is_replan = False
             else:
                 updated_state = state
+                is_replan = True
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
@@ -130,7 +132,8 @@ class TrajectoryPlanningFacade(DmModule):
                     T_trajectory_end_horizon, params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
-                                                           samplable_trajectory=samplable_trajectory, is_engaged=is_engaged)
+                                                           samplable_trajectory=samplable_trajectory,
+                                                           is_engaged=is_engaged, is_replan=is_replan)
 
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
@@ -163,13 +166,15 @@ class TrajectoryPlanningFacade(DmModule):
 
     # TODO: add map_origin that is sent from the outside
     @prof.ProfileFunction()
-    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory, is_engaged: bool):
+    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory, is_engaged: bool,
+                                 is_replan: bool):
         """
         sample trajectory points from the samplable-trajectory, translate them according to ego's reference point and
         wrap them in a message to the controller
         :param timestamp: the timestamp to use as a reference for the beginning of trajectory
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
         :param is_engaged: whether AV is currently engaged
+        :param is_replan: true if TP performed re-plan due to too strong deviation from the previous trajectory
         :return: a TrajectoryPlan message ready to send to the controller
         """
         trajectory_num_points = min(int(np.floor(samplable_trajectory.T_extended / TRAJECTORY_TIME_RESOLUTION)),
@@ -199,6 +204,7 @@ class TrajectoryPlanningFacade(DmModule):
         trajectory_plan = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,
                                                          e_Cnt_version=0),
                                          s_Data=DataTrajectoryPlan(s_Timestamp=timestamp_object, s_MapOrigin=map_origin,
+                                                                   e_b_isReplan=is_replan,
                                                                    a_TrajectoryWaypoints=waypoints,
                                                                    e_Cnt_NumValidTrajectoryWaypoints=trajectory_num_points))
 
