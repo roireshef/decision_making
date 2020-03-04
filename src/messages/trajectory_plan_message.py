@@ -38,8 +38,8 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSDataTrajectoryPlan()
 
         pubsub_msg.s_Timestamp = self.s_Timestamp.serialize()
-        pubsub_msg.creation_time = self.creation_time.serialize()
-        pubsub_msg.physical_time = self.physical_time.serialize()
+        pubsub_msg.s_DataCreationTime = self.creation_time.serialize()
+        pubsub_msg.s_PhysicalEventTime = self.physical_time.serialize()
         pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
         pubsub_msg.a_TrajectoryWaypoints = self.a_TrajectoryWaypoints
         pubsub_msg.e_Cnt_NumValidTrajectoryWaypoints = self.e_Cnt_NumValidTrajectoryWaypoints
@@ -50,8 +50,8 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSDataTrajectoryPlan)->DataTrajectoryPlan
         return cls(Timestamp.deserialize(pubsubMsg.s_Timestamp),
-                   Timestamp.deserialize(pubsubMsg.creation_time),
-                   Timestamp.deserialize(pubsubMsg.physical_time),
+                   Timestamp.deserialize(pubsubMsg.s_DataCreationTime),
+                   Timestamp.deserialize(pubsubMsg.s_PhysicalEventTime),
                    MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
                    pubsubMsg.a_TrajectoryWaypoints[:pubsubMsg.e_Cnt_NumValidTrajectoryWaypoints,:TRAJECTORY_WAYPOINT_SIZE],
                    pubsubMsg.e_Cnt_NumValidTrajectoryWaypoints)
