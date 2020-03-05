@@ -189,8 +189,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         v_x = np.divide(s_v * radius_ratio, cos_delta_theta)
 
         # compute k_x (curvature)
-        k_x = ((d_tagtag + (k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta)) * np.cos(
-            delta_theta) ** 2 / radius_ratio + k_r) * np.cos(delta_theta) / radius_ratio
+        k_x = ((d_tagtag + (k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta)) * cos_delta_theta ** 2 /
+               radius_ratio + k_r) * cos_delta_theta / radius_ratio
 
         # compute a_x (curvature)
         delta_theta_tag = radius_ratio / np.cos(
