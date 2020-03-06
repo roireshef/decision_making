@@ -10,15 +10,17 @@ from decision_making.src.messages.scene_common_messages import Timestamp, MapOri
 class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
     s_Timestamp = Timestamp
     s_MapOrigin = MapOrigin
+    e_b_isReplan = bool
     a_TrajectoryWaypoints = np.ndarray
     e_Cnt_NumValidTrajectoryWaypoints = int
 
-    def __init__(self, s_Timestamp: Timestamp, s_MapOrigin: MapOrigin, a_TrajectoryWaypoints: np.ndarray,
-                 e_Cnt_NumValidTrajectoryWaypoints: int):
+    def __init__(self, s_Timestamp: Timestamp, s_MapOrigin: MapOrigin, e_b_isReplan: bool,
+                 a_TrajectoryWaypoints: np.ndarray, e_Cnt_NumValidTrajectoryWaypoints: int):
         """
 
         :param s_Timestamp: Scene time (sensor time) based on which the planner planned the trajectory
         :param s_MapOrigin: The map origin used to represent the trajectory points according to
+        :param e_b_isReplan: True if the planner performs re-plan as a result of too strong deviation of host from its previous trajectory
         :param a_TrajectoryWaypoints: A 2d array of desired host-vehicle states (localizations) in the future (100ms difference in time),
                with the first state being the current state (t=0). The array is implicitly index-able via the enum
                TeSYS_TrajectoryWaypoint that reflect field names of the last dimension of the array
@@ -26,6 +28,7 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
         """
         self.s_Timestamp = s_Timestamp
         self.s_MapOrigin = s_MapOrigin
+        self.e_b_isReplan = e_b_isReplan
         self.a_TrajectoryWaypoints = a_TrajectoryWaypoints
         self.e_Cnt_NumValidTrajectoryWaypoints = e_Cnt_NumValidTrajectoryWaypoints
 
@@ -35,6 +38,7 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
 
         pubsub_msg.s_Timestamp = self.s_Timestamp.serialize()
         pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
+        pubsub_msg.e_b_isReplan = self.e_b_isReplan
         pubsub_msg.a_TrajectoryWaypoints = self.a_TrajectoryWaypoints
         pubsub_msg.e_Cnt_NumValidTrajectoryWaypoints = self.e_Cnt_NumValidTrajectoryWaypoints
 
@@ -45,6 +49,7 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
         # type: (TsSYSDataTrajectoryPlan)->DataTrajectoryPlan
         return cls(Timestamp.deserialize(pubsubMsg.s_Timestamp),
                    MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
+                   pubsubMsg.e_b_isReplan,
                    pubsubMsg.a_TrajectoryWaypoints[:pubsubMsg.e_Cnt_NumValidTrajectoryWaypoints,:TRAJECTORY_WAYPOINT_SIZE],
                    pubsubMsg.e_Cnt_NumValidTrajectoryWaypoints)
 

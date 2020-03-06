@@ -189,8 +189,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         v_x = np.divide(s_v * radius_ratio, cos_delta_theta)
 
         # compute k_x (curvature)
-        k_x = ((d_tagtag + (k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta)) * np.cos(
-            delta_theta) ** 2 / radius_ratio + k_r) * np.cos(delta_theta) / radius_ratio
+        k_x = ((d_tagtag + (k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta)) * cos_delta_theta ** 2 /
+               radius_ratio + k_r) * cos_delta_theta / radius_ratio
 
         # compute a_x (curvature)
         delta_theta_tag = radius_ratio / np.cos(
@@ -265,19 +265,23 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         theta_r = np.arctan2(T_r[..., C_Y], T_r[..., C_X])
         delta_theta = theta_x - theta_r
 
-        s_v = v_x * np.cos(delta_theta) / radius_ratio
-        d_v = v_x * np.sin(delta_theta)
+        cos_delta_theta = np.cos(delta_theta)
+        sin_delta_theta = np.sin(delta_theta)
+        tan_delta_theta = sin_delta_theta / cos_delta_theta
+
+        s_v = v_x * cos_delta_theta / radius_ratio
+        d_v = v_x * sin_delta_theta
 
         # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
-        delta_theta_tag = radius_ratio / np.cos(delta_theta) * k_x - k_r
+        delta_theta_tag = radius_ratio / cos_delta_theta * k_x - k_r
 
-        d_tag = radius_ratio * np.tan(delta_theta)  # invalid: (radius_ratio * np.sin(delta_theta)) ** 2
-        d_tag_tag = -(k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta) + radius_ratio / np.cos(delta_theta) ** 2 * (
-        k_x * radius_ratio / np.cos(delta_theta) - k_r)
+        d_tag = radius_ratio * tan_delta_theta  # invalid: (radius_ratio * np.sin(delta_theta)) ** 2
+        d_tag_tag = -(k_r_tag * d_x + k_r * d_tag) * tan_delta_theta + radius_ratio / cos_delta_theta ** 2 * (
+                k_x * radius_ratio / cos_delta_theta - k_r)
 
-        s_a = (a_x - s_v ** 2 / np.cos(delta_theta) *
-               (radius_ratio * np.tan(delta_theta) * delta_theta_tag - (k_r_tag * d_x + k_r * d_tag))) * np.cos(
-            delta_theta) / radius_ratio
+        s_a = (a_x - s_v ** 2 / cos_delta_theta *
+               (radius_ratio * tan_delta_theta * delta_theta_tag - (k_r_tag * d_x + k_r * d_tag))) * cos_delta_theta / \
+            radius_ratio
         d_a = d_tag_tag * s_v ** 2 + d_tag * s_a
 
         return np.dstack((s_x, s_v, s_a, d_x, d_v, d_a))
