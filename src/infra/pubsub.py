@@ -1,5 +1,7 @@
 from typing import Callable, Any, Optional, Dict
 from rte.python.scheduling.event_scheduler import EventScheduler
+import functools
+import rte.python.profiler as prof
 
 
 class PubSub:
@@ -14,6 +16,7 @@ class PubSub:
         :param callback:
         :return:
         """
+
         if callback is None:
             topic.register_cb(callback)
         else:
@@ -24,6 +27,10 @@ class PubSub:
             """
             event_scheduler_name = "{}{}".format(callback.__self__.__class__.__name__, callback.__name__)
             event_scheduler = EventScheduler(event_scheduler_name)
+
+            if prof.is_enabled(prof.Category.Callback):
+                callback = self._wrap_cb_with_profiling(callback, topic)
+
             event_scheduler.register_cb(topic, callback)
 
             self._event_schedulers[topic] = event_scheduler
@@ -36,9 +43,13 @@ class PubSub:
         :param timeout:
         :return:
         """
-        return topic.get_latest_sample(timeout*1000)
+        data = topic.get_latest_sample(timeout*1000)
+        with prof.time_range("[message] %s", topic.msg_type.__name__, category=prof.Category.Communication):
+            pass
+        return data
 
     @staticmethod
+    @prof.ProfileFunction()
     def publish(topic, data: Any):
         """
         Publish the given data object in the given topic
@@ -59,3 +70,13 @@ class PubSub:
             topic.unregister_cb(None)
         else:
             self._event_schedulers[topic].unregister_cb()
+
+    @staticmethod
+    def _wrap_cb_with_profiling(callback, name):
+        _prof_mark_cb = prof.TimeRange("[event] %s", name, category=prof.Category.Callback)
+
+        @functools.wraps(callback)
+        def cb_wrapper(*args, **kwargs):
+            with _prof_mark_cb:
+                return callback(*args, **kwargs)
+        return cb_wrapper

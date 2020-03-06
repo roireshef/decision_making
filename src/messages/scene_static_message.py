@@ -113,7 +113,7 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSAdjacentLane):
         return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_e_moving_direction,
-                   pubsubMsg.e_e_lane_type)
+                   MapLaneType(pubsubMsg.e_e_lane_type))
 
 
 class LaneSegmentConnectivity(PUBSUB_MSG_IMPL):
@@ -649,7 +649,7 @@ class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
         for i in range(SceneLaneSegmentBase.num_lane_attributes):
             lane_attributes[i] = SceneLaneSegmentBase.lane_attribute_types[RoutePlanLaneSegmentAttr(i)](lane_attributes[i])
 
-        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, pubsubMsg.e_e_lane_type,
+        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, MapLaneType(pubsubMsg.e_e_lane_type),
                    pubsubMsg.e_Cnt_traffic_control_bar_count, as_traffic_control_bar,
                    pubsubMsg.e_Cnt_left_adjacent_lane_count, as_left_adjacent_lanes,
                    pubsubMsg.e_Cnt_right_adjacent_lane_count, as_right_adjacent_lanes,

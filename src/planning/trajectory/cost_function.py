@@ -51,6 +51,7 @@ class TrajectoryPlannerCosts:
         return np.dstack((obstacles_costs, deviations_costs, jerk_costs))
 
     @staticmethod
+    @prof.ProfileFunction()
     def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State,
                                params: TrajectoryCostParams, global_time_samples: np.ndarray,
                                predictor: RoadFollowingPredictor, reference_route: FrenetSerret2DFrame):
@@ -62,45 +63,43 @@ class TrajectoryPlannerCosts:
         :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
         """
-        with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(state.dynamic_objects),
-                                                                                           ctrajectories.shape)):
-            # calculate objects' map_state
-            objects_relative_fstates, objects_sizes = TrajectoryPlannerCosts._project_close_objects_on_ref_route(
-                state, reference_route)
-            if len(objects_relative_fstates) == 0:
-                return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
+        # calculate objects' map_state
+        objects_relative_fstates, objects_sizes = TrajectoryPlannerCosts._project_close_objects_on_ref_route(
+            state, reference_route)
+        if len(objects_relative_fstates) == 0:
+            return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
-            # Predict objects' future movement, then project predicted objects' states to Cartesian frame
-            # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
-            objects_predicted_ftrajectories = predictor.predict_2d_frenet_states(
-                objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
+        # Predict objects' future movement, then project predicted objects' states to Cartesian frame
+        # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
+        objects_predicted_ftrajectories = predictor.predict_2d_frenet_states(
+            objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
 
-            # find all valid predictions: predicted states of objects outside the reference_route limits
-            valid_predictions = NumpyUtils.is_in_limits(objects_predicted_ftrajectories[:, :, FS_SX], reference_route.s_limits)
-            # move all invalid predictions to be far enough from ego, but inside the reference_route limits
-            objects_predicted_ftrajectories[np.logical_not(valid_predictions), FS_SX] = reference_route.s_max - EPS
+        # find all valid predictions: predicted states of objects outside the reference_route limits
+        valid_predictions = NumpyUtils.is_in_limits(objects_predicted_ftrajectories[:, :, FS_SX], reference_route.s_limits)
+        # move all invalid predictions to be far enough from ego, but inside the reference_route limits
+        objects_predicted_ftrajectories[np.logical_not(valid_predictions), FS_SX] = reference_route.s_max - EPS
 
-            # convert the predictions from Frenet to cartesian trajectories
-            objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
-            ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
+        # convert the predictions from Frenet to cartesian trajectories
+        objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
+        ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
-            # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
-            distances = TrajectoryPlannerCosts.compute_distances_to_objects(
-                ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
+        # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
+        distances = TrajectoryPlannerCosts.compute_distances_to_objects(
+            ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
 
-            # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
-            k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
-            offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
-            points_offset = distances - offset
-            per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.minimum(np.multiply(k, points_offset), EXP_CLIP_TH))))
+        # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
+        k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
+        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
+        points_offset = distances - offset
+        per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.minimum(np.multiply(k, points_offset), EXP_CLIP_TH))))
 
-            # multiply dimensional flipped-logistic costs, so that big values are where the two dimensions have
-            # negative distance, i.e. collision
-            per_point_cost = per_dimension_cost.prod(axis=-1) * valid_predictions.astype(float)
+        # multiply dimensional flipped-logistic costs, so that big values are where the two dimensions have
+        # negative distance, i.e. collision
+        per_point_cost = per_dimension_cost.prod(axis=-1) * valid_predictions.astype(float)
 
-            per_trajectory_point_cost = params.obstacle_cost_x.w * np.sum(per_point_cost, axis=1)
+        per_trajectory_point_cost = params.obstacle_cost_x.w * np.sum(per_point_cost, axis=1)
 
-            return per_trajectory_point_cost
+        return per_trajectory_point_cost
 
     @staticmethod
     @prof.ProfileFunction()
