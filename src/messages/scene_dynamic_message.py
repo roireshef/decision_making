@@ -39,7 +39,8 @@ class ObjectClassification(Enum):
     CeSYS_e_ObjectClassification_Pedestrian = 4
     CeSYS_e_ObjectClassification_GeneralObject = 5
     CeSYS_e_ObjectClassification_Animal = 6
-    CeSYS_e_ObjectClassification_UNKNOWN = 7
+    CeSYS_e_ObjectClassification_Bus = 7
+    CeSYS_e_ObjectClassification_UNKNOWN = 8
 
 
 class CartesianPose(Enum):
