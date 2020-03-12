@@ -702,7 +702,8 @@ class MapUtils:
                                active_dynamic_tcd.e_e_traffic_control_device_type + " is UNKNOWN. Will restrict to STOP")
             if active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
                 dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,
-                                             RoadSignRestriction.STOP if status != TrafficLightState.GREEN
+                                             RoadSignRestriction.STOP
+                                             if status != TrafficLightState.GREEN and status != TrafficLightState.GREEN_OLD
                                              else RoadSignRestriction.NONE))
             elif active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
                 dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,

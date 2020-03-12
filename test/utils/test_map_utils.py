@@ -116,7 +116,8 @@ def test_getTrafficControlDevices_findsDevices(scene_static_pg_split,
     assert len(dynamic_tcds) == 1
     assert dynamic_tcds[TRAFFIC_LIGHT_ID][0].object_id == 2
     assert dynamic_tcds[TRAFFIC_LIGHT_ID][0].e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT
-    assert dynamic_tcds[TRAFFIC_LIGHT_ID][1].a_e_status[0] == TrafficLightState.GREEN
+    assert dynamic_tcds[TRAFFIC_LIGHT_ID][1].a_e_status[0] == TrafficLightState.GREEN \
+           or dynamic_tcds[TRAFFIC_LIGHT_ID][1].a_e_status[0] == TrafficLightState.GREEN_OLD
 
 
 def test_getTCDsForBar_findsStaticAndDynamicDevicesAndAssociatedRestrictions(scene_static_pg_split,
