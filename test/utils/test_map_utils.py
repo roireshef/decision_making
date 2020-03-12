@@ -10,7 +10,7 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic, TrafficControlBar, \
     StaticTrafficControlDevice, DynamicTrafficControlDevice
 from decision_making.src.messages.scene_static_enums import NominalPathPoint, StaticTrafficControlDeviceType, \
-    DynamicTrafficControlDeviceType, TrafficSignalState
+    DynamicTrafficControlDeviceType, TrafficLightState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RoadSignRestriction
 from decision_making.src.scene.scene_traffic_control_devices_status_model import SceneTrafficControlDevicesStatusModel
 from decision_making.src.utils.map_utils import MapUtils
@@ -105,7 +105,7 @@ def test_getTrafficControlDevices_findsDevices(scene_static_pg_split,
     _setup_tcds_in_map(scene_static=scene_static_pg_split, static_tcds=[stop_sign], dynamic_tcds=[traffic_light])
 
     traffic_light_status = {traffic_light.object_id: DynamicTrafficControlDeviceStatus(
-        e_i_dynamic_traffic_control_device_id=traffic_light.object_id, a_e_status=[TrafficSignalState.GREEN],
+        e_i_dynamic_traffic_control_device_id=traffic_light.object_id, a_e_status=[TrafficLightState.GREEN],
         a_Pct_status_confidence=[1.0])}
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(traffic_control_devices_status=traffic_light_status)
 
@@ -116,7 +116,7 @@ def test_getTrafficControlDevices_findsDevices(scene_static_pg_split,
     assert len(dynamic_tcds) == 1
     assert dynamic_tcds[TRAFFIC_LIGHT_ID][0].object_id == 2
     assert dynamic_tcds[TRAFFIC_LIGHT_ID][0].e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT
-    assert dynamic_tcds[TRAFFIC_LIGHT_ID][1].a_e_status[0] == TrafficSignalState.GREEN
+    assert dynamic_tcds[TRAFFIC_LIGHT_ID][1].a_e_status[0] == TrafficLightState.GREEN
 
 
 def test_getTCDsForBar_findsStaticAndDynamicDevicesAndAssociatedRestrictions(scene_static_pg_split,
@@ -134,7 +134,7 @@ def test_getTCDsForBar_findsStaticAndDynamicDevicesAndAssociatedRestrictions(sce
 
     # dynamic TCDs status should be set before TCDs are retrieved
     traffic_light_status = {traffic_light.object_id: DynamicTrafficControlDeviceStatus(
-        e_i_dynamic_traffic_control_device_id=traffic_light.object_id, a_e_status=[TrafficSignalState.GREEN],
+        e_i_dynamic_traffic_control_device_id=traffic_light.object_id, a_e_status=[TrafficLightState.GREEN],
         a_Pct_status_confidence=[1.0])}
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(traffic_control_devices_status=traffic_light_status)
     static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()
@@ -188,7 +188,7 @@ def test_getTCDsForBar_findsDynamicOnlyDevicesAndAssociatedRestrictions(scene_st
 
     # dynamic TCDs status should be set before TCDs are retrieved
     traffic_light_status = {traffic_light.object_id: DynamicTrafficControlDeviceStatus(
-        e_i_dynamic_traffic_control_device_id=traffic_light.object_id, a_e_status=[TrafficSignalState.GREEN],
+        e_i_dynamic_traffic_control_device_id=traffic_light.object_id, a_e_status=[TrafficLightState.GREEN],
         a_Pct_status_confidence=[1.0])}
     SceneTrafficControlDevicesStatusModel.get_instance().set_traffic_control_devices_status(traffic_control_devices_status=traffic_light_status)
     static_tcds, dynamic_tcds = MapUtils.get_traffic_control_devices()

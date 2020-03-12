@@ -130,49 +130,10 @@ class DynamicTrafficControlDeviceType(Enum):
     SCHOOL_ZONE = 3         # Slower speed if associated TCD light is active/flashing?
 
 
-class TrafficSignalState(Enum):
-    NO_DETECTION = 0
-    RED = 1
-    YELLOW = 2
-    RED_YELLOW = 3
-    GREEN = 4
-    GREEN_YELLOW = 6
-    FLASHING_BIT = 8  # (flashing modifier, not valid by itself)
-    FLASHING_RED = 9
-    FLASHING_YELLOW = 10
-    FLASHING_GREEN = 12
-    UP_DOWN_ARROW_BIT = 16  # (up/down arrow modifier, not valid by itself)
-    STRAIGHT_ARROW_RED = 17
-    STRAIGHT_ARROW_YELLOW = 18
-    STRAIGHT_ARROW_GREEN = 20
-    LEFT_ARROW_BIT = 32  # (left arrow modifier, not valid by itself)
-    LEFT_ARROW_RED = 33
-    LEFT_ARROW_YELLOW = 34
-    LEFT_ARROW_GREEN = 36
-    FLASHING_LEFT_ARROW_RED = 41
-    FLASHING_LEFT_ARROW_YELLOW = 42
-    FLASHING_LEFT_ARROW_GREEN = 44
-    RIGHT_ARROW_BIT = 64  # (right arrow modifier, not valid by itself)
-    RIGHT_ARROW_RED = 65
-    RIGHT_ARROW_YELLOW = 66
-    RIGHT_ARROW_GREEN = 68
-    FLASHING_RIGHT_ARROW_RED = 73
-    FLASHING_RIGHT_ARROW_YELLOW = 74
-    FLASHING_RIGHT_ARROW_GREEN = 76
-    RAILROAD_CROSSING_UNKNOWN = 96
-    RAILROAD_CROSSING_RED = 97
-    RAILROAD_CROSSING_CLEAR = 100
-    RAILROAD_CROSSING_BLOCKED = 104
-    PEDISTRIAN_SAME_DIR_UNKNOWN = 108
-    PEDISTRIAN_SAME_DIR_STOPPED = 109
-    PEDISTRIAN_SAME_DIR_WARNING = 110
-    PEDISTRIAN_SAME_DIR_CROSS = 112
-    PEDISTRIAN_PERP_DIR_UNKNOWN = 116
-    PEDISTRIAN_PERP_DIR_STOPPED = 117
-    PEDISTRIAN_PERP_DIR_WARNING = 118
-    PEDISTRIAN_PERP_DIR_CROSS = 120
-    UNKNOWN = 121
-    OFF = 122
+class TrafficLightState(Enum):
+    UNKNOWN = 0
+    GREEN = 1
+    NOT_GREEN = 2
 
 
 class NominalPathPoint(Enum):

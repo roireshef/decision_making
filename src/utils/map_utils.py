@@ -7,7 +7,7 @@ from decision_making.src.exceptions import raises, RoadNotFound, \
     UpstreamLaneNotFound, LaneNotFound, IDAppearsMoreThanOnce
 from decision_making.src.global_constants import EPS, LANE_END_COST_IND, LANE_OCCUPANCY_COST_IND, SATURATED_COST
 from decision_making.src.messages.route_plan_message import RoutePlan
-from decision_making.src.messages.scene_static_enums import ManeuverType, TrafficSignalState, \
+from decision_making.src.messages.scene_static_enums import ManeuverType, TrafficLightState, \
     StaticTrafficControlDeviceType, DynamicTrafficControlDeviceType
 from decision_making.src.messages.scene_static_enums import NominalPathPoint
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentGeometry, \
@@ -697,17 +697,16 @@ class MapUtils:
         dynamic_restrictions = []
         for active_dynamic_tcd, dynamic_tcd_status in active_dynamic_tcds:
             status = MapUtils._get_confident_status(dynamic_tcd_status)
-            if (status == TrafficSignalState.UNKNOWN) and logger is not None:
+            if (status == TrafficLightState.UNKNOWN) and logger is not None:
                 logger.warning("Dynamic TCD status for id " + active_dynamic_tcd.object_id + ", type " +
                                active_dynamic_tcd.e_e_traffic_control_device_type + " is UNKNOWN. Will restrict to STOP")
             if active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.TRAFFIC_LIGHT:
                 dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,
-                                             RoadSignRestriction.STOP if status != TrafficSignalState.GREEN
+                                             RoadSignRestriction.STOP if status != TrafficLightState.GREEN
                                              else RoadSignRestriction.NONE))
             elif active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.RAILROAD_CROSSING:
                 dynamic_restrictions.append((active_dynamic_tcd.e_e_traffic_control_device_type,
-                                             RoadSignRestriction.STOP if status != TrafficSignalState.RAILROAD_CROSSING_CLEAR
-                                             else RoadSignRestriction.NONE))
+                                             RoadSignRestriction.STOP))
             elif active_dynamic_tcd.e_e_traffic_control_device_type == DynamicTrafficControlDeviceType.SCHOOL_ZONE:
                 # TODO: Need to understand how to get the information on days + hours at which this is in effect.
                 #   Currently, always stop in this situation
@@ -754,7 +753,7 @@ class MapUtils:
         return restriction != RoadSignRestriction.NONE
 
     @staticmethod
-    def _get_confident_status(status: DynamicTrafficControlDeviceStatus) -> TrafficSignalState:
+    def _get_confident_status(status: DynamicTrafficControlDeviceStatus) -> TrafficLightState:
         """
         Given a list of statuses and their confidence for a dynamic TCD, decide which status to use.
         Currently uses the status with the highest probability
@@ -763,7 +762,7 @@ class MapUtils:
         """
         # TODO handle case where argmax is not good enough, and need to choose the worst case that is confident enough
         if status is None or len(status.a_e_status) == 0:
-            return TrafficSignalState.UNKNOWN
+            return TrafficLightState.UNKNOWN
         else:
             confidence = np.array(status.a_Pct_status_confidence)
             status = np.array(status.a_e_status)
