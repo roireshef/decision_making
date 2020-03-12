@@ -132,7 +132,7 @@ class DynamicTrafficControlDeviceType(Enum):
 
 class TrafficLightState(Enum):
     UNKNOWN = 0
-    GREEN = 1
+    GREEN = 4
     NOT_GREEN = 2
 
 
