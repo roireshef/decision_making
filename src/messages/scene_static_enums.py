@@ -132,7 +132,8 @@ class DynamicTrafficControlDeviceType(Enum):
 
 class TrafficLightState(Enum):
     UNKNOWN = 0
-    GREEN = 4
+    GREEN = 1
+    GREEN_OLD = 4   # In simulation we get GREEN on old value # TODO: remove this value once simulation mode is change
     NOT_GREEN = 2
 
 
