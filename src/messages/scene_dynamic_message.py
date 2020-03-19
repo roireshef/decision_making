@@ -39,7 +39,8 @@ class ObjectClassification(Enum):
     CeSYS_e_ObjectClassification_Pedestrian = 4
     CeSYS_e_ObjectClassification_GeneralObject = 5
     CeSYS_e_ObjectClassification_Animal = 6
-    CeSYS_e_ObjectClassification_UNKNOWN = 7
+    CeSYS_e_ObjectClassification_Bus = 7
+    CeSYS_e_ObjectClassification_UNKNOWN = 8
 
 
 class CartesianPose(Enum):
@@ -309,13 +310,15 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
     s_host_localization = HostLocalization
     # as_dynamic_traffic_control_device_status = Dict[int, DynamicTrafficControlDeviceStatus]
 
-    def __init__(self, e_b_Valid, s_RecvTimestamp, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization,
+    def __init__(self, e_b_Valid, s_RecvTimestamp, s_DataCreationTime, s_PhysicalEventTime, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization,
                  s_host_localization):
-        # type: (bool, Timestamp, Timestamp, int, List[ObjectLocalization], HostLocalization) -> None
+        # type: (bool, Timestamp, Timestamp, Timestamp, Timestamp, int, List[ObjectLocalization], HostLocalization) -> None
         """
 
         :param e_b_Valid:
         :param s_RecvTimestamp:
+        :param s_DataCreationTime
+        :param s_PhysicalEventTime
         :param s_ComputeTimestamp:
         :param e_Cnt_num_objects: Total number of actors
         :param as_object_localization:
@@ -323,6 +326,8 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         """
         self.e_b_Valid = e_b_Valid
         self.s_RecvTimestamp = s_RecvTimestamp
+        self.s_DataCreationTime = s_DataCreationTime
+        self.s_PhysicalEventTime = s_PhysicalEventTime
         self.s_ComputeTimestamp = s_ComputeTimestamp
         self.e_Cnt_num_objects = e_Cnt_num_objects
         self.as_object_localization = as_object_localization
@@ -333,6 +338,8 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSDataSceneDynamic()
         pubsub_msg.e_b_Valid = self.e_b_Valid
         pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp.serialize()
+        pubsub_msg.s_DataCreationTime = self.s_DataCreationTime.serialize()
+        pubsub_msg.s_PhysicalEventTime = self.s_PhysicalEventTime.serialize()
         pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
         pubsub_msg.e_Cnt_num_objects = self.e_Cnt_num_objects
 
@@ -352,6 +359,8 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
             obj_localizations.append(ObjectLocalization.deserialize(pubsubMsg.as_object_localization[i]))
 
         return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_RecvTimestamp),
+                   Timestamp.deserialize(pubsubMsg.s_DataCreationTime),
+                   Timestamp.deserialize(pubsubMsg.s_PhysicalEventTime),
                    Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp), pubsubMsg.e_Cnt_num_objects,
                    obj_localizations, HostLocalization.deserialize(pubsubMsg.s_host_localization))
 

@@ -9,13 +9,15 @@ from decision_making.src.messages.scene_common_messages import Timestamp, MapOri
 
 class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
     s_Timestamp = Timestamp
+    creation_time = Timestamp
+    physical_time = Timestamp
     s_MapOrigin = MapOrigin
     e_b_isReplan = bool
     a_TrajectoryWaypoints = np.ndarray
     e_Cnt_NumValidTrajectoryWaypoints = int
 
-    def __init__(self, s_Timestamp: Timestamp, s_MapOrigin: MapOrigin, e_b_isReplan: bool,
-                 a_TrajectoryWaypoints: np.ndarray, e_Cnt_NumValidTrajectoryWaypoints: int):
+    def __init__(self, s_Timestamp: Timestamp, creation_time: Timestamp, physical_time: Timestamp,
+                 s_MapOrigin: MapOrigin, e_b_isReplan: bool, a_TrajectoryWaypoints: np.ndarray, e_Cnt_NumValidTrajectoryWaypoints: int):
         """
 
         :param s_Timestamp: Scene time (sensor time) based on which the planner planned the trajectory
@@ -27,6 +29,8 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
         :param e_Cnt_NumValidTrajectoryWaypoints: number of valid points from the former parameter
         """
         self.s_Timestamp = s_Timestamp
+        self.creation_time = creation_time
+        self.physical_time = physical_time
         self.s_MapOrigin = s_MapOrigin
         self.e_b_isReplan = e_b_isReplan
         self.a_TrajectoryWaypoints = a_TrajectoryWaypoints
@@ -37,6 +41,8 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSDataTrajectoryPlan()
 
         pubsub_msg.s_Timestamp = self.s_Timestamp.serialize()
+        pubsub_msg.s_DataCreationTime = self.creation_time.serialize()
+        pubsub_msg.s_PhysicalEventTime = self.physical_time.serialize()
         pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
         pubsub_msg.e_b_isReplan = self.e_b_isReplan
         pubsub_msg.a_TrajectoryWaypoints = self.a_TrajectoryWaypoints
@@ -48,6 +54,8 @@ class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSDataTrajectoryPlan)->DataTrajectoryPlan
         return cls(Timestamp.deserialize(pubsubMsg.s_Timestamp),
+                   Timestamp.deserialize(pubsubMsg.s_DataCreationTime),
+                   Timestamp.deserialize(pubsubMsg.s_PhysicalEventTime),
                    MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
                    pubsubMsg.e_b_isReplan,
                    pubsubMsg.a_TrajectoryWaypoints[:pubsubMsg.e_Cnt_NumValidTrajectoryWaypoints,:TRAJECTORY_WAYPOINT_SIZE],
