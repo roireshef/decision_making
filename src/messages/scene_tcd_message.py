@@ -1,6 +1,6 @@
 from typing import List, Dict
 
-from decision_making.src.messages.scene_static_enums import TrafficSignalState
+from decision_making.src.messages.scene_static_enums import TrafficLightState
 from interface.Rte_Types.python.sub_structures.TsSYS_DynamicTrafficControlDeviceStatus import TsSYSDynamicTrafficControlDeviceStatus
 from interface.Rte_Types.python.sub_structures.TsSYS_DataSceneTrafficControlDevices import TsSYSDataSceneTrafficControlDevices
 from interface.Rte_Types.python.sub_structures.TsSYS_SceneTrafficControlDevices import TsSYSSceneTrafficControlDevices
@@ -10,10 +10,10 @@ from decision_making.src.messages.scene_common_messages import Timestamp, Header
 
 class DynamicTrafficControlDeviceStatus(PUBSUB_MSG_IMPL):
     e_i_dynamic_traffic_control_device_id = int
-    a_e_status = List[TrafficSignalState]
+    a_e_status = List[TrafficLightState]
     a_Pct_status_confidence = List[float]
 
-    def __init__(self, e_i_dynamic_traffic_control_device_id: int, a_e_status: List[TrafficSignalState],
+    def __init__(self, e_i_dynamic_traffic_control_device_id: int, a_e_status: List[TrafficLightState],
                  a_Pct_status_confidence: List[float]):
         """
         Distribution over a Dynamic traffic-flow-control device's possible statuses, eg. red(20%)-yellow(70%)-green(10%)
@@ -43,7 +43,7 @@ class DynamicTrafficControlDeviceStatus(PUBSUB_MSG_IMPL):
 
         a_e_status = list()
         for i in range(pubsubMsg.e_Cnt_status_count):
-            a_e_status.append(TrafficSignalState(pubsubMsg.a_e_status[i]))  # convert uint8 to TrafficSignalState
+            a_e_status.append(TrafficLightState(pubsubMsg.a_e_status[i]))  # convert uint8 to TrafficLightState
 
         a_Pct_status_confidence = list()
         for i in range(pubsubMsg.e_Cnt_status_count):
