@@ -99,7 +99,7 @@ class RoutePlanningFacade(DmModule):
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC)
 
-        if serialized_scene_static is None:
+        if serialized_scene_static is None or not serialized_scene_static.s_Data.e_b_Valid:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
                                           UC_SYSTEM_SCENE_STATIC)
         scene_static = SceneStatic.deserialize(serialized_scene_static)
