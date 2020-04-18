@@ -298,6 +298,17 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         ids, fstates = self.convert_to_segment_states(frenet_state[np.newaxis, ...])
         return ids[0], fstates[0]
 
+    def get_segment_id_and_point_idx_from_s(self, s: float) -> [int, int]:
+        """
+        Given s on GFF get lane segment id containing s and the closest point index to s in the lane segment
+        :param s: s on GFF
+        :return: lane segment id, the closest point index to s in the lane segment
+        """
+        segment_idx = np.searchsorted(self._segments_s_offsets, s) - 1
+        segment_s = s - self._segments_s_offsets[segment_idx] + self._segments_s_start[segment_idx]
+        segment_point_idx = int(segment_s / self._segments_ds[segment_idx])
+        return self._segment_ids[segment_idx], segment_point_idx
+
     def _get_segment_idxs_from_ids(self, segment_ids: NumpyIndicesArray):
         """
         Given an array of segment_ids, this method returns the indices of these segment_ids in self.sub_segments
