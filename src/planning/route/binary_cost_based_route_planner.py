@@ -1,76 +1,19 @@
-import numpy as np
 from abc import abstractmethod, ABCMeta
 from typing import List
+
+import numpy as np
 import rte.python.profiler as prof
+from decision_making.src.exceptions import raises, LaneAttributeNotFound, RoadSegmentLaneSegmentMismatch, \
+    DownstreamLaneDataNotFound
+from decision_making.src.global_constants import MAX_COST, MIN_COST
 from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanRoadSegments, RoutePlanLaneSegment, \
     RoutePlanRoadSegment
 from decision_making.src.messages.scene_static_message import SceneLaneSegmentBase
-from decision_making.src.exceptions import raises, LaneAttributeNotFound, RoadSegmentLaneSegmentMismatch, DownstreamLaneDataNotFound
-from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, \
-    MapLaneDirection, GMAuthorityType, LaneConstructionType
-from decision_making.src.global_constants import LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD, MAX_COST, MIN_COST
-from decision_making.src.planning.route.route_planner import RoutePlannerInputData
-
-
-class OccupancyCostMapping():
-    """
-    This class holds static methods that map lane attributes to occupancy costs
-    """
-    @staticmethod
-    def mapping_status_based_occupancy_cost(mapping_status_attribute: LaneMappingStatusType) -> float:
-        """
-        Cost of lane map type. Current implementation is binary cost.
-        :param mapping_status_attribute: type of mapped
-        :return: normalized cost (MIN_COST to MAX_COST)
-        """
-        if ((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
-                (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
-            return MIN_COST
-        return MAX_COST
-
-    @staticmethod
-    def construction_zone_based_occupancy_cost(construction_zone_attribute: LaneConstructionType) -> float:
-        """
-        Cost of construction zone type. Current implementation is binary cost.
-        :param construction_zone_attribute: type of lane construction
-        :return: Normalized cost (MIN_COST to MAX_COST)
-        """
-        if ((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
-                (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
-            return MIN_COST
-        return MAX_COST
-
-    @staticmethod
-    def lane_dir_in_route_based_occupancy_cost(lane_dir_in_route_attribute: MapLaneDirection) -> float:
-        """
-        Cost of lane direction. Current implementation is binary cost.
-        :param lane_dir_in_route_attribute: map lane direction in respect to host
-        :return: Normalized cost (MIN_COST to MAX_COST)
-        """
-        if ((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
-                (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
-                (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
-            return MIN_COST
-        return MAX_COST
-
-    @staticmethod
-    def gm_authority_based_occupancy_cost(gm_authority_attribute: GMAuthorityType) -> float:
-        """
-        Cost of GM authorized driving area. Current implementation is binary cost.
-        :param gm_authority_attribute: type of GM authority
-        :return: Normalized cost (MIN_COST to MAX_COST)
-        """
-        if gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None:
-            return MIN_COST
-        return MAX_COST
+from decision_making.src.planning.route.route_planner_input_data import RoutePlannerInputData
+from decision_making.src.planning.route.route_utils import RouteUtils
 
 
 class RoutePlanner(metaclass=ABCMeta):
-    # This is a class variable that is shared between all RoutePlanner instances
-    occupancy_cost_methods = {LaneMappingStatusType: OccupancyCostMapping.mapping_status_based_occupancy_cost,
-                              GMAuthorityType: OccupancyCostMapping.gm_authority_based_occupancy_cost,
-                              LaneConstructionType: OccupancyCostMapping.construction_zone_based_occupancy_cost,
-                              MapLaneDirection: OccupancyCostMapping.lane_dir_in_route_based_occupancy_cost}
 
     @prof.ProfileFunction()
     def plan(self, route_plan_input_data: RoutePlannerInputData) -> DataRoutePlan:
@@ -127,40 +70,11 @@ class RoutePlanner(metaclass=ABCMeta):
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
         :return: LaneOccupancyCost, cost to the AV if it occupies the lane.
         """
-        # Now iterate over all the active lane attributes for the lane segment
-        for lane_attribute_index in lane_segment_base_data.a_i_active_lane_attribute_indices:
-            # lane_attribute_index gives the index lookup for lane attributes and confidences
-            if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attributes):
-                lane_attribute = lane_segment_base_data.a_cmp_lane_attributes[lane_attribute_index]
-            else:
-                raise LaneAttributeNotFound('RoutePlanner: lane_attribute_index {0} doesn\'t have corresponding lane attribute value'
-                                            .format(lane_attribute_index))
-
-            if lane_attribute_index < len(lane_segment_base_data.a_cmp_lane_attribute_confidences):
-                lane_attribute_confidence = lane_segment_base_data.a_cmp_lane_attribute_confidences[lane_attribute_index]
-            else:
-                raise LaneAttributeNotFound('RoutePlanner: lane_attribute_index {0} doesn\'t have corresponding lane attribute '
-                                            'confidence value'.format(lane_attribute_index))
-
-            if (lane_attribute_confidence < LANE_ATTRIBUTE_CONFIDENCE_THRESHOLD):
-                continue
-
-            try:
-                lane_attribute_occupancy_cost = RoutePlanner.occupancy_cost_methods[type(lane_attribute)](lane_attribute)
-            except KeyError:
-                raise LaneAttributeNotFound(f"RoutePlanner: Could not find the occupancy cost method that corresponds to lane attribute "
-                                            f"type {type(lane_attribute)}. The supported types are "
-                                            f"{RoutePlanner.occupancy_cost_methods.keys()}.")
-
-            # Check if the lane is unoccupiable
-            if (lane_attribute_occupancy_cost == MAX_COST):
-                return MAX_COST
-
-        return MIN_COST
+        return MAX_COST if RouteUtils.is_lane_segment_gmfa(lane_segment_base_data) else MIN_COST
 
     @raises(DownstreamLaneDataNotFound)
-    def _lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase, route_plan_lane_segments_reversed: RoutePlanRoadSegments) \
-            -> (float, bool):
+    def _lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase,
+                            route_plan_lane_segments_reversed: RoutePlanRoadSegments) -> (float, bool):
         """
         Calculates lane end cost for a single lane segment
 
@@ -235,15 +149,17 @@ class RoutePlanner(metaclass=ABCMeta):
         """
         # Calculate lane end costs
         if not route_plan_lane_segments_reversed:
-            # If _route_plan_lane_segments_reversed is empty, we will reach here. Since the road segments in the navigation plan
-            # are processed in reverse order (i.e. from furthest to closest), _route_plan_lane_segments_reversed will only be empty
-            # when the lane costs for the furthest road segment are being calculated. We don't have any downstream information. So,
-            # downstream_lane_found_in_route is set to True because we do not want to raise any exceptions, and lane_end_cost is
-            # set to MIN_COST for the following two reasons:
-            #     1. Generally, the host will be sufficiently far away from the end of the navigation plan so even backpropagating
-            #        these costs should not affect the host's behavior.
-            #     2. The host will be close to the end of the navigation plan as the destination is approached. We do not want to
-            #        force all lanes to have MAX_COST and cause a takeover to happen just before reaching the destination.
+            # If _route_plan_lane_segments_reversed is empty, we will reach here.
+            # Since the road segments in the navigation plan are processed in reverse order (i.e. furthest to closest),
+            # _route_plan_lane_segments_reversed will only be empty when the lane costs for the furthest road segment
+            # are being calculated. We don't have any downstream information.
+            # So, downstream_lane_found_in_route is set to True because we do not want to raise any exceptions,
+            # and lane_end_cost is set to MIN_COST for the following two reasons:
+            #  1. Generally, the host will be sufficiently far away from the end of the navigation plan so even
+            #     backpropagating these costs should not affect the host's behavior.
+            #  2. The host will be close to the end of the navigation plan as the destination is approached.
+            #     We do not want to force all lanes to have MAX_COST and cause a takeover to happen just before
+            #     reaching the destination.
             lane_end_cost = MIN_COST
             downstream_lane_found_in_route = True
         else:
@@ -268,7 +184,7 @@ class RoutePlanner(metaclass=ABCMeta):
     def _road_segment_cost_calc(self, road_segment_id: int, route_plan_lane_segments_reversed: RoutePlanRoadSegments,
                                 route_plan_input_data: RoutePlannerInputData) -> RoutePlanRoadSegment:
         """
-        Itreratively uses lane_cost_calc method to calculate lane costs (occupancy and end) for all lane segments in a road segment
+        Iteratively uses lane_cost_calc method to calculate lane costs (occupancy and end) for all lane segments in a road segment
         :return:
         RoutePlanRoadSegment, which is List[RoutePlanLaneSegments]
         Also raises RoadSegmentLaneSegmentMismatch internally if it can't find any downstream lane segment in the route
@@ -293,7 +209,7 @@ class RoutePlanner(metaclass=ABCMeta):
             route_lane_segment, downstream_lane_found_in_route = self._lane_cost_calc(
                 lane_segment_base_data=lane_segment_base_data, route_plan_lane_segments_reversed=route_plan_lane_segments_reversed)
 
-            downstream_road_segment_not_found = downstream_road_segment_not_found and not(downstream_lane_found_in_route)
+            downstream_road_segment_not_found = downstream_road_segment_not_found and not downstream_lane_found_in_route
 
             route_lane_segments.append(route_lane_segment)
 
