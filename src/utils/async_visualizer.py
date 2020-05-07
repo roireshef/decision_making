@@ -6,6 +6,10 @@ from pandas import DataFrame
 from typing import Any
 
 
+class ResetMessage:
+    pass
+
+
 class AsyncVisualizer(mp.Process):
     def __init__(self, queue_len: int = 20):
         """
@@ -44,13 +48,20 @@ class AsyncVisualizer(mp.Process):
                 continue
 
             # read from queue into the buffer <self._data> until it is empty
+            updated = False
             while self._is_running.value and not self._queue.empty():
                 elem = self._queue.get_nowait()
-                self._update_data(elem)
+                if isinstance(elem, ResetMessage):
+                    self._data = self._init_data()
+                    updated = False
+                else:
+                    self._update_data(elem)
+                    updated = True
 
             # use <self._data> to visualize and refresh the figure
-            self._update_fig()
-            self._refresh_fig()
+            if updated:
+                self._update_fig()
+                self._refresh_fig()
 
         self._destroy_fig()
         self._queue.close()
@@ -65,6 +76,9 @@ class AsyncVisualizer(mp.Process):
         :return:
         """
         self._queue.put(elem)
+
+    def reset(self):
+        self._queue.put(ResetMessage())
 
     def wait_for_figure_lock(self):
         """

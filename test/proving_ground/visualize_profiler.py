@@ -67,7 +67,7 @@ def summarize_profiler(profs):
 
 
 if __name__ == '__main__':
-    file_path = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
+    file_path = '%s/../logs/AV_Log_scenario_test.log' % Paths.get_repo_path()
 
     # read data
     profs = get_profs(file_path)
