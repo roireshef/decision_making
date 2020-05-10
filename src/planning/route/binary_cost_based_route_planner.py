@@ -70,7 +70,7 @@ class RoutePlanner(metaclass=ABCMeta):
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
         :return: LaneOccupancyCost, cost to the AV if it occupies the lane.
         """
-        return MAX_COST if RouteUtils.is_lane_segment_gmfa(lane_segment_base_data) else MIN_COST
+        return MIN_COST if RouteUtils.is_lane_segment_drivable(lane_segment_base_data) else MAX_COST
 
     @raises(DownstreamLaneDataNotFound)
     def _lane_end_cost_calc(self, lane_segment_base_data: SceneLaneSegmentBase,

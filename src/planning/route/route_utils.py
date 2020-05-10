@@ -7,68 +7,68 @@ from decision_making.src.messages.scene_static_message import SceneLaneSegmentBa
 
 class RouteUtils:
 
-    class GMFAIndicatorMapping:
+    class DrivableLaneIndicatorMapping:
         @staticmethod
-        def mapping_status_based_gmfa_indicator(mapping_status_attribute: LaneMappingStatusType) -> float:
+        def mapping_status_based_drivablity_indicator(mapping_status_attribute: LaneMappingStatusType) -> float:
             """
-            Determines if GMFA based on mapping status
+            Determines if the lane is drivable based on mapping status
             :param mapping_status_attribute: type of mapped
-            :return: True if lane is considered GMFA, false otherwise
+            :return: True if lane is considered drivable, false otherwise
             """
             if ((mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or
                     (mapping_status_attribute == LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
-                return False
-            return True
+                return True
+            return False
 
         @staticmethod
-        def construction_zone_based_gmfa_indicator(construction_zone_attribute: LaneConstructionType) -> float:
+        def construction_zone_based_drivablity_indicator(construction_zone_attribute: LaneConstructionType) -> float:
             """
-            Determines if GMFA based on construction zone status
+            Determines if the lane is drivable based on construction zone status
             :param construction_zone_attribute: type of lane construction
-            :return: True if lane is considered GMFA, false otherwise
+            :return: True if lane is considered drivable, false otherwise
             """
             if ((construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or
                     (construction_zone_attribute == LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
-                return False
-            return True
+                return True
+            return False
 
         @staticmethod
-        def lane_dir_in_route_based_gmfa_indicator(lane_dir_in_route_attribute: MapLaneDirection) -> float:
+        def lane_dir_in_route_based_drivablity_indicator(lane_dir_in_route_attribute: MapLaneDirection) -> float:
             """
-            Determines if GMFA based on lane directions relative to host vehicle
+            Determines if the lane is drivable based on lane directions relative to host vehicle
             :param lane_dir_in_route_attribute: map lane direction in respect to host
-            :return: True if lane is considered GMFA, false otherwise
+            :return: True if lane is considered drivable, false otherwise
             """
             if ((lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or
                     (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
                     (lane_dir_in_route_attribute == MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
-                return False
-            return True
+                return True
+            return False
 
         @staticmethod
-        def gm_authority_based_gmfa_indicator(gm_authority_attribute: GMAuthorityType) -> float:
+        def gm_authority_based_drivablity_indicator(gm_authority_attribute: GMAuthorityType) -> float:
             """
-            Determines if GMFA based on GM authorized driving area
+            Determines if the lane is drivable based on GM authorized driving area
             :param gm_authority_attribute: type of GM authority
-            :return: True if lane is considered GMFA, false otherwise
+            :return: True if lane is considered drivable, false otherwise
             """
             if gm_authority_attribute == GMAuthorityType.CeSYS_e_GMAuthorityType_None:
-                return False
-            return True
+                return True
+            return False
 
-    # This is a class variable that is shared between all RoutePlanner instances
-    gmfa_indicator_methods = {LaneMappingStatusType: GMFAIndicatorMapping.mapping_status_based_gmfa_indicator,
-                              GMAuthorityType: GMFAIndicatorMapping.gm_authority_based_gmfa_indicator,
-                              LaneConstructionType: GMFAIndicatorMapping.construction_zone_based_gmfa_indicator,
-                              MapLaneDirection: GMFAIndicatorMapping.lane_dir_in_route_based_gmfa_indicator}
+    # This is a class variable of RouteUtils, containing all indicator methods for a lane being drivable or not
+    drivable_lane_indicator_methods = {LaneMappingStatusType: DrivableLaneIndicatorMapping.mapping_status_based_drivablity_indicator,
+                                       GMAuthorityType: DrivableLaneIndicatorMapping.gm_authority_based_drivablity_indicator,
+                                       LaneConstructionType: DrivableLaneIndicatorMapping.construction_zone_based_drivablity_indicator,
+                                       MapLaneDirection: DrivableLaneIndicatorMapping.lane_dir_in_route_based_drivablity_indicator}
 
     @staticmethod
     @raises(LaneAttributeNotFound)
-    def is_lane_segment_gmfa(lane_segment_base_data: SceneLaneSegmentBase) -> bool:
+    def is_lane_segment_drivable(lane_segment_base_data: SceneLaneSegmentBase) -> bool:
         """
-        Determines if a lane segment is considered to be a GMFA
+        Determines if a lane segment is drivable
         :param lane_segment_base_data: SceneLaneSegmentBase for the concerned lane
-        :return: A boolean indicating if the lane is a GMFA area
+        :return: A boolean indicating if the lane is drivable or not
         """
         # Now iterate over all the active lane attributes for the lane segment
         for lane_attribute_index in lane_segment_base_data.a_i_active_lane_attribute_indices:
@@ -89,13 +89,13 @@ class RouteUtils:
                 continue
 
             try:
-                is_lane_considered_gmfa = RouteUtils.gmfa_indicator_methods[type(lane_attribute)](lane_attribute)
+                is_lane_drivable = RouteUtils.drivable_lane_indicator_methods[type(lane_attribute)](lane_attribute)
             except KeyError:
-                raise LaneAttributeNotFound(f"Could not find the GMFA indicator method that corresponds to lane attribute "
+                raise LaneAttributeNotFound(f"Could not find the drivable lane indicator method that corresponds to lane attribute "
                                             f"type {type(lane_attribute)}. The supported types are "
-                                            f"{RouteUtils.gmfa_indicator_methods.keys()}.")
+                                            f"{RouteUtils.drivable_lane_indicator_methods.keys()}.")
 
-            if is_lane_considered_gmfa:
-                return True
+            if not is_lane_drivable:
+                return False
 
-        return False
+        return True
