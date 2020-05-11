@@ -1,20 +1,19 @@
-import numpy as np
-from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import List, Dict, Optional
+
+import numpy as np
 import rte.python.profiler as prof
-from decision_making.src.messages.route_plan_message import DataRoutePlan
+from decision_making.src.exceptions import MissingMapInformation, RepeatedRoadSegments, raises, \
+    NavigationSceneDataMismatch, LaneSegmentDataNotFound, RoadSegmentDataNotFound
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
     SceneRoadSegment, SceneLaneSegmentBase
-from decision_making.src.exceptions import MissingMapInformation, RepeatedRoadSegments, raises,\
-    NavigationSceneDataMismatch, LaneSegmentDataNotFound, RoadSegmentDataNotFound
 
 RoadSegmentDict = Dict[int, SceneRoadSegment]
 LaneSegmentBaseDict = Dict[int, SceneLaneSegmentBase]
 RouteLaneSegmentOrderedDict = Dict[int, np.ndarray]   # Once typing.OrderedDict becomes availble (in python 3.7.2.) replace "Dict" with "OrderedDict" type
 
 
-class RoutePlannerInputData():
+class RoutePlannerInputData:
     """
         This class takes navigation and map (base) data and converts it to a more useful form of data which resembles the final
         route plan 2D lane sequences and also keeps relevant data in dictionary containers for faster access
@@ -196,7 +195,6 @@ class RoutePlannerInputData():
             raise RoadSegmentDataNotFound('RoutePlanner: No entry for next road segment found for road segment ID {0}'.format(road_segment_id))
 
         return self._next_road_segment_id[road_segment_id]
-
 
     @raises(RoadSegmentDataNotFound)
     def get_prev_road_segment_id(self, road_segment_id: int) -> int:

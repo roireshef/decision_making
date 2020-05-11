@@ -10,18 +10,16 @@ from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, \
     LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
-from decision_making.src.messages.route_plan_message import DataRoutePlan
-from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic, SceneStaticBase, NavigationPlan
-from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
 from decision_making.src.planning.route.binary_cost_based_route_planner import RoutePlanner
-from decision_making.src.planning.route.route_planner import RoutePlannerInputData
+from decision_making.src.planning.route.route_planner_input_data import RoutePlannerInputData
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.utils.dm_profiler import DMProfiler
 from decision_making.src.utils.metric_logger.metric_logger import MetricLogger
-from interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
-from interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
+from interface.Rte_Types.python.uc_system.uc_system_scene_static import UC_SYSTEM_SCENE_STATIC
+from interface.Rte_Types.python.uc_system.uc_system_route_plan import UC_SYSTEM_ROUTE_PLAN
 
 
 class RoutePlanningFacade(DmModule):
