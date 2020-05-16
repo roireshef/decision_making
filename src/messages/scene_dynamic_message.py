@@ -179,6 +179,8 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
     e_Pct_location_uncertainty_y = float
     e_Pct_location_uncertainty_yaw = float
     e_Pct_location_uncertainty_velocity = float
+    e_Pct_location_uncertainty_acceleration = float
+    e_Pct_location_uncertainty_yaw_rate = float
     e_i_host_lane_frenet_id = int
     a_lane_frenet_pose = np.ndarray
     a_host_lane_frenet_pose = np.ndarray
@@ -186,18 +188,21 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
 
     def __init__(self, e_r_probability, e_i_road_segment_id, e_i_lane_segment_id, e_e_dynamic_status, e_Pct_location_uncertainty_x,
                  e_Pct_location_uncertainty_y, e_Pct_location_uncertainty_yaw, e_Pct_location_uncertainty_velocity,
-                 e_i_host_lane_frenet_id, a_lane_frenet_pose, a_host_lane_frenet_pose, e_b_off_lane):
-        # type: (float, int, int, ObjectTrackDynamicProperty, float, float, float, float, int, np.ndarray, np.ndarray, bool) -> None
+                 e_Pct_location_uncertainty_acceleration, e_Pct_location_uncertainty_yaw_rate, e_i_host_lane_frenet_id,
+                 a_lane_frenet_pose, a_host_lane_frenet_pose, e_b_off_lane):
+        # type: (float, int, int, ObjectTrackDynamicProperty, float, float, float, float, float, float, int, np.ndarray, np.ndarray, bool) -> None
         """
         Actors-hypotheses information
         :param e_r_probability: Probability of this hypothesis (not relevant for M0)
         :param e_i_road_segment_id: The road-segment ID that this actor-hypothesis is in
         :param e_i_lane_segment_id: The lane-segment ID that this actor-hypothesis is in
         :param e_e_dynamic_status:
-        :param e_Pct_location_uncertainty_x: Not relevant for M0
-        :param e_Pct_location_uncertainty_y: Not relevant for M0
-        :param e_Pct_location_uncertainty_yaw: Not relevant for M0
-        :param e_Pct_location_uncertainty_velocity: Not relevant for M0
+        :param e_Pct_location_uncertainty_x: Uncertainty in actor x coordinate
+        :param e_Pct_location_uncertainty_y: Uncertainty in actor y coordinate
+        :param e_Pct_location_uncertainty_yaw: Uncertainty in actor yaw
+        :param e_Pct_location_uncertainty_velocity: Uncertainty in actor velocity
+        :param e_Pct_location_uncertainty_acceleration: Uncertainty in actor acceleration
+        :param e_Pct_location_uncertainty_yaw_rate: Uncertainty in actor yaw rate
         :param e_i_host_lane_frenet_id: The ID of the lane-segment that the host is in
         :param a_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of its own lane-segment
         :param a_host_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of the host's lane-segment
@@ -211,6 +216,8 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         self.e_Pct_location_uncertainty_y = e_Pct_location_uncertainty_y
         self.e_Pct_location_uncertainty_yaw = e_Pct_location_uncertainty_yaw
         self.e_Pct_location_uncertainty_velocity = e_Pct_location_uncertainty_velocity
+        self.e_Pct_location_uncertainty_acceleration = e_Pct_location_uncertainty_acceleration
+        self.e_Pct_location_uncertainty_yaw_rate = e_Pct_location_uncertainty_yaw_rate
         self.e_i_host_lane_frenet_id = e_i_host_lane_frenet_id
         self.a_lane_frenet_pose = a_lane_frenet_pose
         self.a_host_lane_frenet_pose = a_host_lane_frenet_pose
@@ -228,6 +235,8 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Pct_location_uncertainty_y = self.e_Pct_location_uncertainty_y
         pubsub_msg.e_Pct_location_uncertainty_yaw = self.e_Pct_location_uncertainty_yaw
         pubsub_msg.e_Pct_location_uncertainty_velocity = self.e_Pct_location_uncertainty_velocity
+        pubsub_msg.e_Pct_location_uncertainty_acceleration = self.e_Pct_location_uncertainty_acceleration
+        pubsub_msg.e_Pct_location_uncertainty_yaw_rate = self.e_Pct_location_uncertainty_yaw_rate
         pubsub_msg.e_i_host_lane_frenet_id = self.e_i_host_lane_frenet_id
         pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
         pubsub_msg.a_host_lane_frenet_pose = self.a_host_lane_frenet_pose
@@ -241,6 +250,7 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
                    ObjectTrackDynamicProperty(pubsubMsg.e_e_dynamic_status),
                    pubsubMsg.e_Pct_location_uncertainty_x, pubsubMsg.e_Pct_location_uncertainty_y,
                    pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_Pct_location_uncertainty_velocity,
+                   pubsubMsg.e_Pct_location_uncertainty_acceleration, pubsubMsg.e_Pct_location_uncertainty_yaw_rate,
                    pubsubMsg.e_i_host_lane_frenet_id, pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
                    pubsubMsg.a_host_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS], pubsubMsg.e_b_OffLane)
 

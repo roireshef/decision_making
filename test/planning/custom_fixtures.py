@@ -142,6 +142,8 @@ def dynamic_objects_not_on_road():
                                                                                       e_Pct_location_uncertainty_y=0,
                                                                                       e_Pct_location_uncertainty_yaw=0,
                                                                                       e_Pct_location_uncertainty_velocity=0,
+                                                                                      e_Pct_location_uncertainty_acceleration=0,
+                                                                                      e_Pct_location_uncertainty_yaw_rate=0,
                                                                                       e_i_host_lane_frenet_id=0,
                                                                                       a_lane_frenet_pose=np.zeros(6),
                                                                                       a_host_lane_frenet_pose=np.zeros(6),
