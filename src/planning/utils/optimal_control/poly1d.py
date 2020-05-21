@@ -172,7 +172,9 @@ class Poly1D:
             return NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits)
 
         #  Find roots of jerk_poly (nan for complex or negative roots).
-        acc_suspected_points = Math.find_real_roots_in_limits(poly_der, value_limits=np.array([0, np.inf]))
+        # Replace NaN roots (root not found) for 0 so the "extremum point" will be evaluated at 0
+        acc_suspected_points = np.nan_to_num(Math.find_real_roots_in_limits(poly_der,
+                                                                            value_limits=np.array([0, np.inf])), 0)
         acc_suspected_values = Math.zip_polyval2d(poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range and are they non-complex
