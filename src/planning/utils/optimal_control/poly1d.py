@@ -331,10 +331,8 @@ class QuarticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0. Returns 0 for cases of T==0 (ultimately division by zero)
         """
-        zeros = reduce(np.add, map(np.zeros_like, [a_0, v_0, v_T, T]))
-        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + \
-            np.true_divide(-4 * t ** 3 * T * (2 * T * a_0 + 3 * (v_0 - v_T)) + 3 * t ** 4 * (T * a_0 + 2 * (v_0 - v_T)),
-                           12 * T ** 3, out=np.zeros_like(t)+zeros, where=T != 0)
+        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + NumpyUtils.div(
+            -4 * t ** 3 * T * (2 * T * a_0 + 3 * (v_0 - v_T)) + 3 * t ** 4 * (T * a_0 + 2 * (v_0 - v_T)), 12 * T ** 3)
 
     @staticmethod
     def velocity_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -346,10 +344,8 @@ class QuarticPoly1D(Poly1D):
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        zeros = reduce(np.add, map(np.zeros_like, [a_0, v_0, v_T, T]))
-        return lambda t: v_0 + a_0 * t + \
-            np.true_divide(t ** 2 * T * (- 2 * a_0 * T - 3 * (v_0 - v_T)) + t ** 3 * (a_0 * T + (v_0 - v_T) * 2),
-                           T ** 3, out=np.zeros_like(t)+zeros, where=T != 0)
+        return lambda t: v_0 + a_0 * t + NumpyUtils.div(
+            t ** 2 * T * (- 2 * a_0 * T - 3 * (v_0 - v_T)) + t ** 3 * (a_0 * T + (v_0 - v_T) * 2), T ** 3)
 
     @staticmethod
     def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, T: float):
@@ -545,12 +541,10 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        zeros = reduce(np.add, map(np.zeros_like, [a_0, v_0, v_T, dx, T, T_m]))
-        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + t ** 3 * \
-                         np.true_divide(T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
-                                        T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
-                                        t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m))),
-                                        2 * T ** 5, out=zeros+np.zeros_like(t), where=T != 0)
+        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + t ** 3 * NumpyUtils.div(
+            T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
+            T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+            t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m))), 2 * T ** 5)
 
     @staticmethod
     def distance_from_target(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -564,13 +558,10 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        zeros = reduce(np.add, map(np.zeros_like, [a_0, v_0, v_T, dx, T, T_m]))
-        return lambda t: dx + t * (v_T - v_0) - 0.5 * a_0 * t ** 2 + t ** 3 * \
-                         np.true_divide(
-                             T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * (dx + v_T * (T - T_m))) -
-                             T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
-                             t ** 2 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * (dx + v_T * (T - T_m))),
-                             2 * T ** 5, out=zeros+np.zeros_like(t), where=T != 0)
+        return lambda t: dx + t * (v_T - v_0) - 0.5 * a_0 * t ** 2 + t ** 3 * NumpyUtils.div(
+            T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * (dx + v_T * (T - T_m))) -
+            T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+            t ** 2 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * (dx + v_T * (T - T_m))), 2 * T ** 5)
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -604,12 +595,10 @@ class QuinticPoly1D(Poly1D):
         :param T_m: [sec] T_m * v_T is added to dx
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        zeros = reduce(np.add, map(np.zeros_like, [a_0, v_0, v_T, dx, T, T_m]))
-        return lambda t: v_0 + a_0 * t + t ** 2 * \
-                         np.true_divide(3 * T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
-                                        4 * T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
-                                        5 * t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m))),
-                                        2 * T ** 5, out=zeros+np.zeros_like(t), where=T != 0)
+        return lambda t: v_0 + a_0 * t + t ** 2 * NumpyUtils.div(
+            3 * T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
+            4 * T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+            5 * t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m))), 2 * T ** 5)
 
     @staticmethod
     def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
