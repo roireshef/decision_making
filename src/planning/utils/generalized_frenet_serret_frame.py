@@ -390,3 +390,22 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         delta_s = np.expand_dims((progress_in_points - O_idx) * ds, axis=len(s.shape))
 
         return O_idx, delta_s
+
+    def get_closest_nominal_curvature(self, s: np.ndarray) -> np.ndarray:
+        """
+        from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
+        a value in the range [0, ds] representing the projection on this closest point.
+        :param s: a vector of longitudinal progress on the frame
+        :return: curvature of nominal points closest to s
+        """
+        # get the index of the segment that contains each s value
+        segment_idxs = self._get_segment_idxs_from_s(s)
+        # get ds of every point based on the ds of the segment
+        ds = self._segments_ds[segment_idxs]
+        # subtracting the s offset, we get the s value in the associated segment.
+        s_in_segment = s - self._segments_s_offsets[segment_idxs]
+        # get the points offset of the segment that each longitudinal value resides in.
+        segment_points_offset = self._segments_point_offset[segment_idxs]
+        # get the progress in index units (progress_in_points is a "floating-point index")
+        O_idx = (s_in_segment // ds + segment_points_offset).astype(int)
+        return self.k[O_idx, 0]
