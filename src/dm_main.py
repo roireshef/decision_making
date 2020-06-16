@@ -1,13 +1,15 @@
 import sys
 import ctypes
 
+from rte.python.process.process_manager import IProcessManager
+from rte.python.process.process_skeleton import ProcessSkeleton
+
 PROC_NAME = b"Planning"
 
 if sys.platform.startswith('linux'):
     libc = ctypes.cdll.LoadLibrary('libc.so.6')
     libc.prctl(15, PROC_NAME, 0, 0, 0)
 
-import os
 
 from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
@@ -29,7 +31,6 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
-from rte.python.os import catch_interrupt_signals
 from rte.python.parser import av_argument_parser
 from decision_making.src.utils.dummy_queue import DummyQueue
 
@@ -42,6 +43,7 @@ class DmInitialization:
     """
     This class contains the module initializations
     """
+
     @staticmethod
     def create_route_planner() -> RoutePlanningFacade:
         logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)
@@ -84,57 +86,71 @@ class DmInitialization:
         return trajectory_planning_module
 
 
-if __name__ == '__main__':
-    av_argument_parser.parse_arguments()
-    # register termination signal handler
-    logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-    logger.debug('%d: (DM main) registered signal handler', os.getpid())
-    catch_interrupt_signals()
+class DMManagerAdapter(IProcessManager):
+    def __init__(self):
+        self.manager = None
+        self.visualizer = None
 
-    os.environ['OMP_NUM_THREADS'] = '1'
-    os.environ['MKL_NUM_THREADS'] = '1'
-
-    # instantiate real state machine visualizer and get its queue, or define a DummyQueue that implements the queue
-    # interface and does nothing. Note that the visualizer_queue is read as a global variable above. This is where
-    # it is populated in the first place
-    if RUN_STATE_MACHINE_VISUALIZER:
-        visualizer = DIMAndLCoDVisualizer()
-        visualizer.start()
-
-        visualizer_queue = visualizer.queue
-
-        # put default values in the queue
-        visualizer.append(DIM_States.DISABLED)
-        visualizer.append(LaneChangeStatus.PENDING)
-    else:
-        visualizer_queue = DummyQueue()
-
-    modules_list = \
-        [
-            DmProcess(lambda: DmInitialization.create_route_planner(),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD},
-                      name='RP'),
-
-            DmProcess(lambda: DmInitialization.create_behavioral_planner(),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
-                      name='BP'),
-
-            DmProcess(lambda: DmInitialization.create_trajectory_planner(),
-                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD},
-                      name='TP')
-        ]
-
-    manager = DmManager(logger, modules_list)
-    manager.start_modules()
-    try:
-        manager.wait_for_submodules()
-    except KeyboardInterrupt:
-        logger.info('%d: (DM main) interrupted by signal', os.getpid())
+    def register_command_line_args(self, parser):
         pass
-    finally:
-        manager.stop_modules()
+
+    def init(self, arguments):
+        logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
+
+        modules_list = \
+            [
+                DmProcess(lambda: DmInitialization.create_route_planner(),
+                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                          trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD},
+                          name='RP'),
+
+                DmProcess(lambda: DmInitialization.create_behavioral_planner(),
+                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                          trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
+                          name='BP'),
+
+                DmProcess(lambda: DmInitialization.create_trajectory_planner(),
+                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                          trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD},
+                          name='TP')
+            ]
+
+        self.manager = DmManager(logger, modules_list)
+
+    def start_running(self):
+        # instantiate real state machine visualizer and get its queue, or define a DummyQueue that implements the queue
+        # interface and does nothing. Note that the visualizer_queue is read as a global variable above. This is where
+        # it is populated in the first place
         if RUN_STATE_MACHINE_VISUALIZER:
-            visualizer.stop()
+            self.visualizer = DIMAndLCoDVisualizer()
+            self.visualizer.start()
+
+            visualizer_queue = self.visualizer.queue
+
+            # put default values in the queue
+            self.visualizer.append(DIM_States.DISABLED)
+            self.visualizer.append(LaneChangeStatus.PENDING)
+        else:
+            visualizer_queue = DummyQueue()
+
+        self.manager.start_modules()
+
+    def wait_loop(self):
+        self.manager.wait_for_submodules()
+
+    def terminate(self):
+        self.manager.stop_modules()
+        if RUN_STATE_MACHINE_VISUALIZER:
+            self.visualizer.stop()
+
+    def cleanup(self):
+        pass
+
+
+if __name__ == '__main__':
+    # register termination signal handler
+
+    m = DMManagerAdapter()
+    p = ProcessSkeleton("planning", m)
+
+    p.start()
