@@ -1,0 +1,42 @@
+{
+  "category": "APPLICATION_LEVEL",
+  "name": "runPlanning.sh",
+  "isAdaptiveApplication": 1,
+  "processes": [
+    {
+      "name": "planning",
+      "shortNamePath": "/UC/runPlanning.sh",
+      "startupConfigs": [
+        {
+          "resourceGroup": "QM",
+          "schedulingPolicy" : "SCHEDULING-POLICY-ROUND-ROBIN",
+          "schedulingPriority" : 30,
+          "executionDependency": {},
+          "functionGroups": [
+            {
+              "name": "MachineState",
+              "states": [
+                "Running",
+                "SystemTest"
+               ]
+            },
+            {
+              "name": "planning",
+              "states": [
+                "Starting",
+                "Stopping"
+              ]
+            }
+          ],
+          "cores": {
+            "shallRunOn": [
+              0,1,2,3,4,5,6,7
+            ]
+          },
+          "enterTimeoutNanoSeconds" : 20000000000000000,
+          "exitTimeoutNanoSeconds" : 30000000000000000
+        }
+      ]
+    }
+  ]
+}
