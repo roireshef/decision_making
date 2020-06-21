@@ -10,7 +10,6 @@ if sys.platform.startswith('linux'):
     libc = ctypes.cdll.LoadLibrary('libc.so.6')
     libc.prctl(15, PROC_NAME, 0, 0, 0)
 
-
 from decision_making.src.global_constants import ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
@@ -31,12 +30,13 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
-from rte.python.parser import av_argument_parser
 from decision_making.src.utils.dummy_queue import DummyQueue
 
 AV_Logger.init_group("PLAN")
 
 RUN_STATE_MACHINE_VISUALIZER = False
+
+visualizer_queue = None
 
 
 class DmInitialization:
@@ -95,7 +95,24 @@ class DMManagerAdapter(IProcessManager):
         pass
 
     def init(self, arguments):
+        global visualizer_queue
+
         logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
+
+        # instantiate real state machine visualizer and get its queue, or define a DummyQueue that implements the queue
+        # interface and does nothing. Note that the visualizer_queue is read as a global variable above. This is where
+        # it is populated in the first place
+        if RUN_STATE_MACHINE_VISUALIZER:
+            self.visualizer = DIMAndLCoDVisualizer()
+            self.visualizer.start()
+
+            visualizer_queue = self.visualizer.queue
+
+            # put default values in the queue
+            self.visualizer.append(DIM_States.DISABLED)
+            self.visualizer.append(LaneChangeStatus.PENDING)
+        else:
+            visualizer_queue = DummyQueue()
 
         modules_list = \
             [
@@ -118,20 +135,6 @@ class DMManagerAdapter(IProcessManager):
         self.manager = DmManager(logger, modules_list)
 
     def start_running(self):
-        # instantiate real state machine visualizer and get its queue, or define a DummyQueue that implements the queue
-        # interface and does nothing. Note that the visualizer_queue is read as a global variable above. This is where
-        # it is populated in the first place
-        if RUN_STATE_MACHINE_VISUALIZER:
-            self.visualizer = DIMAndLCoDVisualizer()
-            self.visualizer.start()
-
-            visualizer_queue = self.visualizer.queue
-
-            # put default values in the queue
-            self.visualizer.append(DIM_States.DISABLED)
-            self.visualizer.append(LaneChangeStatus.PENDING)
-        else:
-            visualizer_queue = DummyQueue()
 
         self.manager.start_modules()
 
