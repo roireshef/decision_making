@@ -11,3 +11,14 @@ pack_python(test decision_making)
 pack_python(resources decision_making)
 pack_python_file(paths.py decision_making)
 pack_python_file(__init__.py decision_making)
+
+# add AUTOSAR Execution Manager relatiuve stuffs
+set(_name     runPlanning.sh)
+set(_manifest manifest/exec_config.json)
+set(_folder   ${EXECUTION_MANAGER_TARGET_FOLDER}/opt/${_name})
+
+python_install_to_autosar_dir (_name _manifest _folder)
+
+unset(_name)
+unset(_manifest)
+unset(_folder)
