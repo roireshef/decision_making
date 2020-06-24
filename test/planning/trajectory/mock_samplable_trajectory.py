@@ -9,7 +9,7 @@ class MockSamplableTrajectory(SamplableTrajectory):
     """
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, duration: float = None):
-        super().__init__(0, T=duration if duration is not None else np.inf)
+        super().__init__(0, T=duration or np.inf)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
