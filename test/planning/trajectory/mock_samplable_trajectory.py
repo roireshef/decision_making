@@ -8,8 +8,8 @@ class MockSamplableTrajectory(SamplableTrajectory):
     Assumes the samplable trajectory is already initialized with samples at the required timepoints
     """
 
-    def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, duration: float = None):
-        super().__init__(0, T=duration or np.inf)
+    def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, duration: float = np.inf):
+        super().__init__(0, T=duration)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
