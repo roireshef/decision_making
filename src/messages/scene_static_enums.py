@@ -32,6 +32,7 @@ class MapRoadSegmentType(Enum):
 
 
 class MovingDirection(Enum):
+    Invalid = 0            # Used until mapping fix their output to have the correct MovingDirection
     Adjacent_or_same_dir = 1
     Opposing = 2
     Centerlane = 3
