@@ -16,7 +16,7 @@ def plot_timed_series_labeled(timed_series, label):
     :return:
     """
     times, measurements = zip(*timed_series)
-    plt.plot(times, measurements, label=label)
+    return plt.plot(times, measurements, label=label)
 
 
 def get_profs(filename):
@@ -39,12 +39,38 @@ def plot_profiler(profs, label_pattern):
     :param label_pattern:
     :return:
     """
+    fig = plt.figure()
+
+    lines = []
     for p, timed_series in profs.items():
         if p.find(label_pattern) != -1:
-            plot_timed_series_labeled(timed_series, p)
-    plt.legend()
-    plt.show()
+            line = plot_timed_series_labeled(timed_series, p)
+            lines.append(line[0])
+    leg = plt.legend()
 
+    lined = dict()
+    for legline, origline in zip(leg.get_lines(), lines):
+        legline.set_picker(5)  # 5 pts tolerance
+        lined[legline] = origline
+
+    def onpick(event):
+        # on the pick event, find the orig line corresponding to the
+        # legend proxy line, and toggle the visibility
+        legline = event.artist
+        origline = lined[legline]
+        vis = not origline.get_visible()
+        origline.set_visible(vis)
+        # Change the alpha on the line in the legend so we can see what lines
+        # have been toggled
+        if vis:
+            legline.set_alpha(1.0)
+        else:
+            legline.set_alpha(0.2)
+        fig.canvas.draw()
+
+    fig.canvas.mpl_connect('pick_event', onpick)
+
+    plt.show()
 
 def summarize_profiler(profs):
     """
@@ -67,7 +93,7 @@ def summarize_profiler(profs):
 
 
 if __name__ == '__main__':
-    file_path = '%s/../logs/AV_Log_dm_main.log' % Paths.get_repo_path()
+    file_path = '%s/../logs/AV_Log_lba_main.log' % Paths.get_repo_path()
 
     # read data
     profs = get_profs(file_path)
