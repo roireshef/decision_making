@@ -1,5 +1,6 @@
 import ast
 from collections import defaultdict
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,12 +25,49 @@ def get_profs(filename):
     :return: a dictionary with keys as labels and time_series as values
     """
     data = defaultdict(list)
+    flag_strs = {
+        "Searcher is idle, preparing new search": -0.1,
+        "Longitudinal driver override": 0.6,
+        "Got invalid driving plan": 0.4,
+    }
+    flags = {}
+    for name in flag_strs:
+        flags[name] = False
+    vals_ptr = [
+        ("search_iteration_duration", re.compile("Search iteration .+ finished, duration: (.*)")),
+    ]
+    vals = {}
+    for name, _ in vals_ptr:
+        vals[name] = 0.0
+
+    prev_t = 0.0
+    dur_sum = 0.0
     with open(filename, 'r') as f:
         for line in f:
             prefix_index = line.find(LOG_MSG_PROFILER_PREFIX)
             if prefix_index > -1:
                 msg_dict = ast.literal_eval(line[prefix_index+len(LOG_MSG_PROFILER_PREFIX):])
                 data[msg_dict['label']].append((float(msg_dict['current_time']), float(msg_dict['running_time'])))
+                if msg_dict['label'] == "SubdivisionModule.periodic":
+                    if prev_t != 0.0:
+                        for name, value in flags.items():
+                            data[name].append((prev_t, value * flag_strs[name]))
+                            flags[name] = False
+                        # for name, value in vals.items():
+                        #     data[name].append((prev_t, value))
+
+                    prev_t = float(msg_dict['current_time'])
+                    data["sum_iteration_duration"].append((prev_t, dur_sum))
+                    dur_sum = 0.0
+            for name in flag_strs:
+                if name in line:
+                    flags[name] = True
+            for name, ptr in vals_ptr:
+                ma = ptr.findall(line)
+                if ma:
+                    vals[name] = float(ma[0])
+                    if name == "search_iteration_duration":
+                        dur_sum += vals[name]
     return data
 
 
@@ -43,7 +81,8 @@ def plot_profiler(profs, label_pattern):
 
     lines = []
     for p, timed_series in profs.items():
-        if p.find(label_pattern) != -1:
+        # if p.find(label_pattern) != -1:
+        if p in label_pattern:
             line = plot_timed_series_labeled(timed_series, p)
             lines.append(line[0])
     leg = plt.legend()
@@ -102,4 +141,47 @@ if __name__ == '__main__':
     summarize_profiler(profs)
 
     # A search string for the label can be provided
-    plot_profiler(profs, '')
+    wanted_labels = [
+        'MapProvider.recv',
+         'MapProvider.periodic',
+         'MapProvider.deserialize',
+         'SceneStaticMapGenerator.update_map_aux',
+         'MapProvider._route_planner.plan',
+         'MapProvider.feed_map_queue',
+         'MapProvider.feed_route_plan_queue',
+         'SubdivisionModule.recorder_flush',
+         'SubdivisionModule._get_current_route_plan',
+         'SubdivisionModule.get_latest_sample',
+         'SubdivisionModule.deserialize',
+         # 'SubdivisionModule._get_current_pedal_position',
+         # 'SubdivisionModule._get_pedal_pressed_status',
+         # 'SubdivisionModule._get_current_torque_request_status',
+         # 'SubdivisionModule._get_current_control_status',
+         # 'SubdivisionModule._get_current_map',
+         # 'SubdivisionModule._get_current_turn_signal',
+         # 'SubdivisionModule._get_current_gap_setting',
+         # 'SubdivisionModule._get_current_set_speed',
+         # '_get_current_dynamic_traffic_control_device_status.get_latest_sample',
+         # '_get_current_dynamic_traffic_control_device_status.deserialize',
+         # 'SubdivisionModule._get_current_dynamic_traffic_control_device_status',
+         # 'SubdivisionModule._get_current_scene_dynamic',
+         # 'SubdivisionModule._get_lane_change_for_time_and_route',
+         'SubdivisionModule.reload_config',
+         'SubdivisionModule.convert_state',
+         'SubdivisionModule.publish_state',
+         'SubdivisionModule.run_search',
+         'SubdivisionModule.plan',
+         'SubdivisionModule.publish_action',
+         'SubdivisionModule.convert_action',
+         'SubdivisionModule.publish_outputs',
+         'SubdivisionModule.periodic',
+         'Searcher is idle,'
+         'preparing new search',
+         'Longitudinal driver override',
+         'Got invalid driving plan',
+         'search_iteration_duration',
+         'sum_iteration_duration',
+         'SubdivisionModule.exception',
+    ]
+
+    plot_profiler(profs, wanted_labels)
