@@ -112,7 +112,7 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSAdjacentLane):
-        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_e_moving_direction,
+        return cls(pubsubMsg.e_i_lane_segment_id, MovingDirection(pubsubMsg.e_e_moving_direction),
                    MapLaneType(pubsubMsg.e_e_lane_type))
 
 
