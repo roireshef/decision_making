@@ -33,6 +33,22 @@ class Math:
         return np.divide(w, np.add(1.0, Math.clipped_exponent(x, 1, -k, min_clip, max_clip)))
 
     @staticmethod
+    def clipped_gompertz(x: np.ndarray, a: float, b: float, c: float,
+                         min_clip: float = -np.inf, max_clip: float = np.inf) -> np.ndarray:
+        """
+        See: https://en.wikipedia.org/wiki/Gompertz_function
+        compute gompertz with clipping the value between [-min_clip, max_clip]
+        :param x: gompertz function is f(x) = a * exp(b * exp(c * x)
+        :param a: gompertz function is f(x) = a * exp(b * exp(c * x)
+        :param b: gompertz function is f(x) = a * exp(b * exp(c * x)
+        :param c: gompertz function is f(x) = a * exp(b * exp(c * x)
+        :param min_clip: clips the value for too low values. default threshold is -inf
+        :param max_clip: clips the value for too high values. default threshold is inf
+        :return: numpy array of gompertz outputs
+        """
+        return np.clip(np.multiply(a, np.exp(np.multiply(-b, np.exp(np.multiply(-c, x))))), min_clip, max_clip)
+
+    @staticmethod
     def polyval2d(p, x):
         """
         Functionality similar to numpy.polyval, except now p can be multiple poly1d instances - one in each row,
