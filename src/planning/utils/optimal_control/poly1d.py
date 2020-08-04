@@ -300,7 +300,7 @@ class QuarticPoly1D(Poly1D):
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
-                                            v_T: np.ndarray, a_T: np.ndarray = 0.0):
+                                            v_T: np.ndarray, a_T: np.ndarray = np.array([0.])):
         """
         For given weights and constraints on a jerk-optimal polynomial solution, this function returns a matrix that
         contains (in each row:) the coefficients of the derivative of the cost function use for finding the optimal time
