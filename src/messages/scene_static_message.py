@@ -3,6 +3,8 @@ from typing import List
 import numpy as np
 from interface.Rte_Types.python.sub_structures.TsSYS_AdjacentLane import TsSYSAdjacentLane
 from interface.Rte_Types.python.sub_structures.TsSYS_BoundaryPoint import TsSYSBoundaryPoint
+from interface.Rte_Types.python.sub_structures.TsSYS_MapLineSegment import TsSYSMapLineSegment
+from interface.Rte_Types.python.sub_structures.TsSYS_MapLineSegmentAttribute import TsSYSMapLineSegmentAttribute
 from interface.Rte_Types.python.sub_structures.TsSYS_StaticTrafficControlDevice import TsSYSStaticTrafficControlDevice
 from interface.Rte_Types.python.sub_structures.TsSYS_DynamicTrafficControlDevice import TsSYSDynamicTrafficControlDevice
 from interface.Rte_Types.python.sub_structures.TsSYS_LaneSegmentConnectivity import TsSYSLaneSegmentConnectivity
@@ -18,7 +20,7 @@ from interface.Rte_Types.python.sub_structures.TsSYS_LaneOverlap import TsSYSLan
 from interface.Rte_Types.python.sub_structures.TsSYS_TrafficControlBar import TsSYSTrafficControlBar
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, \
-    LaneMappingStatusType, GMAuthorityType, LaneConstructionType, MapLaneDirection
+    LaneMappingStatusType, GMAuthorityType, LaneConstructionType, MapLaneDirection, LineSegmentType, LineSegmentAttrType
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 from decision_making.src.messages.scene_static_enums import MapLaneType, MapRoadSegmentType, MovingDirection, \
     ManeuverType, MapLaneMarkerType, LaneOverlapType, StaticTrafficControlDeviceType, DynamicTrafficControlDeviceType
@@ -379,7 +381,6 @@ class SceneLaneSegmentGeometry(PUBSUB_MSG_IMPL):
         pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
 
         pubsub_msg.e_Cnt_nominal_path_point_count = self.e_Cnt_nominal_path_point_count
-        pubsub_msg.a_nominal_path_points = self.a_nominal_path_points
 
         pubsub_msg.e_Cnt_left_boundary_points_count = self.e_Cnt_left_boundary_points_count
         for i in range(pubsub_msg.e_Cnt_left_boundary_points_count):
@@ -411,30 +412,196 @@ class SceneLaneSegmentGeometry(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_right_boundary_points_count, as_right_boundary_points)
 
 
+class MapLineSegmentAttribute(PUBSUB_MSG_IMPL):
+    e_line_segment_attr_type = LineSegmentAttrType
+    e_attribute_value = int
+
+    def __init__(self, e_line_segment_attr_type: LineSegmentAttrType, e_attribute_value: int):
+        """
+        Line segment attribute
+        :param e_line_segment_attr_type: Enumerated list of line segment types
+        :param e_attribute_value: value of attribute
+        """
+        self.e_line_segment_attr_type = e_line_segment_attr_type
+        self.e_attribute_value = e_attribute_value
+
+    def serialize(self) -> TsSYSMapLineSegmentAttribute:
+        pubsub_msg = TsSYSMapLineSegmentAttribute()
+
+        pubsub_msg.e_line_segment_attr_type = self.e_line_segment_attr_type.value
+        pubsub_msg.e_attribute_value = self.e_attribute_value
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsub_msg: TsSYSMapLineSegmentAttribute):
+
+        return cls(
+            e_line_segment_attr_type=LineSegmentAttrType(pubsub_msg.e_line_segment_attr_type),
+            e_attribute_value=pubsub_msg.e_attribute_value
+        )
+
+
+class MapLineSegment(PUBSUB_MSG_IMPL):
+    e_line_segment_type = LineSegmentType
+    e_i_line_segment_id = int
+    e_Cnt_line_points_count = int
+    a_nominal_points = np.ndarray
+    e_Cnt_upstream_line_segments_count = int
+    a_i_upstream_line_segment_ids = List[int]
+    e_Cnt_downstream_line_segments_count = int
+    a_i_downstream_line_segment_ids = List[int]
+    e_Cnt_line_segment_attr_count = int
+    as_line_segment_attrs = List[MapLineSegmentAttribute]
+
+    def __init__(
+            self,
+            e_line_segment_type: LineSegmentType,
+            e_i_line_segment_id: int,
+            e_Cnt_line_points_count: int,
+            a_nominal_points: np.ndarray,
+            e_Cnt_upstream_line_segments_count: int,
+            a_i_upstream_line_segment_ids: List[int],
+            e_Cnt_downstream_line_segments_count: int,
+            a_i_downstream_line_segment_ids: List[int],
+            e_Cnt_line_segment_attr_count: int,
+            as_line_segment_attrs: List[MapLineSegmentAttribute]
+    ):
+        """
+        Line segment information
+        :param e_line_segment_type: Type of line segment
+        :param e_i_line_segment_id: The ID of this line-edge-segment.
+        This ID is encoded with the parent lane segment id, road segment id,
+        side and type as part of making the id unique this information can be abstracted through maps API's
+        :param e_Cnt_line_points_count: Total number of points representing this line
+        :param a_nominal_points: Points that specify the path for this line-segment.
+               Its shape has to be [e_Cnt_line_points_count X MAX_PATH_POINT_FIELDS]
+        :param e_Cnt_upstream_line_segments_count: Number of line-segments that are upstream from this line-segment
+        :param a_i_upstream_line_segment_ids: The IDs of line-segments that are upstream from this line-segment
+        :param e_Cnt_downstream_line_segments_count: Number of line-segments that are downstream from this line-segment
+        :param a_i_downstream_line_segment_ids: The IDs of line-segments that are downstream from this line-segment
+        :param e_Cnt_line_segment_attr_count: Line Segment Attribute count
+        :param as_line_segment_attrs: Line Segment Attribute
+        """
+        self.e_line_segment_type = e_line_segment_type
+        self.e_i_line_segment_id = e_i_line_segment_id
+        self.e_Cnt_line_points_count = e_Cnt_line_points_count
+        self.a_nominal_points = a_nominal_points
+        self.e_Cnt_upstream_line_segments_count = e_Cnt_upstream_line_segments_count
+        self.a_i_upstream_line_segment_ids = a_i_upstream_line_segment_ids
+        self.e_Cnt_downstream_line_segments_count = e_Cnt_downstream_line_segments_count
+        self.a_i_downstream_line_segment_ids = a_i_downstream_line_segment_ids
+        self.e_Cnt_line_segment_attr_count = e_Cnt_line_segment_attr_count
+        self.as_line_segment_attrs = as_line_segment_attrs
+
+    def serialize(self) -> TsSYSMapLineSegment:
+        pubsub_msg = TsSYSMapLineSegment()
+        pubsub_msg.e_line_segment_type = self.e_line_segment_type.value
+        pubsub_msg.e_i_line_segment_id = self.e_i_line_segment_id
+        pubsub_msg.e_Cnt_line_points_count = self.e_Cnt_line_points_count
+
+        pubsub_msg.e_Cnt_upstream_line_segments_count = self.e_Cnt_upstream_line_segments_count
+        for i in range(pubsub_msg.e_Cnt_upstream_line_segments_count):
+            pubsub_msg.a_i_upstream_line_segment_ids[i] = self.a_i_upstream_line_segment_ids[i]
+
+        pubsub_msg.e_Cnt_downstream_line_segments_count = self.e_Cnt_downstream_line_segments_count
+        for i in range(pubsub_msg.e_Cnt_downstream_line_segments_count):
+            pubsub_msg.a_i_downstream_line_segment_ids[i] = self.a_i_downstream_line_segment_ids[i]
+
+        pubsub_msg.e_Cnt_line_segment_attr_count = self.e_Cnt_line_segment_attr_count
+        for i in range(pubsub_msg.e_Cnt_line_segment_attr_count):
+            pubsub_msg.as_line_segment_attrs[i] = self.as_line_segment_attrs[i].serialize()
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls,
+                    pubsubMsg: TsSYSMapLineSegment,
+                    a_nominal_points: np.ndarray) -> 'MapLineSegment':
+
+        a_i_upstream_line_segment_ids = pubsubMsg.a_i_upstream_line_segment_ids[:pubsubMsg.e_Cnt_upstream_line_segments_count]
+        a_i_upstream_line_segment_ids = a_i_upstream_line_segment_ids.tolist()
+
+        a_i_downstream_line_segment_ids = pubsubMsg.a_i_downstream_line_segment_ids[:pubsubMsg.e_Cnt_downstream_line_segments_count]
+        a_i_downstream_line_segment_ids = a_i_downstream_line_segment_ids.tolist()
+
+        as_line_segment_attrs = list()
+        for i in range(pubsubMsg.e_Cnt_line_segment_attr_count):
+            as_line_segment_attrs.append(MapLineSegmentAttribute.deserialize(pubsub_msg=pubsubMsg.as_line_segment_attrs[i]))
+
+        return cls(
+            e_line_segment_type=LineSegmentType(pubsubMsg.e_line_segment_type),
+            e_i_line_segment_id=pubsubMsg.e_i_line_segment_id,
+            e_Cnt_line_points_count=pubsubMsg.e_Cnt_line_points_count,
+            a_nominal_points=a_nominal_points,
+            e_Cnt_upstream_line_segments_count=pubsubMsg.e_Cnt_upstream_line_segments_count,
+            a_i_upstream_line_segment_ids=a_i_upstream_line_segment_ids,
+            e_Cnt_downstream_line_segments_count=pubsubMsg.e_Cnt_downstream_line_segments_count,
+            a_i_downstream_line_segment_ids=a_i_downstream_line_segment_ids,
+            e_Cnt_line_segment_attr_count=pubsubMsg.e_Cnt_line_segment_attr_count,
+            as_line_segment_attrs=as_line_segment_attrs
+        )
+
+
 class SceneStaticGeometry(PUBSUB_MSG_IMPL):
     e_Cnt_num_lane_segments = int
     as_scene_lane_segments = List[SceneLaneSegmentGeometry]
 
-    def __init__(self, e_Cnt_num_lane_segments: int,
-                 as_scene_lane_segments: List[SceneLaneSegmentGeometry],
-                 a_nominal_path_points: np.ndarray):
+    e_Cnt_line_segment_count = int
+    as_line_segments = List[MapLineSegment]
+
+    def __init__(
+            self,
+            e_Cnt_num_lane_segments: int,
+            as_scene_lane_segments: List[SceneLaneSegmentGeometry],
+            e_Cnt_line_segment_count: int,
+            as_line_segments: List[MapLineSegment]
+    ):
         """
         Scene provider's static scene information
-        :param a_nominal_path_points:
         :param e_Cnt_num_lane_segments: Total number of lane-segments(geometry) in the static scene
         :param as_scene_lane_segments: All lane-segments(geometry) in the static scene
+        :param e_Cnt_line_segment_count: Total number of line-segments(geometry) in the static scene
+        :param as_line_segments: All line-segments(geometry) in the static scene
         """
         self.e_Cnt_num_lane_segments = e_Cnt_num_lane_segments
         self.as_scene_lane_segments = as_scene_lane_segments
-        self.a_nominal_path_points = a_nominal_path_points
+
+        self.e_Cnt_line_segment_count = e_Cnt_line_segment_count
+        self.as_line_segments = as_line_segments
 
     def serialize(self) -> TsSYSSceneStaticGeometry:
         pubsub_msg = TsSYSSceneStaticGeometry()
 
+        # Fill lane segments
         pubsub_msg.e_Cnt_num_lane_segments = self.e_Cnt_num_lane_segments
-        pubsub_msg.a_nominal_path_points = self.a_nominal_path_points
+
+        curr_start_index = 0
         for i in range(pubsub_msg.e_Cnt_num_lane_segments):
             pubsub_msg.as_scene_lane_segments[i] = self.as_scene_lane_segments[i].serialize()
+            pubsub_msg.as_scene_lane_segments[i].e_i_nominal_path_point_start_index = curr_start_index
+
+            curr_num_points = pubsub_msg.as_scene_lane_segments[i].e_Cnt_nominal_path_point_count
+            if curr_num_points > 0:
+                curr_points = self.as_scene_lane_segments[i].a_nominal_path_points[:curr_num_points, :]
+                pubsub_msg.a_nominal_path_points[curr_start_index: curr_start_index + curr_num_points, :] = curr_points
+
+            curr_start_index += curr_num_points
+
+        # Fill line segments
+        pubsub_msg.e_Cnt_line_segment_count = self.e_Cnt_line_segment_count
+
+        curr_start_index = 0
+        for i in range(pubsub_msg.e_Cnt_line_segment_count):
+            pubsub_msg.as_line_segments[i] = self.as_line_segments[i].serialize()
+            pubsub_msg.as_line_segments[i].e_i_start_index = curr_start_index
+
+            curr_num_points = pubsub_msg.as_line_segments[i].e_Cnt_line_points_count
+            if curr_num_points > 0:
+                curr_points = self.as_line_segments[i].a_nominal_points[:curr_num_points, :]
+                pubsub_msg.a_nominal_points[curr_start_index: curr_start_index + curr_num_points, :] = curr_points
+
+            curr_start_index += curr_num_points
 
         return pubsub_msg
 
@@ -445,9 +612,7 @@ class SceneStaticGeometry(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_num_lane_segments):
             # Get the current lane relevant nominal path points
             e_cnt_nominal_path_point_count = pubsubMsg.as_scene_lane_segments[i].e_Cnt_nominal_path_point_count
-            # todo: replace "e_i_nominal_path_point_start_index"] with .e_i_nominal_path_point_start_index once conmmon_data integrated
-
-            e_i_nominal_path_point_start_index = pubsubMsg.as_scene_lane_segments[i]._dic["e_i_nominal_path_point_start_index"]
+            e_i_nominal_path_point_start_index = pubsubMsg.as_scene_lane_segments[i].e_i_nominal_path_point_start_index
             e_i_nominal_path_point_end_index = e_i_nominal_path_point_start_index + e_cnt_nominal_path_point_count
             curr_lane_a_nominal_path_points = pubsubMsg.a_nominal_path_points[
                                               e_i_nominal_path_point_start_index:e_i_nominal_path_point_end_index, :
@@ -455,9 +620,24 @@ class SceneStaticGeometry(PUBSUB_MSG_IMPL):
             lane_segments_geometry.append(SceneLaneSegmentGeometry.deserialize(pubsubMsg.as_scene_lane_segments[i],
                                                                                curr_lane_a_nominal_path_points))
 
-        return cls(pubsubMsg.e_Cnt_num_lane_segments,
-                   lane_segments_geometry,
-                   pubsubMsg.a_nominal_path_points)
+        map_line_segments = list()
+        for i in range(pubsubMsg.e_Cnt_line_segment_count):
+            # Get the current line relevant path points
+            e_Cnt_line_points_count = pubsubMsg.as_line_segments[i].e_Cnt_line_points_count
+            e_i_start_index = pubsubMsg.as_line_segments[i].e_i_start_index
+            end_index = e_i_start_index + e_Cnt_line_points_count
+            curr_nominal_points = pubsubMsg.a_nominal_points[e_i_start_index: end_index, :]
+
+            map_line_segments.append(
+                MapLineSegment.deserialize(pubsubMsg=pubsubMsg.as_line_segments[i], a_nominal_points=curr_nominal_points)
+            )
+
+        return cls(
+            e_Cnt_num_lane_segments=pubsubMsg.e_Cnt_num_lane_segments,
+            as_scene_lane_segments=lane_segments_geometry,
+            e_Cnt_line_segment_count=pubsubMsg.e_Cnt_line_segment_count,
+            as_line_segments=map_line_segments
+        )
 
 
 class NavigationPlan(PUBSUB_MSG_IMPL):

@@ -197,3 +197,17 @@ class LaneConstructionType(IntEnum):
     CeSYS_e_LaneConstructionType_Blocked = 1
     CeSYS_e_LaneConstructionType_HalfBlocked = 2
     CeSYS_e_LaneConstructionType_Unknown = 3
+
+
+class LineSegmentType(IntEnum):
+    CeSYS_LineSegmentType_Unknown = 0
+    CeSYS_LineSegmentType_LaneEdge = 1
+    CeSYS_LineSegmentType_RoadEdge = 2
+    CeSYS_LineSegmentType_RoadBarrier = 3
+    CeSYS_LineSegmentType_NominalPath = 4
+
+
+class LineSegmentAttrType(IntEnum):
+    CeSYS_LineSegmentAttr_Unknown = 0
+    CeSYS_LineSegmentAttr_GpsCover = 1
+    CeSYS_LineSegmentAttr_PaintColor = 2
