@@ -31,3 +31,7 @@ def test_3d_linear_interpolation_NoError():
         plt.plot(resampled_points[:, 0], resampled_points[:, 2], 'g*')
         ax.set_aspect('equal', adjustable='box')
         plt.show()
+
+
+if __name__ == '__main__':
+    test_3d_linear_interpolation_NoError()
