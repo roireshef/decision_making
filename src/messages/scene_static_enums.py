@@ -151,6 +151,19 @@ class NominalPathPoint(Enum):
     CeSYS_NominalPathPoint_e_l_right_offset = 9
 
 
+class NominalPoint(Enum):
+    CeSYS_e_NominalPoint_e_l_EastX = 0
+    CeSYS_e_NominalPoint_e_l_NorthY = 1
+    CeSYS_e_NominalPoint_e_l_UpZ = 2
+
+    CeSYS_e_NominalPoint_e_phi_heading = 3
+    CeSYS_e_NominalPoint_e_il_curvature = 4
+    CeSYS_e_NominalPoint_e_il2_curvature_rate = 5
+    CeSYS_e_NominalPoint_e_phi_cross_slope = 6
+    CeSYS_e_NominalPoint_e_phi_along_slope = 7
+    CeSYS_e_NominalPoint_e_l_s = 8
+
+
 class RoutePlanLaneSegmentAttr(IntEnum):
     CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus = 0
     CeSYS_e_RoutePlanLaneSegmentAttr_GMFA = 1
