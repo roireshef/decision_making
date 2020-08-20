@@ -169,7 +169,7 @@ class Poly1D:
                 return NumpyUtils.is_in_limits(poly[:, 0], limits)
         elif poly_der.shape[-1] == 1:  # 1st order derivative is constant - Polynomial is a*x+b
             # No need to test for t=0 (assuming it's valid), only t=T
-            return NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits)
+            return np.all(NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits), axis=1)
 
         #  Find roots of jerk_poly (nan for complex or negative roots).
         # Replace NaN roots (root not found) for 0 so the "extremum point" will be evaluated at 0
