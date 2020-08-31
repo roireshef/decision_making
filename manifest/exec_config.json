@@ -8,10 +8,19 @@
       "shortNamePath": "/UC/runPlanning.sh",
       "startupConfigs": [
         {
-          "resourceGroup": "QM",
+          "userId": 361017902,
+          "primaryGroupId": 2000000,
+          "secondaryGroupIds": 20,
           "schedulingPolicy" : "SCHEDULING-POLICY-ROUND-ROBIN",
           "schedulingPriority" : 30,
-          "executionDependency": {},
+          "options" : [
+            "../../../config/vehicle_config/VIN_1GYS4DKJ7JR100095",
+            "../../../config/ofek_config.json"
+          ],
+          "executionDependency":
+           {
+              "semanticLocalization" : 0
+           },
           "functionGroups": [
             {
               "name": "MachineState",
