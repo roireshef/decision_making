@@ -4,7 +4,7 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
 EPS = np.finfo(np.float32).eps
-MPH_TO_MPS = 2.23694
+MPS_TO_MPH = 2.23694
 
 # Behavioral Planner
 
@@ -57,8 +57,8 @@ LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 # original velocities in [mph] are converted into [m/s]
-VELOCITY_LIMITS = np.array([0.0, 90/MPH_TO_MPS])
-VELOCITY_STEP = 5/MPH_TO_MPS
+VELOCITY_LIMITS = np.array([0.0, 90/MPS_TO_MPH])
+VELOCITY_STEP = 5/MPS_TO_MPH
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
