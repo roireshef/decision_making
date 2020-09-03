@@ -18,7 +18,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, REPLANNING_LAT, REPLANNING_LON, \
-    LOG_MSG_SCENE_DYNAMIC_RECEIVED, LOG_MSG_CONTROL_STATUS
+    LOG_MSG_SCENE_DYNAMIC_RECEIVED, LOG_MSG_CONTROL_STATUS_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
@@ -321,7 +321,7 @@ class TrajectoryPlanningFacade(DmModule):
                                 UC_SYSTEM_CONTROL_STATUS)
             return None
         control_status = ControlStatus.deserialize(serialized_control_status)
-        self.logger.debug("%s: %f engaged %s" % (LOG_MSG_CONTROL_STATUS, control_status.s_Header.s_Timestamp.timestamp_in_seconds,
+        self.logger.debug("%s: %f engaged %s" % (LOG_MSG_CONTROL_STATUS_RECEIVED, control_status.s_Header.s_Timestamp.timestamp_in_seconds,
                                                  control_status.s_Data.e_b_TTCEnabled))
         return control_status
 
