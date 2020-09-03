@@ -29,7 +29,7 @@ from decision_making.src.exceptions import MsgDeserializationError, BehavioralPl
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED, \
     MIN_DISTANCE_TO_SET_TAKEOVER_FLAG, TIME_THRESHOLD_TO_SET_TAKEOVER_FLAG, LOG_MSG_SCENE_DYNAMIC_RECEIVED, MAX_COST, \
-    LOG_MSG_CONTROL_STATUS_RECEIVED
+    LOG_MSG_CONTROL_STATUS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.route_plan_message import RoutePlan, DataRoutePlan
@@ -390,7 +390,7 @@ class BehavioralPlanningFacade(DmModule):
             return None
         control_status = ControlStatus.deserialize(serialized_control_status)
         self.logger.debug(
-            "%s: %f engaged %s" % (LOG_MSG_CONTROL_STATUS_RECEIVED, control_status.s_Header.s_Timestamp.timestamp_in_seconds,
+            "%s: %f engaged %s" % (LOG_MSG_CONTROL_STATUS, control_status.s_Header.s_Timestamp.timestamp_in_seconds,
                                    control_status.s_Data.e_b_TTCEnabled))
         return control_status
 
