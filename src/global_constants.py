@@ -299,7 +299,7 @@ CLOSE_TO_ZERO_NEGATIVE_VELOCITY = -0.1
 
 # close to zero velocity, which may be considered as zero velocity (used by frenet->cartesian conversion)
 # Don't decrease the value 0.01, since otherwise frenet->cartesian conversion creates state with too high curvature.
-NEGLIGIBLE_VELOCITY = 0.01
+NEGLIGIBLE_VELOCITY = 0.0001
 
 # Frenet-Serret Conversions #
 
