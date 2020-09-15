@@ -313,12 +313,12 @@ class QuarticPoly1D(Poly1D):
         :param a_T: [m/sec^s] terminal acceleration (at time T)
         :return: coefficient matrix for all possibilities
         """
-        zeros = np.zeros(w_T.shape[0])
-        return np.c_[w_T,
-                     zeros,
-                     - 4 * w_J * (a_0 ** 2 +a_0*a_T + a_T**2),
-                     + 24 * w_J * (a_0 + a_T) * (v_T - v_0),
-                     - 36 * w_J * (v_0 - v_T) ** 2]
+        zeros = np.zeros(w_T.shape)
+        return np.c_[w_T.ravel(),
+                     zeros.ravel(),
+                     (- 4 * w_J * (a_0 ** 2 + a_0 * a_T + a_T ** 2)).ravel(),
+                     (+ 24 * w_J * (a_0 + a_T) * (v_T - v_0)).ravel(),
+                     (- 36 * w_J * (v_0 - v_T) ** 2).ravel()]
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -499,14 +499,14 @@ class QuinticPoly1D(Poly1D):
         :param T_m: T_m: [sec] T_m * v_T is added to dx
         :return: coefficient matrix for all possibilities
         """
-        zeros = np.zeros(w_T.shape[0])
-        return np.c_[w_T,
-                     zeros,
-                     -9 * a_0 ** 2 * w_J,
-                     144 * w_J * a_0 * (v_T - v_0),
-                     -72 * w_J * (5 * a_0 * (T_m * v_T - dx) + 8 * (v_T - v_0) ** 2),
-                     2880 * w_J * (T_m * v_T - dx) * (v_T - v_0),
-                     -3600 * w_J * (T_m * v_T - dx) ** 2]
+        zeros = np.zeros(w_T.shape)
+        return np.c_[w_T.ravel(),
+                     zeros.ravel(),
+                     (-9 * a_0 ** 2 * w_J).ravel(),
+                     (144 * w_J * a_0 * (v_T - v_0)).ravel(),
+                     (-72 * w_J * (5 * a_0 * (T_m * v_T - dx) + 8 * (v_T - v_0) ** 2)).ravel(),
+                     (2880 * w_J * (T_m * v_T - dx) * (v_T - v_0)).ravel(),
+                     (-3600 * w_J * (T_m * v_T - dx) ** 2).ravel()]
 
     @staticmethod
     def position_profile_coefficients(a_0: np.array, v_0: np.array, v_T: np.array, dx: np.array, T: np.array):
