@@ -317,7 +317,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segments_idxs[s_values == 0] = 0
         return segments_idxs
 
-    def _approximate_s_from_points(self, points: np.ndarray):
+    def _approximate_s_from_points(self, points: np.ndarray, exception_on_overflow: bool = True):
         """
         Given cartesian points, this method approximates the s longitudinal progress of these points on
         the frenet frame.
@@ -325,12 +325,12 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :return: approximate s value on the frame that will be created using self.O
         """
         # Find the index of closest point on curve, and a fractional value representing the projection on this point.
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O, exception_on_overflow)
         # given the fractional index of the point (O_idx+delta_s), find which segment it belongs to based
         # on the points offset of each segment
-        return self.get_s_from_index_on_frame(O_idx, delta_s)
+        return self.get_s_from_index_on_frame(O_idx, delta_s, exception_on_overflow)
 
-    def get_s_from_index_on_frame(self, O_idx: np.ndarray, delta_s: np.ndarray):
+    def get_s_from_index_on_frame(self, O_idx: np.ndarray, delta_s: np.ndarray, exception_on_overflow: bool = True):
         """
         given fractional index of the point (O_idx+delta_s), find which segment it belongs to based on
         the points offset of each segment
@@ -338,7 +338,17 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :param delta_s: tensor of progress of projection of each point in <points> on its relevant segment
         :return: approximate s value on the frame that will be created using self.O
         """
-        segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(O_idx, delta_s)) - 1
+        is_valid = (O_idx >= 0)
+        # if exception_on_overflow=False, calculate s_approx only for valid points (non-negative indices)
+        if not exception_on_overflow:
+            valid_O_idx = O_idx[is_valid]
+            valid_delta_s = delta_s[is_valid]
+        else:
+            valid_O_idx = O_idx
+            valid_delta_s = delta_s
+
+        segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(valid_O_idx, valid_delta_s)) - 1
+
         if (segment_idx_per_point >= len(self._segments_ds)).any():
             raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." %
                                     (np.add(O_idx, delta_s), self.s_max))
@@ -354,8 +364,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         intra_point_offsets[segment_idx_per_point == 0] = self._segments_s_start[0] % self._segments_ds[0]
         # The approximate longitudinal progress is the longitudinal offset of the segment plus the in-segment-index
         # times the segment ds.
-        s_approx = self._segments_s_offsets[segment_idx_per_point] - intra_point_offsets + \
-                   (O_idx + delta_s - self._segments_point_offset[segment_idx_per_point]) * ds
+        valid_s_approx = self._segments_s_offsets[segment_idx_per_point] - intra_point_offsets + \
+                         (valid_O_idx + valid_delta_s - self._segments_point_offset[segment_idx_per_point]) * ds
+
+        # if exception_on_overflow=False, set negative s_approx for invalid points
+        if not exception_on_overflow:
+            s_approx = -np.ones_like(delta_s)
+            s_approx[is_valid] = valid_s_approx
+        else:
+            s_approx = valid_s_approx
 
         return s_approx
 
