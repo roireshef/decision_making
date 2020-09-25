@@ -338,9 +338,10 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
         s_approx = self._approximate_s_from_points(points, exception_on_overflow)
         # if exception_on_overflow=False, invalid s_approx is negative
-        non_negative_s_approx = np.maximum(s_approx, 0.)  # zero invalid s_approx to enable taylor_interp
+        valid = (s_approx >= 0)
 
-        a_s, T_s, N_s, k_s, _ = self._taylor_interp(non_negative_s_approx)
+        # taylor has to get non-negative values; for invalid points it returns garbage
+        a_s, T_s, N_s, k_s, _ = self._taylor_interp(np.maximum(s_approx, 0.))
 
         is_curvature_big_enough = np.greater(np.abs(k_s), TINY_CURVATURE)
 
@@ -365,10 +366,11 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
         # arc length from a_s to the new guess point
         step = step_sign * np.arccos(cos) * np.abs(signed_radius)
-        non_negative_s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
-        non_negative_s_approx[s_approx < 0] = 0  # zero invalid s_approx to enable taylor_interp
+        s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
+        s_approx[~valid] = -1.  # negative s_approx indicates invalid point
 
-        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(non_negative_s_approx)
+        # taylor has to get non-negative values; for invalid points it returns garbage
+        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.maximum(s_approx, 0.))
 
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 
