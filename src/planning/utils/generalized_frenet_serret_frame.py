@@ -306,6 +306,18 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         return npi.indices(self._segment_ids, segment_ids)
 
+    def get_segment_idxs_from_ids(self, segment_ids: NumpyIndicesArray) -> NumpyIndicesArray:
+        """
+        Given an array of segment_ids, this method returns the indices of these segment_ids in self.segments
+        :param segment_ids: Ids of segment to find
+        :return: For each segment id return the index of the corresponding FrenetSubSegment in self.segments
+        If no corresponding subsegment was found return -1
+        """
+        if len(segment_ids) == 0:
+            return np.array([], dtype=np.int)
+
+        return npi.indices(self._segment_ids, segment_ids, missing=-1)
+
     def _get_segment_idxs_from_s(self, s_values: np.ndarray):
         """
         for each longitudinal progress on the curve, s, return the index of the segment it belonged to
