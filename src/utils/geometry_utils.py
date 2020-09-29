@@ -11,15 +11,15 @@ from decision_making.src.planning.utils.math_utils import Math
 
 class Euclidean:
     @staticmethod
-    def project_on_piecewise_linear_curve(points: np.array, path_points: np.array, exception_on_overflow: bool = True) \
-            -> (np.ndarray, np.ndarray):
+    def project_on_piecewise_linear_curve(points: np.array, path_points: np.array,
+                                          raise_on_points_out_of_frame: bool = True) -> (np.ndarray, np.ndarray):
         """
         Projects a set of points (any tensor shape) onto a piecewise-linear curve. In cases where a point lies within
         a funnel created by the normals of two successive segments, the point is projected on the end-point of the first
         one. Note that the inverse transformation of this projection will not result exactly in the original point!
         :param points: a set of points to project (any tensor shape)
         :param path_points: a path of 2D points to project onto (2D matrix with shape [N,2])
-        :param exception_on_overflow: if True raise exception in case of point outside the frenet frame; otherwise
+        :param raise_on_points_out_of_frame: if True raise exception in case of point outside the frenet frame; otherwise
             fill nan for outside points
         :return: (tensor of segment index per point in <points>,
         tensor of progress of projection of each point in <points> on its relevant segment)
@@ -70,7 +70,7 @@ class Euclidean:
 
         is_point_in_front_of_curve = (closest_segment_idxs == num_segments - 1) * progress_matrix[:, -1] > 1
         if np.any(is_point_in_front_of_curve, axis=-1):
-            if exception_on_overflow:
+            if raise_on_points_out_of_frame:
                 raise OutOfSegmentFront("Can't project point(s) %s on curve [%s, ..., %s]" % (
                     str(points_matrix[[is_point_in_front_of_curve]]).replace('\n', ', '),
                     str(path_points[0]), str(path_points[-1])))
@@ -80,7 +80,7 @@ class Euclidean:
 
         is_point_in_back_of_curve = (closest_segment_idxs == 0) * progress_matrix[:, 0] < 0
         if np.any(is_point_in_back_of_curve, axis=-1):
-            if exception_on_overflow:
+            if raise_on_points_out_of_frame:
                 raise OutOfSegmentBack("Can't project point(s) %s on curve [%s, ..., %s]" % (
                     str(points_matrix[[is_point_in_back_of_curve]]).replace('\n', ', '),
                     str(path_points[0]), str(path_points[-1])))
