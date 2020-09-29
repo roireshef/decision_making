@@ -7,7 +7,6 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.test.planning.trajectory.utils import RouteFixture
 
 
-
 def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_accurate():
     ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
 
@@ -246,7 +245,6 @@ def test_convertFromSegmentState_x_y():
 
     np.testing.assert_array_less(errors, ACCURACY_TH,
                                  'FrenetMovingFrame point conversions aren\'t accurate enough')
-
 
 
 def test_convertFromSegmentStates_x_y():
@@ -530,6 +528,7 @@ def test_hasSegmentIds_testMultiDimnesionalArrayOfIndices_validResults():
     assert generalized_frenet.has_segment_id(0) == True
     assert generalized_frenet.has_segment_id(2) == False
 
+
 def test_buildAndConvert_singleFrenetFrame_conversionsAreAccurate():
     ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
@@ -580,3 +579,55 @@ def test_lateralConsistency_twoOverlappingGFFs_cartesianPointHasSameLatitudeWRTb
     fpoint2 = gff2.cpoint_to_fpoint(cpoint)
     assert fpoint1[FP_DX] == fpoint2[FP_DX] and \
            fpoint1[FS_SX] + segmentation1[0].e_i_SStart == fpoint2[FS_SX] + segmentation2[0].e_i_SStart
+
+
+def test_points_out_of_gff():
+    POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
+    VEL_ACCURACY_TH = 1e-3  # up to 1 [mm/sec] error in velocity
+    ACC_ACCURACY_TH = 1e-3  # up to 1 [mm/sec^2] error in acceleration
+    CURV_ACCURACY_TH = 1e-4  # up to 0.0001 [m] error in curvature which accounts to radius of 10,000[m]
+
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
+    cstates = np.array([[-100.0, 0.0, -np.pi / 8, 0.1, 1.0, 1e-2], [130.0, 0.0, np.pi / 6, 0.1, 1.1, 1e-2],
+                        [150.0, 40.0, np.pi / 7, 10.0, -0.9, 1e-2], [450.0, 50.0, np.pi / 8, 3, -0.5, -5 * 1e-2],
+                        [660.0, 50.0, np.pi / 9, 0.1, -2, 0]
+                        ])
+
+    # split into two frenet frames that coincide in their last and first points
+    full_frenet = FrenetSerret2DFrame.fit(route_points)
+    n = (len(full_frenet.points) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+                                          full_frenet.N[:(n + 1)],
+                                          full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+                                            full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
+
+    upstream_s_start = upstream_frenet.ds * 100.8
+    upstream_s_end = upstream_frenet.s_max
+    downstream_s_start = 0
+    downstream_s_end = downstream_frenet.s_max - downstream_frenet.ds * 100.8
+
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
+    gff = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet], sub_segments=segmentation)
+
+    fstates = gff.ctrajectory_to_ftrajectory(cstates, raise_on_points_out_of_frame=False)
+    valid_fstate = fstates[~np.isnan(fstates[:, 0])]
+    assert valid_fstate.shape[0] == fstates.shape[0] - 2
+
+    valid_cstates = cstates[~np.isnan(fstates[:, 0])]
+    new_cstates = gff.ftrajectory_to_ctrajectory(valid_fstate)
+
+    position_errors = np.linalg.norm(valid_cstates - new_cstates, axis=1)
+    vel_errors = np.abs(valid_cstates[:, C_V] - new_cstates[:, C_V])
+    acc_errors = np.abs(valid_cstates[:, C_A] - new_cstates[:, C_A])
+    curv_errors = np.abs(valid_cstates[:, C_K] - new_cstates[:, C_K])
+
+    np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
+    np.testing.assert_array_less(vel_errors, VEL_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame velocity conversions aren\'t accurate enough')
+    np.testing.assert_array_less(acc_errors, ACC_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame acceleration conversions aren\'t accurate enough')
+    np.testing.assert_array_less(curv_errors, CURV_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame curvature conversions aren\'t accurate enough')

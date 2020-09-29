@@ -227,29 +227,32 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
         return np.c_[s, d]
 
-    def cstate_to_fstate(self, cstate: CartesianExtendedState, exception_on_overflow: bool = True) -> FrenetState2D:
+    def cstate_to_fstate(self, cstate: CartesianExtendedState, raise_on_points_out_of_frame: bool = True) -> FrenetState2D:
         """
         Transforms Cartesian-frame state to Frenet-frame state
         :param cstate: a cartesian-frame state (in the coordinate frame of self.points)
+        :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: a frenet-frame state
         """
-        return self.ctrajectory_to_ftrajectory(np.array([cstate]), exception_on_overflow)[0]
+        return self.ctrajectory_to_ftrajectory(np.array([cstate]), raise_on_points_out_of_frame)[0]
 
-    def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory, exception_on_overflow: bool = True) \
-            -> FrenetTrajectory2D:
+    def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory,
+                                   raise_on_points_out_of_frame: bool = True) -> FrenetTrajectory2D:
         """
         Transforms Cartesian-frame trajectory to Frenet-frame trajectory, using tensor operations
         :param ctrajectory: a cartesian-frame trajectory (in the coordinate frame of self.points)
+        :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: a frenet-frame trajectory
         """
-        return self.ctrajectories_to_ftrajectories(np.array([ctrajectory]), exception_on_overflow)[0]
+        return self.ctrajectories_to_ftrajectories(np.array([ctrajectory]), raise_on_points_out_of_frame)[0]
 
     def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories,
-                                       exception_on_overflow: bool = True) -> FrenetTrajectories2D:
+                                       raise_on_points_out_of_frame: bool = True) -> FrenetTrajectories2D:
         """
         Transforms Cartesian-frame trajectories to Frenet-frame trajectories, using tensor operations
         For formulas derivations please refer to: http://ieeexplore.ieee.org/document/5509799/
         :param ctrajectories: Cartesian-frame trajectories (tensor)
+        :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: Frenet-frame trajectories (tensor)
         """
         pos_x = ctrajectories[:, :, [C_X, C_Y]]
@@ -258,8 +261,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]
 
-        # if exception_on_overflow=False, invalid points get s_x < 0
-        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_points(pos_x, exception_on_overflow)
+        # if raise_on_points_out_of_frame=False, invalid points get s_x < 0
+        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_points(pos_x, raise_on_points_out_of_frame)
 
         d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
 
@@ -288,22 +291,23 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         d_a = d_tag_tag * s_v ** 2 + d_tag * s_a
 
         ftrajectory = np.dstack((s_x, s_v, s_a, d_x, d_v, d_a))
-        if not exception_on_overflow:  # set nan for invalid points
+        if not raise_on_points_out_of_frame:  # set nan for invalid points
             ftrajectory[s_x < 0] = np.nan
 
         return ftrajectory
 
     ## UTILITIES ##
 
-    def _approximate_s_from_points(self, points: np.ndarray, exception_on_overflow: bool = True) -> np.ndarray:
+    def _approximate_s_from_points(self, points: np.ndarray, raise_on_points_out_of_frame: bool = True) -> np.ndarray:
         """
         Given cartesian points, this method approximates the s longitudinal progress of these points on
         the frenet frame.
         :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
+        :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: approximate s value on the frame that will be created using self.O
         """
         # perform gradient decent to find s_approx
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O, exception_on_overflow)
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O, raise_on_points_out_of_frame)
         s_approx = np.add(O_idx, delta_s) * self.ds
         return s_approx
 
@@ -321,10 +325,11 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         delta_s = np.expand_dims(s - O_idx * self.ds, axis=len(s.shape))
         return O_idx, delta_s
 
-    def _project_cartesian_points(self, points: np.ndarray, exception_on_overflow: bool = True) -> \
+    def _project_cartesian_points(self, points: np.ndarray, raise_on_points_out_of_frame: bool = True) -> \
             (np.ndarray, CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
         """Given a tensor (any shape) of 2D points in cartesian frame (same origin as self.O),
-        this function uses taylor approximation to return
+        this function uses taylor approximation to return.
+        If raise_on_points_out_of_frame=False, out-of-frame points get negative s.
         s*, a(s*), T(s*), N(s*), k(s*), k'(s*), where:
         s* is the progress along the curve where the point is projected
         a(s*) is the Cartesian-coordinates (x,y) of the projections on the curve,
@@ -336,12 +341,13 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         """
         # perform gradient decent to find s_approx
 
-        s_approx = self._approximate_s_from_points(points, exception_on_overflow)
-        # if exception_on_overflow=False, invalid s_approx is negative
+        s_approx = self._approximate_s_from_points(points, raise_on_points_out_of_frame)
+        # if raise_on_points_out_of_frame=False, invalid s_approx is negative
         valid = (s_approx >= 0)
 
         # taylor has to get non-negative values; for invalid points it returns garbage
-        a_s, T_s, N_s, k_s, _ = self._taylor_interp(np.maximum(s_approx, 0.))
+        s_approx[~valid] = 0.  # _taylor_interp cannot get negative s
+        a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
         is_curvature_big_enough = np.greater(np.abs(k_s), TINY_CURVATURE)
 
@@ -367,10 +373,12 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         # arc length from a_s to the new guess point
         step = step_sign * np.arccos(cos) * np.abs(signed_radius)
         s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
-        s_approx[~valid] = -1.  # negative s_approx indicates invalid point
 
         # taylor has to get non-negative values; for invalid points it returns garbage
-        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.maximum(s_approx, 0.))
+        s_approx[~valid] = 0  # _taylor_interp cannot get negative s
+        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
+
+        s_approx[~valid] = -1.  # calling method looks for negative values to identify out of gff points
 
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 

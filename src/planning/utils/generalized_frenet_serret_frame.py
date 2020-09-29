@@ -329,37 +329,36 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segments_idxs[s_values == 0] = 0
         return segments_idxs
 
-    def _approximate_s_from_points(self, points: np.ndarray, exception_on_overflow: bool = True):
+    def _approximate_s_from_points(self, points: np.ndarray, raise_on_points_out_of_frame: bool = True):
         """
         Given cartesian points, this method approximates the s longitudinal progress of these points on
         the frenet frame.
         :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
+        :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of GFF
         :return: approximate s value on the frame that will be created using self.O
         """
         # Find the index of closest point on curve, and a fractional value representing the projection on this point.
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O, exception_on_overflow)
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O, raise_on_points_out_of_frame)
         # given the fractional index of the point (O_idx+delta_s), find which segment it belongs to based
         # on the points offset of each segment
-        return self.get_s_from_index_on_frame(O_idx, delta_s, exception_on_overflow)
+        return self.get_s_from_index_on_frame(O_idx, delta_s, raise_on_points_out_of_frame)
 
-    def get_s_from_index_on_frame(self, O_idx: np.ndarray, delta_s: np.ndarray, exception_on_overflow: bool = True):
+    def get_s_from_index_on_frame(self, O_idx: np.ndarray, delta_s: np.ndarray, raise_on_points_out_of_frame: bool = True):
         """
         given fractional index of the point (O_idx+delta_s), find which segment it belongs to based on
         the points offset of each segment
         :param O_idx: tensor of segment index per point in <points>,
         :param delta_s: tensor of progress of projection of each point in <points> on its relevant segment
+        :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: approximate s value on the frame that will be created using self.O
         """
         is_valid = (O_idx >= 0)
-        # if exception_on_overflow=False, calculate s_approx only for valid points (non-negative indices)
-        if not exception_on_overflow:
-            valid_O_idx = O_idx[is_valid]
-            valid_delta_s = delta_s[is_valid]
-        else:
-            valid_O_idx = O_idx
-            valid_delta_s = delta_s
+        # if raise_on_points_out_of_frame=False, calculate s_approx only for valid points (non-negative indices)
+        if not raise_on_points_out_of_frame and not np.all(is_valid):
+            O_idx = O_idx[is_valid]
+            delta_s = delta_s[is_valid]
 
-        segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(valid_O_idx, valid_delta_s)) - 1
+        segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(O_idx, delta_s)) - 1
 
         if (segment_idx_per_point >= len(self._segments_ds)).any():
             raise OutOfSegmentFront("Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." %
@@ -377,11 +376,11 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         # The approximate longitudinal progress is the longitudinal offset of the segment plus the in-segment-index
         # times the segment ds.
         valid_s_approx = self._segments_s_offsets[segment_idx_per_point] - intra_point_offsets + \
-                         (valid_O_idx + valid_delta_s - self._segments_point_offset[segment_idx_per_point]) * ds
+                         (O_idx + delta_s - self._segments_point_offset[segment_idx_per_point]) * ds
 
-        # if exception_on_overflow=False, set negative s_approx for invalid points
-        if not exception_on_overflow:
-            s_approx = -np.ones_like(delta_s)
+        # if raise_on_points_out_of_frame=False, set negative s_approx for invalid points
+        if valid_s_approx.size != is_valid.size:
+            s_approx = np.full(is_valid.shape, -1.)
             s_approx[is_valid] = valid_s_approx
         else:
             s_approx = valid_s_approx
