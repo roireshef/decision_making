@@ -582,16 +582,19 @@ def test_lateralConsistency_twoOverlappingGFFs_cartesianPointHasSameLatitudeWRTb
 
 
 def test_points_out_of_gff():
+    """
+    This test checks ability to convert cstates to fstates, when part of the points are out of GFF.
+    In this test the first and the last input points are located slightly outside the GFF, while two adjacent points
+    are barely inside the GFF.
+    For the valid points verify that two vice-versa conversions return us to all original points.
+    """
     POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
     VEL_ACCURACY_TH = 1e-3  # up to 1 [mm/sec] error in velocity
     ACC_ACCURACY_TH = 1e-3  # up to 1 [mm/sec^2] error in acceleration
     CURV_ACCURACY_TH = 1e-4  # up to 0.0001 [m] error in curvature which accounts to radius of 10,000[m]
 
+    # create points for GFF
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
-    cstates = np.array([[-100.0, 0.0, -np.pi / 8, 0.1, 1.0, 1e-2], [130.0, 0.0, np.pi / 6, 0.1, 1.1, 1e-2],
-                        [150.0, 40.0, np.pi / 7, 10.0, -0.9, 1e-2], [450.0, 50.0, np.pi / 8, 3, -0.5, -5 * 1e-2],
-                        [660.0, 50.0, np.pi / 9, 0.1, -2, 0]
-                        ])
 
     # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
@@ -602,22 +605,35 @@ def test_points_out_of_gff():
     downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
-    upstream_s_start = upstream_frenet.ds * 100.8
+    upstream_s_start = 0
     upstream_s_end = upstream_frenet.s_max
     downstream_s_start = 0
-    downstream_s_end = downstream_frenet.s_max - downstream_frenet.ds * 100.8
+    downstream_s_end = downstream_frenet.s_max
 
+    # build GFF from two Frenet frames (segments)
     segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
                     FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     gff = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet], sub_segments=segmentation)
 
+    # input points
+    cstates = np.array([[gff.O[0, C_X] - 0.1, -50.0, -np.pi / 8, 0.1, 1.0, 1e-2],
+                        [gff.O[0, C_X] + 0.1, -50.0, np.pi / 6, 0.1, 1.1, 1e-2],
+                        [150.0, 40.0, np.pi / 7, 10.0, -0.9, 1e-2],
+                        [gff.O[-1, C_X] - 0.1, 50.0, np.pi / 8, 3, -0.5, -5 * 1e-2],
+                        [gff.O[-1, C_X] + 0.1, 50.0, np.pi / 9, 0.1, -2, 0]
+                        ])
+
+    # convert Cartesian to Frenet
     fstates = gff.ctrajectory_to_ftrajectory(cstates, raise_on_points_out_of_frame=False)
     valid_fstate = fstates[~np.isnan(fstates[:, 0])]
+    # verify that there are exactly two invalid points
     assert valid_fstate.shape[0] == fstates.shape[0] - 2
 
+    # convert from Frenet to Cartesian only valid points
     valid_cstates = cstates[~np.isnan(fstates[:, 0])]
     new_cstates = gff.ftrajectory_to_ctrajectory(valid_fstate)
 
+    # verify the errors are small enough
     position_errors = np.linalg.norm(valid_cstates - new_cstates, axis=1)
     vel_errors = np.abs(valid_cstates[:, C_V] - new_cstates[:, C_V])
     acc_errors = np.abs(valid_cstates[:, C_A] - new_cstates[:, C_A])
