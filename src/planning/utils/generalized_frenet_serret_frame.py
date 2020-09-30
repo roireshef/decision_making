@@ -333,6 +333,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         Given cartesian points, this method approximates the s longitudinal progress of these points on
         the frenet frame.
+        If raise_on_points_out_of_frame=False, out-of-frame points filled by nans.
         :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
         :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of GFF
         :return: approximate s value on the frame that will be created using self.O
@@ -347,6 +348,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         given fractional index of the point (O_idx+delta_s), find which segment it belongs to based on
         the points offset of each segment
+        If raise_on_points_out_of_frame=False, out-of-frame points filled by nans.
         :param O_idx: tensor of segment index per point in <points>,
         :param delta_s: tensor of progress of projection of each point in <points> on its relevant segment
         :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame

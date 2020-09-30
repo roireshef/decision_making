@@ -210,17 +210,17 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     ## CARTESIAN => FRENET
 
-    def cpoint_to_fpoint(self, cpoint: CartesianPoint2D) -> FrenetPoint:
+    def cpoint_to_fpoint(self, cpoint: CartesianPoint2D, raise_on_points_out_of_frame: bool = True) -> FrenetPoint:
         """Transforms a cartesian-frame point to a frenet-frame point (see self.fpoints_to_cpoints for more details)"""
-        return self.cpoints_to_fpoints(cpoint[np.newaxis, :])[0]
+        return self.cpoints_to_fpoints(cpoint[np.newaxis, :], raise_on_points_out_of_frame)[0]
 
-    def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory2D:
+    def cpoints_to_fpoints(self, cpoints: CartesianPath2D, raise_on_points_out_of_frame: bool = True) -> FrenetTrajectory2D:
         """
         Transforms cartesian-frame points to frenet-frame points (using self.curve)
         :param cpoints: Cartesian-frame trajectory (matrix)
         :return: Frenet-frame trajectory (matrix)
         """
-        s, a_s, _, N_s, _, _ = self._project_cartesian_points(cpoints)
+        s, a_s, _, N_s, _, _ = self._project_cartesian_points(cpoints, raise_on_points_out_of_frame)
 
         # project cpoints on the normals at a_s
         d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
@@ -230,6 +230,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
     def cstate_to_fstate(self, cstate: CartesianExtendedState, raise_on_points_out_of_frame: bool = True) -> FrenetState2D:
         """
         Transforms Cartesian-frame state to Frenet-frame state
+        If raise_on_points_out_of_frame=False, out-of-frame points filled by nans.
         :param cstate: a cartesian-frame state (in the coordinate frame of self.points)
         :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: a frenet-frame state
@@ -240,6 +241,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
                                    raise_on_points_out_of_frame: bool = True) -> FrenetTrajectory2D:
         """
         Transforms Cartesian-frame trajectory to Frenet-frame trajectory, using tensor operations
+        If raise_on_points_out_of_frame=False, out-of-frame points filled by nans.
         :param ctrajectory: a cartesian-frame trajectory (in the coordinate frame of self.points)
         :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: a frenet-frame trajectory
@@ -251,6 +253,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         """
         Transforms Cartesian-frame trajectories to Frenet-frame trajectories, using tensor operations
         For formulas derivations please refer to: http://ieeexplore.ieee.org/document/5509799/
+        If raise_on_points_out_of_frame=False, out-of-frame points are filled by nans.
         :param ctrajectories: Cartesian-frame trajectories (tensor)
         :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: Frenet-frame trajectories (tensor)
@@ -302,6 +305,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         """
         Given cartesian points, this method approximates the s longitudinal progress of these points on
         the frenet frame.
+        If raise_on_points_out_of_frame=False, out-of-frame points get negative s.
         :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
         :param raise_on_points_out_of_frame: if False, don't raise exception if there are input points out of FrenetFrame
         :return: approximate s value on the frame that will be created using self.O
