@@ -379,6 +379,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
 
         # taylor has to get non-negative values; for invalid points it returns garbage
+        valid &= (s_approx >= 0)  # previously valid points may become invalid after the arc projection approximation
         s_approx[~valid] = 0  # _taylor_interp cannot get negative s
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
 
@@ -486,3 +487,18 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         k_tag = np.divide(np.gradient(k), step)
 
         return T, N, np.c_[k], np.c_[k_tag]
+
+    @classmethod
+    def invert(cls, frenet_frame: 'FrenetSerret2DFrame') -> 'FrenetSerret2DFrame':
+        """
+        Invert direction of given Frenet frame and return its inverted copy.
+        Note: This function is not sufficient for GFFs since GFFs have different ds per segment.
+        :param frenet_frame:
+        :return: inverted Frenet frame
+        """
+        return cls(points=frenet_frame.points[::-1],
+                   T=-frenet_frame.T[::-1],
+                   N=-frenet_frame.N[::-1],
+                   k=-frenet_frame.k[::-1],
+                   k_tag=-frenet_frame.k_tag[::-1],
+                   ds=frenet_frame.ds)
