@@ -487,18 +487,3 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         k_tag = np.divide(np.gradient(k), step)
 
         return T, N, np.c_[k], np.c_[k_tag]
-
-    @classmethod
-    def invert(cls, frenet_frame: 'FrenetSerret2DFrame') -> 'FrenetSerret2DFrame':
-        """
-        Invert direction of given Frenet frame and return its inverted copy.
-        Note: This function is not sufficient for GFFs since GFFs have different ds per segment.
-        :param frenet_frame:
-        :return: inverted Frenet frame
-        """
-        return cls(points=frenet_frame.points[::-1],
-                   T=-frenet_frame.T[::-1],
-                   N=-frenet_frame.N[::-1],
-                   k=-frenet_frame.k[::-1],
-                   k_tag=-frenet_frame.k_tag[::-1],
-                   ds=frenet_frame.ds)
