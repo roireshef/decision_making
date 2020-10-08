@@ -160,8 +160,8 @@ class CartesianFrame:
 
     @staticmethod
     def resample_curve(curve, arbitrary_curve_sampling_points=None,step_size= None, desired_curve_len=None,
-                       preserve_step_size=False,spline_order=1):
-        # type: (np.ndarray,Union[None, np.array],Union[None, float],Union[None, float],bool,int) -> (UnivariateSpline , np.ndarray, Union[float, None])
+                       preserve_step_size=False,spline_order=1, num_dimensions=2):
+        # type: (np.ndarray,Union[None, np.array],Union[None, float],Union[None, float],bool,int, int) -> (UnivariateSpline , np.ndarray, Union[float, None])
         """
         Takes a discrete set of points [x, y] and perform interpolation (with a constant step size). \n
         Note: user may specify a desired final curve length. If she doesn't, it uses the total distance travelled over a
@@ -175,18 +175,20 @@ class CartesianFrame:
         trimmed to its nearest multiply. If False - once desired_curve_len is not a multiply of step_size, the step_size
         is efficiently "stretched" to preserve the exact given desired_curve_len.
         :param spline_order: order of spline fit (1<=spline_order<=5)
+        :param num_dimensions: number of dimentions of the curve (2d or 3d is supported)
         :return: (the spline object, the resampled curve numpy array Nx2, the effective step size [m])
         """
 
         # interp.UnivariateSpline enables spline order no larger than 5.
         assert 5 >= spline_order >= 1
+        assert num_dimensions == 2 or num_dimensions == 3, "Number of dimensions {} is not supported".format(num_dimensions)
 
         if step_size is None and arbitrary_curve_sampling_points is None:
             raise Exception('resample_curve must get either step_size or arbitrary_curve_sampling_points, '
                             'but none of them was provided.')
 
         # accumulated distance travelled on the original curve (linear fit over the discrete points)
-        org_s = np.concatenate(([.0], np.cumsum(np.linalg.norm(np.diff(curve[:, :2], axis=0), axis=1))))
+        org_s = np.concatenate(([.0], np.cumsum(np.linalg.norm(np.diff(curve[:, :num_dimensions], axis=0), axis=1))))
 
         # if desired curve length is not specified, use the total distance travelled over curve (via linear fit)
         if desired_curve_len is None:

@@ -27,7 +27,7 @@ class BrakingDistances:
 
     @staticmethod
     def calc_quartic_action_distances(w_T: np.array, w_J: np.array, v_0: np.array, v_T: np.array,
-                                      a_0: np.array = None) -> [np.array, np.array]:
+                                      a_0: np.array = None, a_T: np.array = None) -> [np.array, np.array]:
         """
         Calculate the distances and times for the given actions' weights and scenario params.
         Actions not meeting the acceleration limits have infinite distance and time.
@@ -41,7 +41,9 @@ class BrakingDistances:
         # calculate actions' planning time
         if a_0 is None:
             a_0 = np.zeros_like(v_0)
-        T = BrakingDistances.calc_T_s_for_quartic(w_T, w_J, v_0, a_0, v_T)
+        if a_T is None:
+            a_T = np.zeros_like(v_0)
+        T = BrakingDistances.calc_T_s_for_quartic(w_T, w_J, v_0, a_0, v_T, a_T)
         non_zero = ~np.isclose(T, 0)
 
         # check acceleration limits
@@ -58,7 +60,7 @@ class BrakingDistances:
         return distances, T
 
     @staticmethod
-    def calc_T_s_for_quartic(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array):
+    def calc_T_s_for_quartic(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, a_T: np.array):
         """
         given initial & end constraints and time-jerk weights, calculate longitudinal planning time
         :param w_T: weight of Time component in time-jerk cost function
@@ -77,7 +79,7 @@ class BrakingDistances:
 
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
         time_cost_derivative_poly_coefs = QuarticPoly1D.time_cost_function_derivative_coefs(
-            w_T_array, w_J_array, a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions])
+            w_T_array, w_J_array, a_0[non_zero_actions], v_0[non_zero_actions], v_T[non_zero_actions], a_T[non_zero_actions])
 
         # Find roots of the polynomial in order to get extremum points
         cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
