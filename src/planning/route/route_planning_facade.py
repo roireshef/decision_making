@@ -61,7 +61,7 @@ class RoutePlanningFacade(DmModule):
             self._check_scene_data_validity(scene=scene_static.s_Data.s_SceneStaticBase,
                                             nav_plan=scene_static.s_Data.s_NavigationPlan)
 
-            route_planner_input = RoutePlannerInputData()
+            route_planner_input = RoutePlannerInputData(timestamp=self.timestamp)
             route_planner_input.reformat_input_data(scene=scene_static.s_Data.s_SceneStaticBase,
                                                     nav_plan=scene_static.s_Data.s_NavigationPlan)
 

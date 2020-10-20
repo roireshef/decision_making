@@ -6,6 +6,7 @@ from typing import List, Dict, Tuple
 from decision_making.paths import Paths
 from decision_making.src.global_constants import PG_SPLIT_PICKLE_FILE_NAME
 from decision_making.src.messages.route_plan_message import DataRoutePlan, RoutePlanLaneSegment
+from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.messages.scene_static_enums import LaneConstructionType,\
     RoutePlanLaneSegmentAttr, LaneMappingStatusType, GMAuthorityType, MapLaneDirection,\
     ManeuverType
@@ -39,7 +40,8 @@ def default_route_plan_for_PG_split_file() -> DataRoutePlan:
                          as_route_plan_lane_segments = [[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id_base + lane_number,
                                                                               e_cst_lane_occupancy_cost=0.0,
                                                                               e_cst_lane_end_cost=0.0) for lane_number in [0, 1, 2]]
-                                                        for lane_segment_id_base in np.arange(200, 300, 10)])
+                                                        for lane_segment_id_base in np.arange(200, 300, 10)],
+                         s_data_creation_time=Timestamp(0, 0))
 
 
 IsLaneAttributeActive = bool
@@ -461,7 +463,8 @@ def combined_scene_and_expected_output(request):
                                                                                                     e_cst_lane_occupancy_cost=0.0,
                                                                                                     e_cst_lane_end_cost=0.0)
                                                                                for lane_segment_id in lane_segment_ids[road_segment_id - 1]]
-                                                                              for road_segment_id in navigation_plan])
+                                                                              for road_segment_id in navigation_plan],
+                                               s_data_creation_time=Timestamp(0, 0))
 
         # Road Segment 2
         expected_binary_output.as_route_plan_lane_segments[2][1].e_cst_lane_end_cost = 1.0

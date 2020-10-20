@@ -118,7 +118,8 @@ def route_plan_20():
                                          as_route_plan_lane_segments=[[RoutePlanLaneSegment(e_i_lane_segment_id=lane_segment_id,
                                                                                             e_cst_lane_occupancy_cost=0.0,
                                                                                             e_cst_lane_end_cost=0.0)
-                                                                       for lane_segment_id in [200, 201, 202]]]))
+                                                                       for lane_segment_id in [200, 201, 202]]],
+                                         s_data_creation_time=Timestamp(0, 0)))
 
 
 @pytest.fixture(scope='session')
@@ -178,7 +179,8 @@ def route_plan_for_oval_track_file():
                                          e_Cnt_num_road_segments=len(nav_plan),
                                          a_i_road_segment_ids=np.array(nav_plan),
                                          a_Cnt_num_lane_segments=np.array(num_lane_segments),
-                                         as_route_plan_lane_segments=route_plan_lane_segments))
+                                         as_route_plan_lane_segments=route_plan_lane_segments,
+                                         s_data_creation_time=Timestamp(0, 0)))
 
 @pytest.fixture(scope='session')
 def route_plan_for_mound_north_file():
@@ -212,7 +214,8 @@ def route_plan_for_mound_north_file():
                                          e_Cnt_num_road_segments=len(nav_plan),
                                          a_i_road_segment_ids=np.array(nav_plan),
                                          a_Cnt_num_lane_segments=np.array(num_lane_segments),
-                                         as_route_plan_lane_segments=route_plan_lane_segments))
+                                         as_route_plan_lane_segments=route_plan_lane_segments,
+                                         s_data_creation_time=Timestamp(0, 0)))
 
 # TODO: This should be a parametrized_fixture.
 def create_route_plan_msg(road_segment_ids):
@@ -221,7 +224,8 @@ def create_route_plan_msg(road_segment_ids):
                                           e_Cnt_num_road_segments=10,
                                           a_i_road_segment_ids=road_segment_ids,
                                           a_Cnt_num_lane_segments=0,
-                                          as_route_plan_lane_segments=[]))
+                                          as_route_plan_lane_segments=[],
+                                          s_data_creation_time=Timestamp(0, 0)))
 
 
 @pytest.fixture(scope='function')

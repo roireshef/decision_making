@@ -54,7 +54,8 @@ def route_plan_1_2():
                                          a_Cnt_num_lane_segments=np.array([3, 3]),
                                          as_route_plan_lane_segments=[
                                              [RoutePlanLaneSegment(10, 0, 0), RoutePlanLaneSegment(11, 0, 0), RoutePlanLaneSegment(12, 0, 0)],
-                                             [RoutePlanLaneSegment(20, 0, 0), RoutePlanLaneSegment(21, 0, 0), RoutePlanLaneSegment(22, 0, 0)]]))
+                                             [RoutePlanLaneSegment(20, 0, 0), RoutePlanLaneSegment(21, 0, 0), RoutePlanLaneSegment(22, 0, 0)]],
+                                         s_data_creation_time=Timestamp(0, 0)))
 
 @pytest.fixture(scope='function')
 def route_plan_1_2_3():
@@ -66,7 +67,8 @@ def route_plan_1_2_3():
                                          as_route_plan_lane_segments=[
                                              [RoutePlanLaneSegment(10, 0, 0), RoutePlanLaneSegment(11, 0, 0), RoutePlanLaneSegment(12, 0, 0)],
                                              [RoutePlanLaneSegment(20, 0, 0), RoutePlanLaneSegment(21, 0, 0), RoutePlanLaneSegment(22, 0, 0)],
-                                             [RoutePlanLaneSegment(30, 0, 0), RoutePlanLaneSegment(31, 0, 0), RoutePlanLaneSegment(32, 0, 0)]]))
+                                             [RoutePlanLaneSegment(30, 0, 0), RoutePlanLaneSegment(31, 0, 0), RoutePlanLaneSegment(32, 0, 0)]],
+                                         s_data_creation_time=Timestamp(0, 0)))
 
 @pytest.fixture(scope='function')
 def route_plan_left_lane_ends(route_plan_1_2):

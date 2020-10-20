@@ -5,6 +5,7 @@ import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.exceptions import MissingMapInformation, RepeatedRoadSegments, raises, \
     NavigationSceneDataMismatch, LaneSegmentDataNotFound, RoadSegmentDataNotFound
+from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.messages.scene_static_message import SceneStaticBase, NavigationPlan, \
     SceneRoadSegment, SceneLaneSegmentBase
 
@@ -23,7 +24,8 @@ class RoutePlannerInputData:
                  route_lane_segments_base_as_dict: Optional[LaneSegmentBaseDict] = None,
                  route_road_segments_as_dict: Optional[RoadSegmentDict] = None,
                  next_road_segment_id: Optional[Dict[int, int]] = None,
-                 prev_road_segment_id: Optional[Dict[int, int]] = None):
+                 prev_road_segment_id: Optional[Dict[int, int]] = None,
+                 timestamp: Timestamp = Timestamp(0, 0)):
 
         """
         dict:   key - road segment IDs (ordered as in routeplan)
@@ -58,6 +60,8 @@ class RoutePlannerInputData:
         Enables O(1) lookup of the prev road segment
         """
         self._prev_road_segment_id = prev_road_segment_id or {}
+
+        self.timestamp = timestamp
 
     def _update_dict_data(self, scene: SceneStaticBase, nav_plan: NavigationPlan) -> None:
         """

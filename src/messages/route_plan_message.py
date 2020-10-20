@@ -6,7 +6,7 @@ from interface.Rte_Types.python.sub_structures.TsSYS_DataRoutePlan import TsSYSD
 from interface.Rte_Types.python.sub_structures.TsSYS_RoutePlanLaneSegment import TsSYSRoutePlanLaneSegment
 from decision_making.src.exceptions import RoadNotFound, raises
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_common_messages import Header
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.planning.types import LaneSegmentID, LaneOccupancyCost, LaneEndCost
 
 
@@ -78,9 +78,15 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
     a_i_road_segment_ids = np.ndarray
     a_Cnt_num_lane_segments = np.ndarray
     as_route_plan_lane_segments = RoutePlanRoadSegments
+    s_data_creation_time = Timestamp
 
-    def __init__(self, e_b_is_valid: bool, e_Cnt_num_road_segments: int, a_i_road_segment_ids: np.ndarray,
-                 a_Cnt_num_lane_segments: np.ndarray, as_route_plan_lane_segments: RoutePlanRoadSegments):
+    def __init__(self,
+                 e_b_is_valid: bool,
+                 e_Cnt_num_road_segments: int,
+                 a_i_road_segment_ids: np.ndarray,
+                 a_Cnt_num_lane_segments: np.ndarray,
+                 as_route_plan_lane_segments: RoutePlanRoadSegments,
+                 s_data_creation_time: Timestamp):
         """
         Route Plan Output Data
         :param e_b_is_valid: Set to true when the data is valid
@@ -88,12 +94,14 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
         :param a_i_road_segment_ids: Ordered array of road segment IDs
         :param a_Cnt_num_lane_segments: Array containing the number of lane segments in each road segment
         :param as_route_plan_lane_segments: 2D array containing lane segment information
+        :param s_data_creation_time:
         """
         self.e_b_is_valid = e_b_is_valid
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
         self.a_i_road_segment_ids = a_i_road_segment_ids
         self.a_Cnt_num_lane_segments = a_Cnt_num_lane_segments
         self.as_route_plan_lane_segments = as_route_plan_lane_segments
+        self.s_DataCreationTime = s_data_creation_time
 
     def serialize(self) -> TsSYSDataRoutePlan:
         pubsub_msg = TsSYSDataRoutePlan()
@@ -107,6 +115,8 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
             for j in range(pubsub_msg.a_Cnt_num_lane_segments[i]):
                 pubsub_msg.as_route_plan_lane_segments[i][j] = self.as_route_plan_lane_segments[i][j].serialize()
 
+        pubsub_msg.s_DataCreationTime = self.s_DataCreationTime.serialize()
+
         return pubsub_msg
 
     @classmethod
@@ -115,11 +125,14 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                                         for j in range(pubsubMsg.a_Cnt_num_lane_segments[i])]
                                        for i in range(pubsubMsg.e_Cnt_num_road_segments)]
 
-        return cls(pubsubMsg.e_b_is_valid,
-                   pubsubMsg.e_Cnt_num_road_segments,
-                   pubsubMsg.a_i_road_segment_ids[:pubsubMsg.e_Cnt_num_road_segments],
-                   pubsubMsg.a_Cnt_num_lane_segments[:pubsubMsg.e_Cnt_num_road_segments],
-                   as_route_plan_lane_segments)
+        return cls(
+            e_b_is_valid=pubsubMsg.e_b_is_valid,
+            e_Cnt_num_road_segments=pubsubMsg.e_Cnt_num_road_segments,
+            a_i_road_segment_ids=pubsubMsg.a_i_road_segment_ids[:pubsubMsg.e_Cnt_num_road_segments],
+            a_Cnt_num_lane_segments=pubsubMsg.a_Cnt_num_lane_segments[:pubsubMsg.e_Cnt_num_road_segments],
+            as_route_plan_lane_segments=as_route_plan_lane_segments,
+            s_data_creation_time=Timestamp.deserialize(pubsubMsg.s_DataCreationTime),
+        )
 
     def __str__(self)->str:
         for i, road_segment in enumerate(self.as_route_plan_lane_segments):

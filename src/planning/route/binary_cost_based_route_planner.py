@@ -51,7 +51,8 @@ class RoutePlanner(metaclass=ABCMeta):
                              e_Cnt_num_road_segments=len(road_segment_ids_reversed),
                              a_i_road_segment_ids=np.array(list(reversed(road_segment_ids_reversed))),
                              a_Cnt_num_lane_segments=np.array(list(reversed(num_lane_segments_reversed))),
-                             as_route_plan_lane_segments=list(reversed(route_plan_lane_segments_reversed)))
+                             as_route_plan_lane_segments=list(reversed(route_plan_lane_segments_reversed)),
+                             s_data_creation_time=route_plan_input_data.timestamp)
 
     @abstractmethod
     def _calculate_end_cost_from_downstream_lane(self, lane_segment_id: int, downstream_lane_costs: RoutePlanLaneSegment) -> float:
