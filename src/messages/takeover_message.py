@@ -2,30 +2,38 @@ from interface.Rte_Types.python.sub_structures.TsSYS_Takeover import TsSYSTakeov
 from interface.Rte_Types.python.sub_structures.TsSYS_DataTakeover import TsSYSDataTakeover
 
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_common_messages import Header
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
 
 
 class DataTakeover(PUBSUB_MSG_IMPL):
     e_b_is_takeover_needed = bool
+    s_data_creation_time = Timestamp
 
-    def __init__(self, e_b_is_takeover_needed: bool):
+    def __init__(self,
+                 e_b_is_takeover_needed: bool,
+                 s_data_creation_time: Timestamp):
         """
         Takeover Flag
-        :param e_b_is_takeover_needed: true = takeover needed,
-                                       false = takeover not needed
+        :param e_b_is_takeover_needed: true = takeover needed, false = takeover not needed
+        :param s_data_creation_time:
         """
         self.e_b_is_takeover_needed = e_b_is_takeover_needed
+        self.s_DataCreationTime = s_data_creation_time
 
     def serialize(self) -> TsSYSDataTakeover:
         pubsub_msg = TsSYSDataTakeover()
 
         pubsub_msg.e_b_is_takeover_needed = self.e_b_is_takeover_needed
+        pubsub_msg.s_DataCreationTime = self.s_DataCreationTime.serialize()
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataTakeover):
-        return cls(pubsubMsg.e_b_is_takeover_needed)
+        return cls(
+            e_b_is_takeover_needed=pubsubMsg.e_b_is_takeover_needed,
+            s_data_creation_time=Timestamp.deserialize(pubsubMsg.s_DataCreationTime),
+        )
 
 
 class Takeover(PUBSUB_MSG_IMPL):

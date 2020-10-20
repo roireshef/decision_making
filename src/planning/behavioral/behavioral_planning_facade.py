@@ -332,10 +332,12 @@ class BehavioralPlanningFacade(DmModule):
                     takeover_flag = True
                     break
 
-        takeover_message = Takeover(s_Header=Header(e_Cnt_SeqNum=0,
-                                                    s_Timestamp=Timestamp.from_seconds(ego_state.timestamp_in_sec),
-                                                    e_Cnt_version=0),
-                                    s_Data=DataTakeover(takeover_flag))
+        takeover_message = Takeover(
+            s_Header=Header(e_Cnt_SeqNum=0,
+                            s_Timestamp=Timestamp.from_seconds(ego_state.timestamp_in_sec),
+                            e_Cnt_version=0),
+            s_Data=DataTakeover(e_b_is_takeover_needed=takeover_flag,
+                                s_data_creation_time=Timestamp.from_seconds(ego_state.timestamp_in_sec)))
 
         return takeover_message
 
