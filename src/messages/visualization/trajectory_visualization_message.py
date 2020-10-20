@@ -9,7 +9,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.messages.serialization import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_common_messages import Header
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
 
 
 class PredictionsVisualization(PUBSUB_MSG_IMPL):
@@ -37,8 +37,11 @@ class PredictionsVisualization(PUBSUB_MSG_IMPL):
 
 
 class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
-    def __init__(self, trajectories: np.ndarray, actors_predictions: List[PredictionsVisualization],
-                 recipe_description: str):
+    def __init__(self,
+                 trajectories: np.ndarray,
+                 actors_predictions: List[PredictionsVisualization],
+                 recipe_description: str,
+                 s_data_creation_time: Timestamp):
         """
         Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
         :param trajectories: 3D array of trajectories: num_trajectories x trajectory_length x 2
@@ -46,10 +49,12 @@ class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
                 Each class instance contains predictions for the dynamic object.
         :param recipe_description: String for semantic meaning of action. For example:
                                                             "static action to the left with 50 km/h".
+        :param s_data_creation_time:
         """
         self.trajectories = trajectories
         self.as_actors_predictions = actors_predictions
         self.recipe_description = recipe_description
+        self.s_DataCreationTime = s_data_creation_time
 
     def serialize(self) -> TsSYSDataTrajectoryVisualization:
         pubsub_msg = TsSYSDataTrajectoryVisualization()
@@ -63,15 +68,20 @@ class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
             pubsub_msg.as_ActorsPredictions[i] = self.as_actors_predictions[i].serialize()
 
         pubsub_msg.a_e_RecipeDescription = self.recipe_description
+        pubsub_msg.s_DataCreationTime = self.s_DataCreationTime.serialize()
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataTrajectoryVisualization):
-        return cls(pubsubMsg.a_Trajectories[:pubsubMsg.e_Cnt_NumOfTrajectories, :pubsubMsg.e_Cnt_NumOfPointsInTrajectory],
-                   [PredictionsVisualization.deserialize(pubsubMsg.as_ActorsPredictions[i])
-                    for i in range(pubsubMsg.e_Cnt_NumOfActors)],
-                   pubsubMsg.a_e_RecipeDescription)
+        return cls(
+            trajectories=pubsubMsg.a_Trajectories[:pubsubMsg.e_Cnt_NumOfTrajectories,
+                         :pubsubMsg.e_Cnt_NumOfPointsInTrajectory],
+            actors_predictions=[PredictionsVisualization.deserialize(pubsubMsg.as_ActorsPredictions[i])
+                                for i in range(pubsubMsg.e_Cnt_NumOfActors)],
+            recipe_description=pubsubMsg.a_e_RecipeDescription,
+            s_data_creation_time=Timestamp.deserialize(pubsubMsg.s_DataCreationTime),
+        )
 
 
 class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):

@@ -303,13 +303,16 @@ class TrajectoryPlanningFacade(DmModule):
             except Exception:  # verify the object can be projected on reference_route
                 continue
 
-        header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
+        timestamp_object = Timestamp.from_seconds(state.ego_state.timestamp_in_sec)
+        header = Header(0, timestamp_object, 0)
         trajectory_length = ctrajectories.shape[1]
         points_step = int(trajectory_length / MAX_NUM_POINTS_FOR_VIZ) + 1
         visualization_data = DataTrajectoryVisualization(
-            sliced_ctrajectories[:, :trajectory_length:points_step, :(C_Y + 1)],
+            trajectories=sliced_ctrajectories[:, :trajectory_length:points_step, :(C_Y + 1)],
             # at most MAX_NUM_POINTS_FOR_VIZ points
-            objects_visualizations, "")
+            actors_predictions=objects_visualizations,
+            recipe_description="",
+            s_data_creation_time=timestamp_object)
         return TrajectoryVisualizationMsg(header, visualization_data)
 
     def _get_current_control_status(self) -> Optional[ControlStatus]:
