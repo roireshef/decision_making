@@ -88,16 +88,21 @@ class Poly1D:
         :return: 3d numpy array [M,K,3] with the following dimensions:
             [position value, velocity value, acceleration value]
         """
-        # compute the coefficients of the polynom's 1st derivative (m=1)
-        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
-        # compute the coefficients of the polynom's 2nd derivative (m=2)
-        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
+        n, m = poly_coefs.shape
 
-        x_vals = Math.polyval2d(poly_coefs, time_samples)
-        x_dot_vals = Math.polyval2d(poly_dot_coefs, time_samples)
-        x_dotdot_vals = Math.polyval2d(poly_dotdot_coefs, time_samples)
+        # initialize matrix for all derivatives with m=0 on the first n rows, m=1 on the next n rows, and so on.
+        ders = np.zeros((3 * n, m))
 
-        return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+        # fill ders matrix with zero padding at the beginning of polynomials with less coefficients than m
+        ders[:n] = poly_coefs
+        ders[n:2*n, 1:] = poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
+        ders[2*n:, 2:] = Math.polyder2d(poly_dot_coefs, m=1)
+
+        # assign time_samples to coefficients
+        vals = Math.polyval2d(ders, time_samples)
+
+        # reshape vals from [3n, m] to [n, m, 3]
+        return np.dstack((vals[:n], vals[n:2*n], vals[2*n:]))
 
     @staticmethod
     def zip_polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
@@ -113,10 +118,9 @@ class Poly1D:
         :return: 3d numpy array [N,K,3] with the following dimensions:
             [position value, velocity value, acceleration value]
         """
-        # compute the coefficients of the polynom's 1st derivative (m=1)
+        # compute the coefficients of the polynom's 1st and 2nd derivatives (m=1,2)
         poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
-        # compute the coefficients of the polynom's 2nd derivative (m=2)
-        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
+        poly_dotdot_coefs = Math.polyder2d(poly_dot_coefs, m=1)
 
         x_vals = Math.zip_polyval2d(poly_coefs, time_samples)
         x_dot_vals = Math.zip_polyval2d(poly_dot_coefs, time_samples)
@@ -158,8 +162,8 @@ class Poly1D:
         """
         # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
-        poly_der = Math.polyder2d(poly_coefs, m=degree+1)
         poly = Math.polyder2d(poly_coefs, m=degree)
+        poly_der = Math.polyder2d(poly, m=1)
 
         # TODO: implement tests for those cases
         if poly_der.shape[-1] == 0:  # No derivative - polynomial is constant
@@ -302,7 +306,7 @@ class QuarticPoly1D(Poly1D):
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
-                                            v_T: np.ndarray):
+                                            v_T: np.ndarray, a_T: np.ndarray = 0.0):
         """
         For given weights and constraints on a jerk-optimal polynomial solution, this function returns a matrix that
         contains (in each row:) the coefficients of the derivative of the cost function use for finding the optimal time
@@ -312,13 +316,14 @@ class QuarticPoly1D(Poly1D):
         :param a_0: [m/sec^2] acceleration at time 0
         :param v_0: [m/sec] velocity at time 0
         :param v_T: [m/sec] terminal velocity (at time T)
+        :param a_T: [m/sec^s] terminal acceleration (at time T)
         :return: coefficient matrix for all possibilities
         """
         zeros = np.zeros(w_T.shape[0])
         return np.c_[w_T,
                      zeros,
-                     - 4 * a_0 ** 2 * w_J,
-                     + 24 * a_0 * w_J * (v_T - v_0),
+                     - 4 * w_J * (a_0 ** 2 +a_0*a_T + a_T**2),
+                     + 24 * w_J * (a_0 + a_T) * (v_T - v_0),
                      - 36 * w_J * (v_0 - v_T) ** 2]
 
     @staticmethod

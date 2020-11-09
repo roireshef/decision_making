@@ -346,7 +346,7 @@ SATURATED_COST = 1.0
 BACKPROP_DISCOUNT_FACTOR = 0.75
 
 # Threshold at which a backpropagated lane end cost will just be set equal to MIN_COST
-BACKPROP_COST_THRESHOLD = 0.001
+BACKPROP_COST_THRESHOLD = 0.0001
 
 # State #
 

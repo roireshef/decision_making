@@ -56,10 +56,11 @@ class StaticActionSpace(ActionSpace):
 
         # get desired terminal velocity
         v_T = np.array([action_recipe.velocity for action_recipe in action_recipes])
+        a_T = np.zeros_like(v_T)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 0], a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T)
+            w_T=weights[:, 2], w_J=weights[:, 0], a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, a_T=a_T)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, BP_ACTION_T_LIMITS)
         # fmin.reduce() is used instead of amin() as it ignores Nan values if it can
         T_s = np.fmin.reduce(roots_s, axis=-1)

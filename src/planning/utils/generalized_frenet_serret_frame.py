@@ -238,7 +238,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         if len(segment_ids) == 0:
             return np.array([], dtype=bool)
-        assert segment_ids.dtype == np.int, 'Array of indices should have int type'
+        assert np.issubdtype(segment_ids.dtype, np.integer), 'Array of indices should have int type'
         return np.isin(segment_ids, self._segment_ids)
 
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: NumpyIndicesArray) -> FrenetStates2D:
