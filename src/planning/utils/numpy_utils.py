@@ -77,7 +77,9 @@ class NumpyUtils:
         :param b: divisor
         :return: a/b where b!=0, 0 otherwise
         """
-        return np.true_divide(a, b, out=np.zeros_like(a)+np.zeros_like(b), where=b != 0)
+        # return np.true_divide(a, b, out=np.zeros_like(a)+np.zeros_like(b), where=b != 0)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            return np.nan_to_num(a/b, nan=0, posinf=np.inf, neginf=-np.inf)
 
 
 class UniformGrid:
