@@ -114,10 +114,14 @@ class Poly1D:
           3. acceleration (evaluation of the 2st derivative of the polynomial)
         :param poly_coefs: 2d numpy array [NxL] of the (position) polynomials coefficients, where
          each row out of the N is a different polynomial and contains L coefficients
-        :param time_samples: 2d numpy array [NxK] of the time stamps for the evaluation of the polynomials
+        :param time_samples: 2d numpy array [NxK] of the time stamps for the evaluation of the polynomials. If N is a
+            null dimension, then time_samples vector is used across all polynomials
         :return: 3d numpy array [N,K,3] with the following dimensions:
             [position value, velocity value, acceleration value]
         """
+        if time_samples.shape[0] == 1:
+            return Poly1D.polyval_with_derivatives(poly_coefs, time_samples[0])
+
         # compute the coefficients of the polynom's 1st and 2nd derivatives (m=1,2)
         poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
         poly_dotdot_coefs = Math.polyder2d(poly_dot_coefs, m=1)
