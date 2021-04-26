@@ -122,15 +122,30 @@ class Poly1D:
         if time_samples.shape[0] == 1:
             return Poly1D.polyval_with_derivatives(poly_coefs, time_samples[0])
 
-        # compute the coefficients of the polynom's 1st and 2nd derivatives (m=1,2)
-        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
-        poly_dotdot_coefs = Math.polyder2d(poly_dot_coefs, m=1)
+        n, m = poly_coefs.shape
 
-        x_vals = Math.zip_polyval2d(poly_coefs, time_samples)
-        x_dot_vals = Math.zip_polyval2d(poly_dot_coefs, time_samples)
-        x_dotdot_vals = Math.zip_polyval2d(poly_dotdot_coefs, time_samples)
+        # initialize matrix for all derivatives with m=0 on the first n rows, m=1 on the next n rows, and so on.
+        ders = np.zeros((3 * n, m))
 
-        return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+        # fill ders matrix with zero padding at the beginning of polynomials with less coefficients than m
+        ders[:n] = poly_coefs
+        ders[n:2*n, 1:] = poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
+        ders[2*n:, 2:] = Math.polyder2d(poly_dot_coefs, m=1)
+
+        # assign time_samples to coefficients
+        vals = Math.zip_polyval2d(ders, np.tile(time_samples, (3, 1)))
+
+        # reshape vals from [3n, m] to [n, m, 3]
+        return np.dstack((vals[:n], vals[n:2*n], vals[2*n:]))
+
+    @staticmethod
+    def zip_polyval(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
+        if time_samples.shape[0] == 1:
+            return Poly1D.polyval(poly_coefs, time_samples[0])
+
+        return Math.zip_polyval2d(poly_coefs, time_samples)
+
+    polyval = Math.polyval2d
 
     @classmethod
     def time_constraints_matrix(cls, T: float) -> np.ndarray:
