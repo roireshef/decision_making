@@ -39,9 +39,21 @@ class Poly1D:
 
     @staticmethod
     @abstractmethod
-    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+    def cumulative_sq_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         """
-        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        Computes cumulative squared jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def cumulative_sq_acc(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative squared acceleration from time 0 to time T for the x(t) whose coefficients are given in
+        <poly_coefs>
         :param poly_coefs: distance polynomial coefficients
         :param T: relative time in seconds
         :return: [float] the cummulative jerk: sum(x'''(t)^2)
@@ -49,8 +61,12 @@ class Poly1D:
         pass
 
     @classmethod
-    def jerk_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
-        return cls.cumulative_jerk(poly_coefs, b) - cls.cumulative_jerk(poly_coefs, a)
+    def sq_jerk_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
+        return cls.cumulative_sq_jerk(poly_coefs, b) - cls.cumulative_sq_jerk(poly_coefs, a)
+
+    @classmethod
+    def sq_acc_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
+        return cls.cumulative_sq_acc(poly_coefs, b) - cls.cumulative_sq_acc(poly_coefs, a)
 
     @staticmethod
     def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
@@ -285,7 +301,13 @@ class QuarticPoly1D(Poly1D):
                               np.isclose(a_0, 0.0, atol=TRACKING_ACCELERATION_DISPOSITION_LIMIT, rtol=0))
 
     @staticmethod
-    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+    def cumulative_sq_acc(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
+        a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 4*T*(36*T**4*a4**2 + 45*T**3*a3*a4 + T**2*(20*a2*a4 + 15*a3**2) + 15*T*a2*a3 + 5*a2**2)/5
+
+    @staticmethod
+    def cumulative_sq_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         """
         Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
         :param poly_coefs: distance polynomial coefficients
@@ -495,6 +517,19 @@ class QuinticPoly1D(Poly1D):
         return np.transpose(tensor, (2, 0, 1))
 
     @staticmethod
+    def cumulative_sq_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
+        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
+        a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 12 * T * (3 * a3 ** 2 + 12 * a3 * a4 * T + (20 * a3 * a5 + 16 * a4 ** 2) * T ** 2 +
+                        60 * a4 * a5 * T ** 3 + 60 * a5 ** 2 * T ** 4)
+
+    @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         """
         Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
@@ -506,6 +541,14 @@ class QuinticPoly1D(Poly1D):
         a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
         return 12 * T * (3 * a3 ** 2 + 12 * a3 * a4 * T + (20 * a3 * a5 + 16 * a4 ** 2) * T ** 2 +
                         60 * a4 * a5 * T ** 3 + 60 * a5 ** 2 * T ** 4)
+
+    @staticmethod
+    def cumulative_sq_acc(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        pass
+        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
+        a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 4*T*(500*T**6*a5**2 + 700*T**5*a4*a5 + T**4*(420*a3*a5 + 252*a4**2) + T**3*(175*a2*a5 + 315*a3*a4) +
+                    T**2*(140*a2*a4 + 105*a3**2) + 105*T*a2*a3 + 35*a2**2)/35
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,

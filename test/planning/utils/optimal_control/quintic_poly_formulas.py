@@ -46,11 +46,12 @@ class QuinticMotionSymbolicsCreator:
         a_t = sp.diff(v_t, t).simplify()
         j_t = sp.diff(a_t, t).simplify()
 
-        J = sp.integrate(j_t ** 2, (t, 0, T)).simplify()
+        J_sq = sp.integrate(j_t ** 2, (t, 0, T)).simplify()
+        a_sq = sp.integrate(a_t ** 2, (t, 0, T)).simplify()
 
         wJ, wT = symbols('w_J w_T')
 
-        cost = (wJ * J + wT * T).simplify()
+        cost = (wJ * J_sq + wT * T).simplify()
 
         cost = cost.subs(s0, 0).subs(aT, 0).simplify()
         cost_diff = sp.diff(cost, T).simplify()
