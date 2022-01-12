@@ -149,10 +149,14 @@ class ActionSpec:
     @property
     def only_padding_mode(self):
         """ if planning time is shorter than the TP's time resolution, the result will be only padding in the TP"""
-        return self.t < TRAJECTORY_TIME_RESOLUTION
+        return self.is_only_padding_mode(self.t)
 
     def __str__(self):
         return str({k: str(v) for (k, v) in self.__dict__.items()})
 
     def as_fstate(self) -> FrenetState2D:
         return np.array([self.s, self.v, 0, self.d, 0, 0])
+
+    @staticmethod
+    def is_only_padding_mode(time: float):
+        return time < TRAJECTORY_TIME_RESOLUTION

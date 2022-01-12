@@ -47,7 +47,7 @@ class Math:
 
         y = np.zeros(shape=[m, n])
         for i in range(l):
-            y = np.einsum('ij,j->ij', y, x) + np.repeat(p[:, i, np.newaxis], n, axis=1)
+            y = y * x[np.newaxis, :] + p[:, i, np.newaxis]
 
         return y
 
@@ -68,7 +68,7 @@ class Math:
 
         y = np.zeros(shape=[m, n])
         for i in range(l):
-            y = np.einsum('ij,ij->ij', y, x) + np.repeat(p[:, i, np.newaxis], n, axis=1)
+            y = y * x + p[:, i, np.newaxis]
 
         return y
 
@@ -84,7 +84,7 @@ class Math:
         n = p.shape[1] - 1
         y = p[:, :-1] * np.arange(n, 0, -1)
         if m == 0:
-            val = p
+            val = p  # if p.shape[1] > 0 else np.zeros((p.shape[0], 1)) -> to return 0 polys as well instead of nulls
         else:
             val = Math.polyder2d(y, m - 1)
         return val

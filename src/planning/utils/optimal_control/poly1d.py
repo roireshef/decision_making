@@ -1,10 +1,10 @@
 from abc import abstractmethod
+from functools import reduce
 from typing import Union
 
 import numpy as np
 from decision_making.src.global_constants import TRACKING_DISTANCE_DISPOSITION_LIMIT, \
     TRACKING_VELOCITY_DISPOSITION_LIMIT, TRACKING_ACCELERATION_DISPOSITION_LIMIT
-
 from decision_making.src.planning.types import Limits
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -39,9 +39,21 @@ class Poly1D:
 
     @staticmethod
     @abstractmethod
-    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+    def cumulative_sq_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         """
-        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        Computes cumulative squared jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def cumulative_sq_acc(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative squared acceleration from time 0 to time T for the x(t) whose coefficients are given in
+        <poly_coefs>
         :param poly_coefs: distance polynomial coefficients
         :param T: relative time in seconds
         :return: [float] the cummulative jerk: sum(x'''(t)^2)
@@ -49,8 +61,12 @@ class Poly1D:
         pass
 
     @classmethod
-    def jerk_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
-        return cls.cumulative_jerk(poly_coefs, b) - cls.cumulative_jerk(poly_coefs, a)
+    def sq_jerk_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
+        return cls.cumulative_sq_jerk(poly_coefs, b) - cls.cumulative_sq_jerk(poly_coefs, a)
+
+    @classmethod
+    def sq_acc_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
+        return cls.cumulative_sq_acc(poly_coefs, b) - cls.cumulative_sq_acc(poly_coefs, a)
 
     @staticmethod
     def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
@@ -88,16 +104,21 @@ class Poly1D:
         :return: 3d numpy array [M,K,3] with the following dimensions:
             [position value, velocity value, acceleration value]
         """
-        # compute the coefficients of the polynom's 1st derivative (m=1)
-        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
-        # compute the coefficients of the polynom's 2nd derivative (m=2)
-        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
+        n, m = poly_coefs.shape
 
-        x_vals = Math.polyval2d(poly_coefs, time_samples)
-        x_dot_vals = Math.polyval2d(poly_dot_coefs, time_samples)
-        x_dotdot_vals = Math.polyval2d(poly_dotdot_coefs, time_samples)
+        # initialize matrix for all derivatives with m=0 on the first n rows, m=1 on the next n rows, and so on.
+        ders = np.zeros((3 * n, m))
 
-        return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+        # fill ders matrix with zero padding at the beginning of polynomials with less coefficients than m
+        ders[:n] = poly_coefs
+        ders[n:2*n, 1:] = poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
+        ders[2*n:, 2:] = Math.polyder2d(poly_dot_coefs, m=1)
+
+        # assign time_samples to coefficients
+        vals = Math.polyval2d(ders, time_samples)
+
+        # reshape vals from [3n, m] to [n, m, 3]
+        return np.dstack((vals[:n], vals[n:2*n], vals[2*n:]))
 
     @staticmethod
     def zip_polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
@@ -109,20 +130,38 @@ class Poly1D:
           3. acceleration (evaluation of the 2st derivative of the polynomial)
         :param poly_coefs: 2d numpy array [NxL] of the (position) polynomials coefficients, where
          each row out of the N is a different polynomial and contains L coefficients
-        :param time_samples: 2d numpy array [NxK] of the time stamps for the evaluation of the polynomials
+        :param time_samples: 2d numpy array [NxK] of the time stamps for the evaluation of the polynomials. If N is a
+            null dimension, then time_samples vector is used across all polynomials
         :return: 3d numpy array [N,K,3] with the following dimensions:
             [position value, velocity value, acceleration value]
         """
-        # compute the coefficients of the polynom's 1st derivative (m=1)
-        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
-        # compute the coefficients of the polynom's 2nd derivative (m=2)
-        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
+        if time_samples.shape[0] == 1:
+            return Poly1D.polyval_with_derivatives(poly_coefs, time_samples[0])
 
-        x_vals = Math.zip_polyval2d(poly_coefs, time_samples)
-        x_dot_vals = Math.zip_polyval2d(poly_dot_coefs, time_samples)
-        x_dotdot_vals = Math.zip_polyval2d(poly_dotdot_coefs, time_samples)
+        n, m = poly_coefs.shape
 
-        return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+        # initialize matrix for all derivatives with m=0 on the first n rows, m=1 on the next n rows, and so on.
+        ders = np.zeros((3 * n, m))
+
+        # fill ders matrix with zero padding at the beginning of polynomials with less coefficients than m
+        ders[:n] = poly_coefs
+        ders[n:2*n, 1:] = poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
+        ders[2*n:, 2:] = Math.polyder2d(poly_dot_coefs, m=1)
+
+        # assign time_samples to coefficients
+        vals = Math.zip_polyval2d(ders, np.tile(time_samples, (3, 1)))
+
+        # reshape vals from [3n, m] to [n, m, 3]
+        return np.dstack((vals[:n], vals[n:2*n], vals[2*n:]))
+
+    @staticmethod
+    def zip_polyval(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
+        if time_samples.shape[0] == 1:
+            return Poly1D.polyval(poly_coefs, time_samples[0])
+
+        return Math.zip_polyval2d(poly_coefs, time_samples)
+
+    polyval = Math.polyval2d
 
     @classmethod
     def time_constraints_matrix(cls, T: float) -> np.ndarray:
@@ -158,8 +197,8 @@ class Poly1D:
         """
         # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
-        poly_der = Math.polyder2d(poly_coefs, m=degree+1)
         poly = Math.polyder2d(poly_coefs, m=degree)
+        poly_der = Math.polyder2d(poly, m=1)
 
         # TODO: implement tests for those cases
         if poly_der.shape[-1] == 0:  # No derivative - polynomial is constant
@@ -169,10 +208,12 @@ class Poly1D:
                 return NumpyUtils.is_in_limits(poly[:, 0], limits)
         elif poly_der.shape[-1] == 1:  # 1st order derivative is constant - Polynomial is a*x+b
             # No need to test for t=0 (assuming it's valid), only t=T
-            return NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits)
+            return np.all(NumpyUtils.is_in_limits(Math.polyval2d(poly, T_vals), limits), axis=1)
 
         #  Find roots of jerk_poly (nan for complex or negative roots).
-        acc_suspected_points = Math.find_real_roots_in_limits(poly_der, value_limits=np.array([0, np.inf]))
+        # Replace NaN roots (root not found) for 0 so the "extremum point" will be evaluated at 0
+        acc_suspected_points = np.nan_to_num(Math.find_real_roots_in_limits(poly_der,
+                                                                            value_limits=np.array([0, np.inf])), 0)
         acc_suspected_values = Math.zip_polyval2d(poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range and are they non-complex
@@ -260,7 +301,13 @@ class QuarticPoly1D(Poly1D):
                               np.isclose(a_0, 0.0, atol=TRACKING_ACCELERATION_DISPOSITION_LIMIT, rtol=0))
 
     @staticmethod
-    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+    def cumulative_sq_acc(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
+        a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 4*T*(36*T**4*a4**2 + 45*T**3*a3*a4 + T**2*(20*a2*a4 + 15*a3**2) + 15*T*a2*a3 + 5*a2**2)/5
+
+    @staticmethod
+    def cumulative_sq_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         """
         Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
         :param poly_coefs: distance polynomial coefficients
@@ -329,11 +376,10 @@ class QuarticPoly1D(Poly1D):
         :param v_T: [m/sec] terminal velocity (at time T)
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
-        travelled since time 0
+        travelled since time 0. Returns 0 for cases of T==0 (ultimately division by zero)
         """
-        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + \
-            (-4 * t ** 3 * T * (2 * T * a_0 + 3 * (v_0 - v_T)) + 3 * t ** 4 * (T * a_0 + 2 * (v_0 - v_T))) / \
-            (12 * T ** 3)
+        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + NumpyUtils.div(
+            -4 * t ** 3 * T * (2 * T * a_0 + 3 * (v_0 - v_T)) + 3 * t ** 4 * (T * a_0 + 2 * (v_0 - v_T)), 12 * T ** 3)
 
     @staticmethod
     def velocity_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -345,8 +391,8 @@ class QuarticPoly1D(Poly1D):
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: v_0 + a_0 * t + \
-            (t ** 2 * T * (- 2 * a_0 * T - 3 * (v_0 - v_T)) + t ** 3 * (a_0 * T + (v_0 - v_T) * 2)) / (T ** 3)
+        return lambda t: v_0 + a_0 * t + NumpyUtils.div(
+            t ** 2 * T * (- 2 * a_0 * T - 3 * (v_0 - v_T)) + t ** 3 * (a_0 * T + (v_0 - v_T) * 2), T ** 3)
 
     @staticmethod
     def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, T: float):
@@ -471,6 +517,19 @@ class QuinticPoly1D(Poly1D):
         return np.transpose(tensor, (2, 0, 1))
 
     @staticmethod
+    def cumulative_sq_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
+        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
+        a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 12 * T * (3 * a3 ** 2 + 12 * a3 * a4 * T + (20 * a3 * a5 + 16 * a4 ** 2) * T ** 2 +
+                        60 * a4 * a5 * T ** 3 + 60 * a5 ** 2 * T ** 4)
+
+    @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         """
         Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
@@ -482,6 +541,14 @@ class QuinticPoly1D(Poly1D):
         a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
         return 12 * T * (3 * a3 ** 2 + 12 * a3 * a4 * T + (20 * a3 * a5 + 16 * a4 ** 2) * T ** 2 +
                         60 * a4 * a5 * T ** 3 + 60 * a5 ** 2 * T ** 4)
+
+    @staticmethod
+    def cumulative_sq_acc(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        pass
+        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
+        a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 4*T*(500*T**6*a5**2 + 700*T**5*a4*a5 + T**4*(420*a3*a5 + 252*a4**2) + T**3*(175*a2*a5 + 315*a3*a4) +
+                    T**2*(140*a2*a4 + 105*a3**2) + 105*T*a2*a3 + 35*a2**2)/35
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
@@ -542,12 +609,10 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + \
-            t ** 3 * (
-                T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
-                T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
-                t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m)))) / \
-            (2 * T ** 5)
+        return lambda t: v_0 * t + 0.5 * a_0 * t ** 2 + t ** 3 * NumpyUtils.div(
+            T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
+            T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+            t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m))), 2 * T ** 5)
 
     @staticmethod
     def distance_from_target(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -561,12 +626,10 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: dx + t * (v_T - v_0) - 0.5 * a_0 * t ** 2 + \
-            t ** 3 * (
-                T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * (dx + v_T * (T - T_m))) -
-                T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
-                t ** 2 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * (dx + v_T * (T - T_m)))) / \
-            (2 * T ** 5)
+        return lambda t: dx + t * (v_T - v_0) - 0.5 * a_0 * t ** 2 + t ** 3 * NumpyUtils.div(
+            T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * (dx + v_T * (T - T_m))) -
+            T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+            t ** 2 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * (dx + v_T * (T - T_m))), 2 * T ** 5)
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
@@ -600,11 +663,10 @@ class QuinticPoly1D(Poly1D):
         :param T_m: [sec] T_m * v_T is added to dx
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: v_0 + a_0 * t + t ** 2 * \
-            (3 * T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
-             4 * T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
-             5 * t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m)))) / \
-            (2 * T ** 5)
+        return lambda t: v_0 + a_0 * t + t ** 2 * NumpyUtils.div(
+            3 * T ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * (dx + v_T * (T - T_m))) +
+            4 * T * t * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * (dx + v_T * (T - T_m))) +
+            5 * t ** 2 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * (dx + v_T * (T - T_m))), 2 * T ** 5)
 
     @staticmethod
     def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
