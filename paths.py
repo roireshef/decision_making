@@ -56,3 +56,19 @@ class Paths:
     def get_scene_dynamic_absolute_path_filename(filename):
         # type: (str) -> str
         return os.path.join(Paths.get_scene_dynamic_path(), filename)
+
+    @staticmethod
+    def get_resources_path() -> str:
+        return os.path.join(os.path.dirname(__file__), 'resources')
+
+    @staticmethod
+    def get_checkpoints_dir_path() -> str:
+        return os.path.join(Paths.get_resources_path(), 'checkpoints')
+
+    @staticmethod
+    def get_repo_absolute_dir_path(relative_dir: str) -> str:
+        return os.path.join(Paths.get_repo_path(), relative_dir)
+
+    @staticmethod
+    def get_checkpoint(name: str) -> str:
+        return os.path.join(Paths.get_checkpoints_dir_path(), name)
