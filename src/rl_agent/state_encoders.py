@@ -15,7 +15,8 @@ from decision_making.src.rl_agent.environments.state_space.host.host_encoder imp
     MultiLaneLonKinematicsHostEncoderWithGoalOld, SingleLaneFullKinematicsHostEncoderWithMergeLength, \
     SingleLaneFullKinematicsLCFSMHostEncoderWithMergeLength, \
     MultiLaneHostEncoderFZI, MultiLaneHostEncoderFZIWithAcc, MultiLaneFullKinematicsNoFSMHostEncoderWithGoal, \
-    MultiLaneHostEncoderFZIWithAccAngGoal, SingleLaneLonKinematicsLCFSMHostEncoderWithMergeLength
+    MultiLaneHostEncoderFZIWithAccAngGoal, SingleLaneLonKinematicsLCFSMHostEncoderWithMergeLength, \
+    SingleLaneLonKinematicsLCFSMHostEncoderWithMergeLengthAndSpeed
 from decision_making.src.rl_agent.environments.state_space.host.host_encoder import SingleLaneLonKinematicsHostEncoder
 from decision_making.src.rl_agent.environments.state_space.host.host_encoder import \
     SingleLaneFullKinematicsHostEncoder
@@ -116,6 +117,7 @@ ENCODER_BUILDERS = {
                                                     5.5, max_actors=20)),
 
     # FULL LATERAL NEGOTIATION MERGE (LC FSM and 1D Kinematics - Longitudinal)
+    # TODO: This is actually using full kinematics!!! don't use it! (left for backward compatibility)
     "negotiation_merge_actors_list_fsm_lon_kinematics_w_mzl": lambda: HostActorsStateEncoder(
         host_encoder=SingleLaneFullKinematicsLCFSMHostEncoderWithMergeLength(LANE_MERGE_STATE_FAR_AWAY_DISTANCE,
                                                                              LANE_MERGE_ACTION_SPACE_MAX_VELOCITY,
@@ -124,6 +126,26 @@ ENCODER_BUILDERS = {
         actors_encoder=SingleLaneActorListEncoderV2(LANE_MERGE_STATE_FAR_AWAY_DISTANCE,
                                                     LANE_MERGE_ACTION_SPACE_MAX_VELOCITY,
                                                     5.5, max_actors=20)),
+
+    "negotiation_merge_actors_list_fsm_lon_kinematics_w_mzl_fix": lambda: HostActorsStateEncoder(
+        host_encoder=SingleLaneLonKinematicsLCFSMHostEncoderWithMergeLength(LANE_MERGE_STATE_FAR_AWAY_DISTANCE,
+                                                                            LANE_MERGE_ACTION_SPACE_MAX_VELOCITY,
+                                                                            1, 6.0, MapAnchor.YIELD_LINE,
+                                                                            MapAnchor.MERGE_BEGINNING),
+        actors_encoder=SingleLaneActorListEncoderV2(LANE_MERGE_STATE_FAR_AWAY_DISTANCE,
+                                                    LANE_MERGE_ACTION_SPACE_MAX_VELOCITY,
+                                                    5.5, max_actors=20)),
+
+    "negotiation_merge_actors_list_fsm_lon_kinematics_w_mzl_and_speed": lambda: HostActorsStateEncoder(
+        host_encoder=SingleLaneLonKinematicsLCFSMHostEncoderWithMergeLengthAndSpeed(
+            LANE_MERGE_STATE_FAR_AWAY_DISTANCE,
+            LANE_MERGE_ACTION_SPACE_MAX_VELOCITY,
+            1, 6.0, MapAnchor.YIELD_LINE,
+            MapAnchor.MERGE_BEGINNING),
+        actors_encoder=SingleLaneActorListEncoderV2(
+            LANE_MERGE_STATE_FAR_AWAY_DISTANCE,
+            LANE_MERGE_ACTION_SPACE_MAX_VELOCITY,
+            5.5, max_actors=20)),
 
     # LC MERGE
     "lc_merge_default": lambda: HostActorsStateEncoder(

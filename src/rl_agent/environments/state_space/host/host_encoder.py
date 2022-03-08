@@ -16,7 +16,7 @@ from decision_making.src.rl_agent.environments.uc_rl_map import MapAnchor
 
 class HostEncoder(StateEncoder, metaclass=ABCMeta):
     """ Abstract class for encoding host agent information
-        NOTE: Do not change public methods, implement only protected/private methodes """
+        NOTE: Do not change public methods, implement only protected/private methods """
     def encode(self, state: EgoCentricState, normalize: bool = True) -> np.ndarray:
         """
         The external API for calling the encoder to encode the ego information from an EgoCentricState
@@ -175,8 +175,8 @@ class SingleLaneFullKinematicsHostEncoderWithMergeLength(ScaleNormalization, Has
                  end_anchor: MapAnchor, start_anchor: MapAnchor):
         HasLonKinematicInformation.__init__(self, station_norm_const, velocity_norm_const, acceleration_norm_const)
         ScaleNormalization.__init__(self, scaling_array=np.concatenate((
-                self.kinematics_scale_array,
-                [station_norm_const]
+            self.kinematics_scale_array,
+            [station_norm_const]
         )).astype(np.float32)[:, np.newaxis])
 
         self.start_anchor = start_anchor
@@ -322,6 +322,52 @@ class SingleLaneLonKinematicsLCFSMHostEncoderWithMergeLength(ScaleNormalization,
                                [merge_zone_length])).astype(np.float32)[:, np.newaxis]
 
 
+class SingleLaneLonKinematicsLCFSMHostEncoderWithMergeLengthAndSpeed(ScaleNormalization, HasLonKinematicInformation,
+                                                                     HasLaneChangeFSMInformation, HostEncoder):
+    """
+    Single-lane, 1D longitudinal-only frenet state (station normalized by anchor) with Lateral Finite State Machine
+    (LFSM) info, and merge zone length. has the following channels:
+        1) 3 DOF frenet coordinate [SX (relative to anchor), SV, SA]
+        2) Lateral FSM status vector (4 values; binary)
+        3) Lateral FSM times vector (3 values; sec)
+        4) Merge zone length (a map feature)
+
+    See parents & mixins for arguments descriptions
+    """
+    def __init__(self, station_norm_const: float, velocity_norm_const: float, acceleration_norm_const: float,
+                 time_norm_const: float, end_anchor: MapAnchor, start_anchor: MapAnchor):
+
+        self.time_norm_const = time_norm_const
+        self.start_anchor = start_anchor
+        self.end_anchor = end_anchor
+
+        HasLaneChangeFSMInformation.__init__(self, time_norm_const)
+        HasLonKinematicInformation.__init__(self, station_norm_const, velocity_norm_const, acceleration_norm_const)
+        ScaleNormalization.__init__(
+            self, scaling_array=np.concatenate((
+                self.kinematics_scale_array,            # Lon kinematics
+                self.lane_change_scale_array,           # LC FSM - Lat
+                [station_norm_const, velocity_norm_const]
+            )).astype(np.float32)[:, np.newaxis])
+
+    @property
+    def _num_host_features(self):
+        return len(self.scaling_array)
+
+    def _encode(self, state: EgoCentricState) -> np.ndarray:
+        # encode host: replace the host station coordinate with its distance to the yield line anchor
+        relative_sx = state.self_gff_anchors[self.end_anchor] - state.ego_state.fstate[FS_SX]
+        host_frenet = np.concatenate(([relative_sx], state.ego_state.fstate[[FS_SV, FS_SA]]))
+
+        merge_zone_length = state.self_gff_anchors[self.end_anchor] - state.self_gff_anchors[self.start_anchor]
+
+        cur_seg_speed_limit = state.self_gff.get_speed_limit_for_lane_segment(state.ego_state.lane_segment)
+
+        return np.concatenate((host_frenet,
+                               self.get_lane_change_vector(state),
+                               [merge_zone_length, cur_seg_speed_limit])).astype(np.float32)[:, np.newaxis]
+
+
 class MultiLaneLonKinematicsHostEncoder(ScaleNormalization, HasLonKinematicInformation, HasMultipleLanesInformation,
                                         HasLaneChangeFSMInformation, HostEncoder):
     """
@@ -455,7 +501,7 @@ class MultiLaneHostEncoderFZIWithAcc(ScaleNormalization, HasFullKinematicInforma
         return np.concatenate([host_frenet, [relative_sx], lane_existence]).astype(np.float32)[:, np.newaxis]
 
 
-class MultiLaneHostEncoderFZIWithAccAngGoal(ScaleNormalization, HasFullKinematicInformation, 
+class MultiLaneHostEncoderFZIWithAccAngGoal(ScaleNormalization, HasFullKinematicInformation,
                                             HasMultipleLanesInformation, HostEncoder):
     """
     Multi-lane, 2D full frenet state with lane existence vector and goal context vector.
@@ -668,7 +714,7 @@ class MultiLaneFullKinematicsHostEncoderWithGoal(ScaleNormalization, HasFullKine
 
 
 class MultiLaneFullKinematicsNoFSMHostEncoderWithGoal(ScaleNormalization, HasFullKinematicInformation,
-                                                      HasMultipleLanesInformation, 
+                                                      HasMultipleLanesInformation,
                                                       HasLaneChangeCommitSignOnlyInformation, HostEncoder):
     """
     Multi-lane, 2D full frenet state with lane-existence vector, lateral finite state machine information,

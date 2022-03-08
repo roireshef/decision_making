@@ -48,7 +48,7 @@ class SafetyUtils:
         Note that if timestamps is an empty array, then result is an array of True values.
         :param lon_direction: either check against an actor ahead or behind the host vehicle
         :param state: the state to pull actors information from
-        :param timestamps: a 2d numpy array of timestamps (relative to current timestamp) to check safety in, where
+        :param timestamps: a 2d numpy array of timestamps (relative to state.timestamp_in_sec) to check safety in, where
         axis 0 corresponds to zip with trajectories and axis 1 is different times to check those trajectories. Axis 0
         can be just a wrapper - in that case the 1d array in axis 1 is replicated for all trajectories (all trajectories
         will be checked with the same timestamps)
@@ -74,78 +74,117 @@ class SafetyUtils:
         # compute relevant velocity limit that actors can reach to (either 0 or max_lane_speed) for which we compensate
         # their motion profiles below
         # TODO: change speed per actor
-        max_lane_speed = state.self_gff.get_speed_limit_for_lane_segment(state.ego_state.lane_segment)
-        relevant_velocity_limit = 0 if lon_direction == LongitudinalDirection.AHEAD else max_lane_speed
+        lane_speed_limit = state.self_gff.get_speed_limit_for_lane_segment(state.ego_state.lane_segment)
 
         # add dummy actors in cases no actor is perceived in the horizon
         if lon_direction == LongitudinalDirection.BEHIND:
             for lane, actor in lane_to_actor.items():
                 if actor is None:
                     lane_to_actor[lane] = EgoCentricActorState(
-                        actor_id="safety_dummy", velocity=relevant_velocity_limit, acceleration=0,
-                        size=VehicleSize(0, 0), s_relative_to_ego=LongitudinalDirection.BEHIND.value*perception_horizon,
+                        actor_id="safety_dummy",
+                        velocity=0 if lon_direction == LongitudinalDirection.AHEAD else lane_speed_limit,
+                        acceleration=0,
+                        size=VehicleSize(0, 0),
+                        s_relative_to_ego=LongitudinalDirection.BEHIND.value*perception_horizon,
                         lane_difference=lane.value)
 
         # condition array - True if an action has an actor to check safety against, False otherwise
         action_actors = NumpyUtils.from_list_of_tuples([lane_to_actor[target_lane] for target_lane in lanes])
         action_has_actor = np.not_equal(action_actors, None)
-        relevant_timestamps = timestamps[action_has_actor] if timestamps.shape[0] > 1 else timestamps
 
         # initialize result to True by default and if no participating actors for any action, return it
         safe = np.full_like(lanes, True, dtype=np.bool)
         if not np.any(action_has_actor):
             return safe
 
+        # override safety result for all actions with an actor
+        safe[action_has_actor] = SafetyUtils._is_future_safe_towards_actor(
+            lon_direction=lon_direction,
+            state=state,
+            timestamps=timestamps[action_has_actor] if timestamps.shape[0] > 1 else timestamps,
+            actors=action_actors[action_has_actor],
+            trajectories=trajectories[action_has_actor],
+            lane_speed_limit=lane_speed_limit,
+            rss_params=rss_params
+        )
+
+        return safe
+
+    @staticmethod
+    def _is_future_safe_towards_actor(actors: np.ndarray, trajectories: np.ndarray, timestamps: np.ndarray,
+                                      lon_direction: LongitudinalDirection, state: EgoCentricState,
+                                      lane_speed_limit: float, rss_params: RSSParams) -> np.ndarray:
+        """
+        Given coupled <actors> and ego <trajectories>, for each coupled entry this method predicts both ego and actor
+        in all <timestamps> and returns True if safety maintained throughout all timestamps, False otherwise. The
+        prediction model for actor is worst-case model (with velocity clipped in the range [0, <lane_speed_limit>]),
+        for the ego vehicle the model assumes perfect tracking of inteded trajectory (given by the corresponding entry
+        from <trajectories>).
+
+        :param actors: either check against an actor ahead or behind the host vehicle
+        :param trajectories: a 1d numpy array of dtype SamplableWerlingTrajectory corresponding to trajectories of the
+        actions under test
+        :param timestamps: a 2d numpy array of timestamps relative to state.timestamp_in_sec to check safety in, where
+        axis 0 corresponds to zip with trajectories and axis 1 is different times to check those trajectories. Axis 0
+        can be just a wrapper - in that case the 1d array in axis 1 is replicated for all trajectories (all trajectories
+        will be checked with the same timestamps)
+        :param lon_direction: either check against an actor ahead or behind the host vehicle
+        :param state: the state to pull actors information from
+        :param lane_speed_limit: [m/s] the maximal assumed speed for actors' prediction model
+        :param rss_params: the rss params by which safety will be verified
+        """
         # For each relevant action (has actor), get the actor's station (over all timestamps) and velocity IN EGO FRAME.
         # NOTE: The prediction for actors assumes worst-case scenario (applying worst_case_acc!)
         worst_case_acc = -rss_params.decel_front if lon_direction == LongitudinalDirection.AHEAD else rss_params.accel_rear
-        relevant_actors_poly_s = np.array([[worst_case_acc/2, actor.velocity, actor.s_relative_to_ego]
-                                           for actor in action_actors[action_has_actor]])
+        actors_poly_s = np.array([[worst_case_acc/2, actor.velocity, actor.s_relative_to_ego] for actor in actors])
 
-        relevant_actors_fstates = Poly1D.zip_polyval_with_derivatives(relevant_actors_poly_s, relevant_timestamps)
-        relevant_actors_s, relevant_actors_v, _ = relevant_actors_fstates.transpose((2, 0, 1))
+        actors_fstates = Poly1D.zip_polyval_with_derivatives(actors_poly_s, timestamps)
+        actors_s, actors_v, _ = actors_fstates.transpose((2, 0, 1))
 
         # This code block compensates for velocity profiles of actors that go out of [0, max_lane_speed] range.
         # It does that by computing the time to arrival for those limit speeds, and then subtract a*t**/2 from s, as
         # well as clip v, with t equal to the leftovers from the limit time to the requested timestamps
-        relevant_actors_T_s = np.array([[(relevant_velocity_limit - actor.velocity) / worst_case_acc]
-                                        for actor in action_actors[action_has_actor]])
-        actors_s_limit_fix = np.maximum(0, relevant_timestamps - relevant_actors_T_s) ** 2 * worst_case_acc / 2
-        relevant_actors_s -= actors_s_limit_fix
-        relevant_actors_v = np.clip(relevant_actors_v, 0, max_lane_speed)
+        speed_boundary = 0 if lon_direction == LongitudinalDirection.AHEAD else lane_speed_limit
+        actors_T_s = np.array([[(speed_boundary - actor.velocity) / worst_case_acc] for actor in actors])
+        actors_s_limit_fix = np.maximum(0, timestamps - actors_T_s) ** 2 * worst_case_acc / 2
+        actors_s -= actors_s_limit_fix
+        actors_v = np.clip(actors_v, 0, speed_boundary)
 
-        # for each relevant action (has actor), get the ego's station (over all timestamps)
-        # RELATIVE TO CURRENT EGO FRAME (in which the other actors polynomials are represented)
-        relevant_ego_fstates_gff_frame = Utils.sample_lon_frenet(
-            trajectories[action_has_actor], relevant_timestamps)
+        # timestamps are originally specified relative to state.timestamp_in_sec. Since in what comes next we sample the
+        # trajectories in relative time, we have to align the timestamps to the trajectories timestamp (might not be
+        # the same). When calling this methods for filters, state and trajectories should already be aligned!
+        assert len(set(trajectory.timestamp_in_sec for trajectory in trajectories)) == 1, \
+            "current SafetyUtils._is_future_safe_to_actor implementation only works when all trajectories are aligned" \
+            "to the same trajectory.timestamp_in_sec"
+        trajectory_alinged_timestamps = timestamps + state.timestamp_in_sec - trajectories[0].timestamp_in_sec
 
-        # Since previous command samples from trajectories that might be represented on different GFF than the
-        # current ego GFF, we shift the longitudinal station values to be on current ego GFF
-        relevant_ego_frame_on_gff_offset = np.array(
-            [[state.ego_fstate_on_adj_lanes[state.gff_relativity_to_ego(trajectory.gff_id)][FS_SX], 0, 0]
-             for trajectory in trajectories[action_has_actor]]
-        )[:, np.newaxis, :]
-        relevant_ego_fstates = relevant_ego_fstates_gff_frame - relevant_ego_frame_on_gff_offset
+        # for each entry, we represent the ego's 1D longitudinal fstate (over all timestamps) RELATIVE TO CURRENT
+        # EGO FRAME (current localization), since actors polynomials are extracted relative to the current ego
+        # localization. Since ego fstates sampled from trajectories that might be
+        # represented on different GFF than the current ego GFF, we offset the longitudinal station values
+        ego_fstates_on_trajectory_gff = Utils.sample_lon_frenet(trajectories, trajectory_alinged_timestamps)
+        ego_fstates_on_current_ego_frame = ego_fstates_on_trajectory_gff - np.array([
+            [state.ego_fstate_on_gffs[trajectory.gff_id][FS_SX], 0, 0]
+            for trajectory in trajectories
+        ])[:, np.newaxis, :]
 
         # assign velocities for rear and front vehicles (actor/ego)
-        relevant_rear_v, relevant_front_v = (relevant_ego_fstates[:, :, FS_SV], relevant_actors_v) \
-            if lon_direction == LongitudinalDirection.AHEAD else (
-            relevant_actors_v, relevant_ego_fstates[:, :, FS_SV])
+        rear_v, front_v = (ego_fstates_on_current_ego_frame[:, :, FS_SV], actors_v) \
+            if lon_direction == LongitudinalDirection.AHEAD \
+            else (actors_v, ego_fstates_on_current_ego_frame[:, :, FS_SV])
 
         # compute distance between rear and front vehicles
-        relevant_actors_len = np.array([actor.length for actor in action_actors[action_has_actor]])
-        relevant_bumpers_distance = lon_direction.value * (relevant_actors_s - relevant_ego_fstates[:, :, FS_SX]) - \
-                                    (state.ego_state.length + relevant_actors_len[:, np.newaxis]) / 2
+        actors_len = np.array([actor.length for actor in actors])
+        bumpers_distance = lon_direction.value * (actors_s - ego_fstates_on_current_ego_frame[:, :, FS_SX]) - \
+                                    (state.ego_state.length + actors_len[:, np.newaxis]) / 2
 
-        # compare RSS safety between rear and front vehicles
-        relevant_pointwise_rss = SafetyUtils.check_pair_rss_safety(
-            vel_front=relevant_front_v, vel_rear=relevant_rear_v, distance=relevant_bumpers_distance,
+        # compare RSS safety between rear and front vehicles for all timestamps
+        pointwise_rss = SafetyUtils.check_pair_rss_safety(
+            vel_front=front_v, vel_rear=rear_v, distance=bumpers_distance,
             rss_params=rss_params)
 
-        # override safety result for all actions with an actor
-        safe[action_has_actor] = np.all(relevant_pointwise_rss, axis=1)
-
-        return safe
+        # an entry is safe if safety is maintained throughout all timestamps
+        return np.all(pointwise_rss, axis=1)
 
     @staticmethod
     def constant_acc_kinematics(x0: float, v0: float, a: float, t: float):

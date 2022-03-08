@@ -26,8 +26,11 @@ class Constant(Distribution):
 
 class CategoricalDistribution(Distribution):
     """ Categorical dsitribution that gets a list of values and a list of their probabilities """
-    def __init__(self, values: List[int], probs: List[int] = None):
-        assert sum(probs) == 1, 'got probs=%s and it does sum up to %s instead of to 1' % (str(probs), sum(probs))
+    def __init__(self, values: List[Union[float, int]], probs: List[float] = None):
+        probs = probs or [1/len(values)] * len(values)
+        assert np.isclose(sum(probs), 1, rtol=1e-4), \
+            'got probs=%s and it does sum up to %s instead of to 1' % (str(probs), sum(probs))
+
         self.values = values
         self.probs = probs
 
@@ -37,13 +40,13 @@ class CategoricalDistribution(Distribution):
 
 class DiscreteUniformDistribution(CategoricalDistribution):
     """ Defines an integer range from <min_val> to <max_val> (inclusive) with resolution <res> """
-    def __init__(self, min_val: int, max_val: int, res: int):
-        super().__init__(list(range(min_val, max_val+EPS, res)))
+    def __init__(self, min_val: Union[float, int], max_val: Union[float, int], res: Union[float, int]):
+        super().__init__(list(np.arange(min_val, max_val+EPS, res)))
 
 
 class ContinuousUniformDistribution(Distribution):
     """ Defines an continuous uniform distribution from <min_val> to <max_val> """
-    def __init__(self, min_val: float, max_val: float):
+    def __init__(self, min_val: Union[float, int], max_val: Union[float, int]):
         self.min_val = min_val
         self.max_val = max_val
 
