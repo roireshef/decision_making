@@ -194,7 +194,8 @@ class NegotiateLaneChangeMixin(LateralMixin):
         recipe_lateral_dir = np.array([recipe.lateral_dir.value for recipe in action_recipes])
 
         T_d = np.abs(recipe_lateral_dir) * self._params["LANE_CENTER_TO_NEGOTIATE_OFFSET_DURATION"]
-        T_d[recipe_lateral_dir == 0] = self._specify_lateral_times_for_lane_centering(state.ego_state.fstate)
+        T_d[recipe_lateral_dir == 0] = np.nan_to_num(
+            self._specify_lateral_times_for_offseting(state.ego_state.fstate, target_dx=0.), nan=0.0)
 
         dx_T = recipe_lateral_dir * self._params["NEGOTIATE_OFFSET_DX"]
         relative_lane = [RelativeLane.SAME_LANE] * len(action_recipes)
@@ -215,12 +216,13 @@ class NegotiateLaneChangeMixin(LateralMixin):
 
         # (1) Already at the negotiation offset
         if lc_state.time_since_negotiation_offset_arrival(state.timestamp_in_sec) is not None:
-            time_left_to_neg_offset = 0
+            time_left_to_neg_offset = np.nan_to_num(self._specify_lateral_times_for_offseting(
+                state.ego_state.fstate, target_dx=lc_state.target_offset), nan=0)
             time_left_to_abort = self._params["LANE_CENTER_TO_NEGOTIATE_OFFSET_DURATION"]
             time_left_to_commit = self._params["NEGOTIATE_OFFSET_TO_COMMIT_DURATION"]
         # (2) On the way to negotiation offset
         else:
-            time_left_to_neg_offset = self._params["LANE_CENTER_TO_NEGOTIATE_OFFSET_DURATION"] - time_since_start
+            time_left_to_neg_offset = lc_state.time_to_target - time_since_start
             time_left_to_abort = time_since_start + self._params["DIRECTION_CHANGE_DURATION"]
             time_left_to_commit = self._params["FULL_LANE_CHANGE_DURATION"] - time_since_start
 
@@ -265,21 +267,8 @@ class NegotiateLaneChangeMixin(LateralMixin):
         """
         recipe_lateral_dir = np.array([recipe.lateral_dir.value for recipe in action_recipes])
 
-        time_since_start = state.ego_state.lane_change_state.time_since_start(state.timestamp_in_sec)
         time_since_abort = state.ego_state.lane_change_state.time_since_abort(state.timestamp_in_sec)
-        time_since_negotiation_offset_deprature = \
-            state.ego_state.lane_change_state.time_since_negotiation_offset_deprature(state.timestamp_in_sec)
-
-        assert time_since_negotiation_offset_deprature is None or time_since_negotiation_offset_deprature > 0, \
-            "time_since_negotiation_offset_deprature is %f while aborting" % time_since_negotiation_offset_deprature
-
-        # Originally departed from the negotiation offset
-        if time_since_negotiation_offset_deprature:
-            time_left_to_abort = self._params["LANE_CENTER_TO_NEGOTIATE_OFFSET_DURATION"] - time_since_abort
-
-        # Interrupted on the way to the negotiation offset (before arriving there)
-        else:
-            time_left_to_abort = time_since_start + self._params["DIRECTION_CHANGE_DURATION"] - 2 * time_since_abort
+        time_left_to_abort = state.ego_state.lane_change_state.time_to_target - time_since_abort
 
         # T_d and dx_T are NaN for any action other than keep direction (and commit to lane merge)
         T_d = np.empty_like(recipe_lateral_dir) * np.nan
@@ -303,19 +292,9 @@ class NegotiateLaneChangeMixin(LateralMixin):
         """
         lc_state = state.ego_state.lane_change_state
         recipe_lateral_dir = np.array([recipe.lateral_dir.value for recipe in action_recipes])
-        time_since_start = lc_state.time_since_start(state.timestamp_in_sec)
-        time_since_neg_departure = lc_state.time_since_negotiation_offset_deprature(state.timestamp_in_sec)
 
-        assert time_since_neg_departure is None or time_since_neg_departure > 0, \
-            "time_since_negotiation_offset_deprature is %s while committing" % time_since_neg_departure
-
-        # Originally departed from the negotiation offset
-        if time_since_neg_departure:
-            time_left_to_commit = self._params["NEGOTIATE_OFFSET_TO_COMMIT_DURATION"] - time_since_neg_departure
-
-        # Interrupted on the way to the negotiation offset (before arriving there)
-        else:
-            time_left_to_commit = self._params["FULL_LANE_CHANGE_DURATION"] - time_since_start
+        time_since_commit = state.ego_state.lane_change_state.time_since_commit(state.timestamp_in_sec)
+        time_left_to_commit = state.ego_state.lane_change_state.time_to_target - time_since_commit
 
         # T_d and dx_T are NaN for any action other than keep direction (and commit to lane merge)
         T_d = np.empty_like(recipe_lateral_dir) * np.nan
@@ -336,7 +315,7 @@ class NegotiateLaneChangeMixin(LateralMixin):
 
         return dx_T, T_d, relative_lane, event
 
-    def _specify_lateral_times_for_lane_centering(self, ego_fstate: FrenetState2D) -> float:
+    def _specify_lateral_times_for_offseting(self, ego_fstate: FrenetState2D, target_dx: float) -> float:
         """
         Takes action recipes and ego state projection (on the correct target lanes) and specifies the lateral
         polynomial and terminal time (horizon) of motion for each recipe, by solving boundary conditions for the
@@ -347,13 +326,14 @@ class NegotiateLaneChangeMixin(LateralMixin):
         w_T, w_J = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value, [2, 1]][:, np.newaxis]
 
         *_, dx_0, dv_0, da_0 = ego_fstate[np.newaxis, :].transpose()
-        dx_T = dv_T = np.zeros_like(dx_0)
+        dv_T = np.zeros_like(dx_0)
+        dx_T = np.full_like(dx_0, fill_value=target_dx)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        cost_coefs_d = QuinticPoly1D.time_cost_function_derivative_coefs(a_0=da_0, v_0=dv_0, v_T=dv_T, dx=dx_T, T_m=0,
+        cost_coefs_d = QuinticPoly1D.time_cost_function_derivative_coefs(a_0=da_0, v_0=dv_0, v_T=dv_T, dx=dx_T-dx_0, T_m=0,
                                                                          w_T=w_T, w_J=w_J)
         roots_d = Math.find_real_roots_in_limits(cost_coefs_d, np.array([.0, self._params['ACTION_MAX_TIME_HORIZON']]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
-        T_d[QuinticPoly1D.is_tracking_mode(dv_0, dv_T, da_0, dx_0, 0)] = 0
+        T_d[QuinticPoly1D.is_tracking_mode(dv_0, dv_T, da_0, dx_T-dx_0, 0)] = 0
 
         return T_d.item()

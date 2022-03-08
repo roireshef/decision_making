@@ -63,10 +63,11 @@ class TrajectoryBasedActionSpaceAdapter(ActionSpaceAdapter, metaclass=ABCMeta):
 
         # Project current ego fstate on the target lane for each action
         projected_ego_fstates = np.full((len(action_recipes), FS_2D_LEN), np.nan)
-        projected_ego_fstates[lat_valid] = np.array([
-            state.ego_fstate_on_adj_lanes[relative_lane]
-            for relative_lane, is_valid in zip(relative_lanes, lat_valid) if is_valid
-        ])
+        if any(lat_valid):
+            projected_ego_fstates[lat_valid] = np.array([
+                state.ego_fstate_on_adj_lanes[relative_lane]
+                for relative_lane, is_valid in zip(relative_lanes, lat_valid) if is_valid
+            ])
 
         # Generate lateral polynomial coefficients (solved in target lane's reference frame)
         sx_0, sv_0, sa_0, dx_0, dv_0, da_0 = projected_ego_fstates.transpose()
